@@ -584,6 +584,19 @@ export default function SubmitOrder(){
       // Separate City and Area from reverse geocoding
       const cityGuess = addr.city || addr.town || addr.village || ''
       const areaGuess = addr.suburb || addr.neighbourhood || addr.district || addr.quarter || addr.residential || ''
+
+      // Country validation for Nominatim as well (addr.country_code is ISO alpha-2 lowercased)
+      try{
+        const countryISO = String(addr.country_code||'').toUpperCase()
+        if (form.orderCountry && countryISO){
+          const nameToISO = { 'UAE':'AE', 'Oman':'OM', 'KSA':'SA', 'Bahrain':'BH', 'Qatar':'QA', 'Kuwait':'KW', 'India':'IN' }
+          const expectedISO = nameToISO[form.orderCountry]
+          if (expectedISO && expectedISO !== countryISO){
+            setLocationValidation({ isValid: false, message: 'WhatsApp location is out of country' })
+            return // do not fill address/city/area
+          }
+        }
+      }catch{}
       
       // Validate if resolved city matches selected city
       if (form.city && cityGuess) {
