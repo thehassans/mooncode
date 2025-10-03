@@ -83,8 +83,26 @@ export default function SubmitOrder(){
     if (name === 'orderCountry'){
       const opt = COUNTRY_OPTS.find(o=>o.name===value)
       // Keep phone code in sync with selected country name. Reset city/area when country changes.
-      setForm(f => ({ ...f, orderCountry: value, phoneCountryCode: opt?.code || f.phoneCountryCode, city: '', customerArea:'', total: '' }))
+      setForm(f => ({
+        ...f,
+        orderCountry: value,
+        phoneCountryCode: opt?.code || f.phoneCountryCode,
+        city: '',
+        customerArea:'',
+        customerAddress:'',
+        locationLat:'',
+        locationLng:'',
+        customerLocation:'',
+        total: ''
+      }))
+      // Clear any previous location validation tied to old country and clear typed coords
+      setLocationValidation({ isValid: true, message: '' })
+      setCoordsInput('')
       return
+    }
+    if (name === 'city'){
+      // Clear previous validation when user changes city; validation will re-run on next Resolve
+      setLocationValidation({ isValid: true, message: '' })
     }
     setForm(f => ({ ...f, [name]: value }))
   }
