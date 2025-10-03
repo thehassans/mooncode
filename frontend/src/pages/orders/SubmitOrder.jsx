@@ -91,6 +91,9 @@ export default function SubmitOrder(){
         city: '',
         customerArea:'',
         customerAddress:'',
+        locationLat:'',
+        locationLng:'',
+        customerLocation:'',
         productId:'',
         quantity: 1,
         total: '',
@@ -102,12 +105,8 @@ export default function SubmitOrder(){
       try{ setItems([]) }catch{}
       // Clear any previous location validation tied to old country
       setLocationValidation({ isValid: true, message: '' })
-      // If we already have coordinates, auto re-validate and fill for new country to avoid double resolve
-      try{
-        if (form.locationLat && form.locationLng){
-          resolveFromCoords(form.locationLat, form.locationLng)
-        }
-      }catch{}
+      // Clear typed coordinate input to require a fresh Resolve for the new country
+      setCoordsInput('')
       return
     }
     if (name === 'city'){
