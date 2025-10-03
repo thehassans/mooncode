@@ -87,17 +87,27 @@ export default function SubmitOrder(){
         ...f,
         orderCountry: value,
         phoneCountryCode: opt?.code || f.phoneCountryCode,
+        // Clear address-related fields but keep coordinates for auto re-resolve
         city: '',
         customerArea:'',
         customerAddress:'',
-        locationLat:'',
-        locationLng:'',
-        customerLocation:'',
-        total: ''
+        productId:'',
+        quantity: 1,
+        total: '',
+        discount:'',
+        shipping:'',
+        customerName: ''
       }))
-      // Clear any previous location validation tied to old country and clear typed coords
+      // Reset product items list
+      try{ setItems([]) }catch{}
+      // Clear any previous location validation tied to old country
       setLocationValidation({ isValid: true, message: '' })
-      setCoordsInput('')
+      // If we already have coordinates, auto re-validate and fill for new country to avoid double resolve
+      try{
+        if (form.locationLat && form.locationLng){
+          resolveFromCoords(form.locationLat, form.locationLng)
+        }
+      }catch{}
       return
     }
     if (name === 'city'){
@@ -657,7 +667,7 @@ export default function SubmitOrder(){
         </div>
       </div>
 
-      <div className="card" style={{display:'grid', gap:12, border: locationValidation?.isValid ? undefined : '2px solid #dc2626'}}>
+      <div className="card" style={{display:'grid', gap:12}}>
         {(customerInfo.name || customerInfo.fullPhone) && (
           <div style={{display:'flex', gap:12, alignItems:'center', padding:'8px 10px', background:'var(--panel-2)', border:'1px solid var(--border)', borderRadius:8}}>
             <div style={{fontWeight:600}}>Customer:</div>
