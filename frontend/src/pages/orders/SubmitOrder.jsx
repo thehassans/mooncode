@@ -154,21 +154,13 @@ export default function SubmitOrder(){
     if (!s) return
 
     try {
-      // Call backend geocoding service (API key is stored securely on server)
+      // Call backend geocoding service to decode; defer filling address until validated
       const result = await apiPost('/api/geocode/whatsapp', { locationCode: s })
       
       if (result.success) {
-        // Update form with resolved address
-        setForm(f => ({ 
-          ...f, 
-          locationLat: result.lat,
-          locationLng: result.lng,
-          customerAddress: result.formatted_address,  // Same as Complete Address
-          city: result.city || f.city,
-          customerArea: result.area || f.customerArea,
-        }))
-        
-        setLocationValidation({ isValid: true, message: '' })
+        // Only set coordinates, then run reverse/validation flow
+        setForm(f => ({ ...f, locationLat: result.lat, locationLng: result.lng }))
+        await resolveFromCoords(result.lat, result.lng)
         return
       } else {
         // Handle specific error messages
@@ -508,28 +500,41 @@ export default function SubmitOrder(){
                 const expectedISO = nameToISO[form.orderCountry]
                 if (expectedISO && expectedISO !== countryISO){
                   setLocationValidation({ isValid: false, message: 'WhatsApp location is out of country' })
-                } else {
-                  setLocationValidation({ isValid: true, message: '' })
+                  return // do not fill address/city/area
                 }
               }
-              
-              // Validate if resolved city matches selected city
+
+              // Validate if resolved city matches selected city (if selected)
               if (form.city && cityGuess) {
                 const normalizedFormCity = form.city.toLowerCase().trim()
                 const normalizedResolvedCity = cityGuess.toLowerCase().trim()
-                
                 if (normalizedFormCity !== normalizedResolvedCity) {
-                  setLocationValidation({
-                    isValid: false,
-                    message: `Invalid address: Location is in ${cityGuess}, but selected city is ${form.city}`
-                  })
-                } else {
-                  setLocationValidation({ isValid: true, message: '' })
+                  setLocationValidation({ isValid: false, message: `Invalid address: Location is in ${cityGuess}, but selected city is ${form.city}` })
+                  return // do not fill fields on mismatch
                 }
-              } else {
-                setLocationValidation({ isValid: true, message: '' })
               }
-              
+
+              // Validate city presence within selected country list (if we have a list)
+              try {
+                const citiesList = COUNTRY_CITIES[currentCountryKey] || []
+                if (citiesList.length) {
+                  const found = citiesList.some(c => c.toLowerCase() === (cityGuess||'').toLowerCase())
+                  if (!found) {
+                    setLocationValidation({ isValid: false, message: `City ${cityGuess||'(unknown)'} is not present in ${form.orderCountry}` })
+                    return
+                  }
+                  if (form.city) {
+                    const selectedFound = citiesList.some(c => c.toLowerCase() === form.city.toLowerCase())
+                    if (!selectedFound) {
+                      setLocationValidation({ isValid: false, message: `Selected city ${form.city} is not present in ${form.orderCountry}` })
+                      return
+                    }
+                  }
+                }
+              } catch {}
+
+              // Passed validation: fill fields
+              setLocationValidation({ isValid: true, message: '' })
               setForm(f=> ({ 
                 ...f, 
                 customerAddress: display || f.customerAddress, 
@@ -559,16 +564,33 @@ export default function SubmitOrder(){
         const normalizedResolvedCity = cityGuess.toLowerCase().trim()
         
         if (normalizedFormCity !== normalizedResolvedCity) {
-          setLocationValidation({
-            isValid: false,
-            message: `Invalid address: Location is in ${cityGuess}, but selected city is ${form.city}`
-          })
+          setLocationValidation({ isValid: false, message: `Invalid address: Location is in ${cityGuess}, but selected city is ${form.city}` })
+          return // do not fill fields on mismatch
         } else {
           setLocationValidation({ isValid: true, message: '' })
         }
       }
+
+      // Validate city presence within selected country list (if we have a list)
+      try {
+        const citiesList = COUNTRY_CITIES[currentCountryKey] || []
+        if (citiesList.length) {
+          const found = citiesList.some(c => c.toLowerCase() === (cityGuess||'').toLowerCase())
+          if (!found) {
+            setLocationValidation({ isValid: false, message: `City ${cityGuess||'(unknown)'} is not present in ${form.orderCountry}` })
+            return
+          }
+          if (form.city) {
+            const selectedFound = citiesList.some(c => c.toLowerCase() === form.city.toLowerCase())
+            if (!selectedFound) {
+              setLocationValidation({ isValid: false, message: `Selected city ${form.city} is not present in ${form.orderCountry}` })
+              return
+            }
+          }
+        }
+      } catch {}
       
-      // Auto-populate city and area from coordinates (read-only)
+      // Passed validation: fill fields
       setForm(f=> ({ 
         ...f, 
         customerAddress: display || f.customerAddress, 
@@ -621,8 +643,8 @@ export default function SubmitOrder(){
         {(customerInfo.name || customerInfo.fullPhone) && (
           <div style={{display:'flex', gap:12, alignItems:'center', padding:'8px 10px', background:'var(--panel-2)', border:'1px solid var(--border)', borderRadius:8}}>
             <div style={{fontWeight:600}}>Customer:</div>
-            {customerInfo.name && <div>{customerInfo.name}</div>}
-            {customerInfo.fullPhone && <div style={{opacity:0.85}}>{customerInfo.fullPhone}</div>}
+            {/* Show only once: prefer name if available, else phone */}
+            <div>{customerInfo.name ? customerInfo.name : (customerInfo.fullPhone || '')}</div>
           </div>
         )}
         {String(location.pathname||'').startsWith('/agent') && me && (
@@ -644,7 +666,7 @@ export default function SubmitOrder(){
               <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap:12}}>
                 <div>
                   <div className="label">Country</div>
-                  <select className="input" name="orderCountry" value={form.orderCountry} onChange={onChange} required>
+                  <select className="input" name="orderCountry" value={form.orderCountry} onChange={onChange} required disabled={!!originMsisdn}>
                     {COUNTRY_OPTS.map(opt => (
                       <option key={opt.key} value={opt.name}>{`${opt.flag} ${opt.name}`}</option>
                     ))}
@@ -671,7 +693,7 @@ export default function SubmitOrder(){
                 </div>
                 <div>
                   <div className="label">Customer Phone</div>
-                  <input className="input" name="customerPhone" value={form.customerPhone} onChange={onChange} required />
+                  <input className="input" name="customerPhone" value={form.customerPhone} onChange={onChange} required readOnly={!!originMsisdn} />
                   {!!originMsisdn && (
                     <div className="helper" style={{fontSize:12, opacity:0.8, marginTop:4}}>Must match WhatsApp sender: {customerInfo.fullPhone}</div>
                   )}
@@ -903,21 +925,15 @@ export default function SubmitOrder(){
                 </div>
               )}
 
-              <div>
-                 <div className="label">Customer Phone Number</div>
-                <div style={{display:'grid', gridTemplateColumns:'auto 1fr', gap:6, alignItems:'center'}}>
-                  <div className="input" style={{padding:'0 10px', display:'flex', alignItems:'center', backgroundColor:'var(--surface-secondary)', color:'var(--text-secondary)'}}>{form.phoneCountryCode || ''}</div>
-                  <input className="input" name="customerPhone" value={form.customerPhone} onChange={onChange} placeholder="e.g. 501234567" required autoComplete="tel" />
-                </div>
-              </div>
+              {/* Removed duplicate Customer Phone Number block to display number only once */}
               <div>
                 <div className="label">Customer Address</div>
                 <input className="input" name="customerAddress" value={form.customerAddress} onChange={onChange} placeholder="Street, Building" />
               </div>
 
               <div>
-                <div className="label">Order Details</div>
-                <textarea className="input" name="details" value={form.details} onChange={onChange} placeholder="Describe items, quantities, notes..." rows={4} required />
+                <div className="label">Order Details (optional)</div>
+                <textarea className="input" name="details" value={form.details} onChange={onChange} placeholder="Describe items, quantities, notes..." rows={4} />
               </div>
 
               {/* Preferred Timing Dropdown (optional) */}
