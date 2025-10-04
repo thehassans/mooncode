@@ -465,7 +465,16 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
     const collectedOnly = String(req.query.collected||'').toLowerCase() === 'true'
 
     const match = { ...base }
-    if (country) match.orderCountry = country
+    if (country) {
+      const aliases = {
+        'KSA': ['KSA','Saudi Arabia'],
+        'Saudi Arabia': ['KSA','Saudi Arabia'],
+        'UAE': ['UAE','United Arab Emirates'],
+        'United Arab Emirates': ['UAE','United Arab Emirates'],
+      }
+      if (aliases[country]) match.orderCountry = { $in: aliases[country] }
+      else match.orderCountry = country
+    }
     if (city) match.city = city
     if (onlyUnassigned) match.deliveryBoy = { $in: [null, undefined] }
     if (statusFilter) match.status = statusFilter
