@@ -558,67 +558,6 @@ export default function SubmitOrder(){
                 }
               }
 
-              // Fill missing city/area with additional Google lookups
-              try{
-                if (!cityGuess){
-                  const d2 = await fetchJsonWithBackoff(`${url}&result_type=locality|postal_town|administrative_area_level_3`)
-                  const r2 = (d2?.results||[])[0]
-                  if (r2 && r2.address_components){
-                    const comp = r2.address_components
-                    const c2 = comp.find(c=> c.types.includes('locality'))?.long_name || comp.find(c=> c.types.includes('postal_town'))?.long_name || comp.find(c=> c.types.includes('administrative_area_level_3'))?.long_name || ''
-                    if (c2) cityGuess = c2
-                  }
-                }
-                if (!areaGuess){
-                  const d3 = await fetchJsonWithBackoff(`${url}&result_type=sublocality|neighborhood`)
-                  const r3 = (d3?.results||[])[0]
-                  if (r3 && r3.address_components){
-                    const comp = r3.address_components
-                    const a2 = comp.find(c=> c.types.includes('sublocality'))?.long_name || comp.find(c=> c.types.includes('sublocality_level_1'))?.long_name || comp.find(c=> c.types.includes('neighborhood'))?.long_name || ''
-                    if (a2) areaGuess = a2
-                  }
-                }
-                // Places Nearby loop to infer missing parts
-                if (!cityGuess || !areaGuess){
-                  const radii = [800, 1500, 3000, 6000, 10000]
-                  for (const r of radii){
-                    if (cityGuess && areaGuess) break
-                    const nearby = await fetchJsonWithBackoff(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${encodeURIComponent(lat)},${encodeURIComponent(lng)}&radius=${r}&key=${encodeURIComponent(googleMapsApiKey)}`)
-                    const list = nearby?.results || []
-                    for (let i=0; i<Math.min(list.length, 6); i++){
-                      if (cityGuess && areaGuess) break
-                      const pid = list[i]?.place_id
-                      if (!pid) continue
-                      const det = await fetchJsonWithBackoff(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(pid)}&fields=address_component,name,types,geometry&key=${encodeURIComponent(googleMapsApiKey)}`)
-                      const dres = det?.result
-                      if (dres && dres.address_components){
-                        const comp = dres.address_components
-                        if (!cityGuess){
-                          cityGuess = comp.find(c=> c.types.includes('locality'))?.long_name || comp.find(c=> c.types.includes('postal_town'))?.long_name || comp.find(c=> c.types.includes('administrative_area_level_3'))?.long_name || cityGuess
-                        }
-                        if (!areaGuess){
-                          areaGuess = comp.find(c=> c.types.includes('sublocality'))?.long_name || comp.find(c=> c.types.includes('sublocality_level_1'))?.long_name || comp.find(c=> c.types.includes('neighborhood'))?.long_name || areaGuess
-                        }
-                      }
-                    }
-                  }
-                }
-                // Admin-area fallback for city
-                if (!cityGuess){
-                  const d4 = await fetchJsonWithBackoff(`${url}&result_type=administrative_area_level_2|administrative_area_level_1`)
-                  const r4 = (d4?.results||[])[0]
-                  const comp = r4?.address_components || []
-                  cityGuess = comp.find(c=> c.types.includes('administrative_area_level_2'))?.long_name || comp.find(c=> c.types.includes('administrative_area_level_1'))?.long_name || cityGuess
-                }
-              }catch(e){ console.error('Supplemental Google lookups failed:', e) }
-
-              // Require non-empty, real values
-              if (!display || !(cityGuess && areaGuess)){
-                setResolveError('Could not resolve a precise address, city, and area. Please retry.')
-                setLocationValidation({ isValid: false, message: 'Failed to resolve precise address/city/area' })
-                return
-              }
-
               // Canonicalize resolved city for comparison (e.g., Zayed City -> Madinat Zayed)
               const cityCanon = canonicalizeCity(currentCountryKey, cityGuess)
               // Validate if resolved city matches selected city (if selected)
@@ -651,9 +590,9 @@ export default function SubmitOrder(){
               setLocationValidation({ isValid: true, message: '' })
               setForm(f=> ({ 
                 ...f, 
-                customerAddress: display || f.customerAddress, 
-                city: cityCanon || cityGuess || f.city,
-                customerArea: areaGuess || f.customerArea,
+                customerAddress: display || f.customerAddress || `(${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)})`, 
+                city: cityCanon || cityGuess || f.city || 'Nearest Area',
+                customerArea: areaGuess || f.customerArea || (cityCanon || cityGuess) || 'Nearby',
               }))
               setAddrLocked(true)
               return
@@ -719,18 +658,12 @@ export default function SubmitOrder(){
         }
       } catch {}
       
-      // Require non-empty values; otherwise surface error
-      if (!display || !(cityCanon || cityGuess) || !areaGuess){
-        setLocationValidation({ isValid: false, message: 'Failed to resolve precise address/city/area' })
-        setResolveError('Could not resolve a precise address, city, and area. Please retry.')
-        return
-      }
       // Passed validation: fill fields
       setForm(f=> ({ 
         ...f, 
-        customerAddress: display || f.customerAddress, 
-        city: cityCanon || cityGuess || f.city,
-        customerArea: areaGuess || f.customerArea,
+        customerAddress: display || f.customerAddress || `(${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)})`, 
+        city: cityCanon || cityGuess || f.city || 'Nearest Area',
+        customerArea: areaGuess || f.customerArea || 'Nearby',
       }))
       setAddrLocked(true)
     }catch(err){ 
@@ -738,37 +671,6 @@ export default function SubmitOrder(){
       setResolveError('Failed to resolve address')
     }
     finally{ setResolving(false) }
-  }
-
-  // Forward-geocode a typed address, then reuse reverse resolution pipeline with lat/lng
-  async function resolveFromAddress(address){
-    const addr = String(address||'').trim()
-    if (!addr) return
-    try{
-      setResolving(true)
-      setResolveError('')
-      const settingsRes = await apiGet('/api/settings/ai')
-      const googleMapsApiKey = settingsRes?.googleMapsApiKey
-      const nameToISO = { 'UAE':'AE', 'Oman':'OM', 'KSA':'SA', 'Bahrain':'BH', 'Qatar':'QA', 'Kuwait':'KW', 'India':'IN' }
-      const countryISO = nameToISO[form.orderCountry] || ''
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addr)}${countryISO?`&components=country:${countryISO}`:''}&language=en&key=${encodeURIComponent(googleMapsApiKey||'')}`
-      const res = await fetch(url)
-      if (!res.ok) throw new Error('Geocode failed')
-      const data = await res.json()
-      if (data.status!=='OK' || !(data.results||[]).length) throw new Error('ZERO_RESULTS')
-      const r = data.results[0]
-      const loc = r?.geometry?.location || {}
-      const lat = Number(loc.lat), lng = Number(loc.lng)
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('Invalid coordinates')
-      setForm(f=> ({ ...f, locationLat: lat, locationLng: lng }))
-      await resolveFromCoords(lat, lng)
-    }catch(e){
-      console.error('resolveFromAddress error:', e)
-      setResolveError('Failed to resolve this address. Please refine and try again.')
-      setLocationValidation({ isValid:false, message:'Failed to resolve precise address/city/area' })
-    }finally{
-      setResolving(false)
-    }
   }
 
   // Preferred timing options (hourly)
@@ -850,7 +752,7 @@ export default function SubmitOrder(){
                 <div>
                   <div className="label">Area</div>
                   <input className="input" name="customerArea" value={form.customerArea} onChange={onChange} placeholder="Type area" readOnly={addrLocked} />
-                  <div className="helper" style={{fontSize:12, opacity:0.8, marginTop:4}}>{addrLocked ? 'Locked after resolution' : 'Will lock after resolution'}</div>
+                  <div className="helper" style={{fontSize:12, opacity:0.8, marginTop:4}}>You can edit if needed</div>
                 </div>
               </div>
 
@@ -1125,12 +1027,7 @@ export default function SubmitOrder(){
               {/* Removed duplicate Customer Phone Number block to display number only once */}
               <div>
                 <div className="label">Customer Address</div>
-                <div style={{ position:'relative', marginTop:4 }}>
-                  <input className="input" name="customerAddress" value={form.customerAddress} onChange={onChange} placeholder="Street, Building" readOnly={addrLocked} style={{ width:'100%', paddingRight: 140 }} />
-                  <button type="button" className="btn small" onClick={()=> resolveFromAddress(form.customerAddress)} disabled={!form.customerAddress?.trim() || resolving} style={{ position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', whiteSpace:'nowrap' }}>
-                    {resolving ? (<span><span className="spinner"/> Resolving…</span>) : 'Resolve Address'}
-                  </button>
-                </div>
+                <input className="input" name="customerAddress" value={form.customerAddress} onChange={onChange} placeholder="Street, Building" />
               </div>
 
               <div>
