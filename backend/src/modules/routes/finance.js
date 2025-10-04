@@ -25,6 +25,27 @@ const storage = multer.diskStorage({
   }
 })
 
+// Reject remittance (manager)
+router.post('/remittances/:id/reject', auth, allowRoles('user','manager'), async (req, res) => {
+  try{
+    const { id } = req.params
+    const r = await Remittance.findById(id)
+    if (!r) return res.status(404).json({ message: 'Remittance not found' })
+    // Scope: manager assigned OR owner of workspace
+    if (req.user.role === 'manager' && String(r.manager) !== String(req.user.id)) return res.status(403).json({ message: 'Not allowed' })
+    if (req.user.role === 'user' && String(r.owner) !== String(req.user.id)) return res.status(403).json({ message: 'Not allowed' })
+    if (r.status !== 'pending') return res.status(400).json({ message: 'Already processed' })
+    r.status = 'rejected'
+    r.acceptedAt = new Date()
+    r.acceptedBy = req.user.id
+    await r.save()
+    try{ const io = getIO(); io.to(`user:${String(r.driver)}`).emit('remittance.rejected', { id: String(r._id) }) }catch{}
+    return res.json({ message: 'Remittance rejected', remittance: r })
+  }catch(err){
+    return res.status(500).json({ message: 'Failed to reject remittance' })
+  }
+})
+
 // Set proof verification (manager or owner)
 router.post('/remittances/:id/proof', auth, allowRoles('user','manager'), async (req, res) => {
   try{
