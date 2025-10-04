@@ -17,6 +17,7 @@ export default function ManagerFinances(){
   const agtLoadingRef = useRef(false)
   const drvEndRef = useRef(null)
   const agtEndRef = useRef(null)
+  const showAgentSection = false
 
   async function loadDriverRemitsPage(page){
     if (drvLoadingRef.current) return
@@ -93,6 +94,7 @@ export default function ManagerFinances(){
 
   // Actions
   async function acceptDriverRemit(id){ try{ await apiPost(`/api/finance/remittances/${id}/accept`,{}); await loadDriverRemitsPage(1) }catch(e){ alert(e?.message||'Failed to accept') } }
+  async function setProof(id, ok){ try{ await apiPost(`/api/finance/remittances/${id}/proof`,{ ok }); await loadDriverRemitsPage(1) }catch(e){ alert(e?.message||'Failed to set proof') } }
   async function approveAgent(id){ try{ setAgt(a=>({ ...a, busyId:id })); await apiPost(`/api/finance/agent-remittances/${id}/approve`,{}); await loadAgentRemitsPage(1) }catch(e){ alert(e?.message||'Failed to approve') } finally{ setAgt(a=>({ ...a, busyId:'' })) } }
   async function sendAgent(id){ try{ setAgt(a=>({ ...a, busyId:id })); await apiPost(`/api/finance/agent-remittances/${id}/send`,{}); await loadAgentRemitsPage(1) }catch(e){ alert(e?.message||'Failed to mark as sent') } finally{ setAgt(a=>({ ...a, busyId:'' })) } }
 
@@ -138,13 +140,12 @@ export default function ManagerFinances(){
               const id = String(r._id||r.id)
               const name = `${r?.driver?.firstName||''} ${r?.driver?.lastName||''}`.trim() || 'Driver'
               return (
-                <div key={id} className="panel" style={{display:'grid', gap:8, padding:12}}>
+                <div className="panel" style={{display:'grid', gap:8, padding:12}}>
                   <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                     <div style={{display:'grid', gap:2}}>
                       <div style={{fontWeight:800}}>{name}</div>
                       <div className="helper">Amount: {(r?.currency||'') + ' ' + Number(r?.amount||0).toFixed(2)}</div>
                     </div>
-                    <Badge status={r.status} />
                   </div>
                   <div className="helper">Delivered Orders: {r?.totalDeliveredOrders||0} • Country: {r?.country||'-'}</div>
                   <div className="helper">
@@ -153,6 +154,13 @@ export default function ManagerFinances(){
                         • <a href={`${API_BASE}${r.receiptPath}`} target="_blank" rel="noopener noreferrer" download>Download Proof</a>
                       </>
                     ) : null}
+                  </div>
+                  <div style={{display:'flex', alignItems:'center', gap:10}}>
+                    <div className="helper">Proof Verified:</div>
+                    <div style={{display:'flex', gap:6}}>
+                      <button className={`btn small ${r?.proofOk===true?'':'secondary'}`} onClick={()=> setProof(id, true)}>Yes</button>
+                      <button className={`btn small ${r?.proofOk===false?'':'secondary'}`} onClick={()=> setProof(id, false)}>No</button>
+                    </div>
                   </div>
                   <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
                     <button className="btn" onClick={()=> acceptDriverRemit(id)}>Accept</button>
@@ -166,7 +174,8 @@ export default function ManagerFinances(){
         </div>
       </div>
 
-      {/* Agent Remittances */}
+      {/* Agent Remittances (hidden) */}
+      {showAgentSection && (
       <div className="card" style={{display:'grid', gap:10}}>
         <div className="card-header" style={{alignItems:'center', justifyContent:'space-between'}}>
           <div className="card-title">Agent Remittances</div>
@@ -205,6 +214,7 @@ export default function ManagerFinances(){
           <div ref={agtEndRef} />
         </div>
       </div>
+      )}
     </div>
   )
 }

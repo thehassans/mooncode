@@ -577,7 +577,17 @@ export default function UserFinances() {
                           <td style={{ padding:'8px 10px' }}>{(d.currency||'').toString()} {Number(d.deliveredToCompany||0).toLocaleString()}</td>
                           <td style={{ padding:'8px 10px', fontWeight:700, color:'var(--warning)' }}>{(d.currency||'').toString()} {Number(d.pendingToCompany||0).toLocaleString()}</td>
                           <td style={{ padding:'8px 10px' }}>{pending ? (String(pending.method||'hand').toLowerCase()==='transfer' ? (<span className="badge" style={{borderColor:'#3b82f6', color:'#1d4ed8'}}>Transfer</span>) : (<span className="badge" style={{borderColor:'#6b7280', color:'#374151'}}>Hand</span>)) : '—'}</td>
-                          <td style={{ padding:'8px 10px' }}>{pending?.receiptPath ? (<a href={`${API_BASE}${pending.receiptPath}`} target="_blank" rel="noopener noreferrer" download>Download</a>) : '—'}</td>
+                          <td style={{ padding:'8px 10px' }}>
+                            {pending?.receiptPath ? (
+                              <>
+                                <a href={`${API_BASE}${pending.receiptPath}`} target="_blank" rel="noopener noreferrer" download>Download</a>
+                                {' '}
+                                <span className="helper">• Verified: {pending?.proofOk===true ? <span style={{color:'var(--success)'}}>Yes</span> : pending?.proofOk===false ? <span style={{color:'var(--danger)'}}>No</span> : '—'}</span>
+                              </>
+                            ) : (
+                              <span className="helper">Verified: {pending?.proofOk===true ? <span style={{color:'var(--success)'}}>Yes</span> : pending?.proofOk===false ? <span style={{color:'var(--danger)'}}>No</span> : '—'}</span>
+                            )}
+                          </td>
                           <td style={{ padding:'8px 10px' }}>
                             <button className="btn small" disabled={!pending} onClick={() => pending && onSendDriver(pending)}>Accept</button>
                           </td>

@@ -6,6 +6,7 @@ export default function DriverPayout(){
   const [companyMsg, setCompanyMsg] = useState('')
   const [summary, setSummary] = useState({ totalDeliveredOrders: 0, totalCancelledOrders: 0, totalCollectedAmount: 0, deliveredToCompany: 0, pendingToCompany: 0, currency: '' })
   const [remittances, setRemittances] = useState([])
+  const [managers, setManagers] = useState([])
   const [form, setForm] = useState({ method:'hand', amount:'', note:'', paidToName:'', file:null })
   const [submitting, setSubmitting] = useState(false)
   const [showCompany, setShowCompany] = useState(false)
@@ -17,6 +18,7 @@ export default function DriverPayout(){
       try{ const r = await apiGet('/api/finance/company/payout-profile'); if (alive) setCompany(c=>({ ...c, ...(r?.profile||{}) })) }catch{}
       try{ const s = await apiGet('/api/finance/remittances/summary'); if (alive) setSummary({ totalDeliveredOrders: Number(s?.totalDeliveredOrders||0), totalCancelledOrders: Number(s?.totalCancelledOrders||0), totalCollectedAmount: Number(s?.totalCollectedAmount||0), deliveredToCompany: Number(s?.deliveredToCompany||0), pendingToCompany: Number(s?.pendingToCompany||0), currency: s?.currency||'' }) }catch{}
       try{ const rr = await apiGet('/api/finance/remittances'); if (alive) setRemittances(Array.isArray(rr?.remittances)? rr.remittances:[]) }catch{}
+      try{ const mm = await apiGet('/api/users/my-managers?sameCountry=true'); if (alive) setManagers(Array.isArray(mm?.users)? mm.users:[]) }catch{}
     })()
     return ()=>{ alive = false }
   },[])
@@ -79,8 +81,20 @@ export default function DriverPayout(){
             </div>
             {form.method==='hand' && (
               <div>
-                <label className="input-label">Paid to (Name)</label>
-                <input className="input" type="text" value={form.paidToName} onChange={e=> setForm(f=>({...f, paidToName:e.target.value}))} placeholder={company.accountName || 'Company Rep Name'} />
+                <label className="input-label">Paid to</label>
+                {managers.length>0 ? (
+                  <div style={{display:'flex', flexWrap:'wrap', gap:8}}>
+                    {managers.map(m=>{
+                      const full = `${m.firstName||''} ${m.lastName||''}`.trim() || 'Manager'
+                      const active = form.paidToName === full
+                      return (
+                        <button key={String(m._id||m.id||full)} type="button" className={`btn small ${active? '': 'secondary'}`} onClick={()=> setForm(f=>({...f, paidToName: full }))}>{full}</button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <input className="input" type="text" value={form.paidToName} onChange={e=> setForm(f=>({...f, paidToName:e.target.value}))} placeholder={company.accountName || 'Company Rep Name'} />
+                )}
               </div>
             )}
             {form.method==='transfer' && (

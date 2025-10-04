@@ -24,6 +24,24 @@ const storage = multer.diskStorage({
     cb(null, `${name}-${Date.now()}${ext}`)
   }
 })
+
+// Set proof verification (manager or owner)
+router.post('/remittances/:id/proof', auth, allowRoles('user','manager'), async (req, res) => {
+  try{
+    const { id } = req.params
+    const { ok } = req.body || {}
+    const r = await Remittance.findById(id)
+    if (!r) return res.status(404).json({ message: 'Remittance not found' })
+    // Scope: manager assigned OR owner of workspace
+    if (req.user.role === 'manager' && String(r.manager) !== String(req.user.id)) return res.status(403).json({ message: 'Not allowed' })
+    if (req.user.role === 'user' && String(r.owner) !== String(req.user.id)) return res.status(403).json({ message: 'Not allowed' })
+    r.proofOk = (ok === true || ok === 'true') ? true : (ok === false || ok === 'false') ? false : null
+    await r.save()
+    return res.json({ ok:true, remittance: r })
+  }catch(err){
+    return res.status(500).json({ message: 'Failed to set proof status' })
+  }
+})
 const upload = multer({ storage })
 
 // Create expense (admin, user, agent)
