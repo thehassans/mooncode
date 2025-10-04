@@ -394,17 +394,33 @@ router.post('/remittances', auth, allowRoles('driver'), upload.any(), async (req
         pending: { id: String(existingPending._id), amount: Number(existingPending.amount||0), createdAt: existingPending.createdAt }
       })
     }
-    // Validate available pending amount: delivered collected - accepted remittances
-    // Compute delivered collected total for this driver
-    const deliveredOrders = await Order.find({ deliveryBoy: req.user.id, shipmentStatus: 'delivered' }).select('collectedAmount')
-    const totalCollected = deliveredOrders.reduce((s,o)=> s + (Number(o?.collectedAmount)||0), 0)
+    // Validate available pending amount: delivered TOTAL - accepted remittances
+    // Compute delivered total value for this driver (use order.total, fallback to product pricing)
+    const deliveredOrders = await Order
+      .find({ deliveryBoy: req.user.id, shipmentStatus: 'delivered' })
+      .select('total productId quantity items')
+      .populate('productId','price')
+      .populate('items.productId','price')
+    const totalDeliveredValue = deliveredOrders.reduce((sum, o)=>{
+      let val = 0
+      if (o?.total != null){
+        val = Number(o.total)||0
+      } else if (Array.isArray(o?.items) && o.items.length){
+        val = o.items.reduce((s,it)=> s + (Number(it?.productId?.price||0) * Math.max(1, Number(it?.quantity||1))), 0)
+      } else {
+        const unit = Number(o?.productId?.price||0)
+        const qty = Math.max(1, Number(o?.quantity||1))
+        val = unit * qty
+      }
+      return sum + val
+    }, 0)
     const M = (await import('mongoose')).default
     const remitRows = await Remittance.aggregate([
       { $match: { driver: new M.Types.ObjectId(req.user.id), status: 'accepted' } },
       { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } } } }
     ])
     const deliveredToCompany = remitRows && remitRows[0] ? Number(remitRows[0].total||0) : 0
-    const pendingToCompany = Math.max(0, totalCollected - deliveredToCompany)
+    const pendingToCompany = Math.max(0, totalDeliveredValue - deliveredToCompany)
     const amt = Math.max(0, Number(amount||0))
     if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ message: 'Invalid amount' })
     if (amt > pendingToCompany) return res.status(400).json({ message: `Amount exceeds pending. Pending: ${pendingToCompany.toFixed(2)}` })
@@ -484,13 +500,28 @@ router.get('/remittances/summary', auth, allowRoles('driver'), async (req, res) 
       if (fromDate) match.deliveredAt.$gte = new Date(fromDate)
       if (toDate) match.deliveredAt.$lte = new Date(toDate)
     }
-    const rows = await Order.aggregate([
-      { $match: match },
-      { $group: { _id: null, totalDeliveredOrders: { $sum: 1 }, totalCollectedAmount: { $sum: { $ifNull: ['$collectedAmount', 0] } } } }
-    ])
+    const deliveredOrders2 = await Order
+      .find(match)
+      .select('total productId quantity items')
+      .populate('productId','price')
+      .populate('items.productId','price')
+    const totalDeliveredOrders = deliveredOrders2.length
+    const totalDeliveredValue = deliveredOrders2.reduce((sum, o)=>{
+      let val = 0
+      if (o?.total != null){
+        val = Number(o.total)||0
+      } else if (Array.isArray(o?.items) && o.items.length){
+        val = o.items.reduce((s,it)=> s + (Number(it?.productId?.price||0) * Math.max(1, Number(it?.quantity||1))), 0)
+      } else {
+        const unit = Number(o?.productId?.price||0)
+        const qty = Math.max(1, Number(o?.quantity||1))
+        val = unit * qty
+      }
+      return sum + val
+    }, 0)
     const me = await User.findById(req.user.id).select('country')
     const currency = currencyFromCountry(me?.country || '')
-    const out = rows && rows[0] ? rows[0] : { totalDeliveredOrders: 0, totalCollectedAmount: 0 }
+    const out = { totalDeliveredOrders, totalCollectedAmount: totalDeliveredValue }
     // Sum of remittances already accepted (delivered to company)
     const remitRows = await Remittance.aggregate([
       { $match: { driver: new M.Types.ObjectId(req.user.id), status: 'accepted' } },
@@ -624,11 +655,25 @@ router.get('/drivers/summary', auth, allowRoles('admin','user','manager'), async
       const assigned = await Order.countDocuments(matchBase)
       const canceled = await Order.countDocuments({ ...matchBase, shipmentStatus: 'cancelled' })
       const deliveredCount = await Order.countDocuments({ ...matchBase, shipmentStatus: 'delivered' })
-      const collectRows = await Order.aggregate([
-        { $match: { ...matchBase, shipmentStatus: 'delivered' } },
-        { $group: { _id: null, total: { $sum: { $ifNull: ['$collectedAmount', 0] } } } }
-      ])
-      const collected = collectRows && collectRows[0] ? Number(collectRows[0].total||0) : 0
+      // Delivered total value (not collectedAmount)
+      const deliveredOrders3 = await Order
+        .find({ ...matchBase, shipmentStatus: 'delivered' })
+        .select('total productId quantity items')
+        .populate('productId','price')
+        .populate('items.productId','price')
+      const collected = deliveredOrders3.reduce((sum, o)=>{
+        let val = 0
+        if (o?.total != null){
+          val = Number(o.total)||0
+        } else if (Array.isArray(o?.items) && o.items.length){
+          val = o.items.reduce((s,it)=> s + (Number(it?.productId?.price||0) * Math.max(1, Number(it?.quantity||1))), 0)
+        } else {
+          const unit = Number(o?.productId?.price||0)
+          const qty = Math.max(1, Number(o?.quantity||1))
+          val = unit * qty
+        }
+        return sum + val
+      }, 0)
       // Delivered to company comes from accepted remittances
       const remitRows = await Remittance.aggregate([
         { $match: { driver: new M.Types.ObjectId(d._id), status: 'accepted' } },
