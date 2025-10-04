@@ -7,16 +7,18 @@ export default function DriverDashboard(){
   const nav = useNavigate()
   const [counts, setCounts] = useState({ assigned: 0, picked: 0, delivered: 0, cancelled: 0 })
   const [assigned, setAssigned] = useState([])
+  const [payout, setPayout] = useState({ currency:'', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
   const [loading, setLoading] = useState(false)
 
   async function loadCounts(){
     setLoading(true)
     try{
-      const [a,p,d,c] = await Promise.all([
+      const [a,p,d,c,s] = await Promise.all([
         apiGet('/api/orders/driver/assigned'),
         apiGet('/api/orders/driver/picked'),
         apiGet('/api/orders/driver/delivered'),
         apiGet('/api/orders/driver/cancelled'),
+        apiGet('/api/finance/remittances/summary').catch(()=>({}))
       ])
       setCounts({
         assigned: (a.orders||[]).length,
@@ -24,12 +26,21 @@ export default function DriverDashboard(){
         delivered: (d.orders||[]).length,
         cancelled: (c.orders||[]).length,
       })
+      if (s){
+        setPayout({
+          currency: s.currency||'',
+          totalCollectedAmount: Number(s?.totalCollectedAmount||0),
+          deliveredToCompany: Number(s?.deliveredToCompany||0),
+          pendingToCompany: Number(s?.pendingToCompany||0),
+        })
+      }
       setAssigned((a.orders||[])
         .filter(o => String(o?.shipmentStatus||'').toLowerCase() !== 'picked_up')
         .slice(0,5))
     }catch{
       setCounts({ assigned:0, picked:0, delivered:0, cancelled:0 })
       setAssigned([])
+      setPayout({ currency:'', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
     }finally{ setLoading(false) }
   }
   useEffect(()=>{ loadCounts() },[])
@@ -53,11 +64,15 @@ export default function DriverDashboard(){
     }
   },[])
 
+  const money = (v)=> `${payout.currency||''} ${Number(v||0).toFixed(2)}`
   const cards = [
     { key:'assigned', title:'Orders Assigned', value: counts.assigned, to:'/driver/orders/assigned', color:'#3b82f6' },
     { key:'picked', title:'Total Picked Up', value: counts.picked, to:'/driver/orders/picked', color:'#f59e0b' },
     { key:'delivered', title:'Total Delivered', value: counts.delivered, to:'/driver/orders/delivered', color:'#10b981' },
     { key:'cancelled', title:'Total Cancelled', value: counts.cancelled, to:'/driver/orders/cancelled', color:'#ef4444' },
+    { key:'collected_amount', title:'Total Collected (Delivered)', value: money(payout.totalCollectedAmount), to:'/driver/orders/delivered', color:'#0ea5e9' },
+    { key:'delivered_company', title:'Delivered to Company', value: money(payout.deliveredToCompany), to:'/driver/payout#remittances', color:'#22c55e' },
+    { key:'pending_company', title:'Pending Delivery to Company', value: money(payout.pendingToCompany), to:'/driver/payout#pay', color:'#f59e0b' },
   ]
 
   function fmtPrice(o){

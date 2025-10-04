@@ -48,7 +48,7 @@ export default function DriverPayout(){
       </div>
 
       {/* Top Totals */}
-      <div className="card" style={{ display:'grid', gap:10 }}>
+      <div className="card" id="summary" style={{ display:'grid', gap:10 }}>
         <div className="card-header"><div className="card-title">My Settlement Summary</div></div>
         <div className="section" style={{ display:'grid', gap:8 }}>
           <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
@@ -61,7 +61,7 @@ export default function DriverPayout(){
       </div>
 
       {/* Pay Amount to Company */}
-      <div className="card" style={{ display:'grid', gap:10 }}>
+      <div className="card" id="pay" style={{ display:'grid', gap:10 }}>
         <div className="card-header"><div className="card-title">Pay Amount to Company</div></div>
         <div className="section" style={{ display:'grid', gap:10 }}>
           <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
@@ -123,7 +123,7 @@ export default function DriverPayout(){
       </div>
 
       {/* My Remittances */}
-      <div className="card" style={{ display:'grid', gap:10 }}>
+      <div className="card" id="remittances" style={{ display:'grid', gap:10 }}>
         <div className="card-header">
           <div className="card-title">My Remittances</div>
         </div>
