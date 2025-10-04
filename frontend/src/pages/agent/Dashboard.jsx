@@ -87,7 +87,7 @@ export default function AgentDashboard(){
   })
   const valueOf = (o)=> (o?.productId?.price || 0) * Math.max(1, Number(o?.quantity||1))
   const baseOf = (o)=> (o?.productId?.baseCurrency || 'SAR')
-  const commissionPct = 0.08
+  const commissionPct = 0.12
   function commissionByCurrency(list){
     const sums = { AED:0, OMR:0, SAR:0, BHD:0 }
     for (const o of list){
@@ -165,7 +165,7 @@ export default function AgentDashboard(){
             <div style={{width:32,height:32,borderRadius:8,background:'linear-gradient(135deg,#3b82f6,#8b5cf6)',display:'grid',placeItems:'center',color:'#fff',fontWeight:800, fontSize:18}}>📈</div>
             <div>
               <div style={{fontWeight:800}}>Earnings Overview</div>
-              <div className="helper">Commission at 8% of order value</div>
+              <div className="helper">Commission at 12% of order value</div>
             </div>
           </div>
           <button className="btn secondary" onClick={load} disabled={loading}>{loading? 'Refreshing…' : 'Refresh'}</button>
@@ -206,6 +206,13 @@ export default function AgentDashboard(){
         }
         function baseCur(o){ return (o?.productId?.baseCurrency)||'SAR' }
         function fmt2(n){ try{ return Number(n||0).toFixed(2) }catch{ return '0.00' } }
+        function shipBadge(status){
+          const s = String(status||'').toLowerCase()
+          if (s==='picked_up') return <span className="badge" style={{borderColor:'#f59e0b', color:'#b45309'}}>picked_up</span>
+          if (s==='delivered') return <span className="badge" style={{borderColor:'#10b981', color:'#065f46'}}>delivered</span>
+          if (s==='cancelled') return <span className="badge" style={{borderColor:'#ef4444', color:'#7f1d1d'}}>cancelled</span>
+          return <span className="badge" style={{borderColor:'var(--border)', color:'var(--fg)'}}>{s||'-'}</span>
+        }
         // Upcoming is based solely on shipment status (no order.status)
         function qualifiesUpcoming(o){
           const ship = String(o?.shipmentStatus||'').toLowerCase()
@@ -217,11 +224,19 @@ export default function AgentDashboard(){
           const rate = fx[baseCur(o)] || 0
           return commission * rate
         }
+        function deliveredCommissionPKR(o){
+          const ship = String(o?.shipmentStatus||'').toLowerCase()
+          if (ship !== 'delivered') return 0
+          const commission = orderTotal(o) * commissionPct
+          const rate = fx[baseCur(o)] || 0
+          return commission * rate
+        }
         const totalsRecent = recent.reduce((acc,o)=>{
-          acc.total += orderTotal(o) // note: mixed currencies; shown per-row below
+          acc.total += orderTotal(o) // unused in header
+          acc.delivered += deliveredCommissionPKR(o)
           acc.upcoming += upcomingCommissionPKR(o)
           return acc
-        }, { total:0, upcoming:0 })
+        }, { total:0, delivered:0, upcoming:0 })
 
         return (
           <div className="card" style={{display:'grid', gap:12}}>
@@ -233,7 +248,7 @@ export default function AgentDashboard(){
                   <div className="helper">Latest 50 orders you submitted</div>
                 </div>
               </div>
-              <div className="helper">Upcoming Income: {fmtCurrency(totalsRecent.upcoming)}</div>
+              <div className="helper">Total: {fmtCurrency(Math.round(totalsRecent.delivered))} • Upcoming Income: {fmtCurrency(Math.round(totalsRecent.upcoming))}</div>
             </div>
             <div style={{overflowX:'auto'}}>
               <table style={{width:'100%', borderCollapse:'separate', borderSpacing:0}}>
@@ -254,7 +269,7 @@ export default function AgentDashboard(){
                   ) : recent.map((o,idx)=>{
                     const tot = orderTotal(o)
                     const commPKR = Math.round(upcomingCommissionPKR(o))
-                    const prod = o?.productId?.name || (o?.details ? String(o.details).slice(0,64) : '-')
+                    const prod = o?.productId?.name || '-'
                     const date = o?.createdAt ? new Date(o.createdAt).toLocaleString() : ''
                     return (
                       <tr key={o._id||idx} style={{borderTop:'1px solid var(--border)'}}>
@@ -264,7 +279,7 @@ export default function AgentDashboard(){
                         <td style={{padding:'10px 12px', textAlign:'right'}}>{orderQty(o)}</td>
                         <td style={{padding:'10px 12px', textAlign:'right'}}>{baseCur(o)} {fmt2(orderTotal(o))}</td>
                         <td style={{padding:'10px 12px', textAlign:'right'}}>{fmtCurrency(commPKR)}</td>
-                        <td style={{padding:'10px 12px'}}>{String(o.shipmentStatus||'-')}</td>
+                        <td style={{padding:'10px 12px'}}>{shipBadge(o.shipmentStatus)}</td>
                       </tr>
                     )
                   })}
