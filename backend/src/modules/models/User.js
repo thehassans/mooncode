@@ -19,6 +19,7 @@ const UserSchema = new mongoose.Schema({
     canCreateAgents: { type: Boolean, default: false },
     canManageProducts: { type: Boolean, default: false },
     canCreateOrders: { type: Boolean, default: false },
+    canCreateDrivers: { type: Boolean, default: false },
   },
   // Manager-specific country assignment (limits visibility to orders/drivers from this country)
   assignedCountry: { type: String, enum: ['UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait','Qatar',''], default: '' },

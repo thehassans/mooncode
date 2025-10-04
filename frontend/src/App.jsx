@@ -19,6 +19,7 @@ import AgentDashboard from './pages/agent/Dashboard.jsx'
 import ManagerDashboard from './pages/manager/Dashboard.jsx'
 import ManagerOrders from './pages/manager/Orders.jsx'
 import ManagerFinances from './pages/manager/Finances.jsx'
+import ManagerCreateDriver from './pages/manager/CreateDriver.jsx'
 import DriverRemitHistory from './pages/manager/DriverRemitHistory.jsx'
 import AgentRemitHistory from './pages/manager/AgentRemitHistory.jsx'
 import ManagerTransactions from './pages/manager/Transactions.jsx'
@@ -255,6 +256,7 @@ export default function App() {
         <Route path="agents" element={<Agents />} />
         <Route path="orders" element={<ManagerOrders />} />
         <Route path="finances" element={<ManagerFinances />} />
+        <Route path="drivers/create" element={<ManagerCreateDriver />} />
         <Route path="finances/history/drivers" element={<DriverRemitHistory />} />
         <Route path="finances/history/agents" element={<AgentRemitHistory />} />
         <Route path="transactions" element={<ManagerTransactions />} />

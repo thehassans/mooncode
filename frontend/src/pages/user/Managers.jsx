@@ -5,7 +5,7 @@ import { io } from 'socket.io-client'
 import Modal from '../../components/Modal.jsx'
 
 export default function Managers(){
-  const [form, setForm] = useState({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', canCreateAgents:true, canManageProducts:false, canCreateOrders:false })
+  const [form, setForm] = useState({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', canCreateAgents:true, canManageProducts:false, canCreateOrders:false, canCreateDrivers:false })
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [q, setQ] = useState('')
@@ -76,10 +76,11 @@ export default function Managers(){
         canCreateAgents: !!form.canCreateAgents,
         canManageProducts: !!form.canManageProducts,
         canCreateOrders: !!form.canCreateOrders,
+        canCreateDrivers: !!form.canCreateDrivers,
       }
       await apiPost('/api/users/managers', payload)
       setMsg('Manager created successfully')
-      setForm({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', canCreateAgents:true, canManageProducts:false, canCreateOrders:false })
+      setForm({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', canCreateAgents:true, canManageProducts:false, canCreateOrders:false, canCreateDrivers:false })
       setPhoneError('')
       loadManagers(q)
     }catch(err){ setMsg(err?.message || 'Failed to create manager') }
@@ -186,6 +187,9 @@ export default function Managers(){
             <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
               <input type="checkbox" name="canCreateOrders" checked={form.canCreateOrders} onChange={onChange} /> Can create orders
             </label>
+            <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
+              <input type="checkbox" name="canCreateDrivers" checked={form.canCreateDrivers} onChange={onChange} /> Can create drivers
+            </label>
           </div>
           <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
             <button className="btn" type="submit" disabled={loading}>{loading? 'Creating...' : 'Create Manager'}</button>
@@ -228,7 +232,8 @@ export default function Managers(){
                         {u.managerPermissions?.canCreateAgents ? <span className="badge">Agents</span> : null}
                         {u.managerPermissions?.canManageProducts ? <span className="badge">Products</span> : null}
                         {u.managerPermissions?.canCreateOrders ? <span className="badge">Orders</span> : null}
-                        {(!u.managerPermissions || (!u.managerPermissions.canCreateAgents && !u.managerPermissions.canManageProducts && !u.managerPermissions.canCreateOrders)) && <span className="badge warn">No Permissions</span>}
+                        {u.managerPermissions?.canCreateDrivers ? <span className="badge">Drivers</span> : null}
+                        {(!u.managerPermissions || (!u.managerPermissions.canCreateAgents && !u.managerPermissions.canManageProducts && !u.managerPermissions.canCreateOrders && !u.managerPermissions.canCreateDrivers)) && <span className="badge warn">No Permissions</span>}
                       </div>
                     </td>
                     <td style={{padding:'10px 12px'}}>

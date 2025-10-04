@@ -449,7 +449,7 @@ router.get('/my-managers', auth, allowRoles('driver','agent'), async (req, res) 
 
 // Create manager (admin, user)
 router.post('/managers', auth, allowRoles('admin','user'), async (req, res) => {
-  const { firstName, lastName, email, password, phone, country='', assignedCountry='', canCreateAgents=false, canManageProducts=false, canCreateOrders=false } = req.body || {}
+  const { firstName, lastName, email, password, phone, country='', assignedCountry='', canCreateAgents=false, canManageProducts=false, canCreateOrders=false, canCreateDrivers=false } = req.body || {}
   if (!firstName || !lastName || !email || !password) return res.status(400).json({ message: 'Missing required fields' })
   const exists = await User.findOne({ email })
   if (exists) return res.status(400).json({ message: 'Email already in use' })
@@ -468,7 +468,7 @@ router.post('/managers', auth, allowRoles('admin','user'), async (req, res) => {
     assignedCountry: assignedCtry,
     role: 'manager', 
     createdBy, 
-    managerPermissions: { canCreateAgents: !!canCreateAgents, canManageProducts: !!canManageProducts, canCreateOrders: !!canCreateOrders } 
+    managerPermissions: { canCreateAgents: !!canCreateAgents, canManageProducts: !!canManageProducts, canCreateOrders: !!canCreateOrders, canCreateDrivers: !!canCreateDrivers } 
   })
   await manager.save()
   
@@ -698,8 +698,8 @@ router.get('/drivers', auth, allowRoles('admin','user','manager'), async (req, r
   res.json({ users })
 })
 
-// Create driver (admin, user)
-router.post('/drivers', auth, allowRoles('admin','user'), async (req, res) => {
+// Create driver (admin, user, manager with permission)
+router.post('/drivers', auth, allowRoles('admin','user','manager'), async (req, res) => {
   const { firstName, lastName, email, password, phone, country='', city='' } = req.body || {}
   if (!firstName || !lastName || !email || !password) return res.status(400).json({ message: 'Missing required fields' })
   
