@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
-import { API_BASE, apiGet, apiPost, apiDelete } from '../../api'
+import { API_BASE, apiGet, apiPost, apiDelete, apiPatch } from '../../api'
 import { io } from 'socket.io-client'
 import Modal from '../../components/Modal.jsx'
 
@@ -39,12 +39,12 @@ export default function Managers(){
     if (!u) return
     setPermModal(m=>({ ...m, busy:true, error:'' }))
     try{
-      await apiPost(`/api/users/managers/${u.id || u._id}/permissions`, {
+      await apiPatch(`/api/users/managers/${u.id || u._id}/permissions`, {
         canCreateAgents: permModal.canCreateAgents,
         canManageProducts: permModal.canManageProducts,
         canCreateOrders: permModal.canCreateOrders,
         canCreateDrivers: permModal.canCreateDrivers,
-      }, 'PATCH')
+      })
       setPermModal(m=>({ ...m, open:false, busy:false }))
       loadManagers(q)
     }catch(err){ setPermModal(m=>({ ...m, busy:false, error: err?.message || 'Failed to update permissions' })) }
