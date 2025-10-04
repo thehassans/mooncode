@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
-import { API_BASE, apiGet, apiPost, apiDelete } from '../../api'
+import { API_BASE, apiGet, apiPost, apiDelete, apiPatch } from '../../api'
 import { io } from 'socket.io-client'
 import Modal from '../../components/Modal.jsx'
 
@@ -34,6 +34,7 @@ export default function Drivers(){
   const [loadingList, setLoadingList] = useState(false)
   const [phoneError, setPhoneError] = useState('')
   const [delModal, setDelModal] = useState({ open:false, busy:false, error:'', confirm:'', driver:null })
+  const [editModal, setEditModal] = useState({ open:false, busy:false, error:'', driver:null, firstName:'', lastName:'', email:'', phone:'', country: DEFAULT_COUNTRY.name, city:'', password:'' })
 
   const currentCountryKey = useMemo(()=>{
     const byName = COUNTRY_OPTS.find(c=>c.name===form.country)
@@ -52,6 +53,36 @@ export default function Drivers(){
       'Kuwait': 'KW',
       'Qatar': 'QA',
     }
+
+  function openEdit(driver){
+    const d = driver || {}
+    setEditModal({
+      open:true, busy:false, error:'', driver: d,
+      firstName: d.firstName||'', lastName: d.lastName||'', email: d.email||'', phone: d.phone||'', country: d.country||DEFAULT_COUNTRY.name, city: d.city||'', password:''
+    })
+  }
+  function closeEdit(){ setEditModal(m=>({ ...m, open:false })) }
+  async function saveEdit(){
+    const d = editModal.driver
+    if (!d) return
+    setEditModal(m=>({ ...m, busy:true, error:'' }))
+    try{
+      const uid = String(d.id || d._id || '')
+      await apiPatch(`/api/users/drivers/${uid}`, {
+        firstName: editModal.firstName,
+        lastName: editModal.lastName,
+        email: editModal.email,
+        phone: editModal.phone,
+        country: editModal.country,
+        city: editModal.city,
+        ...(editModal.password ? { password: editModal.password } : {}),
+      })
+      setEditModal({ open:false, busy:false, error:'', driver:null, firstName:'', lastName:'', email:'', phone:'', country: DEFAULT_COUNTRY.name, city:'', password:'' })
+      await loadDrivers(q)
+    }catch(e){
+      setEditModal(m=>({ ...m, busy:false, error: e?.message || 'Failed to update driver' }))
+    }
+  }
     return countryMap[form.country] || 'AE'
   },[form.country])
 
@@ -275,7 +306,10 @@ export default function Drivers(){
                     <td style={{padding:'10px 12px'}}>{u.city||'-'}</td>
                     <td style={{padding:'10px 12px'}}>{fmtDate(u.createdAt)}</td>
                     <td style={{padding:'10px 12px', textAlign:'right'}}>
-                      <button className="btn danger" onClick={()=>openDelete(u)}>Delete</button>
+                      <div style={{display:'inline-flex', gap:8}}>
+                        <button className="btn" onClick={()=>openEdit(u)}>Edit</button>
+                        <button className="btn danger" onClick={()=>openDelete(u)}>Delete</button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -323,6 +357,76 @@ export default function Drivers(){
               disabled={delModal.busy}
             />
             {delModal.error && <div className="helper-text error">{delModal.error}</div>}
+          </div>
+        </div>
+      </Modal>
+      {/* Edit Driver Modal */}
+      <Modal
+        title={`Edit Driver${editModal.driver? `: ${editModal.driver.firstName||''} ${editModal.driver.lastName||''}`:''}`}
+        open={editModal.open}
+        onClose={closeEdit}
+        footer={
+          <>
+            <button className="btn secondary" type="button" onClick={closeEdit} disabled={editModal.busy}>Cancel</button>
+            <button className="btn success" type="button" onClick={saveEdit} disabled={editModal.busy}>{editModal.busy? 'Saving…' : 'Save'}</button>
+          </>
+        }
+      >
+        <div style={{display:'grid', gap:12}}>
+          {editModal.error && <div className="helper-text error">{editModal.error}</div>}
+          <div className="form-grid">
+            <div>
+              <div className="label">First Name</div>
+              <input className="input" value={editModal.firstName} onChange={e=> setEditModal(m=>({ ...m, firstName: e.target.value }))} />
+            </div>
+            <div>
+              <div className="label">Last Name</div>
+              <input className="input" value={editModal.lastName} onChange={e=> setEditModal(m=>({ ...m, lastName: e.target.value }))} />
+            </div>
+          </div>
+          <div className="form-grid">
+            <div>
+              <div className="label">Email</div>
+              <input className="input" value={editModal.email} onChange={e=> setEditModal(m=>({ ...m, email: e.target.value }))} />
+            </div>
+            <div>
+              <div className="label">Phone</div>
+              <div className={`PhoneInput`}>
+                <PhoneInput
+                  defaultCountry="AE"
+                  countries={['AE', 'OM', 'SA', 'BH', 'IN', 'KW', 'QA']}
+                  placeholder="Enter phone number"
+                  value={editModal.phone}
+                  onChange={(value)=> setEditModal(m=>({ ...m, phone: value||'' }))}
+                  international
+                  withCountryCallingCode
+                />
+              </div>
+            </div>
+          </div>
+          <div className="form-grid">
+            <div>
+              <div className="label">Country</div>
+              <select className="input" value={editModal.country} onChange={e=> setEditModal(m=>({ ...m, country: e.target.value, city: '' }))}>
+                {COUNTRY_OPTS.map(opt => (
+                  <option key={opt.key} value={opt.name}>{`${opt.flag} ${opt.name}`}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <div className="label">City</div>
+              <select className="input" value={editModal.city} onChange={e=> setEditModal(m=>({ ...m, city: e.target.value }))}>
+                {(function(){
+                  const key = (COUNTRY_OPTS.find(c=>c.name===editModal.country)?.key) || DEFAULT_COUNTRY.key
+                  const list = COUNTRY_CITIES[key] || []
+                  return [<option key="_" value="">-- Select City --</option>, ...list.map(c=> <option key={c} value={c}>{c}</option>)]
+                })()}
+              </select>
+            </div>
+          </div>
+          <div>
+            <div className="label">New Password (optional)</div>
+            <input className="input" type="password" value={editModal.password} onChange={e=> setEditModal(m=>({ ...m, password: e.target.value }))} placeholder="Leave blank to keep current password" />
           </div>
         </div>
       </Modal>

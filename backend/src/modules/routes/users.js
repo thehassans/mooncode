@@ -51,6 +51,7 @@ router.post('/', auth, allowRoles('admin'), async (req, res) => {
 router.post('/agents', auth, allowRoles('admin','user','manager'), async (req, res) => {
   const { firstName, lastName, email, phone, password } = req.body || {}
   if (!firstName || !lastName || !email || !password) return res.status(400).json({ message: 'Missing required fields' })
+ 
   // Phone is required and must be from allowed countries (UAE, Oman, KSA, Bahrain)
   if (!phone || !String(phone).trim()){
     return res.status(400).json({ message: 'Phone number is required' })
@@ -186,6 +187,54 @@ router.post('/agents/:id/resend-welcome', auth, allowRoles('admin','user','manag
     }
   }catch(err){
     return res.status(500).json({ message: err?.message || 'failed' })
+  }
+})
+
+// Update agent (admin, user, or manager with permission and within workspace)
+router.patch('/agents/:id', auth, allowRoles('admin','user','manager'), async (req, res) => {
+  try{
+    const { id } = req.params
+    const agent = await User.findOne({ _id: id, role: 'agent' })
+    if (!agent) return res.status(404).json({ message: 'Agent not found' })
+    // Access control: admin => any; user => own; manager => owner's agent and must have permission
+    if (req.user.role !== 'admin'){
+      let ownerId = req.user.id
+      if (req.user.role === 'manager'){
+        const mgr = await User.findById(req.user.id).select('managerPermissions createdBy')
+        if (!mgr?.managerPermissions?.canCreateAgents) return res.status(403).json({ message: 'Manager not allowed' })
+        ownerId = String(mgr.createdBy || req.user.id)
+      }
+      if (String(agent.createdBy) !== String(ownerId)){
+        return res.status(403).json({ message: 'Not allowed' })
+      }
+    }
+    const { firstName, lastName, email, phone, password } = req.body || {}
+    // Validate email uniqueness if changed
+    if (email && String(email).trim() && String(email).trim() !== String(agent.email)){
+      const exists = await User.findOne({ email: String(email).trim(), _id: { $ne: id } })
+      if (exists) return res.status(400).json({ message: 'Email already in use' })
+      agent.email = String(email).trim()
+    }
+    // Validate phone allowed codes if provided
+    if (phone !== undefined){
+      const allowedCodes = ['+971', '+968', '+966', '+973', '+92', '+965', '+974', '+91']
+      const phoneClean = String(phone||'').replace(/\s/g, '')
+      const isAllowedCountry = !phoneClean || allowedCodes.some(code => phoneClean.startsWith(code))
+      if (!isAllowedCountry) return res.status(400).json({ message: 'Phone must start with +971 (UAE), +968 (Oman), +966 (KSA), +973 (Bahrain), +92 (Pakistan), +965 (Kuwait), +974 (Qatar) or +91 (India)' })
+      agent.phone = String(phone||'')
+    }
+    if (firstName !== undefined) agent.firstName = String(firstName||'')
+    if (lastName !== undefined) agent.lastName = String(lastName||'')
+    if (password !== undefined){
+      const pw = String(password||'').trim()
+      if (pw && pw.length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' })
+      if (pw) agent.password = pw
+    }
+    await agent.save()
+    const out = await User.findById(agent._id, '-password')
+    return res.json({ ok:true, user: out })
+  }catch(err){
+    return res.status(500).json({ message: err?.message || 'Failed to update agent' })
   }
 })
 
@@ -771,6 +820,47 @@ router.post('/drivers', auth, allowRoles('admin','user','manager'), async (req, 
     }
   })()
   res.status(201).json({ message: 'Driver created', user: { id: driver._id, firstName, lastName, email, phone, country, city, role: 'driver' } })
+})
+
+// Update driver (admin, user)
+router.patch('/drivers/:id', auth, allowRoles('admin','user'), async (req, res) => {
+  try{
+    const { id } = req.params
+    const driver = await User.findOne({ _id: id, role: 'driver' })
+    if (!driver) return res.status(404).json({ message: 'Driver not found' })
+    if (req.user.role !== 'admin' && String(driver.createdBy) !== String(req.user.id)){
+      return res.status(403).json({ message: 'Not allowed' })
+    }
+    const { firstName, lastName, email, phone, country, city, password } = req.body || {}
+    // Email uniqueness check if changed
+    if (email && String(email).trim() && String(email).trim() !== String(driver.email)){
+      const exists = await User.findOne({ email: String(email).trim(), _id: { $ne: id } })
+      if (exists) return res.status(400).json({ message: 'Email already in use' })
+      driver.email = String(email).trim()
+    }
+    // Phone validation if provided
+    if (phone !== undefined){
+      const allowedCodes = ['+971', '+968', '+966', '+973', '+965', '+974', '+91']
+      const phoneClean = String(phone||'').replace(/\s/g, '')
+      const isAllowedCountry = !phoneClean || allowedCodes.some(code => phoneClean.startsWith(code))
+      if (!isAllowedCountry) return res.status(400).json({ message: 'Phone must start with +971 (UAE), +968 (Oman), +966 (KSA), +973 (Bahrain), +965 (Kuwait), +974 (Qatar) or +91 (India)' })
+      driver.phone = String(phone||'')
+    }
+    if (firstName !== undefined) driver.firstName = String(firstName||'')
+    if (lastName !== undefined) driver.lastName = String(lastName||'')
+    if (country !== undefined) driver.country = String(country||'')
+    if (city !== undefined) driver.city = String(city||'')
+    if (password !== undefined){
+      const pw = String(password||'').trim()
+      if (pw && pw.length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' })
+      if (pw) driver.password = pw
+    }
+    await driver.save()
+    const out = await User.findById(driver._id, '-password')
+    return res.json({ ok:true, user: out })
+  }catch(err){
+    return res.status(500).json({ message: err?.message || 'Failed to update driver' })
+  }
 })
 
 // Delete driver (admin => any, user => own)

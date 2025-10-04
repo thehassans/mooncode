@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
-import { API_BASE, apiGet, apiPost, apiDelete } from '../../api'
+import { API_BASE, apiGet, apiPost, apiDelete, apiPatch } from '../../api'
 import { io } from 'socket.io-client'
 import Modal from '../../components/Modal.jsx'
 
@@ -16,6 +16,7 @@ export default function Agents(){
   const [me, setMe] = useState(null)
   const [delModal, setDelModal] = useState({ open:false, busy:false, error:'', confirm:'', agent:null })
   const [resendingId, setResendingId] = useState('')
+  const [editModal, setEditModal] = useState({ open:false, busy:false, error:'', agent:null, firstName:'', lastName:'', email:'', phone:'', password:'' })
   const totals = useMemo(()=>{
     const totalAssigned = metrics.reduce((s,m)=> s + (m?.assigned||0), 0)
     const totalDone = metrics.reduce((s,m)=> s + (m?.done||0), 0)
@@ -31,6 +32,34 @@ export default function Agents(){
   function onChange(e){
     const { name, value } = e.target
     setForm(f => ({ ...f, [name]: value }))
+  }
+
+  function openEdit(agent){
+    const a = agent || {}
+    setEditModal({
+      open:true, busy:false, error:'', agent: a,
+      firstName: a.firstName||'', lastName: a.lastName||'', email: a.email||'', phone: a.phone||'', password:''
+    })
+  }
+  function closeEdit(){ setEditModal(m=>({ ...m, open:false })) }
+  async function saveEdit(){
+    const a = editModal.agent
+    if (!a) return
+    setEditModal(m=>({ ...m, busy:true, error:'' }))
+    try{
+      const uid = String(a.id || a._id || '')
+      await apiPatch(`/api/users/agents/${uid}`, {
+        firstName: editModal.firstName,
+        lastName: editModal.lastName,
+        email: editModal.email,
+        phone: editModal.phone,
+        ...(editModal.password ? { password: editModal.password } : {}),
+      })
+      setEditModal({ open:false, busy:false, error:'', agent:null, firstName:'', lastName:'', email:'', phone:'', password:'' })
+      await loadAgents(q); await loadPerformance()
+    }catch(e){
+      setEditModal(m=>({ ...m, busy:false, error: e?.message || 'Failed to update agent' }))
+    }
   }
 
   async function loadAgents(query=''){
@@ -291,6 +320,7 @@ export default function Agents(){
                     <td style={{padding:'10px 12px'}}>{(()=>{ const s = m?.avgResponseSeconds; if(s==null) return '-'; if(s<60) return `${s}s`; const mins=Math.floor(s/60), sec=s%60; return `${mins}m ${sec}s`; })()}</td>
                     <td style={{padding:'10px 12px'}}>{fmtDate(u.createdAt)}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', display:'flex', gap:8, justifyContent:'flex-end'}}>
+                      <button className="btn" onClick={()=> openEdit({ ...u, id: uid })}>Edit</button>
                       <button className="btn secondary" disabled={!!resendingId && resendingId===uid} onClick={()=>resendWelcome({ ...u, id: uid })}>
                         {resendingId===uid ? 'Resending…' : 'Resend Welcome'}
                       </button>
@@ -348,6 +378,53 @@ export default function Agents(){
               disabled={delModal.busy}
             />
             {delModal.error && <div className="helper-text error">{delModal.error}</div>}
+          </div>
+        </div>
+      </Modal>
+      {/* Edit Agent Modal */}
+      <Modal
+        title={`Edit Agent${editModal.agent? `: ${editModal.agent.firstName||''} ${editModal.agent.lastName||''}`:''}`}
+        open={editModal.open}
+        onClose={closeEdit}
+        footer={
+          <>
+            <button className="btn secondary" type="button" onClick={closeEdit} disabled={editModal.busy}>Cancel</button>
+            <button className="btn success" type="button" onClick={saveEdit} disabled={editModal.busy}>{editModal.busy? 'Saving…' : 'Save'}</button>
+          </>
+        }
+      >
+        <div style={{display:'grid', gap:12}}>
+          {editModal.error && <div className="helper-text error">{editModal.error}</div>}
+          <div className="form-grid">
+            <div>
+              <div className="label">First Name</div>
+              <input className="input" value={editModal.firstName} onChange={e=> setEditModal(m=>({ ...m, firstName: e.target.value }))} />
+            </div>
+            <div>
+              <div className="label">Last Name</div>
+              <input className="input" value={editModal.lastName} onChange={e=> setEditModal(m=>({ ...m, lastName: e.target.value }))} />
+            </div>
+          </div>
+          <div className="form-grid">
+            <div>
+              <div className="label">Email</div>
+              <input className="input" value={editModal.email} onChange={e=> setEditModal(m=>({ ...m, email: e.target.value }))} />
+            </div>
+            <div>
+              <div className="label">Phone</div>
+              <PhoneInput
+                defaultCountry="AE"
+                countries={['AE', 'OM', 'SA', 'BH', 'PK', 'IN', 'KW', 'QA']}
+                placeholder="Enter phone number"
+                value={editModal.phone}
+                onChange={(value)=> setEditModal(m=>({ ...m, phone: value||'' }))}
+                withCountryCallingCode
+              />
+            </div>
+          </div>
+          <div>
+            <div className="label">New Password (optional)</div>
+            <input className="input" type="password" value={editModal.password} onChange={e=> setEditModal(m=>({ ...m, password: e.target.value }))} placeholder="Leave blank to keep current password" />
           </div>
         </div>
       </Modal>
