@@ -171,22 +171,27 @@ function RequireManagerPerm({ perm, children }){
   const [me, setMe] = useState(()=>{
     try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} }
   })
-  const [checking, setChecking] = useState(false)
+  const [checking, setChecking] = useState(true)
   useEffect(()=>{
-    if (!me || !me.role){
-      setChecking(true)
-      ;(async()=>{
-        try{ const { user } = await apiGet('/api/users/me'); setMe(user||{}) }
-        catch{}
-        finally{ setChecking(false) }
-      })()
-    }
+    let alive = true
+    ;(async()=>{
+      try{
+        const { user } = await apiGet('/api/users/me')
+        if (!alive) return
+        setMe(user||{})
+        try{ localStorage.setItem('me', JSON.stringify(user||{})) }catch{}
+      }catch{
+        // fallback to local me
+      }finally{
+        if (alive) setChecking(false)
+      }
+    })()
+    return ()=>{ alive = false }
   },[])
   if (checking) return null
   const allowed = !!(me?.managerPermissions && me.managerPermissions[perm])
   return allowed ? children : <Navigate to="/manager" replace />
 }
-
 export default function App() {
   return (
     <ErrorBoundary>
