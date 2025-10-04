@@ -1,4 +1,6 @@
 import express from 'express'
+import multer from 'multer'
+import path from 'path'
 import { auth, allowRoles } from '../middleware/auth.js'
 import Expense from '../models/Expense.js'
 import Order from '../models/Order.js'
@@ -10,6 +12,17 @@ import Setting from '../models/Setting.js'
 import { generatePayoutReceiptPDF } from '../utils/payoutReceipt.js'
 
 const router = express.Router()
+
+// Multer config for receipt uploads (reuse uploads/ folder)
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, 'uploads/'),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname)
+    const name = path.basename(file.originalname, ext)
+    cb(null, `${name}-${Date.now()}${ext}`)
+  }
+})
+const upload = multer({ storage })
 
 // Create expense (admin, user, agent)
 router.post('/expenses', auth, allowRoles('admin','user','agent'), async (req, res) => {
@@ -315,19 +328,42 @@ router.get('/remittances', auth, allowRoles('admin','user','manager','driver'), 
 })
 
 // Create remittance (driver)
-router.post('/remittances', auth, allowRoles('driver'), async (req, res) => {
+router.post('/remittances', auth, allowRoles('driver'), upload.any(), async (req, res) => {
   try{
-    const { managerId, amount, fromDate, toDate, note } = req.body || {}
-    if (!managerId || amount == null) return res.status(400).json({ message: 'managerId and amount are required' })
-    const mgr = await User.findById(managerId)
-    if (!mgr || mgr.role !== 'manager') return res.status(400).json({ message: 'Manager not found' })
+    const { managerId = '', amount, fromDate, toDate, note = '', method = 'hand', paidToName = '' } = req.body || {}
+    if (amount == null) return res.status(400).json({ message: 'amount is required' })
     const me = await User.findById(req.user.id).select('createdBy country')
     const ownerId = String(me?.createdBy || '')
-    if (!ownerId || String(mgr.createdBy) !== ownerId){
-      return res.status(403).json({ message: 'Manager not in your workspace' })
+    if (!ownerId) return res.status(400).json({ message: 'No workspace owner' })
+    // Determine approver: manager if provided and valid, else owner
+    let managerRef = ownerId
+    let mgrDoc = null
+    if (managerId){
+      const mgr = await User.findById(managerId)
+      if (!mgr || mgr.role !== 'manager') return res.status(400).json({ message: 'Manager not found' })
+      if (String(mgr.createdBy) !== ownerId){ return res.status(403).json({ message: 'Manager not in your workspace' }) }
+      managerRef = String(mgr._id)
+      mgrDoc = mgr
     }
+    // Validate available pending amount: delivered collected - accepted remittances
+    const deliveredRows = await Order.aggregate([
+      { $match: { deliveryBoy: (await import('mongoose')).then(m=> new m.default.Types.ObjectId(req.user.id)) } }
+    ])
+    // Fallback simple compute without heavy aggregate
+    const deliveredOrders = await Order.find({ deliveryBoy: req.user.id, shipmentStatus: 'delivered' }).select('collectedAmount')
+    const totalCollected = deliveredOrders.reduce((s,o)=> s + (Number(o?.collectedAmount)||0), 0)
+    const M = (await import('mongoose')).default
+    const remitRows = await Remittance.aggregate([
+      { $match: { driver: new M.Types.ObjectId(req.user.id), status: 'accepted' } },
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } } } }
+    ])
+    const deliveredToCompany = remitRows && remitRows[0] ? Number(remitRows[0].total||0) : 0
+    const pendingToCompany = Math.max(0, totalCollected - deliveredToCompany)
+    const amt = Math.max(0, Number(amount||0))
+    if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ message: 'Invalid amount' })
+    if (amt > pendingToCompany) return res.status(400).json({ message: `Amount exceeds pending. Pending: ${pendingToCompany.toFixed(2)}` })
     // Optional country match
-    if (me?.country && mgr?.country && String(me.country) !== String(mgr.country)){
+    if (mgrDoc && me?.country && mgrDoc?.country && String(me.country) !== String(mgrDoc.country)){
       return res.status(400).json({ message: 'Manager country must match your country' })
     }
     // Compute delivered orders count in range for this driver
@@ -338,9 +374,14 @@ router.post('/remittances', auth, allowRoles('driver'), async (req, res) => {
       if (toDate) matchOrders.deliveredAt.$lte = new Date(toDate)
     }
     const totalDeliveredOrders = await Order.countDocuments(matchOrders)
+    // Extract receipt file (any image)
+    const files = Array.isArray(req.files) ? req.files : []
+    const receiptFile = files.find(f=> ['receipt','proof','screenshot','file','image'].includes(String(f.fieldname||'').toLowerCase())) || files[0]
+    const receiptPath = receiptFile ? `/uploads/${receiptFile.filename}` : ''
+
     const doc = new Remittance({
       driver: req.user.id,
-      manager: managerId,
+      manager: managerRef,
       owner: ownerId,
       country: me?.country || '',
       currency: currencyFromCountry(me?.country || ''),
@@ -349,10 +390,13 @@ router.post('/remittances', auth, allowRoles('driver'), async (req, res) => {
       toDate: toDate ? new Date(toDate) : undefined,
       totalDeliveredOrders,
       note: note || '',
+      method: (String(method||'hand').toLowerCase()==='transfer' ? 'transfer' : 'hand'),
+      paidToName: String(paidToName||'').trim(),
+      receiptPath,
       status: 'pending',
     })
     await doc.save()
-    try{ const io = getIO(); io.to(`user:${String(managerId)}`).emit('remittance.created', { id: String(doc._id) }) }catch{}
+    try{ const io = getIO(); io.to(`user:${String(managerRef)}`).emit('remittance.created', { id: String(doc._id) }) }catch{}
     return res.status(201).json({ message: 'Remittance submitted', remittance: doc })
   }catch(err){
     return res.status(500).json({ message: 'Failed to submit remittance' })
@@ -403,7 +447,9 @@ router.get('/remittances/summary', auth, allowRoles('driver'), async (req, res) 
     ])
     const deliveredToCompany = remitRows && remitRows[0] ? Number(remitRows[0].total||0) : 0
     const pendingToCompany = Math.max(0, Number(out.totalCollectedAmount||0) - deliveredToCompany)
-    return res.json({ ...out, currency, deliveredToCompany, pendingToCompany })
+    // Cancelled count
+    const totalCancelledOrders = await Order.countDocuments({ deliveryBoy: req.user.id, shipmentStatus: 'cancelled' })
+    return res.json({ ...out, currency, deliveredToCompany, pendingToCompany, totalCancelledOrders })
   }catch(err){
     return res.status(500).json({ message: 'Failed to load summary' })
   }
