@@ -206,13 +206,26 @@ export default function AgentDashboard(){
           .sort((a,b)=> createdMs(b) - createdMs(a))
           .slice(0, 50)
 
-        function orderQty(o){ return Math.max(1, Number(o?.quantity||1)) }
+        function orderQty(o){
+          if (Array.isArray(o?.items) && o.items.length){
+            return o.items.reduce((s,it)=> s + Math.max(1, Number(it?.quantity||1)), 0)
+          }
+          return Math.max(1, Number(o?.quantity||1))
+        }
         function orderTotal(o){
           if (o?.total != null) return Number(o.total)
+          if (Array.isArray(o?.items) && o.items.length){
+            return o.items.reduce((s,it)=> s + (Number(it?.productId?.price||0) * Math.max(1, Number(it?.quantity||1))), 0)
+          }
           const unit = Number(o?.productId?.price||0)
-          return unit * orderQty(o)
+          return unit * Math.max(1, Number(o?.quantity||1))
         }
-        function baseCur(o){ return (o?.productId?.baseCurrency)||'SAR' }
+        function baseCur(o){
+          if (Array.isArray(o?.items) && o.items.length){
+            return o.items[0]?.productId?.baseCurrency || 'SAR'
+          }
+          return (o?.productId?.baseCurrency)||'SAR'
+        }
         function fmt2(n){ try{ return Number(n||0).toFixed(2) }catch{ return '0.00' } }
         function shipBadge(status){
           const s = String(status||'').toLowerCase()
@@ -277,7 +290,13 @@ export default function AgentDashboard(){
                   ) : recent.map((o,idx)=>{
                     const tot = orderTotal(o)
                     const commPKR = Math.round(upcomingCommissionPKR(o))
-                    const prod = o?.productId?.name || '-'
+                    let prod = '-'
+                    if (Array.isArray(o?.items) && o.items.length){
+                      const names = o.items.map(it => it?.productId?.name ? `${it.productId.name} (${Math.max(1, Number(it?.quantity||1))})` : null).filter(Boolean)
+                      prod = names.length ? names.join(', ') : (o?.productId?.name || '-')
+                    } else {
+                      prod = o?.productId?.name || '-'
+                    }
                     const date = o?.createdAt ? new Date(o.createdAt).toLocaleString() : ''
                     return (
                       <tr key={o._id||idx} style={{borderTop:'1px solid var(--border)'}}>
