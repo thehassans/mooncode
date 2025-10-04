@@ -121,6 +121,10 @@ export default function WhatsAppInbox() {
   const [deleteMode, setDeleteMode] = useState(false)
   const [deletingJid, setDeletingJid] = useState(null)
 
+  // Owner filter: filter chats by assigned agent (user role only)
+  const [agentsFilterList, setAgentsFilterList] = useState([])
+  const [agentFilterId, setAgentFilterId] = useState('') // '' => All
+
   // Agent "My Queue" counters (simple): Unread + Open
   const myQueue = useMemo(() => {
     try {
@@ -139,10 +143,15 @@ export default function WhatsAppInbox() {
   const filteredChats = useMemo(() => {
     const isUnread = (c) =>
       !!(c?.unread || (typeof c?.unreadCount === 'number' && c.unreadCount > 0))
-    if (chatFilter === 'unread') return chats.filter(isUnread)
-    if (chatFilter === 'read') return chats.filter((c) => !isUnread(c))
-    return chats
-  }, [chats, chatFilter])
+    let base = chats
+    if (chatFilter === 'unread') base = base.filter(isUnread)
+    else if (chatFilter === 'read') base = base.filter((c) => !isUnread(c))
+    // If owner selected an agent, show only chats assigned to that agent
+    if (agentFilterId && myRole === 'user') {
+      base = base.filter(c => String(c?.owner?.id || '') === String(agentFilterId))
+    }
+    return base
+  }, [chats, chatFilter, agentFilterId, myRole])
 
   function createNewChat() {
     const digits = (newChatPhone || '').replace(/[^0-9]/g, '')
@@ -740,6 +749,24 @@ export default function WhatsAppInbox() {
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [])
+
+  // Load agents list for filter (owner only)
+  useEffect(() => {
+    let alive = true
+    async function loadAgentsForFilter(){
+      if (myRole !== 'user') return
+      try{
+        const res = await apiGet('/api/users/agents')
+        if (!alive) return
+        setAgentsFilterList(Array.isArray(res?.users) ? res.users : [])
+      }catch{
+        if (!alive) return
+        setAgentsFilterList([])
+      }
+    }
+    loadAgentsForFilter()
+    return ()=> { alive = false }
+  }, [myRole])
 
   // Mobile fallback: if no chats after mount, retry shortly
   useEffect(() => {

@@ -63,11 +63,7 @@ import AnalyticsDashboard from './components/analytics/AnalyticsDashboard'
 
 import { apiGet } from './api.js'
 
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props)
-    this.state = { hasError: false, error: null }
-
+// Manager permission guard (top-level, used in /manager routes)
 function RequireManagerPerm({ perm, children }){
   const [me, setMe] = React.useState(()=>{
     try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} }
@@ -87,6 +83,11 @@ function RequireManagerPerm({ perm, children }){
   const allowed = !!(me?.managerPermissions && me.managerPermissions[perm])
   return allowed ? children : <Navigate to="/manager" replace />
 }
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, error: null }
   }
 
   static getDerivedStateFromError(error) {
