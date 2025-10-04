@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { API_BASE, apiGet } from '../../api'
 import { io } from 'socket.io-client'
@@ -13,7 +13,14 @@ export default function AgentDashboard(){
   const [meUser, setMeUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [assignedCount, setAssignedCount] = useState(0)
+  // Orders for metrics
   const [orders, setOrders] = useState([])
+  // Separate state for recent orders table (infinite scroll)
+  const [tableOrders, setTableOrders] = useState([])
+  const [tablePage, setTablePage] = useState(1)
+  const [tableHasMore, setTableHasMore] = useState(true)
+  const tableLoadingRef = useRef(false)
+  const tableEndRef = useRef(null)
   const [avgResponseSeconds, setAvgResponseSeconds] = useState(null)
   const [ordersSubmittedOverride, setOrdersSubmittedOverride] = useState(null)
   const [isDesktop, setIsDesktop] = useState(() => {
@@ -37,8 +44,8 @@ export default function AgentDashboard(){
       ])
       if (meRes && meRes.user) setMeUser(meRes.user)
       const chatList = Array.isArray(chats) ? chats : []
-      const allOrders = Array.isArray(ordRes?.orders) ? ordRes.orders : []
       setAssignedCount(chatList.length)
+      const allOrders = Array.isArray(ordRes?.orders) ? ordRes.orders : []
       setOrders(allOrders)
       if (typeof perf?.avgResponseSeconds === 'number') setAvgResponseSeconds(perf.avgResponseSeconds)
       if (typeof perf?.ordersSubmitted === 'number') setOrdersSubmittedOverride(perf.ordersSubmitted)
@@ -46,6 +53,40 @@ export default function AgentDashboard(){
   }
 
   useEffect(()=>{ load() },[])
+  // Initial recent orders load (paginated)
+  useEffect(()=>{ loadTableOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ },[])
+
+  // Infinite scroll observer for Recent Orders table
+  useEffect(()=>{
+    const el = tableEndRef.current
+    if (!el) return
+    const obs = new IntersectionObserver((entries)=>{
+      const [e] = entries
+      if (e.isIntersecting && tableHasMore && !tableLoadingRef.current){ loadTableOrders(false) }
+    }, { rootMargin: '200px' })
+    obs.observe(el)
+    return ()=> { try{ obs.disconnect() }catch{} }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tableEndRef.current, tableHasMore, tablePage])
+
+  // Paginated loader
+  async function loadTableOrders(reset=false){
+    if (tableLoadingRef.current) return
+    tableLoadingRef.current = true
+    try{
+      if (reset){ setTableOrders([]); setTablePage(1); setTableHasMore(true) }
+      const nextPage = reset ? 1 : (tablePage + 1)
+      const r = await apiGet(`/api/orders?page=${nextPage}&limit=20`)
+      const list = Array.isArray(r?.orders) ? r.orders : []
+      setTableOrders(prev => reset ? list : [...prev, ...list])
+      setTableHasMore(!!r?.hasMore)
+      setTablePage(nextPage)
+    }catch{
+      setTableHasMore(false)
+    }finally{
+      tableLoadingRef.current = false
+    }
+  }
 
   // Fallback: periodic polling to keep table fresh even if socket misses an event
   useEffect(()=>{
@@ -63,7 +104,7 @@ export default function AgentDashboard(){
       const token = localStorage.getItem('token') || ''
       socket = io(API_BASE || undefined, { path: '/socket.io', transports: ['polling'], upgrade: false, auth: { token }, withCredentials: true })
       socket.on('orders.changed', (payload={})=>{
-        load()
+        load(); loadTableOrders(true)
         try{
           const { orderId, invoiceNumber, action, status } = payload
           let msg = null
@@ -176,7 +217,7 @@ export default function AgentDashboard(){
               <div className="helper">Commission at 12% of order value</div>
             </div>
           </div>
-          <button className="btn secondary" onClick={load} disabled={loading}>{loading? 'Refreshing…' : 'Refresh'}</button>
+          <button className="btn secondary" onClick={()=>{ load(); loadTableOrders(true) }} disabled={loading}>{loading? 'Refreshing…' : 'Refresh'}</button>
         </div>
         <MiniBarChart
           items={[
@@ -190,8 +231,8 @@ export default function AgentDashboard(){
       {(()=>{
         const meId = String(meUser?._id || me?._id || '')
         const myOrders = meId
-          ? orders.filter(o => String(o?.createdBy?._id || o?.createdBy || '') === meId)
-          : orders.filter(o => String(o?.createdByRole||'').toLowerCase()==='agent')
+          ? tableOrders.filter(o => String(o?.createdBy?._id || o?.createdBy || '') === meId)
+          : tableOrders.filter(o => String(o?.createdByRole||'').toLowerCase()==='agent')
         function createdMs(o){
           if (o?.createdAt) return new Date(o.createdAt).getTime()
           try{
@@ -202,9 +243,6 @@ export default function AgentDashboard(){
           return 0
         }
         const recent = myOrders
-          .slice()
-          .sort((a,b)=> createdMs(b) - createdMs(a))
-          .slice(0, 50)
 
         function orderQty(o){
           if (Array.isArray(o?.items) && o.items.length){
@@ -322,6 +360,8 @@ export default function AgentDashboard(){
                 </tbody>
               </table>
             </div>
+            {/* Infinite Scroll Sentinel */}
+            <div ref={tableEndRef} />
           </div>
         )
       })()}
