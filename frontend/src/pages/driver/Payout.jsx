@@ -136,7 +136,7 @@ export default function DriverPayout(){
                   <tr key={String(r._id||r.id)} style={{ borderTop:'1px solid var(--border)' }}>
                     <td style={{ padding:'8px 10px' }}>{new Date(r.createdAt).toLocaleString()}</td>
                     <td style={{ padding:'8px 10px' }}>{(r.method||'hand').toUpperCase()}</td>
-                    <td style={{ padding:'8px 10px' }}>{r.approverRole==='user' ? 'Owner' : 'Manager'}</td>
+                    <td style={{ padding:'8px 10px' }}>{r?.manager?.role==='user' ? 'Owner' : (r?.manager?.role==='manager' ? 'Manager' : '-')}</td>
                     <td style={{ padding:'8px 10px' }}>{summary.currency||'SAR'} {Number(r.amount||0).toFixed(2)}</td>
                     <td style={{ padding:'8px 10px' }}>{r.status}</td>
                   </tr>

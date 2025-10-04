@@ -319,7 +319,7 @@ router.get('/remittances', auth, allowRoles('admin','user','manager','driver'), 
       .skip(skip)
       .limit(limit)
       .populate('driver','firstName lastName email country')
-      .populate('manager','firstName lastName email country')
+      .populate('manager','firstName lastName email country role')
     const hasMore = skip + items.length < total
     return res.json({ remittances: items, page, limit, total, hasMore })
   }catch(err){
@@ -404,12 +404,14 @@ router.post('/remittances', auth, allowRoles('driver'), upload.any(), async (req
 })
 
 // Accept remittance (manager)
-router.post('/remittances/:id/accept', auth, allowRoles('manager'), async (req, res) => {
+router.post('/remittances/:id/accept', auth, allowRoles('user','manager'), async (req, res) => {
   try{
     const { id } = req.params
     const r = await Remittance.findById(id)
     if (!r) return res.status(404).json({ message: 'Remittance not found' })
-    if (String(r.manager) !== String(req.user.id)) return res.status(403).json({ message: 'Not allowed' })
+    // Scope: manager assigned OR owner of workspace
+    if (req.user.role === 'manager' && String(r.manager) !== String(req.user.id)) return res.status(403).json({ message: 'Not allowed' })
+    if (req.user.role === 'user' && String(r.owner) !== String(req.user.id)) return res.status(403).json({ message: 'Not allowed' })
     if (r.status !== 'pending') return res.status(400).json({ message: 'Already processed' })
     r.status = 'accepted'
     r.acceptedAt = new Date()
