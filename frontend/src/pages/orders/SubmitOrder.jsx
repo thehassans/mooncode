@@ -46,6 +46,7 @@ export default function SubmitOrder(){
   const [resolving, setResolving] = useState(false)
   const [resolveError, setResolveError] = useState('')
   const [addrLocked, setAddrLocked] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
   const [me, setMe] = useState(null)
   const [meLoaded, setMeLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -131,8 +132,10 @@ export default function SubmitOrder(){
       return
     }
     if (name === 'city'){
-      // Clear previous validation when user changes city; validation will re-run on next Resolve
       setLocationValidation({ isValid: true, message: '' })
+    }
+    if (['city','customerArea','customerAddress'].includes(name)){
+      setFieldErrors(prev => ({ ...prev, [name]: false }))
     }
     setForm(f => ({ ...f, [name]: value }))
   }
@@ -402,9 +405,19 @@ export default function SubmitOrder(){
     try{
       // Validate at least one product selected
       const validItems = (items||[]).filter(it => it && it.productId)
-      if (!validItems.length){
+      const missing = []
+      if (!String(form.customerAddress||'').trim()) missing.push('customerAddress')
+      if (!String(form.city||'').trim()) missing.push('city')
+      if (!String(form.customerArea||'').trim()) missing.push('customerArea')
+      if (!validItems.length) missing.push('items')
+      if (missing.length){
+        const flags = {}
+        if (missing.includes('customerAddress')) flags.customerAddress = true
+        if (missing.includes('city')) flags.city = true
+        if (missing.includes('customerArea')) flags.customerArea = true
+        setFieldErrors(prev => ({ ...prev, ...flags }))
         setLoading(false)
-        setMsg('Please add at least one product to the order.')
+        setMsg(`Please fill required fields: ${missing.filter(x=>x!=='items').map(x=> x==='customerAddress'?'Address':(x==='customerArea'?'Area':x)).join(', ') || 'fields'}`)
         return
       }
       // Ensure we send a readable customerLocation even if using geolocation
@@ -558,33 +571,8 @@ export default function SubmitOrder(){
                 }
               }
 
-              // Canonicalize resolved city for comparison (e.g., Zayed City -> Madinat Zayed)
+              // Canonicalize city label for display
               const cityCanon = canonicalizeCity(currentCountryKey, cityGuess)
-              // Validate if resolved city matches selected city (if selected)
-              if (form.city && cityGuess) {
-                const normalizedFormCity = canonicalizeCity(currentCountryKey, form.city).toLowerCase().trim()
-                const normalizedResolvedCity = String(cityCanon||'').toLowerCase().trim()
-                if (normalizedFormCity !== normalizedResolvedCity) {
-                  setLocationValidation({ isValid: true, message: `Note: Resolved city is ${cityCanon||cityGuess}, different from selected ${form.city}. Using resolved city.` })
-                }
-              }
-
-              // Validate city presence within selected country list (if we have a list)
-              try {
-                const citiesList = COUNTRY_CITIES[currentCountryKey] || []
-                if (citiesList.length) {
-                  const found = citiesList.some(c => c.toLowerCase() === String(cityCanon||'').toLowerCase())
-                  if (!found) {
-                    setLocationValidation({ isValid: true, message: `Note: Resolved city ${cityCanon||cityGuess||'(unknown)'} is not in list for ${form.orderCountry}. Using nearest place.` })
-                  }
-                  if (form.city) {
-                    const selectedFound = citiesList.some(c => c.toLowerCase() === canonicalizeCity(currentCountryKey, form.city).toLowerCase())
-                    if (!selectedFound) {
-                      setLocationValidation({ isValid: true, message: `Note: Selected city ${form.city} is not in list for ${form.orderCountry}. Using resolved city.` })
-                    }
-                  }
-                }
-              } catch {}
 
               // Passed validation: fill fields
               setLocationValidation({ isValid: true, message: '' })
@@ -626,37 +614,7 @@ export default function SubmitOrder(){
         }
       }catch{}
       
-      // Validate if resolved city matches selected city
-      if (form.city && cityGuess) {
-        const normalizedFormCity = canonicalizeCity(currentCountryKey, form.city).toLowerCase().trim()
-        const normalizedResolvedCity = String(cityCanon||'').toLowerCase().trim()
-        
-        if (normalizedFormCity !== normalizedResolvedCity) {
-          setLocationValidation({ isValid: false, message: `Invalid address: Location is in ${cityGuess}, but selected city is ${form.city}` })
-          return // do not fill fields on mismatch
-        } else {
-          setLocationValidation({ isValid: true, message: '' })
-        }
-      }
-
-      // Validate city presence within selected country list (if we have a list)
-      try {
-        const citiesList = COUNTRY_CITIES[currentCountryKey] || []
-        if (citiesList.length) {
-          const found = citiesList.some(c => c.toLowerCase() === String(cityCanon||'').toLowerCase())
-          if (!found) {
-            setLocationValidation({ isValid: false, message: `City ${cityCanon||cityGuess||'(unknown)'} is not present in ${form.orderCountry}` })
-            return
-          }
-          if (form.city) {
-            const selectedFound = citiesList.some(c => c.toLowerCase() === canonicalizeCity(currentCountryKey, form.city).toLowerCase())
-            if (!selectedFound) {
-              setLocationValidation({ isValid: false, message: `Selected city ${form.city} is not present in ${form.orderCountry}` })
-              return
-            }
-          }
-        }
-      } catch {}
+      // No city list validation on resolve; only country check above
       
       // Passed validation: fill fields
       setForm(f=> ({ 
@@ -746,12 +704,12 @@ export default function SubmitOrder(){
                 </div>
                 <div>
                   <div className="label">City</div>
-                  <input className="input" name="city" value={form.city} onChange={onChange} placeholder="Type city" readOnly={addrLocked} />
+                  <input className="input" name="city" value={form.city} onChange={onChange} placeholder="Type city" readOnly={addrLocked} style={{ borderColor: fieldErrors.city? '#ef4444': undefined }} />
                   <div style={{fontSize:12, opacity:0.8, marginTop:4}}>Country: {form.orderCountry}</div>
                 </div>
                 <div>
                   <div className="label">Area</div>
-                  <input className="input" name="customerArea" value={form.customerArea} onChange={onChange} placeholder="Type area" readOnly={addrLocked} />
+                  <input className="input" name="customerArea" value={form.customerArea} onChange={onChange} placeholder="Type area" readOnly={addrLocked} style={{ borderColor: fieldErrors.customerArea? '#ef4444': undefined }} />
                   <div className="helper" style={{fontSize:12, opacity:0.8, marginTop:4}}>You can edit if needed</div>
                 </div>
               </div>
