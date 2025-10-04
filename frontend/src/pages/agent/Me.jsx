@@ -5,6 +5,12 @@ import { useNavigate } from 'react-router-dom'
 
 export default function AgentMe() {
   const navigate = useNavigate()
+  const [isDesktop, setIsDesktop] = useState(() => { try{ return window.innerWidth >= 1024 }catch{ return false } })
+  useEffect(()=>{
+    function onResize(){ try{ setIsDesktop(window.innerWidth >= 1024) }catch{} }
+    window.addEventListener('resize', onResize)
+    return ()=> window.removeEventListener('resize', onResize)
+  }, [])
   const [me, setMe] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('me') || '{}')
@@ -481,7 +487,7 @@ export default function AgentMe() {
   return (
     <div
       className="content"
-      style={{ display: 'grid', gap: 16, padding: 16, maxWidth: 900, margin: '0 auto' }}
+      style={{ display: 'grid', gap: 16, padding: 16, maxWidth: isDesktop? 1200 : 900, margin: '0 auto' }}
     >
       {/* Profile Header */}
       <div style={{ display: 'grid', gap: 6 }}>
@@ -576,7 +582,7 @@ export default function AgentMe() {
           <div className="card-subtitle">Set where you want to receive your payouts</div>
         </div>
         <div className="section" style={{display:'grid', gap:10}}>
-          <div className="form-grid">
+          <div className="form-grid" style={isDesktop? { display:'grid', gridTemplateColumns:'repeat(2, minmax(260px, 1fr))', gap:12 } : undefined}>
             <label className="field">
               <div>Method</div>
               <select className="input" value={payout.method} onChange={e=> setPayout(p=>({...p, method: e.target.value}))}>
@@ -626,7 +632,7 @@ export default function AgentMe() {
           <div className="card-title">Request Money</div>
           <div className="card-subtitle">Request payout from your workspace owner. Minimum PKR 10,000.</div>
         </div>
-        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:8}}>
+        <div className="section" style={{display:'grid', gridTemplateColumns: isDesktop? '1fr 240px' : 'repeat(auto-fit, minmax(200px, 1fr))', gap:8}}>
           <input className="input" value={me?.createdBy ? 'Workspace Owner' : 'No owner found'} readOnly />
           <input className="input" type="number" min="0" step="0.01" placeholder="Amount (PKR)" value={remReq.amount} onChange={e=> setRemReq(r=>({ ...r, amount: e.target.value }))} />
         </div>
@@ -650,12 +656,12 @@ export default function AgentMe() {
           ) : (
             <table style={{width:'100%', borderCollapse:'separate', borderSpacing:0}}>
               <thead>
-                <tr>
-                  <th style={{textAlign:'left', padding:'8px 10px'}}>Date</th>
-                  <th style={{textAlign:'left', padding:'8px 10px'}}>Approver</th>
-                  <th style={{textAlign:'left', padding:'8px 10px'}}>Role</th>
-                  <th style={{textAlign:'left', padding:'8px 10px'}}>Amount</th>
-                  <th style={{textAlign:'left', padding:'8px 10px'}}>Status</th>
+                <tr style={isDesktop ? { position:'sticky', top:0, zIndex:1, background:'var(--panel)' } : undefined}>
+                  <th style={{textAlign:'left', padding:'8px 10px', minWidth: isDesktop? 160: undefined}}>Date</th>
+                  <th style={{textAlign:'left', padding:'8px 10px', minWidth: isDesktop? 200: undefined}}>Approver</th>
+                  <th style={{textAlign:'left', padding:'8px 10px', minWidth: isDesktop? 120: undefined}}>Role</th>
+                  <th style={{textAlign:'left', padding:'8px 10px', minWidth: isDesktop? 160: undefined}}>Amount</th>
+                  <th style={{textAlign:'left', padding:'8px 10px', minWidth: isDesktop? 140: undefined}}>Status</th>
                 </tr>
               </thead>
               <tbody>

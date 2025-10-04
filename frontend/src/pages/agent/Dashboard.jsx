@@ -16,6 +16,14 @@ export default function AgentDashboard(){
   const [orders, setOrders] = useState([])
   const [avgResponseSeconds, setAvgResponseSeconds] = useState(null)
   const [ordersSubmittedOverride, setOrdersSubmittedOverride] = useState(null)
+  const [isDesktop, setIsDesktop] = useState(() => {
+    try{ return window.innerWidth >= 1024 }catch{ return false }
+  })
+  useEffect(()=>{
+    function onResize(){ try{ setIsDesktop(window.innerWidth >= 1024) }catch{} }
+    window.addEventListener('resize', onResize)
+    return ()=> window.removeEventListener('resize', onResize)
+  }, [])
 
   // Load metrics for the signed-in agent
   async function load(){
@@ -124,8 +132,8 @@ export default function AgentDashboard(){
         </div>
       </div>
 
-      {/* Top summary cards */}
-      <div className="card-grid">
+      {/* Top summary cards - desktop grid */}
+      <div className="card-grid" style={isDesktop ? { display:'grid', gridTemplateColumns:'repeat(5, minmax(220px, 1fr))', gap:12 } : undefined}>
         <MetricCard
           title="Assigned Chats"
           value={assignedCount}
@@ -253,14 +261,14 @@ export default function AgentDashboard(){
             <div style={{overflowX:'auto'}}>
               <table style={{width:'100%', borderCollapse:'separate', borderSpacing:0}}>
                 <thead>
-                  <tr>
-                    <th style={{textAlign:'left', padding:'10px 12px'}}>Date</th>
-                    <th style={{textAlign:'left', padding:'10px 12px'}}>Customer</th>
-                    <th style={{textAlign:'left', padding:'10px 12px'}}>Product</th>
-                    <th style={{textAlign:'right', padding:'10px 12px'}}>Qty</th>
-                    <th style={{textAlign:'right', padding:'10px 12px'}}>Total Price</th>
-                    <th style={{textAlign:'right', padding:'10px 12px'}}>Upcoming Income (PKR)</th>
-                    <th style={{textAlign:'left', padding:'10px 12px'}}>Shipment</th>
+                  <tr style={isDesktop ? { position:'sticky', top:0, zIndex:1, background:'var(--panel)' } : undefined}>
+                    <th style={{textAlign:'left', padding:'10px 12px', minWidth: isDesktop? 160: undefined}}>Date</th>
+                    <th style={{textAlign:'left', padding:'10px 12px', minWidth: isDesktop? 180: undefined}}>Customer</th>
+                    <th style={{textAlign:'left', padding:'10px 12px', minWidth: isDesktop? 220: undefined}}>Product</th>
+                    <th style={{textAlign:'right', padding:'10px 12px', minWidth: isDesktop? 80: undefined}}>Qty</th>
+                    <th style={{textAlign:'right', padding:'10px 12px', minWidth: isDesktop? 160: undefined}}>Total Price</th>
+                    <th style={{textAlign:'right', padding:'10px 12px', minWidth: isDesktop? 180: undefined}}>Upcoming Income (PKR)</th>
+                    <th style={{textAlign:'left', padding:'10px 12px', minWidth: isDesktop? 140: undefined}}>Shipment</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -274,8 +282,8 @@ export default function AgentDashboard(){
                     return (
                       <tr key={o._id||idx} style={{borderTop:'1px solid var(--border)'}}>
                         <td style={{padding:'10px 12px'}}>{date}</td>
-                        <td style={{padding:'10px 12px'}}>{o.customerName||'-'}</td>
-                        <td style={{padding:'10px 12px'}}>{prod}</td>
+                        <td style={{padding:'10px 12px', maxWidth:isDesktop?220:undefined, whiteSpace:isDesktop?'nowrap':undefined, overflow:isDesktop?'hidden':undefined, textOverflow:isDesktop?'ellipsis':undefined}}>{o.customerName||'-'}</td>
+                        <td style={{padding:'10px 12px', maxWidth:isDesktop?260:undefined, whiteSpace:isDesktop?'nowrap':undefined, overflow:isDesktop?'hidden':undefined, textOverflow:isDesktop?'ellipsis':undefined}}>{prod}</td>
                         <td style={{padding:'10px 12px', textAlign:'right'}}>{orderQty(o)}</td>
                         <td style={{padding:'10px 12px', textAlign:'right'}}>{baseCur(o)} {fmt2(orderTotal(o))}</td>
                         <td style={{padding:'10px 12px', textAlign:'right'}}>{fmtCurrency(commPKR)}</td>
