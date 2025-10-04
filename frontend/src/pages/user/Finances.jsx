@@ -628,43 +628,6 @@ export default function UserFinances() {
               <div ref={driverEndRef} />
             </div>
           </div>
-          {/* Driver Requests */}
-          <div className="card" style={{ display:'grid', gap:10 }}>
-            <div className="card-header">
-              <div className="card-title">Driver Earnings, Payment Details & Requests</div>
-            </div>
-            <div className="section" style={{ overflowX:'auto' }}>
-              {driverRequests.length === 0 ? (
-                <div className="empty-state">No driver requests</div>
-              ) : (
-                <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:0 }}>
-                  <thead>
-                    <tr>
-                      <th style={{textAlign:'left', padding:'8px 10px'}}>Date</th>
-                      <th style={{textAlign:'left', padding:'8px 10px'}}>Driver</th>
-                      <th style={{textAlign:'left', padding:'8px 10px'}}>Phone</th>
-                      <th style={{textAlign:'left', padding:'8px 10px'}}>Payout Method</th>
-                      <th style={{textAlign:'left', padding:'8px 10px'}}>Payment Detail</th>
-                      <th style={{textAlign:'left', padding:'8px 10px'}}>Requested</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {driverRequests.map(r => (
-                      <tr key={String(r._id||r.id)} style={{ borderTop:'1px solid var(--border)' }}>
-                        <td style={{ padding:'8px 10px' }}>{r.createdAt ? new Date(r.createdAt).toLocaleString() : '—'}</td>
-                        <td style={{ padding:'8px 10px' }}>{r.driver?.firstName} {r.driver?.lastName}</td>
-                        <td style={{ padding:'8px 10px' }}>{r.driver?.phone||''}</td>
-                        <td style={{ padding:'8px 10px' }}>{String(r.driver?.payoutProfile?.method||'').toUpperCase()||'—'}</td>
-                        <td style={{ padding:'8px 10px' }}>{(() => { const p=r.driver?.payoutProfile||{}; const method=String(p.method||''); if(!method) return '—'; if(method==='bank'){ const bank=[p.bankName, (p.iban||p.accountNumber)].filter(Boolean).join(' · '); return `${p.accountName||''}${bank? ' — '+bank: ''}` } else { const wallet=[p.accountName, (p.phoneNumber||p.accountNumber)].filter(Boolean).join(' · '); return wallet||'—' } })()}</td>
-                        <td style={{ padding:'8px 10px' }}>{String(r.currency||'')} {Number(r.amount||0).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-              <div ref={drReqEndRef} />
-            </div>
-          </div>
         </>
       )}
 

@@ -1,12 +1,20 @@
 import React from 'react'
 
 // Multi-series last 7 days line chart
-// Props: analytics = { days: [{ day:'YYYY-MM-DD', UAE:number, Oman:number, KSA:number, Bahrain:number }], totals: {...} }
+// Props: analytics = { days: [{ day:'YYYY-MM-DD', UAE:number, Oman:number, KSA:number, Bahrain:number, India:number, Kuwait:number, Qatar:number }], totals: {...} }
 export default function Chart({ analytics }){
   const days = Array.isArray(analytics?.days) ? analytics.days : []
   const labels = days.map(d => d.day?.slice(5)) // MM-DD
-  const seriesKeys = ['UAE','Oman','KSA','Bahrain']
-  const colors = { UAE:'#3b82f6', Oman:'#10b981', KSA:'#f59e0b', Bahrain:'#ef4444' }
+  const seriesKeys = ['UAE','Oman','KSA','Bahrain','India','Kuwait','Qatar']
+  const colors = { 
+    UAE:'#3b82f6', 
+    Oman:'#10b981', 
+    KSA:'#f59e0b', 
+    Bahrain:'#ef4444',
+    India:'#8b5cf6',
+    Kuwait:'#14b8a6',
+    Qatar:'#f97316'
+  }
   const dataByKey = Object.fromEntries(seriesKeys.map(k => [k, days.map(d => Number(d[k]||0))]))
   const allValues = seriesKeys.flatMap(k => dataByKey[k])
   const width = 640, height = 200, padding = 28
