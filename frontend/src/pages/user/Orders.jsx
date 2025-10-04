@@ -80,6 +80,8 @@ export default function UserOrders(){
   const [shipFilter, setShipFilter] = useState('')
   const [paymentFilter, setPaymentFilter] = useState('') // COD | PREPAID | ''
   const [collectedOnly, setCollectedOnly] = useState(false)
+  const [agentFilter, setAgentFilter] = useState('')
+  const [driverFilter, setDriverFilter] = useState('')
   const [selected, setSelected] = useState(null)
   const [driversByCountry, setDriversByCountry] = useState({}) // Cache drivers by country
   const [updating, setUpdating] = useState({})
@@ -102,6 +104,8 @@ export default function UserOrders(){
   // Available filters (from backend options)
   const [countryOptions, setCountryOptions] = useState([])
   const [cityOptions, setCityOptions] = useState([])
+  const [agentOptions, setAgentOptions] = useState([])
+  const [driverOptions, setDriverOptions] = useState([])
   async function loadOptions(selectedCountry=''){
     try{
       const qs = selectedCountry ? `?country=${encodeURIComponent(selectedCountry)}` : ''
@@ -115,6 +119,14 @@ export default function UserOrders(){
   useEffect(()=>{ loadOptions('') },[])
   useEffect(()=>{ loadOptions(country || '') }, [country])
   useEffect(()=>{ if (city && !cityOptions.includes(city)) setCity('') }, [cityOptions])
+
+  // Load agent and driver options
+  useEffect(()=>{
+    (async()=>{
+      try{ const a = await apiGet('/api/users/agents'); setAgentOptions(Array.isArray(a?.users)? a.users: []) }catch{ setAgentOptions([]) }
+      try{ const d = await apiGet('/api/users/drivers'); setDriverOptions(Array.isArray(d?.users)? d.users: []) }catch{ setDriverOptions([]) }
+    })()
+  },[])
 
   // Client-side product name filtering (applies to loaded items)
   const productFiltered = useMemo(()=>{
@@ -139,8 +151,10 @@ export default function UserOrders(){
     if (shipFilter.trim()) params.set('ship', shipFilter.trim())
     if (paymentFilter.trim()) params.set('payment', paymentFilter.trim())
     if (collectedOnly) params.set('collected', 'true')
+    if (agentFilter.trim()) params.set('agent', agentFilter.trim())
+    if (driverFilter.trim()) params.set('driver', driverFilter.trim())
     return params
-  }, [query, country, city, onlyUnassigned, statusFilter, shipFilter, paymentFilter, collectedOnly])
+  }, [query, country, city, onlyUnassigned, statusFilter, shipFilter, paymentFilter, collectedOnly, agentFilter, driverFilter])
 
   async function loadOrders(reset=false){
     if (loadingMoreRef.current) return
@@ -178,6 +192,8 @@ export default function UserOrders(){
       const ship = sp.get('ship') || ''
       const pay = (sp.get('payment')||'').toUpperCase()
       const col = (sp.get('collected')||'').toLowerCase() === 'true'
+      const ag = sp.get('agent') || ''
+      const dr = sp.get('driver') || ''
       setQuery(q)
       setCountry(ctry)
       setCity(cty)
@@ -186,6 +202,8 @@ export default function UserOrders(){
       setShipFilter(ship)
       setPaymentFilter(pay === 'COD' || pay === 'PREPAID' ? pay : '')
       setCollectedOnly(col)
+      setAgentFilter(ag)
+      setDriverFilter(dr)
     }catch{}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search])
@@ -193,7 +211,7 @@ export default function UserOrders(){
   // Keep URL in sync with current filters for shareable deep links
   useEffect(()=>{
     try{
-      const managed = ['q','country','city','onlyUnassigned','status','ship','payment','collected']
+      const managed = ['q','country','city','onlyUnassigned','status','ship','payment','collected','agent','driver']
       const canonical = (init)=>{
         const s = new URLSearchParams(init)
         const entries = managed

@@ -1,4 +1,5 @@
 import express from 'express'
+import mongoose from 'mongoose'
 import fs from 'fs'
 import path from 'path'
 import Order from '../models/Order.js'
@@ -463,6 +464,9 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
     const shipFilter = String(req.query.ship||'').trim().toLowerCase()
     const payment = String(req.query.payment||'').trim().toUpperCase()
     const collectedOnly = String(req.query.collected||'').toLowerCase() === 'true'
+    const agentId = String(req.query.agent||'').trim()
+    const driverId = String(req.query.driver||'').trim()
+    const productParam = String(req.query.product||'').trim()
 
     const match = { ...base }
     if (country) {
@@ -482,14 +486,27 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
     if (payment === 'COD') match.paymentMethod = 'COD'
     else if (payment === 'PREPAID') match.paymentMethod = { $ne: 'COD' }
     if (collectedOnly) match.collectedAmount = { $gt: 0 }
+    if (agentId) match.createdBy = agentId
+    if (driverId) match.deliveryBoy = driverId
+    // Product filter: match top-level or items.productId
+    if (productParam){
+      try{
+        const pid = new mongoose.Types.ObjectId(productParam)
+        const orList = match.$or ? [...match.$or] : []
+        orList.push({ productId: pid })
+        orList.push({ 'items.productId': pid })
+        match.$or = orList
+      }catch{}
+    }
     if (q){
       const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-      match.$or = [
+      const textConds = [
         { invoiceNumber: rx },
         { customerPhone: rx },
         { customerName: rx },
         { details: rx },
       ]
+      match.$or = (match.$or ? match.$or : []).concat(textConds)
     }
 
     const total = await Order.countDocuments(match)
