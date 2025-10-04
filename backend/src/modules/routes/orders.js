@@ -644,7 +644,7 @@ router.post('/:id/assign-driver', auth, allowRoles('admin','user','manager'), as
 
 // Driver: list assigned orders
 router.get('/driver/assigned', auth, allowRoles('driver'), async (req, res) => {
-  const orders = await Order.find({ deliveryBoy: req.user.id, status: { $nin: ['delivered','cancelled'] } })
+  const orders = await Order.find({ deliveryBoy: req.user.id, status: { $nin: ['delivered','cancelled'] }, shipmentStatus: { $ne: 'picked_up' } })
     .sort({ createdAt: -1 })
     .populate('productId')
   res.json({ orders })
