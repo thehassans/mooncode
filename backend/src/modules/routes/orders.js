@@ -644,7 +644,49 @@ router.post('/:id/assign-driver', auth, allowRoles('admin','user','manager'), as
 
 // Driver: list assigned orders
 router.get('/driver/assigned', auth, allowRoles('driver'), async (req, res) => {
-  const orders = await Order.find({ deliveryBoy: req.user.id }).sort({ createdAt: -1 }).populate('productId')
+  const orders = await Order.find({ deliveryBoy: req.user.id, status: { $nin: ['delivered','cancelled'] } })
+    .sort({ createdAt: -1 })
+    .populate('productId')
+  res.json({ orders })
+})
+
+// Driver: list picked up orders (shipmentStatus = picked_up)
+router.get('/driver/picked', auth, allowRoles('driver'), async (req, res) => {
+  const orders = await Order.find({ deliveryBoy: req.user.id, shipmentStatus: 'picked_up' })
+    .sort({ updatedAt: -1 })
+    .populate('productId')
+  res.json({ orders })
+})
+
+// Driver: list delivered orders
+router.get('/driver/delivered', auth, allowRoles('driver'), async (req, res) => {
+  const orders = await Order.find({ deliveryBoy: req.user.id, status: 'delivered' })
+    .sort({ updatedAt: -1 })
+    .populate('productId')
+  res.json({ orders })
+})
+
+// Driver: list cancelled orders
+router.get('/driver/cancelled', auth, allowRoles('driver'), async (req, res) => {
+  const orders = await Order.find({ deliveryBoy: req.user.id, status: 'cancelled' })
+    .sort({ updatedAt: -1 })
+    .populate('productId')
+  res.json({ orders })
+})
+
+// Driver: history (archive) - default to delivered, optional date filter
+router.get('/driver/history', auth, allowRoles('driver'), async (req, res) => {
+  const { from = '', to = '' } = req.query || {}
+  const match = { deliveryBoy: req.user.id, status: 'delivered' }
+  if (from) {
+    const d = new Date(from)
+    if (!Number.isNaN(d.getTime())) match.updatedAt = { ...(match.updatedAt||{}), $gte: d }
+  }
+  if (to) {
+    const d = new Date(to)
+    if (!Number.isNaN(d.getTime())) match.updatedAt = { ...(match.updatedAt||{}), $lte: d }
+  }
+  const orders = await Order.find(match).sort({ updatedAt: -1 }).populate('productId')
   res.json({ orders })
 })
 
@@ -658,51 +700,6 @@ router.get('/driver/available', auth, allowRoles('driver'), async (req, res) => 
   if (includeAssigned !== 'true') cond.deliveryBoy = { $in: [null, undefined] }
   const orders = await Order.find(cond).sort({ createdAt: -1 }).populate('productId')
   res.json({ orders })
-})
-
-// Driver: quick stats for dashboard cards
-router.get('/driver/stats', auth, allowRoles('driver'), async (req, res) => {
-  try {
-    const driverId = req.user.id
-    const assigned = await Order.countDocuments({ deliveryBoy: driverId })
-    const byStatus = async (s) => await Order.countDocuments({ deliveryBoy: driverId, shipmentStatus: s })
-    const delivered = await byStatus('delivered')
-    const pickedUp = await byStatus('picked_up')
-    const cancelled = await byStatus('cancelled')
-    const inTransit = await byStatus('in_transit')
-    const attempted = await byStatus('attempted')
-    const contacted = await byStatus('contacted')
-    const noResponse = await byStatus('no_response')
-    return res.json({
-      assigned,
-      delivered,
-      picked_up: pickedUp,
-      cancelled,
-      in_transit: inTransit,
-      attempted,
-      contacted,
-      no_response: noResponse,
-    })
-  } catch (err) {
-    return res.status(500).json({ message: err?.message || 'failed' })
-  }
-})
-
-// Driver: list by view for drill-down pages
-// view: assigned | delivered | picked_up | cancelled | in_transit | attempted | contacted | no_response
-router.get('/driver/list', auth, allowRoles('driver'), async (req, res) => {
-  try{
-    const { view = 'assigned' } = req.query || {}
-    const driverId = req.user.id
-    const match = { deliveryBoy: driverId }
-    if (view && view !== 'assigned') {
-      match.shipmentStatus = String(view)
-    }
-    const orders = await Order.find(match).sort({ createdAt: -1 }).populate('productId')
-    return res.json({ orders })
-  }catch(err){
-    return res.status(500).json({ message: err?.message || 'failed' })
-  }
 })
 
 // Driver: claim an unassigned order

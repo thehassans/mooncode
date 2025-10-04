@@ -1,62 +1,87 @@
 import React, { useEffect, useState } from 'react'
-import { apiGet } from '../../api'
+import { API_BASE, apiGet } from '../../api'
+import { io } from 'socket.io-client'
 import { useNavigate } from 'react-router-dom'
 
 export default function DriverDashboard(){
-  const navigate = useNavigate()
-  const [stats, setStats] = useState({ assigned: 0, delivered: 0, picked_up: 0, cancelled: 0, in_transit: 0, attempted: 0, contacted: 0, no_response: 0 })
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const nav = useNavigate()
+  const [counts, setCounts] = useState({ assigned: 0, picked: 0, delivered: 0, cancelled: 0 })
+  const [loading, setLoading] = useState(false)
 
-  async function loadStats(){
+  async function loadCounts(){
     setLoading(true)
-    setError('')
-    try{ const d = await apiGet('/api/orders/driver/stats'); setStats(d||{}) }
-    catch(e){ setError(e?.message || 'Failed to load stats') }
-    finally{ setLoading(false) }
+    try{
+      const [a,p,d,c] = await Promise.all([
+        apiGet('/api/orders/driver/assigned'),
+        apiGet('/api/orders/driver/picked'),
+        apiGet('/api/orders/driver/delivered'),
+        apiGet('/api/orders/driver/cancelled'),
+      ])
+      setCounts({
+        assigned: (a.orders||[]).length,
+        picked: (p.orders||[]).length,
+        delivered: (d.orders||[]).length,
+        cancelled: (c.orders||[]).length,
+      })
+    }catch{
+      setCounts({ assigned:0, picked:0, delivered:0, cancelled:0 })
+    }finally{ setLoading(false) }
   }
-  useEffect(()=>{ loadStats() },[])
+  useEffect(()=>{ loadCounts() },[])
 
-  function Card({ title, value, color='#0ea5e9', onClick }){
-    return (
-      <button className="card" onClick={onClick} style={{textAlign:'left', borderColor:'var(--border)', cursor:'pointer'}}>
-        <div className="section" style={{display:'grid', gap:8}}>
-          <div className="helper" style={{fontWeight:700, color:'var(--muted)'}}>{title}</div>
-          <div className="page-title" style={{margin:0, color}}>{Number(value||0)}</div>
-        </div>
-      </button>
-    )
-  }
+  // Real-time: refresh counts on order events
+  useEffect(()=>{
+    let socket
+    try{
+      const token = localStorage.getItem('token') || ''
+      socket = io(API_BASE || undefined, { path: '/socket.io', transports: ['polling'], upgrade:false, auth: { token }, withCredentials: true })
+      const refresh = ()=>{ try{ loadCounts() }catch{} }
+      socket.on('order.assigned', refresh)
+      socket.on('order.updated', refresh)
+      socket.on('order.shipped', refresh)
+    }catch{}
+    return ()=>{
+      try{ socket && socket.off('order.assigned') }catch{}
+      try{ socket && socket.off('order.updated') }catch{}
+      try{ socket && socket.off('order.shipped') }catch{}
+      try{ socket && socket.disconnect() }catch{}
+    }
+  },[])
 
-  function go(view){
-    navigate(`/driver/orders?view=${encodeURIComponent(view)}`)
-  }
+  const cards = [
+    { key:'assigned', title:'Orders Assigned', value: counts.assigned, to:'/driver/orders/assigned', color:'#3b82f6' },
+    { key:'picked', title:'Total Picked Up', value: counts.picked, to:'/driver/orders/picked', color:'#f59e0b' },
+    { key:'delivered', title:'Total Delivered', value: counts.delivered, to:'/driver/orders/delivered', color:'#10b981' },
+    { key:'cancelled', title:'Total Cancelled', value: counts.cancelled, to:'/driver/orders/cancelled', color:'#ef4444' },
+  ]
 
   return (
     <div className="section" style={{display:'grid', gap:12}}>
       <div className="page-header">
         <div>
           <div className="page-title gradient heading-blue">Driver Dashboard</div>
-          <div className="page-subtitle">Overview of your delivery performance</div>
+          <div className="page-subtitle">Overview of your delivery workload</div>
         </div>
       </div>
 
-      {error ? <div className="card"><div className="section"><div className="helper-text error">{error}</div></div></div> : null}
-
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">My Stats</div>
-          <div className="card-subtitle">Tap a card to view details</div>
+      <div className="card" style={{padding:16}}>
+        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px,1fr))', gap:12}}>
+          {cards.map(c => (
+            <button key={c.key} className="tile" onClick={()=> nav(c.to)} style={{
+              display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12
+            }}>
+              <div style={{fontSize:12, color:'var(--muted)'}}>{c.title}</div>
+              <div style={{fontSize:28, fontWeight:800, color:c.color}}>{loading? '…' : c.value}</div>
+            </button>
+          ))}
         </div>
-        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:12}}>
-          <Card title="Orders Assigned" value={stats.assigned} color="#6366f1" onClick={()=>go('assigned')} />
-          <Card title="Delivered" value={stats.delivered} color="#10b981" onClick={()=>go('delivered')} />
-          <Card title="Picked Up" value={stats.picked_up} color="#06b6d4" onClick={()=>go('picked_up')} />
-          <Card title="In Transit" value={stats.in_transit} color="#0ea5e9" onClick={()=>go('in_transit')} />
-          <Card title="Attempted" value={stats.attempted} color="#f59e0b" onClick={()=>go('attempted')} />
-          <Card title="Contacted" value={stats.contacted} color="#a855f7" onClick={()=>go('contacted')} />
-          <Card title="No Response" value={stats.no_response} color="#ef4444" onClick={()=>go('no_response')} />
-          <Card title="Cancelled" value={stats.cancelled} color="#ef4444" onClick={()=>go('cancelled')} />
+      </div>
+
+      <div className="card" style={{display:'grid', gap:10, padding:16}}>
+        <div className="card-title">Quick Actions</div>
+        <div className="section" style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+          <a className="btn" href="/driver/panel">Open Driver Panel</a>
+          <a className="btn secondary" href="/driver/orders/history">Order History</a>
         </div>
       </div>
     </div>

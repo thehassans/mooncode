@@ -29,7 +29,7 @@ import InvestorLayout from './layout/InvestorLayout.jsx'
 import DriverLayout from './layout/DriverLayout.jsx'
 
 import WhatsAppConnect from './pages/inbox/WhatsAppConnect.jsx'
-const WhatsAppInbox = React.lazy(() => import('./pages/inbox/WhatsAppInbox.jsx'))
+import WhatsAppInbox from './pages/inbox/WhatsAppInbox.jsx'
 
 import Agents from './pages/user/Agents.jsx'
 import Managers from './pages/user/Managers.jsx'
@@ -40,7 +40,11 @@ import DriverDashboard from './pages/driver/Dashboard.jsx'
 import DriverPanel from './pages/driver/DriverPanel.jsx'
 import DriverMe from './pages/driver/Me.jsx'
 import DriverPayout from './pages/driver/Payout.jsx'
-import DriverOrdersList from './pages/driver/OrdersList.jsx'
+import DriverAssigned from './pages/driver/Assigned.jsx'
+import DriverPicked from './pages/driver/Picked.jsx'
+import DriverDelivered from './pages/driver/Delivered.jsx'
+import DriverCancelled from './pages/driver/Cancelled.jsx'
+import DriverHistory from './pages/driver/History.jsx'
 import UserOrders from './pages/user/Orders.jsx'
 import UserAPISetup from './pages/user/APISetup.jsx'
 import ErrorLogs from './pages/user/ErrorLogs.jsx'
@@ -63,7 +67,11 @@ import AnalyticsDashboard from './components/analytics/AnalyticsDashboard'
 
 import { apiGet } from './api.js'
 
-// Manager permission guard (top-level, used in /manager routes)
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, error: null }
+
 function RequireManagerPerm({ perm, children }){
   const [me, setMe] = React.useState(()=>{
     try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} }
@@ -83,11 +91,6 @@ function RequireManagerPerm({ perm, children }){
   const allowed = !!(me?.managerPermissions && me.managerPermissions[perm])
   return allowed ? children : <Navigate to="/manager" replace />
 }
-
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props)
-    this.state = { hasError: false, error: null }
   }
 
   static getDerivedStateFromError(error) {
@@ -187,8 +190,7 @@ function RequireRole({ roles = [], children }) {
 export default function App() {
   return (
     <ErrorBoundary>
-      <React.Suspense fallback={<div className="section"><div className="card"><div className="section"><div className="spinner"/> Loading…</div></div></div>}>
-        <Routes>
+      <Routes>
       {/* Root redirect to login */}
       <Route path="/" element={<Navigate to="/login" replace />} />
       
@@ -219,23 +221,23 @@ export default function App() {
         }
       />
 
-        <Route
+      <Route
         path="/admin"
         element={
           <RequireAuth>
             <AdminLayout />
           </RequireAuth>
         }
-        >
-          <Route index element={<AdminDashboard />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="inbox/connect" element={<WhatsAppConnect />} />
-          <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
-          <Route path="branding" element={<Branding />} />
-          {/** AI Settings moved to User panel */}
-        </Route>
+      >
+        <Route index element={<AdminDashboard />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="inbox/connect" element={<WhatsAppConnect />} />
+        <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
+        <Route path="branding" element={<Branding />} />
+        {/** AI Settings moved to User panel */}
+      </Route>
 
-        <Route
+      <Route
         path="/driver"
         element={
           <RequireAuth>
@@ -244,15 +246,19 @@ export default function App() {
             </RequireRole>
           </RequireAuth>
         }
-        >
-          <Route index element={<DriverDashboard />} />
-          <Route path="orders" element={<DriverOrdersList />} />
-          <Route path="panel" element={<DriverPanel />} />
-          <Route path="me" element={<DriverMe />} />
-          <Route path="payout" element={<DriverPayout />} />
-        </Route>
+      >
+        <Route index element={<DriverDashboard />} />
+        <Route path="panel" element={<DriverPanel />} />
+        <Route path="orders/assigned" element={<DriverAssigned />} />
+        <Route path="orders/picked" element={<DriverPicked />} />
+        <Route path="orders/delivered" element={<DriverDelivered />} />
+        <Route path="orders/cancelled" element={<DriverCancelled />} />
+        <Route path="orders/history" element={<DriverHistory />} />
+        <Route path="me" element={<DriverMe />} />
+        <Route path="payout" element={<DriverPayout />} />
+      </Route>
 
-        <Route
+      <Route
         path="/investor"
         element={
           <RequireAuth>
@@ -261,11 +267,11 @@ export default function App() {
             </RequireRole>
           </RequireAuth>
         }
-        >
-          <Route index element={<InvestorDashboard />} />
-        </Route>
+      >
+        <Route index element={<InvestorDashboard />} />
+      </Route>
 
-        <Route
+      <Route
         path="/manager"
         element={
           <RequireAuth>
@@ -274,71 +280,73 @@ export default function App() {
             </RequireRole>
           </RequireAuth>
         }
-        >
-          <Route index element={<ManagerDashboard />} />
-          <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
-          <Route path="agents" element={<RequireManagerPerm perm="canCreateAgents"><Agents /></RequireManagerPerm>} />
-          <Route path="orders" element={<RequireManagerPerm perm="canCreateOrders"><ManagerOrders /></RequireManagerPerm>} />
-          <Route path="finances" element={<ManagerFinances />} />
-          <Route path="drivers/create" element={<RequireManagerPerm perm="canCreateDrivers"><ManagerCreateDriver /></RequireManagerPerm>} />
-          <Route path="finances/history/drivers" element={<DriverRemitHistory />} />
-          <Route path="finances/history/agents" element={<AgentRemitHistory />} />
-          <Route path="transactions" element={<ManagerTransactions />} />
-          <Route path="inhouse-products" element={<RequireManagerPerm perm="canManageProducts"><InhouseProducts /></RequireManagerPerm>} />
-        </Route>
-      
-        <Route
+      >
+        <Route index element={<ManagerDashboard />} />
+        <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
+        <Route path="agents" element={<RequireManagerPerm perm="canCreateAgents"><Agents /></RequireManagerPerm>} />
+        <Route path="orders" element={<RequireManagerPerm perm="canCreateOrders"><ManagerOrders /></RequireManagerPerm>} />
+        <Route path="finances" element={<ManagerFinances />} />
+        <Route path="drivers/create" element={<RequireManagerPerm perm="canCreateDrivers"><ManagerCreateDriver /></RequireManagerPerm>} />
+        <Route path="finances/history/drivers" element={<DriverRemitHistory />} />
+        <Route path="finances/history/agents" element={<AgentRemitHistory />} />
+        <Route path="transactions" element={<ManagerTransactions />} />
+        <Route path="inhouse-products" element={<RequireManagerPerm perm="canManageProducts"><InhouseProducts /></RequireManagerPerm>} />
+      </Route>
+
+      <Route
         path="/user"
         element={
           <RequireAuth>
-            <RequireRole roles={['admin','user']}>
+            <RequireRole roles={['admin', 'user']}>
               <UserLayout />
             </RequireRole>
           </RequireAuth>
         }
-        >
-          <Route index element={<UserDashboard />} />
-          <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="agents" element={<Agents />} />
-          <Route path="managers" element={<Managers />} />
-          <Route path="investors" element={<Investors />} />
-          <Route path="drivers" element={<Drivers />} />
-          <Route path="orders" element={<UserOrders />} />
-          <Route path="products" element={<InhouseProducts />} />
-          <Route path="warehouse" element={<Warehouse />} />
-          <Route path="shipments" element={<Shipments />} />
-          <Route path="insights" element={<AnalyticsDashboard />} />
-          <Route path="expense" element={<Expenses />} />
-          <Route path="transactions" element={<Transactions />} />
-          <Route path="finances" element={<UserFinances />} />
-          <Route path="api-setup" element={<UserAPISetup />} />
-          <Route path="error-logs" element={<ErrorLogs />} />
-          <Route path="support" element={<Support />} />
-        </Route>
+      >
+        <Route index element={<UserDashboard />} />
+        <Route path="inbox/connect" element={<WhatsAppConnect />} />
+        <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
+        <Route path="agents" element={<Agents />} />
+        <Route path="managers" element={<Managers />} />
+        <Route path="investors" element={<Investors />} />
+        <Route path="drivers" element={<Drivers />} />
+        <Route path="notifications" element={<Notifications />} />
+        <Route path="campaigns" element={<Campaign />} />
+        <Route path="orders" element={<UserOrders />} />
+        <Route path="inhouse-products" element={<InhouseProducts />} />
+        <Route path="warehouses" element={<Warehouse />} />
+        <Route path="shipments" element={<Shipments />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="insights" element={<AnalyticsDashboard />} />
+        <Route path="expense" element={<Expenses />} />
+        <Route path="transactions" element={<Transactions />} />
+        <Route path="finances" element={<UserFinances />} />
+        <Route path="api-setup" element={<UserAPISetup />} />
+        <Route path="error-logs" element={<ErrorLogs />} />
+        <Route path="support" element={<Support />} />
+      </Route>
 
-        <Route
-          path="/agent"
-          element={
-            <RequireAuth>
-              <RequireRole roles={['agent']}>
-                <AgentLayout />
-              </RequireRole>
-            </RequireAuth>
-          }
-        >
-          {/* Agent dashboard */}
-          <Route index element={<AgentDashboard />} />
-          <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
-          <Route path="orders" element={<SubmitOrder />} />
-          <Route path="inhouse-products" element={<AgentInhouseProducts />} />
-          <Route path="me" element={<AgentMe />} />
-          <Route path="support" element={<Support />} />
-        </Route>
+      <Route
+        path="/agent"
+        element={
+          <RequireAuth>
+            <RequireRole roles={['agent']}>
+              <AgentLayout />
+            </RequireRole>
+          </RequireAuth>
+        }
+      >
+        {/* Agent dashboard */}
+        <Route index element={<AgentDashboard />} />
+        <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
+        <Route path="orders" element={<SubmitOrder />} />
+        <Route path="inhouse-products" element={<AgentInhouseProducts />} />
+        <Route path="me" element={<AgentMe />} />
+        <Route path="support" element={<Support />} />
+      </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </React.Suspense>
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
     </ErrorBoundary>
   )
 }
