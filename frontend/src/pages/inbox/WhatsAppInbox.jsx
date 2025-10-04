@@ -125,6 +125,22 @@ export default function WhatsAppInbox() {
   const [agentsFilterList, setAgentsFilterList] = useState([])
   const [agentFilterId, setAgentFilterId] = useState('') // '' => All
 
+  // Determine role/id early to avoid TDZ in downstream hooks
+  const myRole = useMemo(() => {
+    try {
+      return (JSON.parse(localStorage.getItem('me') || '{}') || {}).role || null
+    } catch {
+      return null
+    }
+  }, [])
+  const myId = useMemo(() => {
+    try {
+      return (JSON.parse(localStorage.getItem('me') || '{}') || {}).id || null
+    } catch {
+      return null
+    }
+  }, [])
+
   // Agent "My Queue" counters (simple): Unread + Open
   const myQueue = useMemo(() => {
     try {
@@ -426,21 +442,6 @@ export default function WhatsAppInbox() {
     }
   }
 
-  // Determine role from localStorage to tailor UI (e.g., hide auto-assign for agents)
-  const myRole = useMemo(() => {
-    try {
-      return (JSON.parse(localStorage.getItem('me') || '{}') || {}).role || null
-    } catch {
-      return null
-    }
-  }, [])
-  const myId = useMemo(() => {
-    try {
-      return (JSON.parse(localStorage.getItem('me') || '{}') || {}).id || null
-    } catch {
-      return null
-    }
-  }, [])
   // Availability is managed on the Me page; the inbox UI does not expose controls
 
   // Availability is loaded and updated on Me page; no-op here
