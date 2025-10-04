@@ -1,6 +1,7 @@
 import express from 'express'
 import multer from 'multer'
 import path from 'path'
+import fs from 'fs'
 import { auth, allowRoles } from '../middleware/auth.js'
 import Expense from '../models/Expense.js'
 import Order from '../models/Order.js'
@@ -14,6 +15,7 @@ import { generatePayoutReceiptPDF } from '../utils/payoutReceipt.js'
 const router = express.Router()
 
 // Multer config for receipt uploads (reuse uploads/ folder)
+try{ fs.mkdirSync('uploads', { recursive: true }) }catch{}
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
   filename: (req, file, cb) => {

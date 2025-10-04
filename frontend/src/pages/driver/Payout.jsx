@@ -100,6 +100,7 @@ export default function DriverPayout(){
               const amt = Number(form.amount)
               if (Number.isNaN(amt) || amt<=0) return alert('Enter a valid amount')
               if (amt > pendingToCompany) return alert('Amount exceeds pending to company')
+              if (form.method==='transfer' && !form.file) return alert('Please attach a proof image for transfer to company')
               setSubmitting(true)
               try{
                 const fd = new FormData()

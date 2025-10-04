@@ -63,6 +63,24 @@ export default function SubmitOrder(){
     KW: [],
     QA: [],
   }),[])
+  // City aliases per country (lowercase -> canonical name)
+  const CITY_ALIASES = useMemo(()=>({
+    UAE: {
+      'zayed city': 'Madinat Zayed',
+      'madinat zayed': 'Madinat Zayed',
+      'ar ruways': 'Ruways',
+      'ruwais': 'Ruways',
+      'al ain city': 'Al Ain',
+      'abu dhabi city': 'Abu Dhabi',
+    },
+  }),[])
+  const canonicalizeCity = (countryKey, name) => {
+    try{
+      const map = CITY_ALIASES[countryKey] || {}
+      const key = String(name||'').trim().toLowerCase()
+      return map[key] || name
+    }catch{ return name }
+  }
   const currentCountryKey = useMemo(()=>{
     const byName = COUNTRY_OPTS.find(c=>c.name===form.orderCountry)
     if (byName) return byName.key
@@ -531,12 +549,14 @@ export default function SubmitOrder(){
                 }
               }
 
+              // Canonicalize resolved city for comparison (e.g., Zayed City -> Madinat Zayed)
+              const cityCanon = canonicalizeCity(currentCountryKey, cityGuess)
               // Validate if resolved city matches selected city (if selected)
               if (form.city && cityGuess) {
-                const normalizedFormCity = form.city.toLowerCase().trim()
-                const normalizedResolvedCity = cityGuess.toLowerCase().trim()
+                const normalizedFormCity = canonicalizeCity(currentCountryKey, form.city).toLowerCase().trim()
+                const normalizedResolvedCity = String(cityCanon||'').toLowerCase().trim()
                 if (normalizedFormCity !== normalizedResolvedCity) {
-                  setLocationValidation({ isValid: false, message: `Invalid address: Location is in ${cityGuess}, but selected city is ${form.city}` })
+                  setLocationValidation({ isValid: false, message: `Invalid address: Location is in ${cityCanon||cityGuess}, but selected city is ${form.city}` })
                   return // do not fill fields on mismatch
                 }
               }
@@ -545,13 +565,13 @@ export default function SubmitOrder(){
               try {
                 const citiesList = COUNTRY_CITIES[currentCountryKey] || []
                 if (citiesList.length) {
-                  const found = citiesList.some(c => c.toLowerCase() === (cityGuess||'').toLowerCase())
+                  const found = citiesList.some(c => c.toLowerCase() === String(cityCanon||'').toLowerCase())
                   if (!found) {
-                    setLocationValidation({ isValid: false, message: `City ${cityGuess||'(unknown)'} is not present in ${form.orderCountry}` })
+                    setLocationValidation({ isValid: false, message: `City ${cityCanon||cityGuess||'(unknown)'} is not present in ${form.orderCountry}` })
                     return
                   }
                   if (form.city) {
-                    const selectedFound = citiesList.some(c => c.toLowerCase() === form.city.toLowerCase())
+                    const selectedFound = citiesList.some(c => c.toLowerCase() === canonicalizeCity(currentCountryKey, form.city).toLowerCase())
                     if (!selectedFound) {
                       setLocationValidation({ isValid: false, message: `Selected city ${form.city} is not present in ${form.orderCountry}` })
                       return
@@ -565,7 +585,7 @@ export default function SubmitOrder(){
               setForm(f=> ({ 
                 ...f, 
                 customerAddress: display || f.customerAddress, 
-                city: cityGuess || f.city,
+                city: cityCanon || cityGuess || f.city,
                 customerArea: areaGuess || f.customerArea,
               }))
               return
@@ -583,6 +603,7 @@ export default function SubmitOrder(){
       const addr = data?.address || {}
       // Separate City and Area from reverse geocoding
       const cityGuess = addr.city || addr.town || addr.village || ''
+      const cityCanon = canonicalizeCity(currentCountryKey, cityGuess)
       const areaGuess = addr.suburb || addr.neighbourhood || addr.district || addr.quarter || addr.residential || ''
 
       // Country validation for Nominatim as well (addr.country_code is ISO alpha-2 lowercased)
@@ -600,8 +621,8 @@ export default function SubmitOrder(){
       
       // Validate if resolved city matches selected city
       if (form.city && cityGuess) {
-        const normalizedFormCity = form.city.toLowerCase().trim()
-        const normalizedResolvedCity = cityGuess.toLowerCase().trim()
+        const normalizedFormCity = canonicalizeCity(currentCountryKey, form.city).toLowerCase().trim()
+        const normalizedResolvedCity = String(cityCanon||'').toLowerCase().trim()
         
         if (normalizedFormCity !== normalizedResolvedCity) {
           setLocationValidation({ isValid: false, message: `Invalid address: Location is in ${cityGuess}, but selected city is ${form.city}` })
@@ -615,13 +636,13 @@ export default function SubmitOrder(){
       try {
         const citiesList = COUNTRY_CITIES[currentCountryKey] || []
         if (citiesList.length) {
-          const found = citiesList.some(c => c.toLowerCase() === (cityGuess||'').toLowerCase())
+          const found = citiesList.some(c => c.toLowerCase() === String(cityCanon||'').toLowerCase())
           if (!found) {
-            setLocationValidation({ isValid: false, message: `City ${cityGuess||'(unknown)'} is not present in ${form.orderCountry}` })
+            setLocationValidation({ isValid: false, message: `City ${cityCanon||cityGuess||'(unknown)'} is not present in ${form.orderCountry}` })
             return
           }
           if (form.city) {
-            const selectedFound = citiesList.some(c => c.toLowerCase() === form.city.toLowerCase())
+            const selectedFound = citiesList.some(c => c.toLowerCase() === canonicalizeCity(currentCountryKey, form.city).toLowerCase())
             if (!selectedFound) {
               setLocationValidation({ isValid: false, message: `Selected city ${form.city} is not present in ${form.orderCountry}` })
               return
@@ -634,7 +655,7 @@ export default function SubmitOrder(){
       setForm(f=> ({ 
         ...f, 
         customerAddress: display || f.customerAddress, 
-        city: cityGuess || f.city,
+        city: cityCanon || cityGuess || f.city,
         customerArea: areaGuess || f.customerArea,
       }))
     }catch(err){ 
