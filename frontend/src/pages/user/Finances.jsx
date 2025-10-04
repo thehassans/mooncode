@@ -597,10 +597,10 @@ export default function UserFinances() {
                               <>
                                 <a href={`${API_BASE}${pending.receiptPath}`} target="_blank" rel="noopener noreferrer" download>Download</a>
                                 {' '}
-                                <span className="helper">• Verified: {pending?.proofOk===true ? <span style={{color:'var(--success)'}}>Yes</span> : pending?.proofOk===false ? <span style={{color:'var(--danger)'}}>No</span> : '—'}</span>
+                                <span className="helper">• Proof: {pending?.proofOk===true ? <span style={{color:'var(--success)'}}>Yes</span> : pending?.proofOk===false ? <span style={{color:'var(--danger)'}}>No</span> : '—'}</span>
                               </>
                             ) : (
-                              <span className="helper">Verified: {pending?.proofOk===true ? <span style={{color:'var(--success)'}}>Yes</span> : pending?.proofOk===false ? <span style={{color:'var(--danger)'}}>No</span> : '—'}</span>
+                              <span className="helper">Proof: {pending?.proofOk===true ? <span style={{color:'var(--success)'}}>Yes</span> : pending?.proofOk===false ? <span style={{color:'var(--danger)'}}>No</span> : '—'}</span>
                             )}
                           </td>
                           <td style={{ padding:'8px 10px' }}>
