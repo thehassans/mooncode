@@ -722,7 +722,10 @@ export default function SubmitOrder(){
                 </div>
                 <div>
                   <div className="label">Customer Phone</div>
-                  <input className="input" name="customerPhone" value={form.customerPhone} onChange={onChange} required readOnly={!!originMsisdn} />
+                  <div style={{display:'flex', gap:6}}>
+                    <div className="input" style={{width:90, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 8px'}}>{form.phoneCountryCode}</div>
+                    <input className="input" name="customerPhone" value={form.customerPhone} onChange={onChange} required readOnly={!!originMsisdn} />
+                  </div>
                   {!!originMsisdn && (
                     <div className="helper" style={{fontSize:12, opacity:0.8, marginTop:4}}>Must match WhatsApp sender: {customerInfo.fullPhone}</div>
                   )}
@@ -737,7 +740,10 @@ export default function SubmitOrder(){
                 </label>
                 {form.additionalPhoneEnabled && (
                   <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 220px', gap:12}}>
-                    <input className="input" name="additionalPhone" value={form.additionalPhone} onChange={onChange} placeholder="Additional phone number" />
+                    <div style={{display:'flex', gap:6}}>
+                      <div className="input" style={{width:90, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 8px'}}>{form.phoneCountryCode}</div>
+                      <input className="input" name="additionalPhone" value={form.additionalPhone} onChange={onChange} placeholder="Additional phone number" />
+                    </div>
                     <select className="input" name="additionalPhonePref" value={form.additionalPhonePref} onChange={onChange}>
                       <option value="whatsapp">Whatsapp</option>
                       <option value="calling">Calling</option>
@@ -901,11 +907,6 @@ export default function SubmitOrder(){
                 })}
               </div>
 
-              <div>
-                <div className="label">Customer Name</div>
-                <input className="input" name="customerName" value={form.customerName} onChange={onChange} placeholder="Full name" />
-              </div>
-              
               <div>
                 <div className="label">WhatsApp Location</div>
                 <div style={{ position:'relative', marginTop:4 }}>
