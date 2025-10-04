@@ -461,6 +461,8 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
     const onlyUnassigned = String(req.query.onlyUnassigned||'').toLowerCase() === 'true'
     const statusFilter = String(req.query.status||'').trim().toLowerCase()
     const shipFilter = String(req.query.ship||'').trim().toLowerCase()
+    const payment = String(req.query.payment||'').trim().toUpperCase()
+    const collectedOnly = String(req.query.collected||'').toLowerCase() === 'true'
 
     const match = { ...base }
     if (country) match.orderCountry = country
@@ -468,6 +470,9 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
     if (onlyUnassigned) match.deliveryBoy = { $in: [null, undefined] }
     if (statusFilter) match.status = statusFilter
     if (shipFilter) match.shipmentStatus = shipFilter
+    if (payment === 'COD') match.paymentMethod = 'COD'
+    else if (payment === 'PREPAID') match.paymentMethod = { $ne: 'COD' }
+    if (collectedOnly) match.collectedAmount = { $gt: 0 }
     if (q){
       const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
       match.$or = [

@@ -150,10 +150,11 @@ export default function UserDashboard(){
           </div>
         </div>
         <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Total Sales" value={formatCurrency(metrics.totalSales||0, 'UAE')} icon="💵" />
-          <MetricCard title="COD Sales" value={formatCurrency(metrics.totalCOD||0, 'UAE')} icon="💰" />
-          <MetricCard title="Prepaid Sales" value={formatCurrency(metrics.totalPrepaid||0, 'UAE')} icon="💳" />
-          <MetricCard title="Net Revenue" value={formatCurrency(metrics.totalRevenue||0, 'UAE')} icon="📈" />
+          <MetricCard title="Total Sales" value={formatCurrency(metrics.totalSales||0, 'UAE')} icon="💵" to="/user/orders?ship=delivered" />
+          <MetricCard title="COD Sales" value={formatCurrency(metrics.totalCOD||0, 'UAE')} icon="💰" to="/user/orders?ship=delivered&payment=COD" />
+          <MetricCard title="Prepaid Sales" value={formatCurrency(metrics.totalPrepaid||0, 'UAE')} icon="💳" to="/user/orders?ship=delivered&payment=PREPAID" />
+          <MetricCard title="Total Collected" value={formatCurrency(metrics.totalCollected||0, 'UAE')} icon="🧾" to="/user/orders?ship=delivered&collected=true" />
+          <MetricCard title="Net Revenue" value={formatCurrency(metrics.totalRevenue||0, 'UAE')} icon="📈" to="/user/transactions" />
         </div>
       </div>
 
@@ -167,11 +168,11 @@ export default function UserDashboard(){
           </div>
         </div>
         <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Total Orders" value={metrics.totalOrders} icon="📦" />
-          <MetricCard title="Pending Orders" value={metrics.pendingOrders} icon="⏳" />
-          <MetricCard title="Picked Up" value={metrics.pickedUpOrders} icon="🚚" />
-          <MetricCard title="Delivered" value={metrics.deliveredOrders} icon="✅" />
-          <MetricCard title="Cancelled" value={metrics.cancelledOrders} icon="❌" />
+          <MetricCard title="Total Orders" value={metrics.totalOrders} icon="📦" to="/user/orders" />
+          <MetricCard title="Pending Orders" value={metrics.pendingOrders} icon="⏳" to="/user/orders?status=pending" />
+          <MetricCard title="Picked Up" value={metrics.pickedUpOrders} icon="🚚" to="/user/orders?ship=picked_up" />
+          <MetricCard title="Delivered" value={metrics.deliveredOrders} icon="✅" to="/user/orders?ship=delivered" />
+          <MetricCard title="Cancelled" value={metrics.cancelledOrders} icon="❌" to="/user/orders?status=cancelled" />
         </div>
       </div>
 
@@ -185,11 +186,11 @@ export default function UserDashboard(){
           </div>
         </div>
         <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Products In Stock" value={metrics.totalProductsInHouse} icon="📦" />
-          <MetricCard title="Products Sold" value={metrics.totalProductsOrdered} icon="✅" />
-          <MetricCard title="Total Expenses" value={formatCurrency(metrics.totalExpense||0, 'UAE')} icon="💸" />
-          <MetricCard title="Agent Expense (PKR)" value={formatCurrency(metrics.totalAgentExpense||0, 'PKR')} icon="👔" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.totalDriverExpense||0, 'UAE')} icon="🚗" />
+          <MetricCard title="Products In Stock" value={metrics.totalProductsInHouse} icon="📦" to="/user/inhouse-products" />
+          <MetricCard title="Products Sold" value={metrics.totalProductsOrdered} icon="✅" to="/user/orders?ship=delivered" />
+          <MetricCard title="Total Expenses" value={formatCurrency(metrics.totalExpense||0, 'UAE')} icon="💸" to="/user/finances?section=agent" />
+          <MetricCard title="Agent Expense (PKR)" value={formatCurrency(metrics.totalAgentExpense||0, 'PKR')} icon="👔" to="/user/finances?section=agent" />
+          <MetricCard title="Driver Expense" value={formatCurrency(metrics.totalDriverExpense||0, 'UAE')} icon="🚗" to="/user/finances?section=driver" />
         </div>
       </div>
       {/* KSA Metrics */}
@@ -202,12 +203,12 @@ export default function UserDashboard(){
           </div>
         </div>
         <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Sales in KSA" value={formatCurrency(metrics.countries?.KSA?.sales || metrics.countries?.['Saudi Arabia']?.sales || 0, 'KSA')} icon="💵" />
-          <MetricCard title="Orders in KSA" value={metrics.countries?.KSA?.orders || metrics.countries?.['Saudi Arabia']?.orders || 0} icon="📦" />
-          <MetricCard title="Picked Up" value={metrics.countries?.KSA?.pickedUp || metrics.countries?.['Saudi Arabia']?.pickedUp || 0} icon="🚚" />
-          <MetricCard title="Delivered" value={metrics.countries?.KSA?.delivered || metrics.countries?.['Saudi Arabia']?.delivered || 0} icon="✅" />
-          <MetricCard title="In Transit" value={metrics.countries?.KSA?.transit || metrics.countries?.['Saudi Arabia']?.transit || 0} icon="🚛" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.KSA?.driverExpense || metrics.countries?.['Saudi Arabia']?.driverExpense || 0, 'KSA')} icon="🚗" />
+          <MetricCard title="Sales in KSA" value={formatCurrency(metrics.countries?.KSA?.sales || metrics.countries?.['Saudi Arabia']?.sales || 0, 'KSA')} icon="💵" to="/user/orders?country=KSA&ship=delivered" />
+          <MetricCard title="Orders in KSA" value={metrics.countries?.KSA?.orders || metrics.countries?.['Saudi Arabia']?.orders || 0} icon="📦" to="/user/orders?country=KSA" />
+          <MetricCard title="Picked Up" value={metrics.countries?.KSA?.pickedUp || metrics.countries?.['Saudi Arabia']?.pickedUp || 0} icon="🚚" to="/user/orders?country=KSA&ship=picked_up" />
+          <MetricCard title="Delivered" value={metrics.countries?.KSA?.delivered || metrics.countries?.['Saudi Arabia']?.delivered || 0} icon="✅" to="/user/orders?country=KSA&ship=delivered" />
+          <MetricCard title="In Transit" value={metrics.countries?.KSA?.transit || metrics.countries?.['Saudi Arabia']?.transit || 0} icon="🚛" to="/user/orders?country=KSA&ship=in_transit" />
+          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.KSA?.driverExpense || metrics.countries?.['Saudi Arabia']?.driverExpense || 0, 'KSA')} icon="🚗" to="/user/finances?section=driver" />
         </div>
       </div>
 
@@ -221,12 +222,12 @@ export default function UserDashboard(){
           </div>
         </div>
         <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Sales in Oman" value={formatCurrency(metrics.countries?.Oman?.sales || 0, 'Oman')} icon="💵" />
-          <MetricCard title="Orders in Oman" value={metrics.countries?.Oman?.orders || 0} icon="📦" />
-          <MetricCard title="Picked Up" value={metrics.countries?.Oman?.pickedUp || 0} icon="🚚" />
-          <MetricCard title="Delivered" value={metrics.countries?.Oman?.delivered || 0} icon="✅" />
-          <MetricCard title="In Transit" value={metrics.countries?.Oman?.transit || 0} icon="🚛" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.Oman?.driverExpense || 0, 'Oman')} icon="🚗" />
+          <MetricCard title="Sales in Oman" value={formatCurrency(metrics.countries?.Oman?.sales || 0, 'Oman')} icon="💵" to="/user/orders?country=Oman&ship=delivered" />
+          <MetricCard title="Orders in Oman" value={metrics.countries?.Oman?.orders || 0} icon="📦" to="/user/orders?country=Oman" />
+          <MetricCard title="Picked Up" value={metrics.countries?.Oman?.pickedUp || 0} icon="🚚" to="/user/orders?country=Oman&ship=picked_up" />
+          <MetricCard title="Delivered" value={metrics.countries?.Oman?.delivered || 0} icon="✅" to="/user/orders?country=Oman&ship=delivered" />
+          <MetricCard title="In Transit" value={metrics.countries?.Oman?.transit || 0} icon="🚛" to="/user/orders?country=Oman&ship=in_transit" />
+          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.Oman?.driverExpense || 0, 'Oman')} icon="🚗" to="/user/finances?section=driver" />
         </div>
       </div>
 
@@ -240,12 +241,12 @@ export default function UserDashboard(){
           </div>
         </div>
         <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Sales in UAE" value={formatCurrency(metrics.countries?.UAE?.sales || 0, 'UAE')} icon="💵" />
-          <MetricCard title="Orders in UAE" value={metrics.countries?.UAE?.orders || 0} icon="📦" />
-          <MetricCard title="Picked Up" value={metrics.countries?.UAE?.pickedUp || 0} icon="🚚" />
-          <MetricCard title="Delivered" value={metrics.countries?.UAE?.delivered || 0} icon="✅" />
-          <MetricCard title="In Transit" value={metrics.countries?.UAE?.transit || 0} icon="🚛" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.UAE?.driverExpense || 0, 'UAE')} icon="🚗" />
+          <MetricCard title="Sales in UAE" value={formatCurrency(metrics.countries?.UAE?.sales || 0, 'UAE')} icon="💵" to="/user/orders?country=UAE&ship=delivered" />
+          <MetricCard title="Orders in UAE" value={metrics.countries?.UAE?.orders || 0} icon="📦" to="/user/orders?country=UAE" />
+          <MetricCard title="Picked Up" value={metrics.countries?.UAE?.pickedUp || 0} icon="🚚" to="/user/orders?country=UAE&ship=picked_up" />
+          <MetricCard title="Delivered" value={metrics.countries?.UAE?.delivered || 0} icon="✅" to="/user/orders?country=UAE&ship=delivered" />
+          <MetricCard title="In Transit" value={metrics.countries?.UAE?.transit || 0} icon="🚛" to="/user/orders?country=UAE&ship=in_transit" />
+          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.UAE?.driverExpense || 0, 'UAE')} icon="🚗" to="/user/finances?section=driver" />
         </div>
       </div>
 
@@ -259,12 +260,12 @@ export default function UserDashboard(){
           </div>
         </div>
         <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Sales in Bahrain" value={formatCurrency(metrics.countries?.Bahrain?.sales || 0, 'Bahrain')} icon="💵" />
-          <MetricCard title="Orders in Bahrain" value={metrics.countries?.Bahrain?.orders || 0} icon="📦" />
-          <MetricCard title="Picked Up" value={metrics.countries?.Bahrain?.pickedUp || 0} icon="🚚" />
-          <MetricCard title="Delivered" value={metrics.countries?.Bahrain?.delivered || 0} icon="✅" />
-          <MetricCard title="In Transit" value={metrics.countries?.Bahrain?.transit || 0} icon="🚛" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.Bahrain?.driverExpense || 0, 'Bahrain')} icon="🚗" />
+          <MetricCard title="Sales in Bahrain" value={formatCurrency(metrics.countries?.Bahrain?.sales || 0, 'Bahrain')} icon="💵" to="/user/orders?country=Bahrain&ship=delivered" />
+          <MetricCard title="Orders in Bahrain" value={metrics.countries?.Bahrain?.orders || 0} icon="📦" to="/user/orders?country=Bahrain" />
+          <MetricCard title="Picked Up" value={metrics.countries?.Bahrain?.pickedUp || 0} icon="🚚" to="/user/orders?country=Bahrain&ship=picked_up" />
+          <MetricCard title="Delivered" value={metrics.countries?.Bahrain?.delivered || 0} icon="✅" to="/user/orders?country=Bahrain&ship=delivered" />
+          <MetricCard title="In Transit" value={metrics.countries?.Bahrain?.transit || 0} icon="🚛" to="/user/orders?country=Bahrain&ship=in_transit" />
+          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.Bahrain?.driverExpense || 0, 'Bahrain')} icon="🚗" to="/user/finances?section=driver" />
         </div>
       </div>
       
@@ -278,12 +279,12 @@ export default function UserDashboard(){
           </div>
         </div>
         <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Sales in India" value={formatCurrency(metrics.countries?.India?.sales || 0, 'India')} icon="💵" />
-          <MetricCard title="Orders in India" value={metrics.countries?.India?.orders || 0} icon="📦" />
-          <MetricCard title="Picked Up" value={metrics.countries?.India?.pickedUp || 0} icon="🚚" />
-          <MetricCard title="Delivered" value={metrics.countries?.India?.delivered || 0} icon="✅" />
-          <MetricCard title="In Transit" value={metrics.countries?.India?.transit || 0} icon="🚛" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.India?.driverExpense || 0, 'India')} icon="🚗" />
+          <MetricCard title="Sales in India" value={formatCurrency(metrics.countries?.India?.sales || 0, 'India')} icon="💵" to="/user/orders?country=India&ship=delivered" />
+          <MetricCard title="Orders in India" value={metrics.countries?.India?.orders || 0} icon="📦" to="/user/orders?country=India" />
+          <MetricCard title="Picked Up" value={metrics.countries?.India?.pickedUp || 0} icon="🚚" to="/user/orders?country=India&ship=picked_up" />
+          <MetricCard title="Delivered" value={metrics.countries?.India?.delivered || 0} icon="✅" to="/user/orders?country=India&ship=delivered" />
+          <MetricCard title="In Transit" value={metrics.countries?.India?.transit || 0} icon="🚛" to="/user/orders?country=India&ship=in_transit" />
+          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.India?.driverExpense || 0, 'India')} icon="🚗" to="/user/finances?section=driver" />
         </div>
       </div>
 
@@ -297,12 +298,12 @@ export default function UserDashboard(){
           </div>
         </div>
         <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Sales in Kuwait" value={formatCurrency(metrics.countries?.Kuwait?.sales || 0, 'Kuwait')} icon="💵" />
-          <MetricCard title="Orders in Kuwait" value={metrics.countries?.Kuwait?.orders || 0} icon="📦" />
-          <MetricCard title="Picked Up" value={metrics.countries?.Kuwait?.pickedUp || 0} icon="🚚" />
-          <MetricCard title="Delivered" value={metrics.countries?.Kuwait?.delivered || 0} icon="✅" />
-          <MetricCard title="In Transit" value={metrics.countries?.Kuwait?.transit || 0} icon="🚛" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.Kuwait?.driverExpense || 0, 'Kuwait')} icon="🚗" />
+          <MetricCard title="Sales in Kuwait" value={formatCurrency(metrics.countries?.Kuwait?.sales || 0, 'Kuwait')} icon="💵" to="/user/orders?country=Kuwait&ship=delivered" />
+          <MetricCard title="Orders in Kuwait" value={metrics.countries?.Kuwait?.orders || 0} icon="📦" to="/user/orders?country=Kuwait" />
+          <MetricCard title="Picked Up" value={metrics.countries?.Kuwait?.pickedUp || 0} icon="🚚" to="/user/orders?country=Kuwait&ship=picked_up" />
+          <MetricCard title="Delivered" value={metrics.countries?.Kuwait?.delivered || 0} icon="✅" to="/user/orders?country=Kuwait&ship=delivered" />
+          <MetricCard title="In Transit" value={metrics.countries?.Kuwait?.transit || 0} icon="🚛" to="/user/orders?country=Kuwait&ship=in_transit" />
+          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.Kuwait?.driverExpense || 0, 'Kuwait')} icon="🚗" to="/user/finances?section=driver" />
         </div>
       </div>
 
@@ -316,12 +317,12 @@ export default function UserDashboard(){
           </div>
         </div>
         <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Sales in Qatar" value={formatCurrency(metrics.countries?.Qatar?.sales || 0, 'Qatar')} icon="💵" />
-          <MetricCard title="Orders in Qatar" value={metrics.countries?.Qatar?.orders || 0} icon="📦" />
-          <MetricCard title="Picked Up" value={metrics.countries?.Qatar?.pickedUp || 0} icon="🚚" />
-          <MetricCard title="Delivered" value={metrics.countries?.Qatar?.delivered || 0} icon="✅" />
-          <MetricCard title="In Transit" value={metrics.countries?.Qatar?.transit || 0} icon="🚛" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.Qatar?.driverExpense || 0, 'Qatar')} icon="🚗" />
+          <MetricCard title="Sales in Qatar" value={formatCurrency(metrics.countries?.Qatar?.sales || 0, 'Qatar')} icon="💵" to="/user/orders?country=Qatar&ship=delivered" />
+          <MetricCard title="Orders in Qatar" value={metrics.countries?.Qatar?.orders || 0} icon="📦" to="/user/orders?country=Qatar" />
+          <MetricCard title="Picked Up" value={metrics.countries?.Qatar?.pickedUp || 0} icon="🚚" to="/user/orders?country=Qatar&ship=picked_up" />
+          <MetricCard title="Delivered" value={metrics.countries?.Qatar?.delivered || 0} icon="✅" to="/user/orders?country=Qatar&ship=delivered" />
+          <MetricCard title="In Transit" value={metrics.countries?.Qatar?.transit || 0} icon="🚛" to="/user/orders?country=Qatar&ship=in_transit" />
+          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.Qatar?.driverExpense || 0, 'Qatar')} icon="🚗" to="/user/finances?section=driver" />
         </div>
       </div>
 

@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { API_BASE, apiGet, apiPost } from '../../api'
+import { useLocation } from 'react-router-dom'
 
 export default function UserFinances() {
+  const location = useLocation()
   const [loading, setLoading] = useState(true)
   const [metrics, setMetrics] = useState([]) // { id, name, assigned, done, avgResponseSeconds }
   const [comm, setComm] = useState([]) // { id, payoutProfile, deliveredCommissionPKR, upcomingCommissionPKR, withdrawnPKR, pendingPKR }
@@ -57,6 +59,17 @@ export default function UserFinances() {
       alive = false
     }
   }, [])
+
+  // Open a specific section if requested via query param
+  useEffect(()=>{
+    try{
+      const sp = new URLSearchParams(location.search||'')
+      const sec = String(sp.get('section')||'').toLowerCase()
+      if (sec === 'agent') { setShowAgent(true); setShowDriver(false); setShowCompany(false) }
+      else if (sec === 'driver') { setShowDriver(true); setShowAgent(false); setShowCompany(false) }
+      else if (sec === 'company') { setShowCompany(true); setShowAgent(false); setShowDriver(false) }
+    }catch{}
+  }, [location.search])
 
   // Load driver + company (best-effort, paged loaders)
   useEffect(() => {

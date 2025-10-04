@@ -800,6 +800,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
         totalCOD: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $eq: ['$paymentMethod', 'COD'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] }, 0 ] } },
         totalPrepaid: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $ne: ['$paymentMethod', 'COD'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] }, 0 ] } },
+        totalCollected: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $ifNull: ['$collectedAmount', 0] }, 0 ] } },
         pendingOrders: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, 1, 0 ] } },
         pickedUpOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'picked_up'] }, 1, 0 ] } },
         deliveredOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
@@ -835,7 +836,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     
     // Driver expenses from remittances
     const driverExpenseStats = await Remittance.aggregate([
-      { $match: { owner: ownerId, status: 'sent' } },
+      { $match: { owner: ownerId, status: 'accepted' } },
       { $group: { _id: null, totalDriverExpense: { $sum: '$amount' } } }
     ]);
     const totalDriverExpense = driverExpenseStats[0]?.totalDriverExpense || 0;
@@ -867,7 +868,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       const country = dc._id;
       const driverIds = dc.drivers;
       const expStats = await Remittance.aggregate([
-        { $match: { driver: { $in: driverIds }, status: 'sent' } },
+        { $match: { driver: { $in: driverIds }, status: 'accepted' } },
         { $group: { _id: null, total: { $sum: '$amount' } } }
       ]);
       driverExpensesByCountry[country] = expStats[0]?.total || 0;
@@ -908,6 +909,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       totalSales: orders.totalSales,
       totalCOD: orders.totalCOD,
       totalPrepaid: orders.totalPrepaid,
+      totalCollected: orders.totalCollected,
       totalOrders: orders.totalOrders,
       pendingOrders: orders.pendingOrders,
       pickedUpOrders: orders.pickedUpOrders,

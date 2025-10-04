@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { API_BASE, apiGet, apiPatch } from '../../api.js'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
 
@@ -65,6 +66,8 @@ function OrderTimeline({ order }){
 }
 
 export default function UserOrders(){
+  const location = useLocation()
+  const navigate = useNavigate()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -74,7 +77,9 @@ export default function UserOrders(){
   const [city, setCity] = useState('')
   const [onlyUnassigned, setOnlyUnassigned] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
-  const [shipFilter, setShipFilter] = useState('pending')
+  const [shipFilter, setShipFilter] = useState('')
+  const [paymentFilter, setPaymentFilter] = useState('') // COD | PREPAID | ''
+  const [collectedOnly, setCollectedOnly] = useState(false)
   const [selected, setSelected] = useState(null)
   const [driversByCountry, setDriversByCountry] = useState({}) // Cache drivers by country
   const [updating, setUpdating] = useState({})
@@ -132,8 +137,10 @@ export default function UserOrders(){
     if (onlyUnassigned) params.set('onlyUnassigned', 'true')
     if (statusFilter.trim()) params.set('status', statusFilter.trim())
     if (shipFilter.trim()) params.set('ship', shipFilter.trim())
+    if (paymentFilter.trim()) params.set('payment', paymentFilter.trim())
+    if (collectedOnly) params.set('collected', 'true')
     return params
-  }, [query, country, city, onlyUnassigned, statusFilter, shipFilter])
+  }, [query, country, city, onlyUnassigned, statusFilter, shipFilter, paymentFilter, collectedOnly])
 
   async function loadOrders(reset=false){
     if (loadingMoreRef.current) return
@@ -158,6 +165,30 @@ export default function UserOrders(){
   useEffect(()=>{ loadOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
   // Reload on filter changes (except productQuery which is client-side)
   useEffect(()=>{ loadOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [buildQuery])
+
+  // Initialize filters from URL query params and keep in sync on navigation
+  useEffect(()=>{
+    try{
+      const sp = new URLSearchParams(location.search||'')
+      const q = sp.get('q') || ''
+      const ctry = sp.get('country') || ''
+      const cty = sp.get('city') || ''
+      const un = (sp.get('onlyUnassigned')||'').toLowerCase() === 'true'
+      const st = sp.get('status') || ''
+      const ship = sp.get('ship') || ''
+      const pay = (sp.get('payment')||'').toUpperCase()
+      const col = (sp.get('collected')||'').toLowerCase() === 'true'
+      setQuery(q)
+      setCountry(ctry)
+      setCity(cty)
+      setOnlyUnassigned(un)
+      setStatusFilter(st)
+      setShipFilter(ship)
+      setPaymentFilter(pay === 'COD' || pay === 'PREPAID' ? pay : '')
+      setCollectedOnly(col)
+    }catch{}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search])
 
   // Infinite scroll observer
   useEffect(()=>{
@@ -314,6 +345,14 @@ export default function UserOrders(){
           </select>
           <label className="input" style={{display:'flex', alignItems:'center', gap:8}}>
             <input type="checkbox" checked={onlyUnassigned} onChange={e=> setOnlyUnassigned(e.target.checked)} /> Unassigned only
+          </label>
+          <select className="input" value={paymentFilter} onChange={e=> setPaymentFilter(e.target.value)}>
+            <option value="">All Payments</option>
+            <option value="COD">COD</option>
+            <option value="PREPAID">Prepaid</option>
+          </select>
+          <label className="input" style={{display:'flex', alignItems:'center', gap:8}}>
+            <input type="checkbox" checked={collectedOnly} onChange={e=> setCollectedOnly(e.target.checked)} /> Collected only
           </label>
           <label className="input" style={{display:'flex', alignItems:'center', gap:8}} title="When enabled, invoices are auto-sent as WhatsApp PDF to customer on order creation">
             <input type="checkbox" checked={!!autoInvoice} onChange={e=> toggleAutoInvoice(e.target.checked)} disabled={savingAuto} /> Auto-send Invoice (WhatsApp PDF)
