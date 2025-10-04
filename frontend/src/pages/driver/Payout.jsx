@@ -7,7 +7,7 @@ export default function DriverPayout(){
   const [summary, setSummary] = useState({ totalDeliveredOrders: 0, totalCancelledOrders: 0, totalCollectedAmount: 0, deliveredToCompany: 0, pendingToCompany: 0, currency: '' })
   const [remittances, setRemittances] = useState([])
   const [managers, setManagers] = useState([])
-  const [form, setForm] = useState({ method:'hand', amount:'', note:'', paidToName:'', file:null })
+  const [form, setForm] = useState({ method:'hand', amount:'', note:'', paidToName:'', paidToId:'', file:null })
   const [submitting, setSubmitting] = useState(false)
   const [showCompany, setShowCompany] = useState(false)
   
@@ -88,7 +88,7 @@ export default function DriverPayout(){
                       const full = `${m.firstName||''} ${m.lastName||''}`.trim() || 'Manager'
                       const active = form.paidToName === full
                       return (
-                        <button key={String(m._id||m.id||full)} type="button" className={`btn small ${active? '': 'secondary'}`} onClick={()=> setForm(f=>({...f, paidToName: full }))}>{full}</button>
+                        <button key={String(m._id||m.id||full)} type="button" className={`btn small ${active? '': 'secondary'}`} onClick={()=> setForm(f=>({...f, paidToName: full, paidToId: String(m._id||m.id||'') }))}>{full}</button>
                       )
                     })}
                   </div>
@@ -121,13 +121,14 @@ export default function DriverPayout(){
                 fd.append('amount', String(amt))
                 fd.append('method', form.method)
                 if (form.method==='hand' && form.paidToName) fd.append('paidToName', form.paidToName)
+                if (form.method==='hand' && form.paidToId) fd.append('managerId', form.paidToId)
                 if (form.note) fd.append('note', form.note)
                 if (form.method==='transfer' && form.file) fd.append('receipt', form.file)
                 await apiUpload('/api/finance/remittances', fd)
                 // refresh summary and list
                 try{ const s = await apiGet('/api/finance/remittances/summary'); setSummary({ totalDeliveredOrders: Number(s?.totalDeliveredOrders||0), totalCancelledOrders: Number(s?.totalCancelledOrders||0), totalCollectedAmount: Number(s?.totalCollectedAmount||0), deliveredToCompany: Number(s?.deliveredToCompany||0), pendingToCompany: Number(s?.pendingToCompany||0), currency: s?.currency||'' }) }catch{}
                 try{ const rr = await apiGet('/api/finance/remittances'); setRemittances(Array.isArray(rr?.remittances)? rr.remittances:[]) }catch{}
-                setForm({ method:'hand', amount:'', note:'', paidToName:'', file:null })
+                setForm({ method:'hand', amount:'', note:'', paidToName:'', paidToId:'', file:null })
                 alert('Request sent to company. You will be notified when approved.')
               }catch(e){ alert(e?.message || 'Failed to send request') }
               finally{ setSubmitting(false) }

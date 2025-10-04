@@ -94,6 +94,7 @@ export default function ManagerFinances(){
 
   // Actions
   async function acceptDriverRemit(id){ try{ await apiPost(`/api/finance/remittances/${id}/accept`,{}); await loadDriverRemitsPage(1) }catch(e){ alert(e?.message||'Failed to accept') } }
+  async function rejectDriverRemit(id){ try{ await apiPost(`/api/finance/remittances/${id}/reject`,{}); await loadDriverRemitsPage(1) }catch(e){ alert(e?.message||'Failed to reject') } }
   async function setProof(id, ok){ try{ await apiPost(`/api/finance/remittances/${id}/proof`,{ ok }); await loadDriverRemitsPage(1) }catch(e){ alert(e?.message||'Failed to set proof') } }
   async function approveAgent(id){ try{ setAgt(a=>({ ...a, busyId:id })); await apiPost(`/api/finance/agent-remittances/${id}/approve`,{}); await loadAgentRemitsPage(1) }catch(e){ alert(e?.message||'Failed to approve') } finally{ setAgt(a=>({ ...a, busyId:'' })) } }
   async function sendAgent(id){ try{ setAgt(a=>({ ...a, busyId:id })); await apiPost(`/api/finance/agent-remittances/${id}/send`,{}); await loadAgentRemitsPage(1) }catch(e){ alert(e?.message||'Failed to mark as sent') } finally{ setAgt(a=>({ ...a, busyId:'' })) } }
@@ -164,6 +165,7 @@ export default function ManagerFinances(){
                   </div>
                   <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
                     <button className="btn" onClick={()=> acceptDriverRemit(id)}>Accept</button>
+                    <button className="btn light" onClick={()=> rejectDriverRemit(id)}>Reject</button>
                     <button className="btn secondary" onClick={()=> waShareDriver(r)}>WhatsApp</button>
                   </div>
                 </div>
