@@ -740,6 +740,37 @@ export default function SubmitOrder(){
     finally{ setResolving(false) }
   }
 
+  // Forward-geocode a typed address, then reuse reverse resolution pipeline with lat/lng
+  async function resolveFromAddress(address){
+    const addr = String(address||'').trim()
+    if (!addr) return
+    try{
+      setResolving(true)
+      setResolveError('')
+      const settingsRes = await apiGet('/api/settings/ai')
+      const googleMapsApiKey = settingsRes?.googleMapsApiKey
+      const nameToISO = { 'UAE':'AE', 'Oman':'OM', 'KSA':'SA', 'Bahrain':'BH', 'Qatar':'QA', 'Kuwait':'KW', 'India':'IN' }
+      const countryISO = nameToISO[form.orderCountry] || ''
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addr)}${countryISO?`&components=country:${countryISO}`:''}&language=en&key=${encodeURIComponent(googleMapsApiKey||'')}`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('Geocode failed')
+      const data = await res.json()
+      if (data.status!=='OK' || !(data.results||[]).length) throw new Error('ZERO_RESULTS')
+      const r = data.results[0]
+      const loc = r?.geometry?.location || {}
+      const lat = Number(loc.lat), lng = Number(loc.lng)
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('Invalid coordinates')
+      setForm(f=> ({ ...f, locationLat: lat, locationLng: lng }))
+      await resolveFromCoords(lat, lng)
+    }catch(e){
+      console.error('resolveFromAddress error:', e)
+      setResolveError('Failed to resolve this address. Please refine and try again.')
+      setLocationValidation({ isValid:false, message:'Failed to resolve precise address/city/area' })
+    }finally{
+      setResolving(false)
+    }
+  }
+
   // Preferred timing options (hourly)
   const timingOptions = [
     { value: '9am', label: '9 AM' },
@@ -1094,7 +1125,12 @@ export default function SubmitOrder(){
               {/* Removed duplicate Customer Phone Number block to display number only once */}
               <div>
                 <div className="label">Customer Address</div>
-                <input className="input" name="customerAddress" value={form.customerAddress} onChange={onChange} placeholder="Street, Building" readOnly={addrLocked} />
+                <div style={{ position:'relative', marginTop:4 }}>
+                  <input className="input" name="customerAddress" value={form.customerAddress} onChange={onChange} placeholder="Street, Building" readOnly={addrLocked} style={{ width:'100%', paddingRight: 140 }} />
+                  <button type="button" className="btn small" onClick={()=> resolveFromAddress(form.customerAddress)} disabled={!form.customerAddress?.trim() || resolving} style={{ position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', whiteSpace:'nowrap' }}>
+                    {resolving ? (<span><span className="spinner"/> Resolving…</span>) : 'Resolve Address'}
+                  </button>
+                </div>
               </div>
 
               <div>
