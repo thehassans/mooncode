@@ -541,7 +541,13 @@ router.get('/options', auth, allowRoles('admin','user','agent','manager'), async
       base = { createdBy: req.user.id }
     }
     const countryParam = String(req.query.country||'').trim()
-    const countries = (await Order.distinct('orderCountry', base)).filter(Boolean).sort()
+    const countriesRaw = (await Order.distinct('orderCountry', base)).filter(Boolean)
+    const toCanonical = (name) => {
+      if (name === 'Saudi Arabia') return 'KSA'
+      if (name === 'United Arab Emirates') return 'UAE'
+      return name
+    }
+    const countries = Array.from(new Set(countriesRaw.map(toCanonical))).sort()
     // Apply alias mapping for city filter
     const aliases = {
       'KSA': ['KSA','Saudi Arabia'],
