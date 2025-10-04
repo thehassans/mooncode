@@ -660,6 +660,51 @@ router.get('/driver/available', auth, allowRoles('driver'), async (req, res) => 
   res.json({ orders })
 })
 
+// Driver: quick stats for dashboard cards
+router.get('/driver/stats', auth, allowRoles('driver'), async (req, res) => {
+  try {
+    const driverId = req.user.id
+    const assigned = await Order.countDocuments({ deliveryBoy: driverId })
+    const byStatus = async (s) => await Order.countDocuments({ deliveryBoy: driverId, shipmentStatus: s })
+    const delivered = await byStatus('delivered')
+    const pickedUp = await byStatus('picked_up')
+    const cancelled = await byStatus('cancelled')
+    const inTransit = await byStatus('in_transit')
+    const attempted = await byStatus('attempted')
+    const contacted = await byStatus('contacted')
+    const noResponse = await byStatus('no_response')
+    return res.json({
+      assigned,
+      delivered,
+      picked_up: pickedUp,
+      cancelled,
+      in_transit: inTransit,
+      attempted,
+      contacted,
+      no_response: noResponse,
+    })
+  } catch (err) {
+    return res.status(500).json({ message: err?.message || 'failed' })
+  }
+})
+
+// Driver: list by view for drill-down pages
+// view: assigned | delivered | picked_up | cancelled | in_transit | attempted | contacted | no_response
+router.get('/driver/list', auth, allowRoles('driver'), async (req, res) => {
+  try{
+    const { view = 'assigned' } = req.query || {}
+    const driverId = req.user.id
+    const match = { deliveryBoy: driverId }
+    if (view && view !== 'assigned') {
+      match.shipmentStatus = String(view)
+    }
+    const orders = await Order.find(match).sort({ createdAt: -1 }).populate('productId')
+    return res.json({ orders })
+  }catch(err){
+    return res.status(500).json({ message: err?.message || 'failed' })
+  }
+})
+
 // Driver: claim an unassigned order
 router.post('/:id/claim', auth, allowRoles('driver'), async (req, res) => {
   const { id } = req.params

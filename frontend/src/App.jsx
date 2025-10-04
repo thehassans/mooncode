@@ -40,6 +40,7 @@ import DriverDashboard from './pages/driver/Dashboard.jsx'
 import DriverPanel from './pages/driver/DriverPanel.jsx'
 import DriverMe from './pages/driver/Me.jsx'
 import DriverPayout from './pages/driver/Payout.jsx'
+import DriverOrdersList from './pages/driver/OrdersList.jsx'
 import UserOrders from './pages/user/Orders.jsx'
 import UserAPISetup from './pages/user/APISetup.jsx'
 import ErrorLogs from './pages/user/ErrorLogs.jsx'
@@ -66,6 +67,26 @@ class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
     this.state = { hasError: false, error: null }
+
+function RequireManagerPerm({ perm, children }){
+  const [me, setMe] = React.useState(()=>{
+    try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} }
+  })
+  const [checking, setChecking] = React.useState(false)
+  React.useEffect(()=>{
+    if (!me || !me.role){
+      setChecking(true)
+      ;(async()=>{
+        try{ const { user } = await apiGet('/api/users/me'); setMe(user||{}) }
+        catch{}
+        finally{ setChecking(false) }
+      })()
+    }
+  },[])
+  if (checking) return null
+  const allowed = !!(me?.managerPermissions && me.managerPermissions[perm])
+  return allowed ? children : <Navigate to="/manager" replace />
+}
   }
 
   static getDerivedStateFromError(error) {
@@ -223,6 +244,7 @@ export default function App() {
         }
       >
         <Route index element={<DriverDashboard />} />
+        <Route path="orders" element={<DriverOrdersList />} />
         <Route path="panel" element={<DriverPanel />} />
         <Route path="me" element={<DriverMe />} />
         <Route path="payout" element={<DriverPayout />} />
@@ -253,14 +275,14 @@ export default function App() {
       >
         <Route index element={<ManagerDashboard />} />
         <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
-        <Route path="agents" element={<Agents />} />
-        <Route path="orders" element={<ManagerOrders />} />
+        <Route path="agents" element={<RequireManagerPerm perm="canCreateAgents"><Agents /></RequireManagerPerm>} />
+        <Route path="orders" element={<RequireManagerPerm perm="canCreateOrders"><ManagerOrders /></RequireManagerPerm>} />
         <Route path="finances" element={<ManagerFinances />} />
-        <Route path="drivers/create" element={<ManagerCreateDriver />} />
+        <Route path="drivers/create" element={<RequireManagerPerm perm="canCreateDrivers"><ManagerCreateDriver /></RequireManagerPerm>} />
         <Route path="finances/history/drivers" element={<DriverRemitHistory />} />
         <Route path="finances/history/agents" element={<AgentRemitHistory />} />
         <Route path="transactions" element={<ManagerTransactions />} />
-        <Route path="inhouse-products" element={<InhouseProducts />} />
+        <Route path="inhouse-products" element={<RequireManagerPerm perm="canManageProducts"><InhouseProducts /></RequireManagerPerm>} />
       </Route>
 
       <Route
