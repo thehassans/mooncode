@@ -79,9 +79,12 @@ export default function AgentDashboard(){
 
   // Derived metrics
   const ordersSubmitted = ordersSubmittedOverride != null ? ordersSubmittedOverride : orders.length
-  const shipped = orders.filter(o => (o?.status||'').toLowerCase()==='shipped')
-  const inTransit = orders.filter(o => (o?.shipmentStatus||'').toLowerCase()==='in_transit')
-  const pending = orders.filter(o => (o?.status||'').toLowerCase()==='pending')
+  // Use shipment status only
+  const deliveredOrders = orders.filter(o => (o?.shipmentStatus||'').toLowerCase()==='delivered')
+  const upcomingOrders = orders.filter(o => {
+    const s = String(o?.shipmentStatus||'').toLowerCase()
+    return !['delivered','returned','cancelled'].includes(s)
+  })
   const valueOf = (o)=> (o?.productId?.price || 0) * Math.max(1, Number(o?.quantity||1))
   const baseOf = (o)=> (o?.productId?.baseCurrency || 'SAR')
   const commissionPct = 0.08
@@ -93,9 +96,9 @@ export default function AgentDashboard(){
     }
     return sums
   }
-  const totalByCur = commissionByCurrency(shipped)
-  // Upcoming = Pending + In Transit (so new orders affect the wallet immediately)
-  const upcomingByCur = commissionByCurrency([...pending, ...inTransit])
+  const totalByCur = commissionByCurrency(deliveredOrders)
+  // Upcoming = all not-delivered shipments (assigned/in_transit/pending/etc.)
+  const upcomingByCur = commissionByCurrency(upcomingOrders)
   const totalIncome = Object.values(totalByCur).reduce((a,b)=>a+b,0)
   const upcomingIncome = Object.values(upcomingByCur).reduce((a,b)=>a+b,0)
 
@@ -203,15 +206,20 @@ export default function AgentDashboard(){
         }
         function baseCur(o){ return (o?.productId?.baseCurrency)||'SAR' }
         function fmt2(n){ try{ return Number(n||0).toFixed(2) }catch{ return '0.00' } }
-        function upcomingCommission(o){
-          const st = String(o?.status||'').toLowerCase()
+        // Upcoming is based solely on shipment status (no order.status)
+        function qualifiesUpcoming(o){
           const ship = String(o?.shipmentStatus||'').toLowerCase()
-          const qualifies = (st==='pending') || (ship==='in_transit') || (ship==='assigned')
-          return qualifies ? (orderTotal(o) * commissionPct) : 0
+          return ship !== 'delivered' && ship !== 'returned' && ship !== 'cancelled'
+        }
+        function upcomingCommissionPKR(o){
+          if (!qualifiesUpcoming(o)) return 0
+          const commission = orderTotal(o) * commissionPct // in base currency
+          const rate = fx[baseCur(o)] || 0
+          return commission * rate
         }
         const totalsRecent = recent.reduce((acc,o)=>{
-          acc.total += orderTotal(o)
-          acc.upcoming += upcomingCommission(o)
+          acc.total += orderTotal(o) // note: mixed currencies; shown per-row below
+          acc.upcoming += upcomingCommissionPKR(o)
           return acc
         }, { total:0, upcoming:0 })
 
@@ -225,7 +233,7 @@ export default function AgentDashboard(){
                   <div className="helper">Latest 50 orders you submitted</div>
                 </div>
               </div>
-              <div className="helper">Total: {fmtCurrency(totalsRecent.total)} • Upcoming Income: {fmtCurrency(totalsRecent.upcoming)}</div>
+              <div className="helper">Upcoming Income: {fmtCurrency(totalsRecent.upcoming)}</div>
             </div>
             <div style={{overflowX:'auto'}}>
               <table style={{width:'100%', borderCollapse:'separate', borderSpacing:0}}>
@@ -236,17 +244,16 @@ export default function AgentDashboard(){
                     <th style={{textAlign:'left', padding:'10px 12px'}}>Product</th>
                     <th style={{textAlign:'right', padding:'10px 12px'}}>Qty</th>
                     <th style={{textAlign:'right', padding:'10px 12px'}}>Total Price</th>
-                    <th style={{textAlign:'right', padding:'10px 12px'}}>Upcoming Income</th>
-                    <th style={{textAlign:'left', padding:'10px 12px'}}>Order Status</th>
+                    <th style={{textAlign:'right', padding:'10px 12px'}}>Upcoming Income (PKR)</th>
                     <th style={{textAlign:'left', padding:'10px 12px'}}>Shipment</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recent.length===0 ? (
-                    <tr><td colSpan={8} style={{padding:'10px 12px', opacity:.8}}>No recent orders.</td></tr>
+                    <tr><td colSpan={7} style={{padding:'10px 12px', opacity:.8}}>No recent orders.</td></tr>
                   ) : recent.map((o,idx)=>{
                     const tot = orderTotal(o)
-                    const comm = upcomingCommission(o)
+                    const commPKR = Math.round(upcomingCommissionPKR(o))
                     const prod = o?.productId?.name || (o?.details ? String(o.details).slice(0,64) : '-')
                     const date = o?.createdAt ? new Date(o.createdAt).toLocaleString() : ''
                     return (
@@ -255,9 +262,8 @@ export default function AgentDashboard(){
                         <td style={{padding:'10px 12px'}}>{o.customerName||'-'}</td>
                         <td style={{padding:'10px 12px'}}>{prod}</td>
                         <td style={{padding:'10px 12px', textAlign:'right'}}>{orderQty(o)}</td>
-                        <td style={{padding:'10px 12px', textAlign:'right'}}>{fmtCurrency(tot)} <span className="helper">{baseCur(o)}</span></td>
-                        <td style={{padding:'10px 12px', textAlign:'right'}}>{fmtCurrency(comm)}</td>
-                        <td style={{padding:'10px 12px'}}>{String(o.status||'-')}</td>
+                        <td style={{padding:'10px 12px', textAlign:'right'}}>{baseCur(o)} {fmt2(orderTotal(o))}</td>
+                        <td style={{padding:'10px 12px', textAlign:'right'}}>{fmtCurrency(commPKR)}</td>
                         <td style={{padding:'10px 12px'}}>{String(o.shipmentStatus||'-')}</td>
                       </tr>
                     )
@@ -266,9 +272,9 @@ export default function AgentDashboard(){
                     <tr style={{borderTop:'2px solid var(--border)', background:'rgba(59,130,246,0.08)'}}>
                       <td style={{padding:'10px 12px', fontWeight:800}}>Totals</td>
                       <td colSpan={3}></td>
-                      <td style={{padding:'10px 12px', textAlign:'right', fontWeight:800}}>{fmtCurrency(totalsRecent.total)}</td>
+                      <td style={{padding:'10px 12px', textAlign:'right', fontWeight:800}}>—</td>
                       <td style={{padding:'10px 12px', textAlign:'right', fontWeight:800}}>{fmtCurrency(totalsRecent.upcoming)}</td>
-                      <td colSpan={2}></td>
+                      <td></td>
                     </tr>
                   )}
                 </tbody>
