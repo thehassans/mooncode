@@ -42,11 +42,9 @@ export default function DriverPayout(){
         <div className="section" style={{ display:'grid', gap:8 }}>
           <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
             <span className="badge">Total Delivered Orders: {summary.totalDeliveredOrders}</span>
-            <span className="badge">Total Cancelled: {summary.totalCancelledOrders}</span>
-            <span className="badge">Total Collected: {summary.currency} {summary.totalCollectedAmount.toFixed(2)}</span>
-            <span className="badge">Total Delivery to Company: {summary.currency} {Number(summary.deliveredToCompany||0).toFixed(2)}</span>
+            <span className="badge">Total Collected (Delivered): {summary.currency} {summary.totalCollectedAmount.toFixed(2)}</span>
+            <span className="badge">Delivered to Company: {summary.currency} {Number(summary.deliveredToCompany||0).toFixed(2)}</span>
             <span className="badge warning">Pending Delivery to Company: {summary.currency} {pendingToCompany.toFixed(2)}</span>
-            <span className="badge">Total Delivered to Company: {summary.currency} {Number(summary.deliveredToCompany||0).toFixed(2)}</span>
           </div>
         </div>
       </div>
