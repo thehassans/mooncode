@@ -193,15 +193,24 @@ export default function UserOrders(){
   // Keep URL in sync with current filters for shareable deep links
   useEffect(()=>{
     try{
-      const nextQS = new URLSearchParams(buildQuery.toString()).toString()
-      const currQS = new URLSearchParams(location.search||'').toString()
+      const managed = ['q','country','city','onlyUnassigned','status','ship','payment','collected']
+      const canonical = (init)=>{
+        const s = new URLSearchParams(init)
+        const entries = managed
+          .map(k => [k, s.get(k)])
+          .filter(([k,v]) => v != null && String(v).trim() !== '')
+        entries.sort((a,b)=> a[0].localeCompare(b[0]))
+        return entries.map(([k,v])=> `${k}=${encodeURIComponent(String(v).trim())}`).join('&')
+      }
+      const nextQS = canonical(buildQuery.toString())
+      const currQS = canonical(location.search||'')
       if (nextQS !== currQS){
         const path = location.pathname || '/user/orders'
         navigate(`${path}${nextQS ? `?${nextQS}` : ''}`, { replace: true })
       }
     }catch{}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildQuery])
+  }, [buildQuery, location.pathname])
 
   // Infinite scroll observer
   useEffect(()=>{
