@@ -542,7 +542,17 @@ router.get('/options', auth, allowRoles('admin','user','agent','manager'), async
     }
     const countryParam = String(req.query.country||'').trim()
     const countries = (await Order.distinct('orderCountry', base)).filter(Boolean).sort()
-    const matchCity = { ...base, ...(countryParam? { orderCountry: countryParam }: {}) }
+    // Apply alias mapping for city filter
+    const aliases = {
+      'KSA': ['KSA','Saudi Arabia'],
+      'Saudi Arabia': ['KSA','Saudi Arabia'],
+      'UAE': ['UAE','United Arab Emirates'],
+      'United Arab Emirates': ['UAE','United Arab Emirates'],
+    }
+    const matchCity = { ...base }
+    if (countryParam){
+      matchCity.orderCountry = aliases[countryParam] ? { $in: aliases[countryParam] } : countryParam
+    }
     const cities = (await Order.distinct('city', matchCity)).filter(Boolean).sort()
     res.json({ countries, cities })
   }catch(err){
