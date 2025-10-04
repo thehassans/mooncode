@@ -19,6 +19,7 @@ export default function ManagerDashboard(){
   const canCreateAgents = !!(me && me.role==='manager' && me.managerPermissions && me.managerPermissions.canCreateAgents)
   const canManageProducts = !!(me && me.role==='manager' && me.managerPermissions && me.managerPermissions.canManageProducts)
   const canCreateOrders = !!(me && me.role==='manager' && me.managerPermissions && me.managerPermissions.canCreateOrders)
+  const canCreateDrivers = !!(me && me.role==='manager' && me.managerPermissions && me.managerPermissions.canCreateDrivers)
 
   return (
     <div className="section">
@@ -30,23 +31,40 @@ export default function ManagerDashboard(){
       </div>
 
       <div className="card" style={{display:'grid', gap:12}}>
-        <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap:12}}>
-          <NavLink to="/manager/agents" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
-            <div style={{fontSize:28}}>👥</div>
-            <div style={{fontWeight:800}}>Agents</div>
-            <div className="helper">{canCreateAgents ? 'Create and manage agents' : 'View agents'}</div>
-          </NavLink>
-          <NavLink to="/manager/inhouse-products" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
-            <div style={{fontSize:28}}>🏷️</div>
-            <div style={{fontWeight:800}}>Inhouse Products</div>
-            <div className="helper">{canManageProducts ? 'Create or edit products' : 'View products'}</div>
-          </NavLink>
-          <NavLink to="/manager/orders" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
-            <div style={{fontSize:28}}>🧾</div>
-            <div style={{fontWeight:800}}>Orders</div>
-            <div className="helper">{canCreateOrders ? 'Create orders' : 'View orders'}</div>
-          </NavLink>
-        </div>
+        {(!canCreateAgents && !canManageProducts && !canCreateOrders && !canCreateDrivers) ? (
+          <div className="empty-state" style={{padding:'16px 12px'}}>No features enabled for your role. Contact your administrator.</div>
+        ) : (
+          <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap:12}}>
+            {canCreateAgents && (
+              <NavLink to="/manager/agents" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
+                <div style={{fontSize:28}}>👥</div>
+                <div style={{fontWeight:800}}>Agents</div>
+                <div className="helper">Create and manage agents</div>
+              </NavLink>
+            )}
+            {canManageProducts && (
+              <NavLink to="/manager/inhouse-products" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
+                <div style={{fontSize:28}}>🏷️</div>
+                <div style={{fontWeight:800}}>Inhouse Products</div>
+                <div className="helper">Create or edit products</div>
+              </NavLink>
+            )}
+            {canCreateOrders && (
+              <NavLink to="/manager/orders" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
+                <div style={{fontSize:28}}>🧾</div>
+                <div style={{fontWeight:800}}>Orders</div>
+                <div className="helper">Create orders</div>
+              </NavLink>
+            )}
+            {canCreateDrivers && (
+              <NavLink to="/manager/drivers/create" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
+                <div style={{fontSize:28}}>🚚</div>
+                <div style={{fontWeight:800}}>Create Driver</div>
+                <div className="helper">Add drivers to your workspace</div>
+              </NavLink>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
