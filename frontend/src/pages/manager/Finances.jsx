@@ -147,6 +147,13 @@ export default function ManagerFinances(){
                     <Badge status={r.status} />
                   </div>
                   <div className="helper">Delivered Orders: {r?.totalDeliveredOrders||0} • Country: {r?.country||'-'}</div>
+                  <div className="helper">
+                    Method: {(r?.method||'hand').toUpperCase()} {r?.receiptPath ? (
+                      <>
+                        • <a href={`${API_BASE}${r.receiptPath}`} target="_blank" rel="noopener noreferrer" download>Download Proof</a>
+                      </>
+                    ) : null}
+                  </div>
                   <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
                     <button className="btn" onClick={()=> acceptDriverRemit(id)}>Accept</button>
                     <button className="btn secondary" onClick={()=> waShareDriver(r)}>WhatsApp</button>

@@ -346,10 +346,7 @@ router.post('/remittances', auth, allowRoles('driver'), upload.any(), async (req
       mgrDoc = mgr
     }
     // Validate available pending amount: delivered collected - accepted remittances
-    const deliveredRows = await Order.aggregate([
-      { $match: { deliveryBoy: (await import('mongoose')).then(m=> new m.default.Types.ObjectId(req.user.id)) } }
-    ])
-    // Fallback simple compute without heavy aggregate
+    // Compute delivered collected total for this driver
     const deliveredOrders = await Order.find({ deliveryBoy: req.user.id, shipmentStatus: 'delivered' }).select('collectedAmount')
     const totalCollected = deliveredOrders.reduce((s,o)=> s + (Number(o?.collectedAmount)||0), 0)
     const M = (await import('mongoose')).default
@@ -378,6 +375,9 @@ router.post('/remittances', auth, allowRoles('driver'), upload.any(), async (req
     const files = Array.isArray(req.files) ? req.files : []
     const receiptFile = files.find(f=> ['receipt','proof','screenshot','file','image'].includes(String(f.fieldname||'').toLowerCase())) || files[0]
     const receiptPath = receiptFile ? `/uploads/${receiptFile.filename}` : ''
+    if (String(method||'').toLowerCase() === 'transfer' && !receiptPath){
+      return res.status(400).json({ message: 'Proof image is required for transfer method' })
+    }
 
     const doc = new Remittance({
       driver: req.user.id,
