@@ -428,7 +428,8 @@ router.post('/remittances/:id/accept', auth, allowRoles('user','manager'), async
 router.get('/remittances/summary', auth, allowRoles('driver'), async (req, res) => {
   try{
     const { fromDate = '', toDate = '' } = req.query || {}
-    const match = { deliveryBoy: req.user.id, shipmentStatus: 'delivered' }
+    const M = (await import('mongoose')).default
+    const match = { deliveryBoy: new M.Types.ObjectId(req.user.id), shipmentStatus: 'delivered' }
     if (fromDate || toDate){
       match.deliveredAt = {}
       if (fromDate) match.deliveredAt.$gte = new Date(fromDate)
@@ -442,7 +443,6 @@ router.get('/remittances/summary', auth, allowRoles('driver'), async (req, res) 
     const currency = currencyFromCountry(me?.country || '')
     const out = rows && rows[0] ? rows[0] : { totalDeliveredOrders: 0, totalCollectedAmount: 0 }
     // Sum of remittances already accepted (delivered to company)
-    const M = (await import('mongoose')).default
     const remitRows = await Remittance.aggregate([
       { $match: { driver: new M.Types.ObjectId(req.user.id), status: 'accepted' } },
       { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } } } }
@@ -450,7 +450,7 @@ router.get('/remittances/summary', auth, allowRoles('driver'), async (req, res) 
     const deliveredToCompany = remitRows && remitRows[0] ? Number(remitRows[0].total||0) : 0
     const pendingToCompany = Math.max(0, Number(out.totalCollectedAmount||0) - deliveredToCompany)
     // Cancelled count
-    const totalCancelledOrders = await Order.countDocuments({ deliveryBoy: req.user.id, shipmentStatus: 'cancelled' })
+    const totalCancelledOrders = await Order.countDocuments({ deliveryBoy: new M.Types.ObjectId(req.user.id), shipmentStatus: 'cancelled' })
     return res.json({ ...out, currency, deliveredToCompany, pendingToCompany, totalCancelledOrders })
   }catch(err){
     return res.status(500).json({ message: 'Failed to load summary' })
