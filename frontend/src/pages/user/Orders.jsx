@@ -190,6 +190,19 @@ export default function UserOrders(){
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search])
 
+  // Keep URL in sync with current filters for shareable deep links
+  useEffect(()=>{
+    try{
+      const nextQS = new URLSearchParams(buildQuery.toString()).toString()
+      const currQS = new URLSearchParams(location.search||'').toString()
+      if (nextQS !== currQS){
+        const path = location.pathname || '/user/orders'
+        navigate(`${path}${nextQS ? `?${nextQS}` : ''}`, { replace: true })
+      }
+    }catch{}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildQuery])
+
   // Infinite scroll observer
   useEffect(()=>{
     const el = endRef.current
