@@ -499,13 +499,48 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
       }catch{}
     }
     if (q){
-      const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      // Normalize invoice token: allow searching with leading '#'
+      const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const rx = new RegExp(safe, 'i')
+      const stripped = q.startsWith('#') ? q.slice(1) : q
+      const rxInv = stripped && stripped !== q ? new RegExp(stripped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : null
       const textConds = [
         { invoiceNumber: rx },
+        ...(rxInv ? [{ invoiceNumber: rxInv }] : []),
         { customerPhone: rx },
         { customerName: rx },
         { details: rx },
       ]
+
+      // Agent/Driver name search in same 'q' filter
+      try{
+        // Determine owner scope for users lookup
+        let ownerIds = null
+        if (req.user.role === 'user') ownerIds = [ req.user.id ]
+        else if (req.user.role === 'manager') {
+          const mgr = await User.findById(req.user.id).select('createdBy').lean()
+          if (mgr?.createdBy) ownerIds = [ String(mgr.createdBy) ]
+        }
+        const userNameConds = [ { firstName: rx }, { lastName: rx }, { email: rx } ]
+        const baseUserFilter = ownerIds ? { createdBy: { $in: ownerIds } } : {}
+        const agentsByName = await User.find({ role: 'agent', ...baseUserFilter, $or: userNameConds }).select('_id').lean()
+        const driversByName = await User.find({ role: 'driver', ...baseUserFilter, $or: userNameConds }).select('_id').lean()
+        const agentIds = agentsByName.map(a => a._id)
+        const driverIds = driversByName.map(d => d._id)
+        if (agentIds.length) textConds.push({ createdBy: { $in: agentIds } })
+        if (driverIds.length) textConds.push({ deliveryBoy: { $in: driverIds } })
+      }catch{ /* ignore name lookup errors */ }
+
+      // Product name search (top-level and items)
+      try{
+        const prods = await Product.find({ name: rx }).select('_id').lean()
+        const pids = prods.map(p => p._id)
+        if (pids.length){
+          textConds.push({ productId: { $in: pids } })
+          textConds.push({ 'items.productId': { $in: pids } })
+        }
+      }catch{ /* ignore */ }
+
       match.$or = (match.$or ? match.$or : []).concat(textConds)
     }
 

@@ -364,7 +364,7 @@ export default function UserOrders(){
       <div className="card" style={{display:'grid', gap:10}}>
         <div className="card-header"><div className="card-title">Filters</div></div>
         <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:8}}>
-          <input className="input" placeholder="Search invoice, phone, customer, details" value={query} onChange={e=> setQuery(e.target.value)} />
+          <input className="input" placeholder="Search invoice (#123), phone, customer, agent, driver, details" value={query} onChange={e=> setQuery(e.target.value)} />
           <input className="input" placeholder="Search product" value={productQuery} onChange={e=> setProductQuery(e.target.value)} />
           <select className="input" value={country} onChange={e=> setCountry(e.target.value)}>
             <option value=''>All Countries</option>
