@@ -548,10 +548,6 @@ export default function DriverPanel() {
     const list = sortedAssigned || []
     return list.filter(o => !['delivered','cancelled','returned'].includes(String(o?.shipmentStatus||'').toLowerCase()))
   }, [sortedAssigned])
-  const historyOrders = React.useMemo(()=>{
-    const list = sortedAssigned || []
-    return list.filter(o => ['delivered','cancelled'].includes(String(o?.shipmentStatus||'').toLowerCase()))
-  }, [sortedAssigned])
 
   return (
     <div className="driver-panel">
@@ -581,24 +577,7 @@ export default function DriverPanel() {
         </div>
       </div>
 
-      {/* Order History */}
-      <div className="orders-section" style={{marginTop:16}}>
-        <div className="section-header">
-          <h2 className="section-title">Order History</h2>
-          <span className="order-count">{historyOrders.length}</span>
-        </div>
-        <div className="orders-list">
-          {loading ? (
-            <div className="loading-state">Loading...</div>
-          ) : historyOrders.length === 0 ? (
-            <div className="empty-state">No delivered or cancelled orders</div>
-          ) : (
-            historyOrders.slice(0, 20).map((order) => (
-              <OrderCard key={order._id || order.id} order={order} showActions={false} />
-            ))
-          )}
-        </div>
-      </div>
+      {/* History removed: drivers access full history at /driver/orders/history */}
 
       {/* Available orders section removed: drivers see only their assigned orders */}
     </div>

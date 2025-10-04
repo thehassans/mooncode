@@ -644,7 +644,7 @@ router.post('/:id/assign-driver', auth, allowRoles('admin','user','manager'), as
 
 // Driver: list assigned orders
 router.get('/driver/assigned', auth, allowRoles('driver'), async (req, res) => {
-  const orders = await Order.find({ deliveryBoy: req.user.id, status: { $nin: ['delivered','cancelled'] }, shipmentStatus: { $ne: 'picked_up' } })
+  const orders = await Order.find({ deliveryBoy: req.user.id, status: { $nin: ['delivered','cancelled'] } })
     .sort({ createdAt: -1 })
     .populate('productId')
   res.json({ orders })
@@ -660,7 +660,7 @@ router.get('/driver/picked', auth, allowRoles('driver'), async (req, res) => {
 
 // Driver: list delivered orders
 router.get('/driver/delivered', auth, allowRoles('driver'), async (req, res) => {
-  const orders = await Order.find({ deliveryBoy: req.user.id, status: 'delivered' })
+  const orders = await Order.find({ deliveryBoy: req.user.id, shipmentStatus: 'delivered' })
     .sort({ updatedAt: -1 })
     .populate('productId')
   res.json({ orders })
@@ -668,7 +668,7 @@ router.get('/driver/delivered', auth, allowRoles('driver'), async (req, res) => 
 
 // Driver: list cancelled orders
 router.get('/driver/cancelled', auth, allowRoles('driver'), async (req, res) => {
-  const orders = await Order.find({ deliveryBoy: req.user.id, status: 'cancelled' })
+  const orders = await Order.find({ deliveryBoy: req.user.id, shipmentStatus: 'cancelled' })
     .sort({ updatedAt: -1 })
     .populate('productId')
   res.json({ orders })
@@ -677,7 +677,7 @@ router.get('/driver/cancelled', auth, allowRoles('driver'), async (req, res) => 
 // Driver: history (archive) - default to delivered, optional date filter
 router.get('/driver/history', auth, allowRoles('driver'), async (req, res) => {
   const { from = '', to = '' } = req.query || {}
-  const match = { deliveryBoy: req.user.id, status: 'delivered' }
+  const match = { deliveryBoy: req.user.id, shipmentStatus: { $in: ['delivered','cancelled'] } }
   if (from) {
     const d = new Date(from)
     if (!Number.isNaN(d.getTime())) match.updatedAt = { ...(match.updatedAt||{}), $gte: d }

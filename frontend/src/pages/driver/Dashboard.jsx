@@ -24,7 +24,9 @@ export default function DriverDashboard(){
         delivered: (d.orders||[]).length,
         cancelled: (c.orders||[]).length,
       })
-      setAssigned((a.orders||[]).slice(0,5))
+      setAssigned((a.orders||[])
+        .filter(o => String(o?.shipmentStatus||'').toLowerCase() !== 'picked_up')
+        .slice(0,5))
     }catch{
       setCounts({ assigned:0, picked:0, delivered:0, cancelled:0 })
       setAssigned([])
