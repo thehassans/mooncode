@@ -43,6 +43,9 @@ export default function SubmitOrder(){
   const [originMsisdn, setOriginMsisdn] = useState(null) // digits including country code, from jid
   const [coordsInput, setCoordsInput] = useState('')
   const [locationValidation, setLocationValidation] = useState({ isValid: true, message: '' }) // New validation state
+  const [resolving, setResolving] = useState(false)
+  const [resolveError, setResolveError] = useState('')
+  const [addrLocked, setAddrLocked] = useState(false)
   const [me, setMe] = useState(null)
   const [meLoaded, setMeLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -199,6 +202,8 @@ export default function SubmitOrder(){
     if (!s) return
 
     try {
+      setResolveError('')
+      setResolving(true)
       // Call backend geocoding service to decode; defer filling address until validated
       const result = await apiPost('/api/geocode/whatsapp', { locationCode: s })
       
@@ -216,10 +221,14 @@ export default function SubmitOrder(){
         } else {
           setLocationValidation({ isValid: false, message: result.error || 'Failed to resolve location' })
         }
+        setResolveError('Failed to decode WhatsApp location')
       }
     } catch (err) {
       console.error('Error resolving WhatsApp location:', err)
       setLocationValidation({ isValid: false, message: 'Network error. Please try again.' })
+      setResolveError('Network error while decoding WhatsApp location')
+    } finally {
+      setResolving(false)
     }
   }
 
@@ -556,8 +565,7 @@ export default function SubmitOrder(){
                 const normalizedFormCity = canonicalizeCity(currentCountryKey, form.city).toLowerCase().trim()
                 const normalizedResolvedCity = String(cityCanon||'').toLowerCase().trim()
                 if (normalizedFormCity !== normalizedResolvedCity) {
-                  setLocationValidation({ isValid: false, message: `Invalid address: Location is in ${cityCanon||cityGuess}, but selected city is ${form.city}` })
-                  return // do not fill fields on mismatch
+                  setLocationValidation({ isValid: true, message: `Note: Resolved city is ${cityCanon||cityGuess}, different from selected ${form.city}. Using resolved city.` })
                 }
               }
 
@@ -567,14 +575,12 @@ export default function SubmitOrder(){
                 if (citiesList.length) {
                   const found = citiesList.some(c => c.toLowerCase() === String(cityCanon||'').toLowerCase())
                   if (!found) {
-                    setLocationValidation({ isValid: false, message: `City ${cityCanon||cityGuess||'(unknown)'} is not present in ${form.orderCountry}` })
-                    return
+                    setLocationValidation({ isValid: true, message: `Note: Resolved city ${cityCanon||cityGuess||'(unknown)'} is not in list for ${form.orderCountry}. Using nearest place.` })
                   }
                   if (form.city) {
                     const selectedFound = citiesList.some(c => c.toLowerCase() === canonicalizeCity(currentCountryKey, form.city).toLowerCase())
                     if (!selectedFound) {
-                      setLocationValidation({ isValid: false, message: `Selected city ${form.city} is not present in ${form.orderCountry}` })
-                      return
+                      setLocationValidation({ isValid: true, message: `Note: Selected city ${form.city} is not in list for ${form.orderCountry}. Using resolved city.` })
                     }
                   }
                 }
@@ -584,10 +590,11 @@ export default function SubmitOrder(){
               setLocationValidation({ isValid: true, message: '' })
               setForm(f=> ({ 
                 ...f, 
-                customerAddress: display || f.customerAddress, 
-                city: cityCanon || cityGuess || f.city,
-                customerArea: areaGuess || f.customerArea,
+                customerAddress: display || f.customerAddress || `(${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)})`, 
+                city: cityCanon || cityGuess || f.city || 'Nearest Area',
+                customerArea: areaGuess || f.customerArea || (cityCanon || cityGuess) || 'Nearby',
               }))
+              setAddrLocked(true)
               return
             }
           }
@@ -602,9 +609,9 @@ export default function SubmitOrder(){
       const display = data?.display_name || ''
       const addr = data?.address || {}
       // Separate City and Area from reverse geocoding
-      const cityGuess = addr.city || addr.town || addr.village || ''
+      const cityGuess = addr.city || addr.town || addr.village || addr.county || ''
       const cityCanon = canonicalizeCity(currentCountryKey, cityGuess)
-      const areaGuess = addr.suburb || addr.neighbourhood || addr.district || addr.quarter || addr.residential || ''
+      const areaGuess = addr.suburb || addr.neighbourhood || addr.district || addr.quarter || addr.residential || addr.borough || ''
 
       // Country validation for Nominatim as well (addr.country_code is ISO alpha-2 lowercased)
       try{
@@ -654,13 +661,16 @@ export default function SubmitOrder(){
       // Passed validation: fill fields
       setForm(f=> ({ 
         ...f, 
-        customerAddress: display || f.customerAddress, 
-        city: cityCanon || cityGuess || f.city,
-        customerArea: areaGuess || f.customerArea,
+        customerAddress: display || f.customerAddress || `(${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)})`, 
+        city: cityCanon || cityGuess || f.city || 'Nearest Area',
+        customerArea: areaGuess || f.customerArea || 'Nearby',
       }))
+      setAddrLocked(true)
     }catch(err){ 
       setLocationValidation({ isValid: false, message: 'Failed to validate location' })
+      setResolveError('Failed to resolve address')
     }
+    finally{ setResolving(false) }
   }
 
   // Preferred timing options (hourly)
@@ -736,12 +746,12 @@ export default function SubmitOrder(){
                 </div>
                 <div>
                   <div className="label">City</div>
-                  <input className="input" name="city" value={form.city} onChange={onChange} placeholder="Type city" />
+                  <input className="input" name="city" value={form.city} onChange={onChange} placeholder="Type city" readOnly={addrLocked} />
                   <div style={{fontSize:12, opacity:0.8, marginTop:4}}>Country: {form.orderCountry}</div>
                 </div>
                 <div>
                   <div className="label">Area</div>
-                  <input className="input" name="customerArea" value={form.customerArea} onChange={onChange} placeholder="Type area" />
+                  <input className="input" name="customerArea" value={form.customerArea} onChange={onChange} placeholder="Type area" readOnly={addrLocked} />
                   <div className="helper" style={{fontSize:12, opacity:0.8, marginTop:4}}>You can edit if needed</div>
                 </div>
               </div>
@@ -956,14 +966,42 @@ export default function SubmitOrder(){
                     type="button"
                     className="btn small"
                     onClick={()=> parseAndSetCoords(coordsInput)}
-                    disabled={!coordsInput.trim()}
+                    disabled={!coordsInput.trim() || resolving}
                     aria-label="Resolve WhatsApp location"
                     title="Resolve Address"
                     style={{ position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', whiteSpace:'nowrap' }}
                   >
-                    Resolve Address
+                    {resolving ? (<span><span className="spinner"/> Resolving…</span>) : 'Resolve Address'}
                   </button>
                 </div>
+                {resolving && (
+                  <div className="helper" style={{ marginTop:6, display:'flex', alignItems:'center', gap:8 }}>
+                    <span className="spinner"/> Resolving address…
+                  </div>
+                )}
+                {!!resolveError && (
+                  <div style={{
+                    padding: '8px 12px',
+                    background: '#fff7ed',
+                    border: '1px solid #fed7aa',
+                    borderRadius: 6,
+                    color: '#9a3412',
+                    fontSize: 14,
+                    marginTop: 8,
+                    display:'flex',
+                    alignItems:'center',
+                    justifyContent:'space-between',
+                    gap:8,
+                  }}>
+                    <div>{resolveError}</div>
+                    <button type="button" className="btn secondary small" onClick={()=> {
+                      try{
+                        if (form.locationLat && form.locationLng){ resolveFromCoords(form.locationLat, form.locationLng) }
+                        else if (coordsInput.trim()){ parseAndSetCoords(coordsInput) }
+                      }catch{}
+                    }}>Retry</button>
+                  </div>
+                )}
                 {form.locationLat && form.locationLng && (
                   <div style={{display:'flex', gap:8, marginTop:6}}>
                     <button type="button" className="btn secondary" onClick={()=> navigator.clipboard && navigator.clipboard.writeText(`${Number(form.locationLat).toFixed(6)}, ${Number(form.locationLng).toFixed(6)}`)}>Copy</button>
