@@ -444,7 +444,6 @@ export default function SubmitOrder(){
         orderCountry: DEFAULT_COUNTRY.name, 
         city:'', 
         customerArea:'', 
-        customerArea:'',
         customerAddress:'', 
         locationLat:'', 
         locationLng:'', 
