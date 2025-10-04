@@ -386,6 +386,14 @@ router.post('/remittances', auth, allowRoles('driver'), upload.any(), async (req
       managerRef = String(mgr._id)
       mgrDoc = mgr
     }
+    // Do not allow submitting a new remittance while another one is pending
+    const existingPending = await Remittance.findOne({ driver: req.user.id, status: 'pending' }).select('_id amount createdAt')
+    if (existingPending){
+      return res.status(400).json({ 
+        message: 'You already have a pending remittance awaiting approval. Please wait until it is accepted or rejected.',
+        pending: { id: String(existingPending._id), amount: Number(existingPending.amount||0), createdAt: existingPending.createdAt }
+      })
+    }
     // Validate available pending amount: delivered collected - accepted remittances
     // Compute delivered collected total for this driver
     const deliveredOrders = await Order.find({ deliveryBoy: req.user.id, shipmentStatus: 'delivered' }).select('collectedAmount')
