@@ -71,26 +71,6 @@ class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
     this.state = { hasError: false, error: null }
-
-function RequireManagerPerm({ perm, children }){
-  const [me, setMe] = React.useState(()=>{
-    try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} }
-  })
-  const [checking, setChecking] = React.useState(false)
-  React.useEffect(()=>{
-    if (!me || !me.role){
-      setChecking(true)
-      ;(async()=>{
-        try{ const { user } = await apiGet('/api/users/me'); setMe(user||{}) }
-        catch{}
-        finally{ setChecking(false) }
-      })()
-    }
-  },[])
-  if (checking) return null
-  const allowed = !!(me?.managerPermissions && me.managerPermissions[perm])
-  return allowed ? children : <Navigate to="/manager" replace />
-}
   }
 
   static getDerivedStateFromError(error) {
@@ -185,6 +165,26 @@ function RequireRole({ roles = [], children }) {
     return <Navigate to="/login" replace />
   }
   return children
+}
+
+function RequireManagerPerm({ perm, children }){
+  const [me, setMe] = useState(()=>{
+    try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} }
+  })
+  const [checking, setChecking] = useState(false)
+  useEffect(()=>{
+    if (!me || !me.role){
+      setChecking(true)
+      ;(async()=>{
+        try{ const { user } = await apiGet('/api/users/me'); setMe(user||{}) }
+        catch{}
+        finally{ setChecking(false) }
+      })()
+    }
+  },[])
+  if (checking) return null
+  const allowed = !!(me?.managerPermissions && me.managerPermissions[perm])
+  return allowed ? children : <Navigate to="/manager" replace />
 }
 
 export default function App() {
