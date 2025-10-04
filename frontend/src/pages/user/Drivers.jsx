@@ -53,6 +53,8 @@ export default function Drivers(){
       'Kuwait': 'KW',
       'Qatar': 'QA',
     }
+    return countryMap[form.country] || 'AE'
+  },[form.country])
 
   function openEdit(driver){
     const d = driver || {}
@@ -83,8 +85,6 @@ export default function Drivers(){
       setEditModal(m=>({ ...m, busy:false, error: e?.message || 'Failed to update driver' }))
     }
   }
-    return countryMap[form.country] || 'AE'
-  },[form.country])
 
   function onChange(e){
     const { name, value } = e.target
