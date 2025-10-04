@@ -7,6 +7,8 @@ export default function DriverHistory(){
       title="Order History"
       subtitle="Delivered orders archive"
       endpoint="/api/orders/driver/history"
+      showTotalCollected
+      showMap={false}
     />
   )
 }

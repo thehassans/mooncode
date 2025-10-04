@@ -2,11 +2,14 @@ import React, { useEffect, useState } from 'react'
 import { apiGet, apiPost } from '../../api'
 import { useNavigate } from 'react-router-dom'
 
-export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false }){
+export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false }){
   const nav = useNavigate()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const totalCollected = React.useMemo(()=>{
+    try{ return (rows||[]).reduce((sum,o)=> sum + (Number(o?.collectedAmount)||0), 0) }catch{ return 0 }
+  }, [rows])
 
   async function load(){
     setLoading(true); setError('')
@@ -56,6 +59,11 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
       </div>
 
       <div className="card" style={{display:'grid'}}>
+        {showTotalCollected && !loading && !error && (
+          <div className="section" style={{display:'flex', justifyContent:'flex-end'}}>
+            <div className="chip" title="Sum of collectedAmount on these orders">Total Collected: {totalCollected.toFixed(2)}</div>
+          </div>
+        )}
         {loading ? <div className="section">Loading…</div> : error ? <div className="section helper-text error">{error}</div> : rows.length === 0 ? (
           <div className="section">No orders</div>
         ) : (
@@ -70,9 +78,12 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
                   </div>
                 </div>
                 <div className="helper">{o.customerName || '-'} • {o.customerPhone || '-'}</div>
+                {o.collectedAmount != null && Number(o.collectedAmount) > 0 ? (
+                  <div className="helper"><strong>Collected:</strong> {Number(o.collectedAmount).toFixed(2)}</div>
+                ) : null}
                 <div className="helper" style={{whiteSpace:'pre-wrap'}}>{o.customerAddress || o.customerLocation || '-'}</div>
                 <div style={{display:'flex', gap:8, justifyContent:'flex-end', flexWrap:'wrap'}}>
-                  <button className="btn secondary" onClick={()=> openMaps(o)}>Map</button>
+                  {showMap ? <button className="btn secondary" onClick={()=> openMaps(o)}>Map</button> : null}
                   {showDeliverCancel && (
                     <>
                       <button className="btn" onClick={()=> markDelivered(o)}>Mark Delivered</button>
