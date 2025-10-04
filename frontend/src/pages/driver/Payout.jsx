@@ -29,6 +29,17 @@ export default function DriverPayout(){
     return Math.max(0, total - delivered)
   }, [summary])
 
+  // Prefill amount with pending when available and field is empty or non-positive
+  useEffect(()=>{
+    setForm(f => {
+      const current = Number(f.amount || 0)
+      if (!f.amount || !Number.isFinite(current) || current <= 0){
+        return { ...f, amount: pendingToCompany.toFixed(2) }
+      }
+      return f
+    })
+  }, [pendingToCompany])
+
   return (
     <div className="content" style={{ display:'grid', gap:16, padding:16, maxWidth: 1000, margin: '0 auto' }}>
       <div style={{ display:'grid', gap:6 }}>
