@@ -13,10 +13,41 @@ export default function Managers(){
   const [loadingList, setLoadingList] = useState(false)
   const [phoneError, setPhoneError] = useState('')
   const [delModal, setDelModal] = useState({ open:false, busy:false, error:'', confirm:'', manager:null })
+  const [permModal, setPermModal] = useState({ open:false, busy:false, error:'', manager:null, canCreateAgents:false, canManageProducts:false, canCreateOrders:false, canCreateDrivers:false })
 
   function onChange(e){
     const { name, type, value, checked } = e.target
     setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
+  }
+
+  function openPerms(u){
+    const mp = u?.managerPermissions || {}
+    setPermModal({
+      open:true,
+      busy:false,
+      error:'',
+      manager:u,
+      canCreateAgents: !!mp.canCreateAgents,
+      canManageProducts: !!mp.canManageProducts,
+      canCreateOrders: !!mp.canCreateOrders,
+      canCreateDrivers: !!mp.canCreateDrivers,
+    })
+  }
+  function closePerms(){ setPermModal(m=>({ ...m, open:false })) }
+  async function savePerms(){
+    const u = permModal.manager
+    if (!u) return
+    setPermModal(m=>({ ...m, busy:true, error:'' }))
+    try{
+      await apiPost(`/api/users/managers/${u.id || u._id}/permissions`, {
+        canCreateAgents: permModal.canCreateAgents,
+        canManageProducts: permModal.canManageProducts,
+        canCreateOrders: permModal.canCreateOrders,
+        canCreateDrivers: permModal.canCreateDrivers,
+      }, 'PATCH')
+      setPermModal(m=>({ ...m, open:false, busy:false }))
+      loadManagers(q)
+    }catch(err){ setPermModal(m=>({ ...m, busy:false, error: err?.message || 'Failed to update permissions' })) }
   }
 
   async function loadManagers(query=''){
@@ -113,6 +144,33 @@ export default function Managers(){
           <div className="page-title gradient heading-green">Managers</div>
           <div className="page-subtitle">Create and manage managers with specific permissions.</div>
         </div>
+    <Modal
+      title={`Edit Permissions: ${permModal.manager ? (permModal.manager.firstName + ' ' + permModal.manager.lastName) : ''}`}
+      open={permModal.open}
+      onClose={closePerms}
+      footer={
+        <>
+          <button className="btn secondary" type="button" onClick={closePerms} disabled={permModal.busy}>Cancel</button>
+          <button className="btn" type="button" onClick={savePerms} disabled={permModal.busy}>{permModal.busy ? 'Saving…' : 'Save'}</button>
+        </>
+      }
+    >
+      <div style={{display:'grid', gap:12}}>
+        <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
+          <input type="checkbox" checked={permModal.canCreateAgents} onChange={e=> setPermModal(m=>({ ...m, canCreateAgents: e.target.checked }))} /> Can create agents
+        </label>
+        <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
+          <input type="checkbox" checked={permModal.canManageProducts} onChange={e=> setPermModal(m=>({ ...m, canManageProducts: e.target.checked }))} /> Can manage inhouse products
+        </label>
+        <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
+          <input type="checkbox" checked={permModal.canCreateOrders} onChange={e=> setPermModal(m=>({ ...m, canCreateOrders: e.target.checked }))} /> Can create orders
+        </label>
+        <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
+          <input type="checkbox" checked={permModal.canCreateDrivers} onChange={e=> setPermModal(m=>({ ...m, canCreateDrivers: e.target.checked }))} /> Can create drivers
+        </label>
+        {permModal.error && <div className="helper-text error">{permModal.error}</div>}
+      </div>
+    </Modal>
       </div>
 
       {/* Create Manager */}
@@ -243,7 +301,8 @@ export default function Managers(){
                       {u.assignedCountry ? <span className="badge primary">{u.assignedCountry}</span> : <span className="badge">All Countries</span>}
                     </td>
                     <td style={{padding:'10px 12px'}}>{fmtDate(u.createdAt)}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right'}}>
+                    <td style={{padding:'10px 12px', textAlign:'right', display:'flex', gap:8, justifyContent:'flex-end'}}>
+                      <button className="btn secondary" onClick={()=>openPerms(u)}>Edit Permissions</button>
                       <button className="btn danger" onClick={()=>openDelete(u)}>Delete</button>
                     </td>
                   </tr>

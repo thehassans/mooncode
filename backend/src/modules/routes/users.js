@@ -524,6 +524,32 @@ router.delete('/managers/:id', auth, allowRoles('admin','user'), async (req, res
   res.json({ message: 'Manager deleted' })
 })
 
+// Update manager permissions (admin, user-owner)
+router.patch('/managers/:id/permissions', auth, allowRoles('admin','user'), async (req, res) => {
+  try{
+    const { id } = req.params
+    const mgr = await User.findOne({ _id: id, role: 'manager' })
+    if (!mgr) return res.status(404).json({ message: 'Manager not found' })
+    if (req.user.role !== 'admin' && String(mgr.createdBy) !== String(req.user.id)){
+      return res.status(403).json({ message: 'Not allowed' })
+    }
+    const { canCreateAgents, canManageProducts, canCreateOrders, canCreateDrivers } = req.body || {}
+    const updates = {}
+    if (canCreateAgents !== undefined) updates['managerPermissions.canCreateAgents'] = !!canCreateAgents
+    if (canManageProducts !== undefined) updates['managerPermissions.canManageProducts'] = !!canManageProducts
+    if (canCreateOrders !== undefined) updates['managerPermissions.canCreateOrders'] = !!canCreateOrders
+    if (canCreateDrivers !== undefined) updates['managerPermissions.canCreateDrivers'] = !!canCreateDrivers
+    if (Object.keys(updates).length === 0){
+      return res.status(400).json({ message: 'No valid permissions provided' })
+    }
+    const updated = await User.findByIdAndUpdate(id, { $set: updates }, { new: true, projection: '-password' })
+    try{ const io = getIO(); const ownerId = String(updated.createdBy || req.user.id); if (ownerId) io.to(`workspace:${ownerId}`).emit('manager.updated', { id: String(updated._id), managerPermissions: updated.managerPermissions }) }catch{}
+    return res.json({ ok:true, user: updated })
+  }catch(err){
+    return res.status(500).json({ message: err?.message || 'Failed to update permissions' })
+  }
+})
+
 // Investors CRUD
 // List investors (admin => all, user => own)
 router.get('/investors', auth, allowRoles('admin','user'), async (req, res) => {
