@@ -8,7 +8,7 @@ import { auth, allowRoles } from '../middleware/auth.js'
 import User from '../models/User.js'
 import { getIO } from '../config/socket.js'
 import { createNotification } from './notifications.js'
-import { generateInvoicePDF } from '../services/invoiceGenerator.js'
+// Removed invoice PDF generation
 
 const router = express.Router()
 
@@ -352,38 +352,7 @@ router.post('/', auth, allowRoles('admin','user','agent','manager'), async (req,
   await doc.save()
   // Broadcast create
   emitOrderChange(doc, 'created').catch(()=>{})
-  // === GENERATE INVOICE PDF (New BuySial Design) ===
-  let pdfPath = null
-  let pdfBuffer = null
-  try{
-    const { generateInvoicePDF } = await import('../services/invoiceGenerator.js')
-    
-    // Populate order with product details for invoice
-    let orderWithProducts = await Order.findById(doc._id)
-      .populate('productId')
-      .populate('items.productId')
-      .populate('createdBy', 'firstName lastName')
-      .lean()
-    
-    // Generate PDF Buffer
-    pdfBuffer = await generateInvoicePDF(orderWithProducts)
-    
-    // Save PDF to uploads/invoices directory
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'invoices')
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true })
-    }
-    
-    const fileName = `INV-${orderWithProducts.invoiceNumber || String(orderWithProducts._id).slice(-8)}.pdf`
-    pdfPath = path.join(uploadsDir, fileName)
-    
-    fs.writeFileSync(pdfPath, pdfBuffer)
-    console.log('[Invoice] PDF generated successfully:', pdfPath)
-    // Persist invoice path for audit
-    try{ doc.invoicePath = `/uploads/invoices/${encodeURIComponent(pdfPath.split('/').pop())}`; await doc.save() }catch{}
-  }catch(err){ 
-    console.error('Invoice PDF generation failed:', err?.message || err, err.stack) 
-  }
+  // Removed invoice PDF generation and storage
 
   // Removed auto-send invoice fallback and WhatsApp notifications
 
