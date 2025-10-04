@@ -92,10 +92,6 @@ export default function UserOrders(){
   const [hasMore, setHasMore] = useState(true)
   const loadingMoreRef = useRef(false)
   const endRef = useRef(null)
-  const [autoInvoice, setAutoInvoice] = useState(()=>{
-    try{ const me = JSON.parse(localStorage.getItem('me')||'{}'); return me?.settings?.autoSendInvoice !== false }catch{ return true }
-  })
-  const [savingAuto, setSavingAuto] = useState(false)
   const toast = useToast()
   // Columns: Order | Customer | Product | Price | Country | Agent | Driver | Shipment | Actions
   // Made Driver column wider (from 1fr to 1.3fr)
@@ -243,36 +239,7 @@ export default function UserOrders(){
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endRef.current, hasMore, page, buildQuery])
 
-  // Load current user to sync auto-invoice toggle
-  useEffect(()=>{
-    (async()=>{
-      try{
-        const { user } = await apiGet('/api/users/me')
-        if (user){
-          localStorage.setItem('me', JSON.stringify(user))
-          setAutoInvoice(user?.settings?.autoSendInvoice !== false)
-        }
-      }catch{}
-    })()
-  },[])
-
-  async function toggleAutoInvoice(next){
-    setSavingAuto(true)
-    try{
-      const { user } = await apiPatch('/api/users/me/settings', { autoSendInvoice: !!next })
-      if (user){
-        localStorage.setItem('me', JSON.stringify(user))
-        setAutoInvoice(user?.settings?.autoSendInvoice !== false)
-        toast.success(`Auto invoice ${next ? 'enabled' : 'disabled'}`)
-      } else {
-        setAutoInvoice(next)
-      }
-    }catch(e){
-      toast.error(e?.message || 'Failed to update setting')
-    }finally{
-      setSavingAuto(false)
-    }
-  }
+  
 
   // No totals footer now; compute nothing
 
@@ -393,9 +360,6 @@ export default function UserOrders(){
           </select>
           <label className="input" style={{display:'flex', alignItems:'center', gap:8}}>
             <input type="checkbox" checked={collectedOnly} onChange={e=> setCollectedOnly(e.target.checked)} /> Collected only
-          </label>
-          <label className="input" style={{display:'flex', alignItems:'center', gap:8}} title="When enabled, invoices are auto-sent as WhatsApp PDF to customer on order creation">
-            <input type="checkbox" checked={!!autoInvoice} onChange={e=> toggleAutoInvoice(e.target.checked)} disabled={savingAuto} /> Auto-send Invoice (WhatsApp PDF)
           </label>
         </div>
       </div>
