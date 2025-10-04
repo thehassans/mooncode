@@ -576,7 +576,22 @@ export default function UserFinances() {
                           <td style={{ padding:'8px 10px' }}>{(d.currency||'').toString()} {Number(d.collected||0).toLocaleString()}</td>
                           <td style={{ padding:'8px 10px' }}>{(d.currency||'').toString()} {Number(d.deliveredToCompany||0).toLocaleString()}</td>
                           <td style={{ padding:'8px 10px', fontWeight:700, color:'var(--warning)' }}>{(d.currency||'').toString()} {Number(d.pendingToCompany||0).toLocaleString()}</td>
-                          <td style={{ padding:'8px 10px' }}>{pending ? (String(pending.method||'hand').toLowerCase()==='transfer' ? (<span className="badge" style={{borderColor:'#3b82f6', color:'#1d4ed8'}}>Transfer</span>) : (<span className="badge" style={{borderColor:'#6b7280', color:'#374151'}}>Hand</span>)) : '—'}</td>
+                          <td style={{ padding:'8px 10px' }}>
+                            {pending ? (
+                              <>
+                                {String(pending.method||'hand').toLowerCase()==='transfer' ? (
+                                  <span className="badge" style={{borderColor:'#3b82f6', color:'#1d4ed8'}}>Transfer</span>
+                                ) : (
+                                  <>
+                                    <span className="badge" style={{borderColor:'#6b7280', color:'#374151'}}>Hand</span>
+                                    <div className="helper" style={{marginTop:4}}>
+                                      Paid to: {pending.paidToName || `${(pending?.manager?.firstName||'')} ${(pending?.manager?.lastName||'')}`.trim() || '-'}
+                                    </div>
+                                  </>
+                                )}
+                              </>
+                            ) : '—'}
+                          </td>
                           <td style={{ padding:'8px 10px' }}>
                             {pending?.receiptPath ? (
                               <>
