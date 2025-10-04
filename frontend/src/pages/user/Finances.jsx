@@ -557,21 +557,33 @@ export default function UserFinances() {
                       <th style={{textAlign:'left', padding:'8px 10px'}}>Collected</th>
                       <th style={{textAlign:'left', padding:'8px 10px'}}>Delivered to Company</th>
                       <th style={{textAlign:'left', padding:'8px 10px'}}>Pending to Company</th>
+                      <th style={{textAlign:'left', padding:'8px 10px'}}>Method</th>
+                      <th style={{textAlign:'left', padding:'8px 10px'}}>Proof</th>
+                      <th style={{textAlign:'left', padding:'8px 10px'}}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {driverDeliveries.map(d => (
-                      <tr key={String(d.id||d._id)} style={{ borderTop:'1px solid var(--border)' }}>
-                        <td style={{ padding:'8px 10px' }}>{d.name||'—'}</td>
-                        <td style={{ padding:'8px 10px' }}>{d.phone||''}</td>
-                        <td style={{ padding:'8px 10px' }}>{d.assigned??'—'}</td>
-                        <td style={{ padding:'8px 10px' }}>{d.canceled??'—'}</td>
-                        <td style={{ padding:'8px 10px' }}>{d.deliveredCount??'—'}</td>
-                        <td style={{ padding:'8px 10px' }}>{(d.currency||'').toString()} {Number(d.collected||0).toLocaleString()}</td>
-                        <td style={{ padding:'8px 10px' }}>{(d.currency||'').toString()} {Number(d.deliveredToCompany||0).toLocaleString()}</td>
-                        <td style={{ padding:'8px 10px', fontWeight:700, color:'var(--warning)' }}>{(d.currency||'').toString()} {Number(d.pendingToCompany||0).toLocaleString()}</td>
-                      </tr>
-                    ))}
+                    {driverDeliveries.map(d => {
+                      const drvId = String(d.id||d._id)
+                      const pending = driverRequests.find(rr => (String(rr?.driver?._id||rr?.driver?.id||'')===drvId) && String(rr?.status||'').toLowerCase()==='pending')
+                      return (
+                        <tr key={drvId} style={{ borderTop:'1px solid var(--border)' }}>
+                          <td style={{ padding:'8px 10px' }}>{d.name||'—'}</td>
+                          <td style={{ padding:'8px 10px' }}>{d.phone||''}</td>
+                          <td style={{ padding:'8px 10px' }}>{d.assigned??'—'}</td>
+                          <td style={{ padding:'8px 10px' }}>{d.canceled??'—'}</td>
+                          <td style={{ padding:'8px 10px' }}>{d.deliveredCount??'—'}</td>
+                          <td style={{ padding:'8px 10px' }}>{(d.currency||'').toString()} {Number(d.collected||0).toLocaleString()}</td>
+                          <td style={{ padding:'8px 10px' }}>{(d.currency||'').toString()} {Number(d.deliveredToCompany||0).toLocaleString()}</td>
+                          <td style={{ padding:'8px 10px', fontWeight:700, color:'var(--warning)' }}>{(d.currency||'').toString()} {Number(d.pendingToCompany||0).toLocaleString()}</td>
+                          <td style={{ padding:'8px 10px' }}>{pending ? (String(pending.method||'hand').toLowerCase()==='transfer' ? (<span className="badge" style={{borderColor:'#3b82f6', color:'#1d4ed8'}}>Transfer</span>) : (<span className="badge" style={{borderColor:'#6b7280', color:'#374151'}}>Hand</span>)) : '—'}</td>
+                          <td style={{ padding:'8px 10px' }}>{pending?.receiptPath ? (<a href={`${API_BASE}${pending.receiptPath}`} target="_blank" rel="noopener noreferrer" download>Download</a>) : '—'}</td>
+                          <td style={{ padding:'8px 10px' }}>
+                            <button className="btn small" disabled={!pending} onClick={() => pending && onSendDriver(pending)}>Accept</button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               )}
@@ -595,11 +607,7 @@ export default function UserFinances() {
                       <th style={{textAlign:'left', padding:'8px 10px'}}>Phone</th>
                       <th style={{textAlign:'left', padding:'8px 10px'}}>Payout Method</th>
                       <th style={{textAlign:'left', padding:'8px 10px'}}>Payment Detail</th>
-                      <th style={{textAlign:'left', padding:'8px 10px'}}>Method</th>
-                      <th style={{textAlign:'left', padding:'8px 10px'}}>Proof</th>
                       <th style={{textAlign:'left', padding:'8px 10px'}}>Requested</th>
-                      <th style={{textAlign:'left', padding:'8px 10px'}}>Send Amount</th>
-                      <th style={{textAlign:'left', padding:'8px 10px'}}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -610,15 +618,7 @@ export default function UserFinances() {
                         <td style={{ padding:'8px 10px' }}>{r.driver?.phone||''}</td>
                         <td style={{ padding:'8px 10px' }}>{String(r.driver?.payoutProfile?.method||'').toUpperCase()||'—'}</td>
                         <td style={{ padding:'8px 10px' }}>{(() => { const p=r.driver?.payoutProfile||{}; const method=String(p.method||''); if(!method) return '—'; if(method==='bank'){ const bank=[p.bankName, (p.iban||p.accountNumber)].filter(Boolean).join(' · '); return `${p.accountName||''}${bank? ' — '+bank: ''}` } else { const wallet=[p.accountName, (p.phoneNumber||p.accountNumber)].filter(Boolean).join(' · '); return wallet||'—' } })()}</td>
-                        <td style={{ padding:'8px 10px' }}>{(() => { const m=String(r?.method||'hand').toLowerCase(); if(m==='transfer') return (<span className="badge" style={{borderColor:'#3b82f6', color:'#1d4ed8'}}>Transfer</span>); return (<span className="badge" style={{borderColor:'#6b7280', color:'#374151'}}>Hand</span>); })()}</td>
-                        <td style={{ padding:'8px 10px' }}>{r?.receiptPath ? (<a href={`${API_BASE}${r.receiptPath}`} target="_blank" rel="noopener noreferrer" download>Download</a>) : '—'}</td>
                         <td style={{ padding:'8px 10px' }}>{String(r.currency||'')} {Number(r.amount||0).toLocaleString()}</td>
-                        <td style={{ padding:'8px 10px' }}>
-                          <input className="input small" style={{ width:140 }} value={driverSendMap[String(r._id||r.id)] ?? String(r.amount||'')} onChange={e=> setDriverSendMap(m=>({ ...m, [String(r._id||r.id)]: e.target.value }))} placeholder={String(r.currency||'')} />
-                        </td>
-                        <td style={{ padding:'8px 10px' }}>
-                          <button className="btn small" onClick={() => onSendDriver(r)}>Accept</button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
