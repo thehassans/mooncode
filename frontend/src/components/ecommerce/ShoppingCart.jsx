@@ -9,7 +9,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
   const [isLoading, setIsLoading] = useState(false)
   const toast = useToast()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ name:'', phone:'', country:'SA', city:'', area:'', address:'', details:'' })
+  const [form, setForm] = useState({ name:'', phone:'', country:'SA', city:'', cityOther:'', area:'', address:'', details:'' })
 
   const COUNTRIES = [
     { code:'SA', name:'KSA', flag:'🇸🇦', dial:'+966' },
@@ -20,6 +20,15 @@ export default function ShoppingCart({ isOpen, onClose }) {
     { code:'KW', name:'Kuwait', flag:'🇰🇼', dial:'+965' },
     { code:'QA', name:'Qatar', flag:'🇶🇦', dial:'+974' },
   ]
+  const CITY_OPTIONS = {
+    SA: ['Riyadh','Jeddah','Dammam','Khobar','Makkah','Madinah','Tabuk','Abha','Taif'],
+    AE: ['Dubai','Abu Dhabi','Sharjah','Ajman','Ras Al Khaimah','Fujairah','Umm Al Quwain'],
+    OM: ['Muscat','Seeb','Salalah','Sohar','Nizwa'],
+    BH: ['Manama','Riffa','Muharraq','Isa Town','Hamad Town'],
+    IN: ['Mumbai','Delhi','Bengaluru','Hyderabad','Chennai','Kolkata'],
+    KW: ['Kuwait City','Al Ahmadi','Hawalli','Salmiya','Farwaniya'],
+    QA: ['Doha','Al Rayyan','Al Khor','Mesaieed','Umm Salal'],
+  }
   const selectedCountry = COUNTRIES.find(c => c.code === form.country) || COUNTRIES[0]
 
   // Currency conversion (same base as elsewhere)
@@ -74,9 +83,34 @@ export default function ShoppingCart({ isOpen, onClose }) {
     }
   }, [])
 
-  // Save cart to localStorage whenever cartItems changes
+  // Default country from catalog selection if available
+  useEffect(() => {
+    try {
+      const savedCountry = localStorage.getItem('selected_country')
+      if (savedCountry && savedCountry !== form.country) {
+        setForm(prev => ({ ...prev, country: savedCountry }))
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Persist chosen country and reset city to a sensible default for that country
+  useEffect(() => {
+    try { localStorage.setItem('selected_country', form.country) } catch {}
+    const opts = CITY_OPTIONS[form.country] || []
+    if (opts.length && !opts.includes(form.city)) {
+      setForm(prev => ({ ...prev, city: opts[0] }))
+    }
+    if (!opts.length && form.city) {
+      setForm(prev => ({ ...prev, city: '' }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.country])
+
+  // Save cart to localStorage and notify header whenever cartItems changes
   useEffect(() => {
     localStorage.setItem('shopping_cart', JSON.stringify(cartItems))
+    try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
   }, [cartItems])
 
   const updateQuantity = (productId, newQuantity) => {
@@ -138,7 +172,10 @@ export default function ShoppingCart({ isOpen, onClose }) {
     if (cartItems.length === 0){ toast.error('Your cart is empty'); return }
     if (!form.name.trim()){ toast.error('Please enter your full name'); return }
     if (!form.phone.trim()){ toast.error('Please enter your phone number'); return }
-    if (!form.city.trim()){ toast.error('Please enter your city'); return }
+    if (!(form.city && (form.city !== 'Other' || (form.city === 'Other' && String(form.cityOther||'').trim())))){
+      toast.error('Please select your city');
+      return
+    }
     if (!form.address.trim()){ toast.error('Please enter your full address'); return }
 
     try{
@@ -154,7 +191,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
         customerPhone: form.phone.trim(),
         phoneCountryCode: selectedCountry.dial,
         orderCountry: selectedCountry.name,
-        city: form.city.trim(),
+        city: (form.city === 'Other' ? String(form.cityOther||'').trim() : String(form.city||'').trim()),
         area: String(form.area||'').trim(),
         address: form.address.trim(),
         details: String(form.details||'').trim(),
@@ -236,8 +273,9 @@ export default function ShoppingCart({ isOpen, onClose }) {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center bg-white border border-gray-300 rounded-lg">
                           <button 
-                            className="p-2 hover:bg-gray-100 transition-colors rounded-l-lg"
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            className={`p-2 transition-colors rounded-l-lg ${item.quantity <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+                            onClick={() => item.quantity > 1 && updateQuantity(item.id, item.quantity - 1)}
+                            disabled={item.quantity <= 1}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
@@ -247,8 +285,13 @@ export default function ShoppingCart({ isOpen, onClose }) {
                             {item.quantity}
                           </span>
                           <button 
-                            className="p-2 hover:bg-gray-100 transition-colors rounded-r-lg"
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            className={`p-2 transition-colors rounded-r-lg ${Number(item.maxStock) > 0 && item.quantity >= Number(item.maxStock) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+                            onClick={() => {
+                              const max = Number(item.maxStock)
+                              if (max > 0 && item.quantity >= max) return
+                              updateQuantity(item.id, item.quantity + 1)
+                            }}
+                            disabled={Number(item.maxStock) > 0 && item.quantity >= Number(item.maxStock)}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -313,8 +356,20 @@ export default function ShoppingCart({ isOpen, onClose }) {
                 </div>
                 <div>
                   <label className="text-sm text-gray-700">City</label>
-                  <input name="city" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.city} onChange={onChange} placeholder="City" />
+                  <select name="city" value={form.city} onChange={onChange} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    <option value="">Select city</option>
+                    {(CITY_OPTIONS[form.country] || []).map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                    <option value="Other">Other</option>
+                  </select>
                 </div>
+                {form.city === 'Other' && (
+                  <div>
+                    <label className="text-sm text-gray-700">Other City</label>
+                    <input name="cityOther" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.cityOther} onChange={onChange} placeholder="Enter your city" />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-sm text-gray-700">Area</label>
