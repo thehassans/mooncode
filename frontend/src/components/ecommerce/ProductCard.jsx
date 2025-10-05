@@ -102,7 +102,13 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
     e.stopPropagation() // Prevent navigation when clicking add to cart
     
     try {
-      const unitPrice = Number(product?.onSale ? (product?.salePrice ?? product?.price) : product?.price) || 0
+      const basePrice = Number(product?.price) || 0
+      const discounted = Number(product?.discount) > 0 ? basePrice * (1 - Number(product.discount) / 100) : basePrice
+      const unitPrice = Number(
+        product?.onSale && (product?.salePrice ?? null) != null
+          ? product.salePrice
+          : discounted
+      ) || 0
       const addQty = Math.max(1, Math.floor(Number(qty) || 1))
       const savedCart = localStorage.getItem('shopping_cart')
       let cartItems = []
@@ -124,6 +130,10 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
         } else {
           cartItems[existingItemIndex].quantity = candidate
         }
+        // Refresh unit price and stock info in case it changed
+        cartItems[existingItemIndex].price = unitPrice
+        cartItems[existingItemIndex].currency = product.baseCurrency || 'SAR'
+        cartItems[existingItemIndex].maxStock = product.stockQty
       } else {
         // Add new item to cart
         cartItems.push({

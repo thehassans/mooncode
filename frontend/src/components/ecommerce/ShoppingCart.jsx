@@ -54,15 +54,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
   }
   const formatPrice = (value, currency) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || displayCurrency, minimumFractionDigits: 2 }).format(Number(value||0))
 
-  // Free shipping progress (base threshold in SAR)
-  const FREE_SHIP_THRESHOLD_SAR = 100
-  const getFreeShippingInfo = () => {
-    const threshold = convertPrice(FREE_SHIP_THRESHOLD_SAR, 'SAR', displayCurrency)
-    const total = getTotalPrice()
-    const remaining = Math.max(0, threshold - total)
-    const progress = threshold > 0 ? Math.min(1, total / threshold) : 0
-    return { threshold, total, remaining, progress }
-  }
+  // Removed free shipping logic per request
 
   const getImageUrl = (p) => {
     const imagePath = p || ''
@@ -263,6 +255,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
             </div>
           ) : (
             <>
+              {/* Cart Items */}
               <div className="p-4 sm:p-6 space-y-4">
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
@@ -334,150 +327,104 @@ export default function ShoppingCart({ isOpen, onClose }) {
                   </div>
                 ))}
               </div>
+
+              {/* Summary (top of form) */}
+              <div className="px-4 sm:px-6 space-y-3">
+                {/* Items count */}
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Items:</span>
+                  <span>{getTotalItems()}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Subtotal:</span>
+                  <span>{formatPrice(getTotalPrice(), displayCurrency)}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-200">
+                  <span>Total:</span>
+                  <span>{formatPrice(getTotalPrice(), displayCurrency)}</span>
+                </div>
+              </div>
+
+              {/* Order Form (scrolls with content) */}
+              <div className="p-4 sm:p-6 space-y-3">
+                <div>
+                  <label className="text-sm text-gray-700">Full Name</label>
+                  <input name="name" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.name} onChange={onChange} placeholder="Your full name" />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-700">Phone</label>
+                  <div className="grid grid-cols-[auto_1fr] gap-2 items-center">
+                    <select name="country" value={form.country} onChange={onChange} className="border border-gray-300 rounded-lg px-2 py-2">
+                      {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.dial}</option>)}
+                    </select>
+                    <input name="phone" className="border border-gray-300 rounded-lg px-3 py-2" value={form.phone} onChange={onChange} placeholder="5xxxxxxx" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-sm text-gray-700">Country</label>
+                    <input className="w-full border border-gray-300 rounded-lg px-3 py-2" value={selectedCountry.name} readOnly />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-700">City</label>
+                    <select name="city" value={form.city} onChange={onChange} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+                      <option value="">Select city</option>
+                      {(CITY_OPTIONS[form.country] || []).map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  {form.city === 'Other' && (
+                    <div>
+                      <label className="text-sm text-gray-700">Other City</label>
+                      <input name="cityOther" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.cityOther} onChange={onChange} placeholder="Enter your city" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="text-sm text-gray-700">Area</label>
+                  <input name="area" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.area} onChange={onChange} placeholder="Area / district" />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-700">Full Address</label>
+                  <input name="address" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.address} onChange={onChange} placeholder="Street, building" />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-700">Notes (optional)</label>
+                  <textarea name="details" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.details} onChange={onChange} placeholder="Any notes for delivery" />
+                </div>
+              </div>
             </>
           )}
         </div>
 
-        {/* Footer: Slide-in checkout form */}
+        {/* Sticky bottom checkout bar */}
         {cartItems.length > 0 && (
-          <div className="border-t border-gray-200 p-4 sm:p-6 bg-white">
-            <div className="space-y-3 mb-4">
-              {/* Quick Quantity Adjuster (last added item or single item) */}
-              {quickItem && (
-                <div className="p-3 rounded-lg bg-gray-50 border border-gray-200">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{quickItem.name}</p>
-                      <p className="text-xs text-gray-500">{formatPrice(convertPrice(quickItem.price, quickItem.currency || 'SAR', displayCurrency), displayCurrency)} each</p>
-                    </div>
-                    <div className="flex items-center bg-white border border-gray-300 rounded-lg">
-                      <button 
-                        className={`p-2 transition-colors rounded-l-lg ${quickItem.quantity <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
-                        onClick={() => quickItem.quantity > 1 && updateQuantity(quickItem.id, quickItem.quantity - 1)}
-                        disabled={quickItem.quantity <= 1}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                        </svg>
-                      </button>
-                      <span className="px-3 py-2 text-sm font-medium min-w-[2.5rem] text-center">{quickItem.quantity}</span>
-                      <button 
-                        className={`p-2 transition-colors rounded-r-lg ${Number(quickItem.maxStock) > 0 && quickItem.quantity >= Number(quickItem.maxStock) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
-                        onClick={() => {
-                          const max = Number(quickItem.maxStock)
-                          if (max > 0 && quickItem.quantity >= max) return
-                          updateQuantity(quickItem.id, quickItem.quantity + 1)
-                        }}
-                        disabled={Number(quickItem.maxStock) > 0 && quickItem.quantity >= Number(quickItem.maxStock)}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {/* Items count */}
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Items:</span>
-                <span>{getTotalItems()}</span>
+          <div className="border-t border-gray-200 p-4 sm:p-5 bg-white">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-xs text-gray-500">Items</div>
+                <div className="text-sm font-medium text-gray-900">{getTotalItems()}</div>
               </div>
-
-              {/* Free Shipping Progress */}
-              {(() => {
-                const info = getFreeShippingInfo()
-                return (
-                  <div className="p-3 rounded-lg bg-orange-50 border border-orange-200">
-                    <div className="flex items-center justify-between text-xs sm:text-sm text-orange-800 font-medium">
-                      <span>
-                        {info.remaining > 0
-                          ? `You're ${formatPrice(info.remaining, displayCurrency)} away from free shipping`
-                          : 'You’ve unlocked free shipping!'}
-                      </span>
-                      <span>{formatPrice(info.threshold, displayCurrency)}</span>
-                    </div>
-                    <div className="mt-2 h-2 bg-orange-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-orange-500" style={{ width: `${Math.round(info.progress * 100)}%` }}></div>
-                    </div>
-                  </div>
-                )
-              })()}
-
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Subtotal:</span>
-                <span>{formatPrice(getTotalPrice(), displayCurrency)}</span>
-              </div>
-              <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-200">
-                <span>Total:</span>
-                <span>{formatPrice(getTotalPrice(), displayCurrency)}</span>
+              <div className="text-right">
+                <div className="text-xs text-gray-500">Total</div>
+                <div className="text-lg font-bold text-gray-900">{formatPrice(getTotalPrice(), displayCurrency)}</div>
               </div>
             </div>
-
-            {/* Order Form */}
-            <div className="space-y-3 mb-4">
-              <div>
-                <label className="text-sm text-gray-700">Full Name</label>
-                <input name="name" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.name} onChange={onChange} placeholder="Your full name" />
-              </div>
-              <div>
-                <label className="text-sm text-gray-700">Phone</label>
-                <div className="grid grid-cols-[auto_1fr] gap-2 items-center">
-                  <select name="country" value={form.country} onChange={onChange} className="border border-gray-300 rounded-lg px-2 py-2">
-                    {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.dial}</option>)}
-                  </select>
-                  <input name="phone" className="border border-gray-300 rounded-lg px-3 py-2" value={form.phone} onChange={onChange} placeholder="5xxxxxxx" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-sm text-gray-700">Country</label>
-                  <input className="w-full border border-gray-300 rounded-lg px-3 py-2" value={selectedCountry.name} readOnly />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-700">City</label>
-                  <select name="city" value={form.city} onChange={onChange} className="w-full border border-gray-300 rounded-lg px-3 py-2">
-                    <option value="">Select city</option>
-                    {(CITY_OPTIONS[form.country] || []).map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                {form.city === 'Other' && (
-                  <div>
-                    <label className="text-sm text-gray-700">Other City</label>
-                    <input name="cityOther" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.cityOther} onChange={onChange} placeholder="Enter your city" />
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="text-sm text-gray-700">Area</label>
-                <input name="area" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.area} onChange={onChange} placeholder="Area / district" />
-              </div>
-              <div>
-                <label className="text-sm text-gray-700">Full Address</label>
-                <input name="address" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.address} onChange={onChange} placeholder="Street, building" />
-              </div>
-              <div>
-                <label className="text-sm text-gray-700">Notes (optional)</label>
-                <textarea name="details" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.details} onChange={onChange} placeholder="Any notes for delivery" />
-              </div>
-            </div>
-
-            <div className="space-y-3">
+            <div className="flex gap-2">
               <button 
-                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
+                className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
                 onClick={handleCheckout}
                 disabled={isLoading}
               >
                 {isLoading ? 'Submitting…' : 'Place Order'}
               </button>
               <button 
-                className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                className="px-4 py-3 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors text-sm font-medium"
                 onClick={clearCart}
               >
-                Clear Cart
+                Clear
               </button>
             </div>
           </div>
