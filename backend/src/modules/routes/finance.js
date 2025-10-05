@@ -94,12 +94,16 @@ router.post('/agent-remittances', auth, allowRoles('agent'), async (req, res) =>
     const approverId = ownerId
     const role = 'user'
     // Validate amount against available wallet (delivered commissions at 12% minus sent payouts)
-    const fx = { AED: 76, OMR: 726, SAR: 72, BHD: 830 }
+    const fx = { AED: 76, OMR: 726, SAR: 72, BHD: 830, KWD: 880, QAR: 79, INR: 3.3 }
     const orders = await Order.find({ createdBy: req.user.id, shipmentStatus: 'delivered' }).populate('productId','price baseCurrency quantity')
     let deliveredCommissionPKR = 0
     for (const o of orders){
+      if (o?.agentCommissionPKR && Number(o.agentCommissionPKR) > 0){
+        deliveredCommissionPKR += Number(o.agentCommissionPKR)
+        continue
+      }
       const totalVal = (o.total!=null ? Number(o.total) : (Number(o?.productId?.price||0) * Math.max(1, Number(o?.quantity||1))))
-      const cur = ['AED','OMR','SAR','BHD'].includes(String(o?.productId?.baseCurrency)) ? o.productId.baseCurrency : 'SAR'
+      const cur = ['AED','OMR','SAR','BHD','KWD','QAR','INR'].includes(String(o?.productId?.baseCurrency)) ? o.productId.baseCurrency : 'SAR'
       const rate = fx[cur] || 0
       deliveredCommissionPKR += totalVal * 0.12 * rate
     }
@@ -189,7 +193,7 @@ router.post('/agent-remittances/:id/send', auth, allowRoles('user'), async (req,
     const amt = Math.max(0, bodyAmt)
     if (amt < 10000) return res.status(400).json({ message: 'Minimum amount to send is PKR 10000' })
     // Recompute available for the agent
-    const fx = { AED: 76, OMR: 726, SAR: 72, BHD: 830 }
+    const fx = { AED: 76, OMR: 726, SAR: 72, BHD: 830, KWD: 880, QAR: 79, INR: 3.3 }
     const orders = await Order.find({ createdBy: r.agent, shipmentStatus: 'delivered' }).populate('productId','price baseCurrency quantity')
     let deliveredCommissionPKR = 0
     for (const o of orders){
@@ -394,16 +398,18 @@ router.post('/remittances', auth, allowRoles('driver'), upload.any(), async (req
         pending: { id: String(existingPending._id), amount: Number(existingPending.amount||0), createdAt: existingPending.createdAt }
       })
     }
-    // Validate available pending amount: delivered TOTAL - accepted remittances
-    // Compute delivered total value for this driver (use order.total, fallback to product pricing)
+    // Validate available pending amount: COLLECTED amounts - accepted remittances
+    // Compute delivered collected amount for this driver (prefer collectedAmount, fallback to totals/prices)
     const deliveredOrders = await Order
       .find({ deliveryBoy: req.user.id, shipmentStatus: 'delivered' })
-      .select('total productId quantity items')
+      .select('total collectedAmount productId quantity items')
       .populate('productId','price')
       .populate('items.productId','price')
-    const totalDeliveredValue = deliveredOrders.reduce((sum, o)=>{
+    const totalCollectedAmount = deliveredOrders.reduce((sum, o)=>{
       let val = 0
-      if (o?.total != null){
+      if (o?.collectedAmount != null && Number(o.collectedAmount) > 0){
+        val = Number(o.collectedAmount)||0
+      } else if (o?.total != null){
         val = Number(o.total)||0
       } else if (Array.isArray(o?.items) && o.items.length){
         val = o.items.reduce((s,it)=> s + (Number(it?.productId?.price||0) * Math.max(1, Number(it?.quantity||1))), 0)
@@ -420,7 +426,7 @@ router.post('/remittances', auth, allowRoles('driver'), upload.any(), async (req
       { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } } } }
     ])
     const deliveredToCompany = remitRows && remitRows[0] ? Number(remitRows[0].total||0) : 0
-    const pendingToCompany = Math.max(0, totalDeliveredValue - deliveredToCompany)
+    const pendingToCompany = Math.max(0, totalCollectedAmount - deliveredToCompany)
     const amt = Math.max(0, Number(amount||0))
     if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ message: 'Invalid amount' })
     if (amt > pendingToCompany) return res.status(400).json({ message: `Amount exceeds pending. Pending: ${pendingToCompany.toFixed(2)}` })
@@ -502,13 +508,15 @@ router.get('/remittances/summary', auth, allowRoles('driver'), async (req, res) 
     }
     const deliveredOrders2 = await Order
       .find(match)
-      .select('total productId quantity items')
+      .select('collectedAmount total productId quantity items')
       .populate('productId','price')
       .populate('items.productId','price')
     const totalDeliveredOrders = deliveredOrders2.length
     const totalDeliveredValue = deliveredOrders2.reduce((sum, o)=>{
       let val = 0
-      if (o?.total != null){
+      if (o?.collectedAmount != null && Number(o.collectedAmount) > 0){
+        val = Number(o.collectedAmount)||0
+      } else if (o?.total != null){
         val = Number(o.total)||0
       } else if (Array.isArray(o?.items) && o.items.length){
         val = o.items.reduce((s,it)=> s + (Number(it?.productId?.price||0) * Math.max(1, Number(it?.quantity||1))), 0)
@@ -544,7 +552,7 @@ router.get('/agents/commission', auth, allowRoles('admin','user'), async (req, r
     let agentCond = { role: 'agent' }
     if (req.user.role !== 'admin') agentCond.createdBy = req.user.id
     const agents = await User.find(agentCond, 'firstName lastName phone _id payoutProfile').lean()
-    const fx = { AED: 76, OMR: 726, SAR: 72, BHD: 830 }
+    const fx = { AED: 76, OMR: 726, SAR: 72, BHD: 830, KWD: 880, QAR: 79, INR: 3.3 }
     const out = []
     for (const a of agents){
       const orders = await Order.find({ createdBy: a._id }).populate('productId','price baseCurrency quantity')
@@ -554,10 +562,15 @@ router.get('/agents/commission', auth, allowRoles('admin','user'), async (req, r
         const isDelivered = String(o?.shipmentStatus||'').toLowerCase() === 'delivered'
         const isCancelled = ['cancelled','returned'].includes(String(o?.shipmentStatus||'').toLowerCase())
         if (isCancelled) continue
-        const totalVal = (o.total!=null ? Number(o.total) : (Number(o?.productId?.price||0) * Math.max(1, Number(o?.quantity||1))))
-        const cur = ['AED','OMR','SAR','BHD'].includes(String(o?.productId?.baseCurrency)) ? o.productId.baseCurrency : 'SAR'
-        const rate = fx[cur] || 0
-        const pkr = totalVal * 0.12 * rate
+        let pkr = 0
+        if (isDelivered && o?.agentCommissionPKR && Number(o.agentCommissionPKR) > 0){
+          pkr = Number(o.agentCommissionPKR)
+        } else {
+          const totalVal = (o.total!=null ? Number(o.total) : (Number(o?.productId?.price||0) * Math.max(1, Number(o?.quantity||1))))
+          const cur = ['AED','OMR','SAR','BHD','KWD','QAR','INR'].includes(String(o?.productId?.baseCurrency)) ? o.productId.baseCurrency : 'SAR'
+          const rate = fx[cur] || 0
+          pkr = totalVal * 0.12 * rate
+        }
         if (isDelivered) deliveredCommissionPKR += pkr; else upcomingCommissionPKR += pkr
       }
       deliveredCommissionPKR = Math.round(deliveredCommissionPKR)
@@ -658,12 +671,14 @@ router.get('/drivers/summary', auth, allowRoles('admin','user','manager'), async
       // Delivered total value (not collectedAmount)
       const deliveredOrders3 = await Order
         .find({ ...matchBase, shipmentStatus: 'delivered' })
-        .select('total productId quantity items')
+        .select('collectedAmount total productId quantity items')
         .populate('productId','price')
         .populate('items.productId','price')
       const collected = deliveredOrders3.reduce((sum, o)=>{
         let val = 0
-        if (o?.total != null){
+        if (o?.collectedAmount != null && Number(o.collectedAmount) > 0){
+          val = Number(o.collectedAmount)||0
+        } else if (o?.total != null){
           val = Number(o.total)||0
         } else if (Array.isArray(o?.items) && o.items.length){
           val = o.items.reduce((s,it)=> s + (Number(it?.productId?.price||0) * Math.max(1, Number(it?.quantity||1))), 0)

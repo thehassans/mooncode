@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { apiGet, API_BASE } from '../../api'
+import { detectCountryCode } from '../../utils/geo'
 import { useToast } from '../../ui/Toast'
 import Header from '../../components/layout/Header'
 import ShoppingCart from '../../components/ecommerce/ShoppingCart'
@@ -30,6 +31,20 @@ const ProductDetail = () => {
       const s = localStorage.getItem('selected_country')
       if (s) setSelectedCountry(s)
     } catch {}
+  }, [])
+
+  // On first visit: auto-detect if no selection persisted
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = localStorage.getItem('selected_country')
+        if (!saved) {
+          const code = await detectCountryCode()
+          setSelectedCountry(code)
+          try { localStorage.setItem('selected_country', code) } catch {}
+        }
+      } catch {}
+    })()
   }, [])
 
   // Currency conversion helpers (same mapping as other components)

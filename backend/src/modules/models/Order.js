@@ -46,6 +46,7 @@ const OrderSchema = new mongoose.Schema({
   status: { type: String, default: 'pending' },
   shipmentStatus: { type: String, default: 'pending' },
   shippedAt: { type: Date },
+  pickedUpAt: { type: Date },
   deliveredAt: { type: Date },
   // Inventory adjustment bookkeeping (decrement stock once upon delivery)
   inventoryAdjusted: { type: Boolean, default: false },
@@ -60,6 +61,10 @@ const OrderSchema = new mongoose.Schema({
   settled: { type: Boolean, default: false },
   settledAt: { type: Date },
   settledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+  // Agent commission snapshot (computed when delivered)
+  agentCommissionPKR: { type: Number, default: 0 },
+  agentCommissionComputedAt: { type: Date },
 
   invoiceNumber: { type: String, unique: true, sparse: true, index: true },
   total: { type: Number },

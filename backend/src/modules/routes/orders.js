@@ -1023,6 +1023,31 @@ router.post('/:id/deliver', auth, allowRoles('admin','user','agent','driver'), a
   ord.deliveredAt = new Date()
   ord.shipmentStatus = 'delivered'
   ord.balanceDue = Math.max(0, (ord.codAmount||0) - (ord.collectedAmount||0) - (ord.shippingFee||0))
+  // Snapshot agent commission (12% of order value) at delivery in PKR for wallet accounting
+  try{
+    // FX approximate rates to PKR (fallbacks)
+    const FX_PKR = { AED: 76, OMR: 726, SAR: 72, BHD: 830, KWD: 880, QAR: 79, INR: 3.3 }
+    let totalVal = 0
+    if (ord.total != null && Number.isFinite(Number(ord.total))) {
+      totalVal = Number(ord.total)
+    } else if (Array.isArray(ord.items) && ord.items.length){
+      try{
+        const ids = ord.items.map(i=> i.productId).filter(Boolean)
+        const prods = await Product.find({ _id: { $in: ids } }).select('price')
+        const map = new Map(prods.map(p=> [String(p._id), Number(p.price||0)]))
+        totalVal = ord.items.reduce((s,it)=> s + (Number(map.get(String(it.productId))||0) * Math.max(1, Number(it.quantity||1))), 0)
+      }catch{}
+    } else if (ord.productId){
+      try{ const p = await Product.findById(ord.productId).select('price'); totalVal = Number(p?.price||0) * Math.max(1, Number(ord.quantity||1)) }catch{}
+    }
+    // Determine base currency
+    let baseCcy = 'SAR'
+    try{ if (ord.productId){ const p = await Product.findById(ord.productId).select('baseCurrency'); baseCcy = p?.baseCurrency || 'SAR' } }catch{}
+    const rate = FX_PKR[baseCcy] || FX_PKR.SAR
+    const commission = Math.round((totalVal * 0.12) * rate)
+    ord.agentCommissionPKR = commission
+    ord.agentCommissionComputedAt = new Date()
+  }catch{}
   await ord.save()
   // Adjust product inventory on delivery (idempotent). Supports single or multi-item orders.
   try{
