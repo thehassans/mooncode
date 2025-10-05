@@ -4,7 +4,7 @@ import { useToast } from '../../ui/Toast'
 import { trackProductView, trackAddToCart } from '../../utils/analytics'
 import { API_BASE } from '../../api.js'
 
-export default function ProductCard({ product, onAddToCart, selectedCountry = 'SA', isSelected = false, onToggleSelect }) {
+export default function ProductCard({ product, onAddToCart, selectedCountry = 'SA', selectionEnabled = false, selected = false, onToggleSelect }) {
   const navigate = useNavigate()
   const toast = useToast()
   const [qty, setQty] = useState(1)
@@ -43,6 +43,10 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
   }
 
   const handleProductClick = () => {
+    if (selectionEnabled) {
+      try { onToggleSelect && onToggleSelect() } catch {}
+      return
+    }
     // Track product view
     trackProductView(product._id, product.name, product.category, product.price)
     navigate(`/product/${product._id}`)
@@ -175,30 +179,10 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
   const hoverImagePath = images[1] || images[0] || ''
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border overflow-hidden group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${isSelected ? 'border-orange-500 ring-2 ring-orange-200' : 'border-gray-200'}`}
+    <div className={`${selected ? 'ring-2 ring-orange-200 border-orange-500' : 'border-gray-200'} bg-white rounded-xl shadow-sm border overflow-hidden group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer`}
          onClick={handleProductClick}>
       {/* Product Image */}
       <div className="relative aspect-square overflow-hidden bg-gray-100">
-        {/* Selection checkbox */}
-        {typeof onToggleSelect === 'function' && (
-          <button
-            type="button"
-            className={`absolute top-2 left-2 z-10 h-7 w-7 rounded-full border flex items-center justify-center shadow-sm transition-colors ${isSelected ? 'bg-orange-500 border-orange-600 text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-            onClick={(e) => { e.stopPropagation(); onToggleSelect(product) }}
-            aria-pressed={isSelected}
-            aria-label={isSelected ? 'Deselect product' : 'Select product'}
-          >
-            {isSelected ? (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="7" strokeWidth="2" />
-              </svg>
-            )}
-          </button>
-        )}
         {/* Primary */}
         <img
           src={getImageUrl(mainImagePath)}
@@ -219,6 +203,18 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
           <div className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-red-600 text-white px-2.5 py-1 rounded-full text-xs font-semibold shadow-lg">
             -{product.discount}%
           </div>
+        )}
+        {selectionEnabled && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleSelect && onToggleSelect() }}
+            className={`absolute top-3 right-3 h-7 w-7 rounded-md border-2 flex items-center justify-center shadow-sm ${selected ? 'bg-orange-500 border-orange-500 text-white' : 'bg-white border-gray-300 text-transparent'}`}
+            aria-pressed={selected}
+            aria-label={selected ? 'Deselect product' : 'Select product'}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
         )}
         {/* Mini thumbnails indicator */}
         {images.length > 1 && (

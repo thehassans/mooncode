@@ -31,8 +31,27 @@ export default function ProductCatalog() {
   const [currentPage, setCurrentPage] = useState(1)
   const productsPerPage = 12
   const [isCartOpen, setIsCartOpen] = useState(false)
-  // Multi-select state
-  const [selectedMap, setSelectedMap] = useState({}) // { [productId]: product }
+
+  // Multi-select add-to-cart
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
+
+  const toggleSelectionMode = () => {
+    setSelectionMode(prev => {
+      const next = !prev
+      if (!next) setSelectedIds(new Set())
+      return next
+    })
+  }
+  const toggleSelectFor = (id) => {
+    setSelectedIds(prev => {
+      const s = new Set(prev)
+      if (s.has(id)) s.delete(id); else s.add(id)
+      return s
+    })
+  }
+  const isSelected = (id) => selectedIds.has(id)
+  const selectedCount = selectedIds.size
 
  // Load products when filters change
   useEffect(() => {
@@ -168,93 +187,63 @@ export default function ProductCatalog() {
     setIsCartOpen(true)
   }
 
+  const addSelectedToCart = () => {
+    try {
+      let cartItems = []
+      const saved = localStorage.getItem('shopping_cart')
+      if (saved) cartItems = JSON.parse(saved)
+
+      const ids = Array.from(selectedIds)
+      if (ids.length === 0) { toast.info('No products selected'); return }
+      let lastId = ''
+      ids.forEach(id => {
+        const p = products.find(pp => pp._id === id)
+        if (!p) return
+        const basePrice = Number(p?.price) || 0
+        const discounted = Number(p?.discount) > 0 ? basePrice * (1 - Number(p.discount) / 100) : basePrice
+        const unitPrice = Number(p?.onSale && (p?.salePrice ?? null) != null ? p.salePrice : discounted) || 0
+        const max = Number(p?.stockQty || 0)
+        const qty = 1
+        const idx = cartItems.findIndex(ci => ci.id === id)
+        if (idx >= 0) {
+          const current = Number(cartItems[idx].quantity || 0)
+          const candidate = current + qty
+          cartItems[idx].quantity = max > 0 && candidate > max ? max : candidate
+          cartItems[idx].price = unitPrice
+          cartItems[idx].currency = p.baseCurrency || 'SAR'
+          cartItems[idx].maxStock = p.stockQty
+        } else {
+          cartItems.push({
+            id,
+            name: p.name,
+            price: unitPrice,
+            currency: p.baseCurrency || 'SAR',
+            image: (Array.isArray(p.images) && p.images.length ? p.images[0] : (p.imagePath || '')),
+            quantity: Math.max(1, Math.min(max > 0 ? max : qty, qty)),
+            maxStock: p.stockQty
+          })
+        }
+        lastId = id
+      })
+
+      localStorage.setItem('shopping_cart', JSON.stringify(cartItems))
+      try { localStorage.setItem('last_added_product', String(lastId)) } catch {}
+      window.dispatchEvent(new CustomEvent('cartUpdated'))
+      toast.success(`Added ${ids.length} product${ids.length>1?'s':''} to cart`)
+      setIsCartOpen(true)
+      setSelectionMode(false)
+      setSelectedIds(new Set())
+    } catch (e) {
+      console.error('Failed to add selected to cart', e)
+      toast.error('Failed to add selected items')
+    }
+  }
+
   // Calculate pagination for display
   const totalPages = pagination?.pages || 1
   const totalProducts = pagination?.total || 0
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber)
-
-  // Currency helpers and multi-select utilities (component scope)
-  const RATES = {
-    SAR: { SAR: 1, AED: 0.98, OMR: 0.10, BHD: 0.10 },
-    AED: { SAR: 1.02, AED: 1, OMR: 0.10, BHD: 0.10 },
-    OMR: { SAR: 9.78, AED: 9.58, OMR: 1, BHD: 0.98 },
-    BHD: { SAR: 9.94, AED: 9.74, OMR: 1.02, BHD: 1 },
-  }
-  const COUNTRY_TO_CURRENCY = { AE: 'AED', OM: 'OMR', SA: 'SAR', BH: 'BHD' }
-  const getDisplayCurrency = () => COUNTRY_TO_CURRENCY[selectedCountry] || 'SAR'
-  const convertPrice = (value, fromCurrency, toCurrency) => {
-    const v = Number(value || 0)
-    if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) return v
-    const rate = RATES[fromCurrency]?.[toCurrency]
-    return rate ? v * rate : v
-  }
-  const formatPrice = (price, currency = 'SAR') => new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2 }).format(Number(price||0))
-  const effectiveUnit = (p) => {
-    const base = Number(p?.price) || 0
-    const discounted = Number(p?.discount) > 0 ? base * (1 - Number(p.discount)/100) : base
-    return (p?.onSale && (p?.salePrice ?? null) != null) ? Number(p.salePrice)||discounted : discounted
-  }
-  const selectedList = Object.values(selectedMap)
-  const selectedCount = selectedList.length
-  const selectedTotal = selectedList.reduce((sum, p) => {
-    const unit = effectiveUnit(p)
-    const from = p.baseCurrency || 'SAR'
-    return sum + convertPrice(unit, from, getDisplayCurrency())
-  }, 0)
-  const toggleSelect = (product) => {
-    setSelectedMap(prev => {
-      const next = { ...prev }
-      if (next[product._id]) delete next[product._id]
-      else next[product._id] = product
-      return next
-    })
-  }
-  const clearSelected = () => setSelectedMap({})
-  const addSelectedToCart = () => {
-    if (selectedCount === 0) return
-    try {
-      const savedCart = localStorage.getItem('shopping_cart')
-      let cartItems = []
-      if (savedCart) cartItems = JSON.parse(savedCart)
-      selectedList.forEach((p, idx) => {
-        const unit = effectiveUnit(p)
-        const id = p._id
-        const existingIndex = cartItems.findIndex(it => it.id === id)
-        const max = Number(p?.stockQty || 0)
-        const addQty = 1
-        if (existingIndex >= 0) {
-          const current = Number(cartItems[existingIndex].quantity || 0)
-          const candidate = current + addQty
-          cartItems[existingIndex].quantity = (max > 0 && candidate > max) ? max : candidate
-          cartItems[existingIndex].price = unit
-          cartItems[existingIndex].currency = p.baseCurrency || 'SAR'
-          cartItems[existingIndex].maxStock = p.stockQty
-        } else {
-          cartItems.push({
-            id,
-            name: p.name,
-            price: unit,
-            currency: p.baseCurrency || 'SAR',
-            image: (Array.isArray(p.images) && p.images.length ? p.images[0] : (p.imagePath || '')),
-            quantity: Math.max(1, Math.min(max > 0 ? max : addQty, addQty)),
-            maxStock: p.stockQty
-          })
-        }
-        if (idx === selectedList.length - 1) {
-          try { localStorage.setItem('last_added_product', String(id)) } catch {}
-        }
-      })
-      localStorage.setItem('shopping_cart', JSON.stringify(cartItems))
-      try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
-      toast.success(`Added ${selectedCount} item(s) to cart`)
-      setIsCartOpen(true)
-      clearSelected()
-    } catch (e) {
-      console.error('Bulk add failed', e)
-      toast.error('Failed to add selected items')
-    }
-  }
 
   if (loading) {
     return (
@@ -405,6 +394,22 @@ export default function ProductCatalog() {
                 {selectedCategory !== 'all' && ` in ${selectedCategory}`}
                 {searchQuery && ` matching "${searchQuery}"`}
               </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleSelectionMode}
+                  className={`px-3 py-2 rounded-md text-sm font-medium border transition-colors ${selectionMode ? 'bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                >
+                  {selectionMode ? 'Done Selecting' : 'Select Multiple'}
+                </button>
+                {selectionMode && (
+                  <button
+                    onClick={() => setSelectedIds(new Set(products.map(p=>p._id)))}
+                    className="px-3 py-2 rounded-md text-sm font-medium border bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  >
+                    Select All
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Products Grid */}
@@ -421,15 +426,16 @@ export default function ProductCatalog() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6 mb-24">
+                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6 mb-8">
                   {products.map((product) => (
                     <ProductCard
                       key={product._id}
                       product={product}
                       selectedCountry={selectedCountry}
                       onAddToCart={handleAddToCart}
-                      isSelected={!!selectedMap[product._id]}
-                      onToggleSelect={toggleSelect}
+                      selectionEnabled={selectionMode}
+                      selected={isSelected(product._id)}
+                      onToggleSelect={() => toggleSelectFor(product._id)}
                     />
                   ))}
                 </div>
@@ -553,41 +559,42 @@ export default function ProductCatalog() {
         </div>
       </div>
 
+      {/* Sticky selection bar */}
+      {selectionMode && (
+        <div className="fixed inset-x-0 bottom-0 z-40">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-[env(safe-area-inset-bottom)]">
+            <div className="bg-white border-t border-gray-200 shadow-lg rounded-t-2xl p-3 sm:p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-xs text-gray-500">Selected</div>
+                  <div className="text-sm font-semibold text-gray-900">{selectedCount} item{selectedCount!==1?'s':''}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedIds(new Set())}
+                    className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    onClick={addSelectedToCart}
+                    disabled={selectedCount === 0}
+                    className={`px-4 py-2 rounded-lg text-white text-sm font-semibold shadow ${selectedCount===0 ? 'bg-gray-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'}`}
+                  >
+                    Add Selected to Cart
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Shopping Cart Sidebar */}
       <ShoppingCart 
         isOpen={isCartOpen} 
         onClose={() => setIsCartOpen(false)} 
       />
-
-      {/* Sticky Add Selected Bar */}
-      {selectedCount > 0 && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-3xl">
-          <div className="bg-white border border-gray-200 shadow-xl rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-orange-100 text-orange-700 font-semibold">
-                {selectedCount}
-              </span>
-              <div>
-                <div className="text-sm font-semibold text-gray-900">{selectedCount} selected</div>
-                <div className="text-xs text-gray-500">{formatPrice(selectedTotal, getDisplayCurrency())} total</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <button
-                className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium w-full sm:w-auto"
-                onClick={clearSelected}
-              >
-                Clear
-              </button>
-              <button
-                className="flex-1 sm:flex-none px-5 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 font-semibold shadow-md"
-                onClick={addSelectedToCart}
-              >
-                Add Selected to Cart
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
+}
