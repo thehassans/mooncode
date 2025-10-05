@@ -11,6 +11,7 @@ export const API_BASE = (() => {
       const host = String(window.location.hostname||'')
       const isLocal = /^localhost$|^127\.0\.0\.1$/.test(host)
       if (isLocal) base = 'http://localhost:4000'
+      else base = '/api'
     }
   }catch{}
   // Remove trailing slash

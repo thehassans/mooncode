@@ -57,7 +57,22 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
   const getImageUrl = (imagePath) => {
     if (!imagePath) return '/placeholder-product.svg'
     if (imagePath.startsWith('http')) return imagePath
-    return `${API_BASE || ''}${imagePath}`
+    let p = String(imagePath).replace(/\\/g,'/')
+    if (!p.startsWith('/')) p = '/' + p
+    try{
+      const base = String(API_BASE||'').trim()
+      if (!base) return p
+      if (/^https?:\/\//i.test(base)){
+        const u = new URL(base)
+        const prefix = u.pathname && u.pathname !== '/' ? u.pathname.replace(/\/$/, '') : ''
+        return `${u.origin}${prefix}${p}`
+      }
+      // base is relative (e.g., '/api')
+      const prefix = base.replace(/\/$/, '')
+      return `${prefix}${p}`
+    }catch{
+      return p
+    }
   }
 
   const renderStars = (rating) => {

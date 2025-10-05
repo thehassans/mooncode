@@ -119,11 +119,11 @@ app.use('/api/geocode', geocodeRoutes);
 app.use('/api/ecommerce', ecommerceRoutes);
 
 // Serve uploaded product images
-app.use('/uploads', (req, res, next) => {
+app.use(['/uploads','/api/uploads'], (req, res, next) => {
   res.setHeader('Cache-Control', 'public, max-age=86400');
   next();
 });
-app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
+app.use(['/uploads','/api/uploads'], express.static(path.resolve(process.cwd(), 'uploads')));
 
 // Serve frontend static build if available (single-server deploy)
 // Set SERVE_STATIC=false in env to disable.
