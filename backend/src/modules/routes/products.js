@@ -1,6 +1,7 @@
 import express from 'express'
 import multer from 'multer'
 import path from 'path'
+import fs from 'fs'
 import { auth, allowRoles } from '../middleware/auth.js'
 import Product from '../models/Product.js'
 import User from '../models/User.js'
@@ -12,7 +13,17 @@ const router = express.Router()
 
 // Multer config for image uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
+  destination: (req, file, cb) => {
+    try{
+      const dir = path.resolve(process.cwd(), 'uploads')
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+      cb(null, dir)
+    }catch(err){
+      // Fallback to relative path if resolution fails
+      try{ fs.mkdirSync('uploads', { recursive: true }) }catch{}
+      cb(null, 'uploads/')
+    }
+  },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname)
     const name = path.basename(file.originalname, ext)

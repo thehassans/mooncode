@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../ui/Toast'
-import { apiPost } from '../../api.js'
+import { apiPost, API_BASE } from '../../api.js'
 import { trackRemoveFromCart, trackCheckoutStart } from '../../utils/analytics'
 
 export default function ShoppingCart({ isOpen, onClose }) {
@@ -21,6 +21,15 @@ export default function ShoppingCart({ isOpen, onClose }) {
     { code:'QA', name:'Qatar', flag:'🇶🇦', dial:'+974' },
   ]
   const selectedCountry = COUNTRIES.find(c => c.code === form.country) || COUNTRIES[0]
+
+  const getImageUrl = (p) => {
+    const imagePath = p || ''
+    if (!imagePath) return '/placeholder-product.svg'
+    if (String(imagePath).startsWith('http')) return imagePath
+    const isLocal = (typeof window !== 'undefined') && (/^localhost$|^127\.0\.0\.1$/.test(window.location.hostname))
+    const base = (API_BASE && String(API_BASE).trim()) || (isLocal ? 'http://localhost:4000' : '')
+    return `${base}${imagePath}`
+  }
 
   // Load cart from localStorage on component mount
   useEffect(() => {
@@ -172,7 +181,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
                   <div key={item.id} className="flex gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
                     <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-white rounded-lg overflow-hidden border border-gray-200">
                       <img 
-                        src={(item.image || item.imagePath) || '/placeholder-product.svg'} 
+                        src={getImageUrl(item.image || item.imagePath)} 
                         alt={item.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {

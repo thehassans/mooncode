@@ -5,7 +5,15 @@ export const API_BASE = (() => {
   if (base === '' || base === '/') base = ''
   // If someone accidentally sets 'http:' or 'https:' (no host), fallback to same-origin
   if (/^https?:\/?$/.test(base)) base = ''
-  // Remove trailing slash for consistent concatenation with paths that start with '/'
+  // Localhost fallback: if unset and running on localhost dev port, use backend 4000
+  try{
+    if (!base && typeof window !== 'undefined'){
+      const host = String(window.location.hostname||'')
+      const isLocal = /^localhost$|^127\.0\.0\.1$/.test(host)
+      if (isLocal) base = 'http://localhost:4000'
+    }
+  }catch{}
+  // Remove trailing slash
   if (base.endsWith('/')) base = base.slice(0, -1)
   return base
 })();
