@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { apiGet, apiPatch, apiPost } from '../../api'
+import { apiGet, apiPatch, apiPost, apiGetBlob } from '../../api'
 import { useToast } from '../../ui/Toast.jsx'
 
 function StatusBadge({ status }){
@@ -30,6 +30,7 @@ export default function OnlineOrders(){
   const [hasMore, setHasMore] = useState(true)
   const loadingMoreRef = useRef(false)
   const endRef = useRef(null)
+  const exportingRef = useRef(false)
 
   // Driver assignment state (similar to Orders)
   const [driversByCountry, setDriversByCountry] = useState({})
@@ -75,6 +76,26 @@ export default function OnlineOrders(){
 
   useEffect(()=>{ load(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [buildQuery])
   useEffect(()=>{ load(true) }, [])
+
+  async function exportCsv(){
+    if (exportingRef.current) return
+    exportingRef.current = true
+    try{
+      const params = new URLSearchParams(buildQuery.toString())
+      params.set('max','10000') // cap server-side
+      const blob = await apiGetBlob(`/api/ecommerce/orders/export?${params.toString()}`)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const ts = new Date().toISOString().slice(0,10)
+      a.href = url
+      a.download = `web-orders-${ts}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    }catch(e){ setError(e?.message || 'Failed to export') }
+    finally{ exportingRef.current = false }
+  }
 
   // Load options for filters
   async function loadOptions(selectedCountry=''){
@@ -206,6 +227,7 @@ export default function OnlineOrders(){
             <input type="checkbox" checked={onlyUnassigned} onChange={e=> setOnlyUnassigned(e.target.checked)} /> Unassigned only
           </label>
           <button className="btn secondary" onClick={()=> load(true)} disabled={loading}>{loading? 'Refreshing…' : 'Refresh'}</button>
+          <button className="btn" onClick={exportCsv}>Export CSV</button>
         </div>
       </div>
 

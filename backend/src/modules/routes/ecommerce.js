@@ -126,6 +126,96 @@ router.get('/orders', auth, allowRoles('admin','user','manager'), async (req, re
   }
 })
 
+// GET /api/ecommerce/orders/export — export filtered orders as CSV
+router.get('/orders/export', auth, allowRoles('admin','user','manager'), async (req, res) => {
+  try{
+    const { q = '', status = '', start = '', end = '', product = '', ship = '', country = '', city = '', onlyUnassigned = '' } = req.query || {}
+    const match = {}
+    if (q){
+      const rx = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      match.$or = [
+        { customerName: rx },
+        { customerPhone: rx },
+        { address: rx },
+        { city: rx },
+        { area: rx },
+        { details: rx },
+        { 'items.name': rx },
+      ]
+    }
+    if (status) match.status = status
+    if (ship) match.shipmentStatus = ship
+    if (country) match.orderCountry = country
+    if (city) match.city = city
+    if (String(onlyUnassigned).toLowerCase() === 'true') match.deliveryBoy = { $in: [null, undefined] }
+    if (start || end){
+      match.createdAt = {}
+      if (start) match.createdAt.$gte = new Date(start)
+      if (end) match.createdAt.$lte = new Date(end)
+    }
+    if (product){ match['items.productId'] = product }
+
+    const cap = Math.min(10000, Math.max(1, Number(req.query.max||10000)))
+    const rows = await WebOrder.find(match)
+      .sort({ createdAt: -1 })
+      .limit(cap)
+      .populate('deliveryBoy', 'firstName lastName email city')
+      .lean()
+
+    const esc = (v) => {
+      if (v == null) return ''
+      const s = String(v)
+      if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"'
+      return s
+    }
+    const fmtDate = (d) => { try{ return new Date(d).toISOString() }catch{ return '' } }
+    const itemsToText = (items) => {
+      try{
+        const arr = Array.isArray(items) ? items : []
+        return arr.map(it => `${it?.name||''} x${Math.max(1, Number(it?.quantity||1))}@${Number(it?.price||0).toFixed(2)}`).join('; ')
+      }catch{ return '' }
+    }
+
+    const header = [
+      'OrderID','CreatedAt','Status','ShipmentStatus','Country','City','Area','Address','Customer','PhoneCode','Phone','Currency','Total','Items','ItemsCount','DriverName','DriverCity'
+    ]
+    const lines = [header.join(',')]
+    for (const r of rows){
+      const driverName = r?.deliveryBoy ? `${r.deliveryBoy.firstName||''} ${r.deliveryBoy.lastName||''}`.trim() : ''
+      const itemsTxt = itemsToText(r?.items)
+      const itemsCount = Array.isArray(r?.items) ? r.items.reduce((s,it)=> s + Math.max(1, Number(it?.quantity||1)), 0) : 0
+      const line = [
+        esc(r?._id),
+        esc(fmtDate(r?.createdAt)),
+        esc(r?.status||''),
+        esc(r?.shipmentStatus||''),
+        esc(r?.orderCountry||''),
+        esc(r?.city||''),
+        esc(r?.area||''),
+        esc(r?.address||''),
+        esc(r?.customerName||''),
+        esc(r?.phoneCountryCode||''),
+        esc(r?.customerPhone||''),
+        esc(r?.currency||'SAR'),
+        esc(Number(r?.total||0).toFixed(2)),
+        esc(itemsTxt),
+        esc(itemsCount),
+        esc(driverName),
+        esc(r?.deliveryBoy?.city||'')
+      ].join(',')
+      lines.push(line)
+    }
+
+    const csv = '\ufeff' + lines.join('\n')
+    const ts = new Date().toISOString().slice(0,10)
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="web-orders-${ts}.csv"`)
+    return res.status(200).send(csv)
+  }catch(err){
+    return res.status(500).json({ message: 'Failed to export orders', error: err?.message })
+  }
+})
+
 // PATCH /api/ecommerce/orders/:id (update status)
 router.patch('/orders/:id', auth, allowRoles('admin','user','manager'), async (req, res) => {
   try{
