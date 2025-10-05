@@ -29,9 +29,11 @@ export default function Header({ onCartClick }) {
     }
 
     window.addEventListener('cartUpdated', handleCartUpdate)
+    window.addEventListener('storage', handleCartUpdate)
     
     return () => {
       window.removeEventListener('cartUpdated', handleCartUpdate)
+      window.removeEventListener('storage', handleCartUpdate)
     }
   }, [])
 

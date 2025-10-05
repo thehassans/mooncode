@@ -137,34 +137,38 @@ export default function ShoppingCart({ isOpen, onClose }) {
       removeFromCart(productId)
       return
     }
-    setCartItems(prevItems =>
-      prevItems.map(item =>
-        item.id === productId
-          ? { ...item, quantity: newQuantity }
-          : item
-      )
-    )
+    setCartItems(prevItems => {
+      const next = prevItems.map(item => item.id === productId ? { ...item, quantity: newQuantity } : item)
+      try { localStorage.setItem('shopping_cart', JSON.stringify(next)) } catch {}
+      try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
+      return next
+    })
   }
 
   const removeFromCart = (productId) => {
-    // Find the removed item for tracking
-    const removedItem = cartItems.find(item => item.id === productId)
-    if (removedItem) {
-      trackRemoveFromCart(removedItem.id, removedItem.name, removedItem.quantity)
-    }
-    
-    setCartItems(prevItems => prevItems.filter(item => item.id !== productId))
-    
-    // Dispatch custom event to update cart count in header
-    window.dispatchEvent(new CustomEvent('cartUpdated'))
-    
+    try {
+      const removedItem = cartItems.find(item => item.id === productId)
+      if (removedItem) {
+        try { trackRemoveFromCart(removedItem.id, removedItem.name, removedItem.quantity) } catch {}
+      }
+    } catch {}
+    setCartItems(prevItems => {
+      const next = prevItems.filter(item => item.id !== productId)
+      try { localStorage.setItem('shopping_cart', JSON.stringify(next)) } catch {}
+      try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
+      return next
+    })
     toast.success('Item removed from cart')
   }
 
   const clearCart = () => {
-    setCartItems([])
+    setCartItems(() => {
+      const next = []
+      try { localStorage.setItem('shopping_cart', JSON.stringify(next)) } catch {}
+      try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
+      return next
+    })
     toast.success('Cart cleared')
-    try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
   }
 
   const getTotalPrice = () => {
