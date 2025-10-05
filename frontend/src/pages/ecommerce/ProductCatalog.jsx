@@ -31,6 +31,8 @@ export default function ProductCatalog() {
   const [currentPage, setCurrentPage] = useState(1)
   const productsPerPage = 12
   const [isCartOpen, setIsCartOpen] = useState(false)
+  // Multi-select state
+  const [selectedMap, setSelectedMap] = useState({}) // { [productId]: product }
 
  // Load products when filters change
   useEffect(() => {
@@ -171,6 +173,88 @@ export default function ProductCatalog() {
   const totalProducts = pagination?.total || 0
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber)
+
+  // Currency helpers and multi-select utilities (component scope)
+  const RATES = {
+    SAR: { SAR: 1, AED: 0.98, OMR: 0.10, BHD: 0.10 },
+    AED: { SAR: 1.02, AED: 1, OMR: 0.10, BHD: 0.10 },
+    OMR: { SAR: 9.78, AED: 9.58, OMR: 1, BHD: 0.98 },
+    BHD: { SAR: 9.94, AED: 9.74, OMR: 1.02, BHD: 1 },
+  }
+  const COUNTRY_TO_CURRENCY = { AE: 'AED', OM: 'OMR', SA: 'SAR', BH: 'BHD' }
+  const getDisplayCurrency = () => COUNTRY_TO_CURRENCY[selectedCountry] || 'SAR'
+  const convertPrice = (value, fromCurrency, toCurrency) => {
+    const v = Number(value || 0)
+    if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) return v
+    const rate = RATES[fromCurrency]?.[toCurrency]
+    return rate ? v * rate : v
+  }
+  const formatPrice = (price, currency = 'SAR') => new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2 }).format(Number(price||0))
+  const effectiveUnit = (p) => {
+    const base = Number(p?.price) || 0
+    const discounted = Number(p?.discount) > 0 ? base * (1 - Number(p.discount)/100) : base
+    return (p?.onSale && (p?.salePrice ?? null) != null) ? Number(p.salePrice)||discounted : discounted
+  }
+  const selectedList = Object.values(selectedMap)
+  const selectedCount = selectedList.length
+  const selectedTotal = selectedList.reduce((sum, p) => {
+    const unit = effectiveUnit(p)
+    const from = p.baseCurrency || 'SAR'
+    return sum + convertPrice(unit, from, getDisplayCurrency())
+  }, 0)
+  const toggleSelect = (product) => {
+    setSelectedMap(prev => {
+      const next = { ...prev }
+      if (next[product._id]) delete next[product._id]
+      else next[product._id] = product
+      return next
+    })
+  }
+  const clearSelected = () => setSelectedMap({})
+  const addSelectedToCart = () => {
+    if (selectedCount === 0) return
+    try {
+      const savedCart = localStorage.getItem('shopping_cart')
+      let cartItems = []
+      if (savedCart) cartItems = JSON.parse(savedCart)
+      selectedList.forEach((p, idx) => {
+        const unit = effectiveUnit(p)
+        const id = p._id
+        const existingIndex = cartItems.findIndex(it => it.id === id)
+        const max = Number(p?.stockQty || 0)
+        const addQty = 1
+        if (existingIndex >= 0) {
+          const current = Number(cartItems[existingIndex].quantity || 0)
+          const candidate = current + addQty
+          cartItems[existingIndex].quantity = (max > 0 && candidate > max) ? max : candidate
+          cartItems[existingIndex].price = unit
+          cartItems[existingIndex].currency = p.baseCurrency || 'SAR'
+          cartItems[existingIndex].maxStock = p.stockQty
+        } else {
+          cartItems.push({
+            id,
+            name: p.name,
+            price: unit,
+            currency: p.baseCurrency || 'SAR',
+            image: (Array.isArray(p.images) && p.images.length ? p.images[0] : (p.imagePath || '')),
+            quantity: Math.max(1, Math.min(max > 0 ? max : addQty, addQty)),
+            maxStock: p.stockQty
+          })
+        }
+        if (idx === selectedList.length - 1) {
+          try { localStorage.setItem('last_added_product', String(id)) } catch {}
+        }
+      })
+      localStorage.setItem('shopping_cart', JSON.stringify(cartItems))
+      try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
+      toast.success(`Added ${selectedCount} item(s) to cart`)
+      setIsCartOpen(true)
+      clearSelected()
+    } catch (e) {
+      console.error('Bulk add failed', e)
+      toast.error('Failed to add selected items')
+    }
+  }
 
   if (loading) {
     return (
@@ -337,13 +421,15 @@ export default function ProductCatalog() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6 mb-8">
+                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6 mb-24">
                   {products.map((product) => (
                     <ProductCard
                       key={product._id}
                       product={product}
                       selectedCountry={selectedCountry}
                       onAddToCart={handleAddToCart}
+                      isSelected={!!selectedMap[product._id]}
+                      onToggleSelect={toggleSelect}
                     />
                   ))}
                 </div>
@@ -472,6 +558,36 @@ export default function ProductCatalog() {
         isOpen={isCartOpen} 
         onClose={() => setIsCartOpen(false)} 
       />
+
+      {/* Sticky Add Selected Bar */}
+      {selectedCount > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-3xl">
+          <div className="bg-white border border-gray-200 shadow-xl rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-orange-100 text-orange-700 font-semibold">
+                {selectedCount}
+              </span>
+              <div>
+                <div className="text-sm font-semibold text-gray-900">{selectedCount} selected</div>
+                <div className="text-xs text-gray-500">{formatPrice(selectedTotal, getDisplayCurrency())} total</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium w-full sm:w-auto"
+                onClick={clearSelected}
+              >
+                Clear
+              </button>
+              <button
+                className="flex-1 sm:flex-none px-5 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 font-semibold shadow-md"
+                onClick={addSelectedToCart}
+              >
+                Add Selected to Cart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
-}

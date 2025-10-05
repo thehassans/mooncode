@@ -4,7 +4,7 @@ import { useToast } from '../../ui/Toast'
 import { trackProductView, trackAddToCart } from '../../utils/analytics'
 import { API_BASE } from '../../api.js'
 
-export default function ProductCard({ product, onAddToCart, selectedCountry = 'SA' }) {
+export default function ProductCard({ product, onAddToCart, selectedCountry = 'SA', isSelected = false, onToggleSelect }) {
   const navigate = useNavigate()
   const toast = useToast()
   const [qty, setQty] = useState(1)
@@ -175,10 +175,30 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
   const hoverImagePath = images[1] || images[0] || ''
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+    <div className={`bg-white rounded-xl shadow-sm border overflow-hidden group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer ${isSelected ? 'border-orange-500 ring-2 ring-orange-200' : 'border-gray-200'}`}
          onClick={handleProductClick}>
       {/* Product Image */}
       <div className="relative aspect-square overflow-hidden bg-gray-100">
+        {/* Selection checkbox */}
+        {typeof onToggleSelect === 'function' && (
+          <button
+            type="button"
+            className={`absolute top-2 left-2 z-10 h-7 w-7 rounded-full border flex items-center justify-center shadow-sm transition-colors ${isSelected ? 'bg-orange-500 border-orange-600 text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+            onClick={(e) => { e.stopPropagation(); onToggleSelect(product) }}
+            aria-pressed={isSelected}
+            aria-label={isSelected ? 'Deselect product' : 'Select product'}
+          >
+            {isSelected ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="7" strokeWidth="2" />
+              </svg>
+            )}
+          </button>
+        )}
         {/* Primary */}
         <img
           src={getImageUrl(mainImagePath)}
