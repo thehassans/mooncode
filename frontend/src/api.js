@@ -5,19 +5,45 @@ export const API_BASE = (() => {
   if (base === '' || base === '/') base = ''
   // If someone accidentally sets 'http:' or 'https:' (no host), fallback to same-origin
   if (/^https?:\/?$/.test(base)) base = ''
-  // Localhost fallback: if unset and running on localhost dev port, use backend 4000
+  // Localhost fallback or default path-prefix for production
   try{
     if (!base && typeof window !== 'undefined'){
       const host = String(window.location.hostname||'')
       const isLocal = /^localhost$|^127\.0\.0\.1$/.test(host)
-      if (isLocal) base = 'http://localhost:4000'
-      else base = '/api'
+      base = isLocal ? 'http://localhost:4000' : '/api'
     }
   }catch{}
+  // If provided as relative without leading slash (e.g., 'api'), fix it
+  if (base && !/^https?:\/\//i.test(base) && !base.startsWith('/')) base = '/' + base
   // Remove trailing slash
   if (base.endsWith('/')) base = base.slice(0, -1)
   return base
 })();
+
+function buildUrl(path){
+  let p = String(path||'')
+  if (!p.startsWith('/')) p = '/' + p
+  try{
+    const base = String(API_BASE||'').trim()
+    if (!base) return p
+    // If base has '/api' as its pathname, avoid double '/api' in requests
+    let basePath = base
+    let origin = ''
+    if (/^https?:\/\//i.test(base)){
+      const u = new URL(base)
+      origin = u.origin
+      basePath = u.pathname || ''
+    }
+    basePath = basePath.replace(/\/$/, '')
+    if (basePath === '/api' && p.startsWith('/api/')){
+      p = p.slice(4) // remove leading '/api'
+    }
+    const prefix = basePath && basePath !== '/' ? basePath : ''
+    return `${origin}${prefix}${p}` || p
+  }catch{
+    return p
+  }
+}
 
 function authHeader(){
   const token = localStorage.getItem('token');
@@ -99,43 +125,43 @@ async function handle(res){
 }
 
 export async function apiGet(path){
-  const res = await fetchWithRetry(`${API_BASE}${path}`, { headers: { 'Content-Type': 'application/json', ...authHeader() } }, { method: 'GET' });
+  const res = await fetchWithRetry(buildUrl(path), { headers: { 'Content-Type': 'application/json', ...authHeader() } }, { method: 'GET' });
   await handle(res);
   return res.json();
 }
 
 export async function apiPost(path, body){
-  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify(body) });
+  const res = await fetch(buildUrl(path), { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify(body) });
   await handle(res);
   return res.json();
 }
 
 export async function apiUpload(path, formData){
-  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers: { ...authHeader() }, body: formData });
+  const res = await fetch(buildUrl(path), { method: 'POST', headers: { ...authHeader() }, body: formData });
   await handle(res);
   return res.json();
 }
 
 export async function apiGetBlob(path){
-  const res = await fetchWithRetry(`${API_BASE}${path}`, { headers: { ...authHeader() } }, { method: 'GET' });
+  const res = await fetchWithRetry(buildUrl(path), { headers: { ...authHeader() } }, { method: 'GET' });
   await handle(res);
   return res.blob();
 }
 
 export async function apiPatch(path, body){
-  const res = await fetch(`${API_BASE}${path}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify(body) });
+  const res = await fetch(buildUrl(path), { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeader() }, body: JSON.stringify(body) });
   await handle(res);
   return res.json();
 }
 
 export async function apiDelete(path){
-  const res = await fetch(`${API_BASE}${path}`, { method: 'DELETE', headers: { ...authHeader() } });
+  const res = await fetch(buildUrl(path), { method: 'DELETE', headers: { ...authHeader() } });
   await handle(res);
   return res.json();
 }
 
 export async function apiUploadPatch(path, formData){
-  const res = await fetch(`${API_BASE}${path}`, { method: 'PATCH', headers: { ...authHeader() }, body: formData });
+  const res = await fetch(buildUrl(path), { method: 'PATCH', headers: { ...authHeader() }, body: formData });
   await handle(res);
   return res.json();
 }
