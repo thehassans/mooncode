@@ -29,6 +29,10 @@ export default function ShoppingCart({ isOpen, onClose }) {
     KW: ['Kuwait City','Al Ahmadi','Hawalli','Salmiya','Farwaniya'],
     QA: ['Doha','Al Rayyan','Al Khor','Mesaieed','Umm Salal'],
   }
+
+  // Quick adjust: pick last added product or only item
+  const lastAddedId = (() => { try { return localStorage.getItem('last_added_product') || '' } catch { return '' } })()
+  const quickItem = cartItems.length === 1 ? cartItems[0] : (cartItems.find(i => i.id === lastAddedId) || cartItems[0])
   const selectedCountry = COUNTRIES.find(c => c.code === form.country) || COUNTRIES[0]
 
   // Currency conversion (same base as elsewhere)
@@ -335,6 +339,48 @@ export default function ShoppingCart({ isOpen, onClose }) {
         {cartItems.length > 0 && (
           <div className="border-t border-gray-200 p-4 sm:p-6 bg-white">
             <div className="space-y-3 mb-4">
+              {/* Quick Quantity Adjuster (last added item or single item) */}
+              {quickItem && (
+                <div className="p-3 rounded-lg bg-gray-50 border border-gray-200">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{quickItem.name}</p>
+                      <p className="text-xs text-gray-500">{formatPrice(convertPrice(quickItem.price, quickItem.currency || 'SAR', displayCurrency), displayCurrency)} each</p>
+                    </div>
+                    <div className="flex items-center bg-white border border-gray-300 rounded-lg">
+                      <button 
+                        className={`p-2 transition-colors rounded-l-lg ${quickItem.quantity <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+                        onClick={() => quickItem.quantity > 1 && updateQuantity(quickItem.id, quickItem.quantity - 1)}
+                        disabled={quickItem.quantity <= 1}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                        </svg>
+                      </button>
+                      <span className="px-3 py-2 text-sm font-medium min-w-[2.5rem] text-center">{quickItem.quantity}</span>
+                      <button 
+                        className={`p-2 transition-colors rounded-r-lg ${Number(quickItem.maxStock) > 0 && quickItem.quantity >= Number(quickItem.maxStock) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+                        onClick={() => {
+                          const max = Number(quickItem.maxStock)
+                          if (max > 0 && quickItem.quantity >= max) return
+                          updateQuantity(quickItem.id, quickItem.quantity + 1)
+                        }}
+                        disabled={Number(quickItem.maxStock) > 0 && quickItem.quantity >= Number(quickItem.maxStock)}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* Items count */}
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Items:</span>
+                <span>{getTotalItems()}</span>
+              </div>
+
               {/* Free Shipping Progress */}
               {(() => {
                 const info = getFreeShippingInfo()

@@ -169,6 +169,7 @@ const ProductDetail = () => {
       }
       
       localStorage.setItem('shopping_cart', JSON.stringify(cartItems))
+      try { localStorage.setItem('last_added_product', String(product._id)) } catch {}
       
       // Track add to cart
       trackAddToCart(product._id, product.name, product.category, product.price, quantity)

@@ -137,6 +137,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
       
       // Save updated cart to localStorage
       localStorage.setItem('shopping_cart', JSON.stringify(cartItems))
+      try { localStorage.setItem('last_added_product', String(product._id)) } catch {}
       
       // Track add to cart event
       trackAddToCart(product._id, product.name, product.price, Math.max(1, qty))
