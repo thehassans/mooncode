@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom'
 import Header from '../../components/layout/Header'
 import { apiGet } from '../../api'
 import ProductCard from '../../components/ecommerce/ProductCard'
+import ShoppingCart from '../../components/ecommerce/ShoppingCart'
 import { categories } from '../../components/ecommerce/CategoryFilter'
 
 export default function Home(){
   const [featured, setFeatured] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isCartOpen, setIsCartOpen] = useState(false)
+  const [categoryCounts, setCategoryCounts] = useState({})
 
   useEffect(()=>{
     let alive = true
@@ -27,11 +30,28 @@ export default function Home(){
     return ()=>{ alive = false }
   },[])
 
-  const topCategories = categories.filter(c => c.id !== 'all').slice(0,8)
+  // Load category usage counts for hiding empty categories
+  useEffect(() => {
+    let alive = true
+    ;(async()=>{
+      try{
+        const res = await apiGet('/api/products/public/categories-usage')
+        if (alive) setCategoryCounts(res?.counts || {})
+      }catch{
+        if (alive) setCategoryCounts({})
+      }
+    })()
+    return ()=>{ alive = false }
+  }, [])
+
+  const topCategories = categories
+    .filter(c => c.id !== 'all')
+    .filter(c => (categoryCounts?.[c.id] || 0) > 0)
+    .slice(0, 8)
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onCartClick={()=>{}} />
+      <Header onCartClick={() => setIsCartOpen(true)} />
 
       {/* Hero */}
       <section className="bg-white">
@@ -84,12 +104,18 @@ export default function Home(){
           ) : (
             <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {featured.map(p => (
-                <ProductCard key={p._id} product={p} onAddToCart={()=>{}} />
+                <ProductCard key={p._id} product={p} onAddToCart={() => setIsCartOpen(true)} />
               ))}
             </div>
           )}
         </div>
       </section>
+
+      {/* Shopping Cart Sidebar */}
+      <ShoppingCart 
+        isOpen={isCartOpen} 
+        onClose={() => setIsCartOpen(false)} 
+      />
     </div>
   )
 }

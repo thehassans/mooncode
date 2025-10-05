@@ -287,19 +287,20 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
 
         {/* Add to Cart Button */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center bg-white border border-gray-300 rounded-lg">
+          <div className="flex items-center bg-white border border-gray-300 rounded-lg h-9 overflow-hidden">
             <button
-              className={`p-2 transition-colors rounded-l-lg ${qty <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+              className={`h-full w-9 flex items-center justify-center transition-colors ${qty <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
               onClick={(e) => { e.stopPropagation(); if (qty > 1) setQty(qty - 1) }}
               disabled={qty <= 1}
+              aria-label="Decrease quantity"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
               </svg>
             </button>
-            <span className="px-3 py-2 text-sm font-medium min-w-[2.5rem] text-center">{qty}</span>
+            <span className="px-3 text-sm font-medium min-w-[2.5rem] text-center select-none">{qty}</span>
             <button
-              className={`p-2 transition-colors rounded-r-lg ${Number(product.stockQty) > 0 && qty >= Number(product.stockQty) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+              className={`h-full w-9 flex items-center justify-center transition-colors ${Number(product.stockQty) > 0 && qty >= Number(product.stockQty) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
               onClick={(e) => {
                 e.stopPropagation()
                 const max = Number(product.stockQty)
@@ -307,6 +308,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
                 setQty(qty + 1)
               }}
               disabled={Number(product.stockQty) > 0 && qty >= Number(product.stockQty)}
+              aria-label="Increase quantity"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

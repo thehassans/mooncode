@@ -77,17 +77,30 @@ export default function ShoppingCart({ isOpen, onClose }) {
     }
   }
 
-  // Load cart from localStorage on component mount
+  const reloadCartFromStorage = () => {
+    try{
+      const savedCart = localStorage.getItem('shopping_cart')
+      if (savedCart) setCartItems(JSON.parse(savedCart))
+      else setCartItems([])
+    }catch(err){ console.error('Error loading cart from localStorage:', err) }
+  }
+
+  // Load cart on mount and whenever we receive a cartUpdated event
   useEffect(() => {
-    const savedCart = localStorage.getItem('shopping_cart')
-    if (savedCart) {
-      try {
-        setCartItems(JSON.parse(savedCart))
-      } catch (error) {
-        console.error('Error loading cart from localStorage:', error)
-      }
+    reloadCartFromStorage()
+    const handler = () => reloadCartFromStorage()
+    window.addEventListener('cartUpdated', handler)
+    window.addEventListener('storage', handler)
+    return () => {
+      window.removeEventListener('cartUpdated', handler)
+      window.removeEventListener('storage', handler)
     }
   }, [])
+
+  // When opening the cart, re-sync from storage to ensure the latest items are shown
+  useEffect(() => {
+    if (isOpen) reloadCartFromStorage()
+  }, [isOpen])
 
   // Default country from catalog selection if available
   useEffect(() => {
