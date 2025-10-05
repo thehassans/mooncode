@@ -217,6 +217,9 @@ export default function Managers(){
                 <option value="Oman">Oman</option>
                 <option value="KSA">KSA</option>
                 <option value="Bahrain">Bahrain</option>
+                <option value="India">India</option>
+                <option value="Kuwait">Kuwait</option>
+                <option value="Qatar">Qatar</option>
               </select>
             </div>
             <div>
@@ -227,6 +230,9 @@ export default function Managers(){
                 <option value="Saudi Arabia">Saudi Arabia</option>
                 <option value="Oman">Oman</option>
                 <option value="Bahrain">Bahrain</option>
+                <option value="India">India</option>
+                <option value="Kuwait">Kuwait</option>
+                <option value="Qatar">Qatar</option>
               </select>
               <div className="helper-text">Manager will only see orders and drivers from this country</div>
             </div>

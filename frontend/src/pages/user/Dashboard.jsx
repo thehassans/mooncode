@@ -88,11 +88,13 @@ export default function UserDashboard(){
   const [analytics, setAnalytics] = useState(null)
   const [salesByCountry, setSalesByCountry] = useState({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 })
   const [orders, setOrders] = useState([])
+  const [drivers, setDrivers] = useState([])
   async function load(){
     try{ setAnalytics(await apiGet('/api/orders/analytics/last7days')) }catch(_e){ setAnalytics({ days: [], totals:{} }) }
     try{ setMetrics(await apiGet('/api/reports/user-metrics')) }catch(_e){ console.error('Failed to fetch metrics') }
     try{ setSalesByCountry(await apiGet('/api/reports/user-metrics/sales-by-country')) }catch(_e){ setSalesByCountry({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 }) }
     try{ const res = await apiGet('/api/orders'); setOrders(Array.isArray(res?.orders) ? res.orders : []) }catch(_e){ setOrders([]) }
+    try{ const ds = await apiGet('/api/finance/drivers/summary?page=1&limit=12'); setDrivers(Array.isArray(ds?.drivers)? ds.drivers: []) }catch(_e){ setDrivers([]) }
   }
   useEffect(()=>{ load() },[])
   // Live updates via socket
@@ -155,6 +157,75 @@ export default function UserDashboard(){
           <MetricCard title="Prepaid Sales" value={formatCurrency(metrics.totalPrepaid||0, 'UAE')} icon="💳" to="/user/orders?ship=delivered&payment=PREPAID" />
           <MetricCard title="Total Collected" value={formatCurrency(metrics.totalCollected||0, 'UAE')} icon="🧾" to="/user/orders?ship=delivered&collected=true" />
           <MetricCard title="Net Revenue" value={formatCurrency(metrics.totalRevenue||0, 'UAE')} icon="📈" to="/user/transactions" />
+        </div>
+      </div>
+
+      {/* Drivers Overview */}
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
+          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#06b6d4,#0891b2)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🚚</div>
+          <div>
+            <div style={{fontWeight:800,fontSize:16}}>Drivers Overview</div>
+            <div className="helper">Collections, settlements, and order counts by driver</div>
+          </div>
+        </div>
+        <div className="section" style={{ overflowX:'auto' }}>
+          {(!Array.isArray(drivers) || drivers.length===0) ? (
+            <div className="empty-state">No driver data</div>
+          ) : (
+            <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:0 }}>
+              <thead>
+                <tr>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Driver</th>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Total Orders</th>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Delivered</th>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Cancelled</th>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Total Collection</th>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Delivered to Company</th>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Pending to Company</th>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {drivers.map((d)=>{
+                  const drvId = String(d.id||d._id||'')
+                  const curr = String(d.currency||'')
+                  return (
+                    <tr key={drvId} style={{ borderTop:'1px solid var(--border)' }}>
+                      <td style={{ padding:'8px 10px' }}>
+                        <div style={{fontWeight:700}}>{d.name || '—'}</div>
+                        <div className="helper" style={{fontSize:12}}>{d.phone || ''}</div>
+                      </td>
+                      <td style={{ padding:'8px 10px' }}>
+                        <a href={`/user/orders?driver=${encodeURIComponent(drvId)}`} className="link">{Number(d.assigned||0).toLocaleString()}</a>
+                      </td>
+                      <td style={{ padding:'8px 10px' }}>
+                        <a href={`/user/orders?driver=${encodeURIComponent(drvId)}&ship=delivered`} className="link">{Number(d.deliveredCount||0).toLocaleString()}</a>
+                      </td>
+                      <td style={{ padding:'8px 10px' }}>
+                        <a href={`/user/orders?driver=${encodeURIComponent(drvId)}&ship=cancelled`} className="link">{Number(d.canceled||0).toLocaleString()}</a>
+                      </td>
+                      <td style={{ padding:'8px 10px', whiteSpace:'nowrap' }}>
+                        <a href={`/user/orders?driver=${encodeURIComponent(drvId)}&ship=delivered&collected=true`} className="link">{curr} {Number(d.collected||0).toLocaleString()}</a>
+                      </td>
+                      <td style={{ padding:'8px 10px', whiteSpace:'nowrap' }}>
+                        <a href={`/user/finances?section=driver`} className="link">{curr} {Number(d.deliveredToCompany||0).toLocaleString()}</a>
+                      </td>
+                      <td style={{ padding:'8px 10px', whiteSpace:'nowrap', fontWeight:700, color:'var(--warning)' }}>
+                        <a href={`/user/finances?section=driver`} className="link">{curr} {Number(d.pendingToCompany||0).toLocaleString()}</a>
+                      </td>
+                      <td style={{ padding:'8px 10px' }}>
+                        <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                          <a className="btn small" href={`/user/orders?driver=${encodeURIComponent(drvId)}`}>Open Orders</a>
+                          <a className="btn small secondary" href="/user/finances?section=driver">Open Finances</a>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

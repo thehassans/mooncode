@@ -437,14 +437,22 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
         const agentIds = agents.map(a => a._id)
         const managerIds = managers.map(m => m._id)
         base = { createdBy: { $in: [ownerId, ...agentIds, ...managerIds] } }
-        // Filter by assigned country if manager has one
+        // Filter by assigned country if manager has one (support KSA/Saudi Arabia aliases)
         if (assignedCountry) {
-          base.orderCountry = assignedCountry
+          const aliases = {
+            'KSA': ['KSA','Saudi Arabia'],
+            'Saudi Arabia': ['KSA','Saudi Arabia'],
+          }
+          base.orderCountry = aliases[assignedCountry] ? { $in: aliases[assignedCountry] } : assignedCountry
         }
       } else {
         base = { createdBy: req.user.id }
         if (assignedCountry) {
-          base.orderCountry = assignedCountry
+          const aliases = {
+            'KSA': ['KSA','Saudi Arabia'],
+            'Saudi Arabia': ['KSA','Saudi Arabia'],
+          }
+          base.orderCountry = aliases[assignedCountry] ? { $in: aliases[assignedCountry] } : assignedCountry
         }
       }
     } else {
