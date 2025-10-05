@@ -26,9 +26,21 @@ export default function ShoppingCart({ isOpen, onClose }) {
     const imagePath = p || ''
     if (!imagePath) return '/placeholder-product.svg'
     if (String(imagePath).startsWith('http')) return imagePath
-    const isLocal = (typeof window !== 'undefined') && (/^localhost$|^127\.0\.0\.1$/.test(window.location.hostname))
-    const base = (API_BASE && String(API_BASE).trim()) || (isLocal ? 'http://localhost:4000' : '')
-    return `${base}${imagePath}`
+    let pathPart = String(imagePath).replace(/\\/g,'/')
+    if (!pathPart.startsWith('/')) pathPart = '/' + pathPart
+    try{
+      const base = String(API_BASE||'').trim()
+      if (!base) return pathPart
+      if (/^https?:\/\//i.test(base)){
+        const u = new URL(base)
+        const prefix = u.pathname && u.pathname !== '/' ? u.pathname.replace(/\/$/, '') : ''
+        return `${u.origin}${prefix}${pathPart}`
+      }
+      const prefix = base.replace(/\/$/, '')
+      return `${prefix}${pathPart}`
+    }catch{
+      return pathPart
+    }
   }
 
   // Load cart from localStorage on component mount
