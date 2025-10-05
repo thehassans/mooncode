@@ -34,12 +34,13 @@ const ProductDetail = () => {
 
   // Currency conversion helpers (same mapping as other components)
   const RATES = {
-    SAR: { SAR: 1, AED: 0.98, OMR: 0.10, BHD: 0.10 },
+    // Approximate display rates; for precise pricing, integrate a live FX API.
+    SAR: { SAR: 1, AED: 0.98, OMR: 0.10, BHD: 0.10, INR: 21.8, KWD: 0.082, QAR: 0.97 },
     AED: { SAR: 1.02, AED: 1, OMR: 0.10, BHD: 0.10 },
     OMR: { SAR: 9.78, AED: 9.58, OMR: 1, BHD: 0.98 },
     BHD: { SAR: 9.94, AED: 9.74, OMR: 1.02, BHD: 1 },
   }
-  const COUNTRY_TO_CURRENCY = { AE: 'AED', OM: 'OMR', SA: 'SAR', BH: 'BHD' }
+  const COUNTRY_TO_CURRENCY = { AE: 'AED', OM: 'OMR', SA: 'SAR', BH: 'BHD', IN: 'INR', KW: 'KWD', QA: 'QAR' }
   const getDisplayCurrency = () => COUNTRY_TO_CURRENCY[selectedCountry] || 'SAR'
   const convertPrice = (value, fromCurrency, toCurrency) => {
     const v = Number(value || 0)

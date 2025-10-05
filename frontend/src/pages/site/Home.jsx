@@ -5,12 +5,17 @@ import { apiGet } from '../../api'
 import ProductCard from '../../components/ecommerce/ProductCard'
 import ShoppingCart from '../../components/ecommerce/ShoppingCart'
 import { categories } from '../../components/ecommerce/CategoryFilter'
+import { detectCountryCode } from '../../utils/geo'
+import { countries } from '../../components/ecommerce/CountrySelector'
 
 export default function Home(){
   const [featured, setFeatured] = useState([])
   const [loading, setLoading] = useState(true)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [categoryCounts, setCategoryCounts] = useState({})
+  const [selectedCountry, setSelectedCountry] = useState(() => {
+    try { return localStorage.getItem('selected_country') || 'SA' } catch { return 'SA' }
+  })
 
   useEffect(()=>{
     let alive = true
@@ -21,14 +26,41 @@ export default function Home(){
         const qs = new URLSearchParams()
         qs.set('page','1'); qs.set('limit','8'); qs.set('sort','newest')
         const res = await apiGet(`/api/products/public?${qs.toString()}`)
-        const list = Array.isArray(res?.products)? res.products: []
+        let list = Array.isArray(res?.products)? res.products: []
+        // Filter products by selected country availability
+        try{
+          const selectedCountryName = countries.find(c => c.code === selectedCountry)?.name
+          list = list.filter(p => {
+            if (!Array.isArray(p.availableCountries) || p.availableCountries.length === 0) return true
+            return selectedCountryName ? p.availableCountries.includes(selectedCountryName) : true
+          })
+        }catch{}
         if (alive) setFeatured(list.slice(0,8))
       }catch{
         if (alive) setFeatured([])
       }finally{ if (alive) setLoading(false) }
     })()
     return ()=>{ alive = false }
-  },[])
+  },[selectedCountry])
+
+  // Persist selected country
+  useEffect(()=>{
+    try { localStorage.setItem('selected_country', selectedCountry) } catch {}
+  },[selectedCountry])
+
+  // On first visit, auto-detect country if none saved
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = localStorage.getItem('selected_country')
+        if (!saved) {
+          const code = await detectCountryCode()
+          setSelectedCountry(code)
+          try { localStorage.setItem('selected_country', code) } catch {}
+        }
+      } catch {}
+    })()
+  }, [])
 
   // Load category usage counts for hiding empty categories
   useEffect(() => {
@@ -104,7 +136,7 @@ export default function Home(){
           ) : (
             <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {featured.map(p => (
-                <ProductCard key={p._id} product={p} onAddToCart={() => setIsCartOpen(true)} />
+                <ProductCard key={p._id} product={p} selectedCountry={selectedCountry} onAddToCart={() => setIsCartOpen(true)} />
               ))}
             </div>
           )}

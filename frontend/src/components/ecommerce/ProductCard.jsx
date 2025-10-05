@@ -11,7 +11,8 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
 
   // Currency conversion rates (same as used in other components)
   const RATES = {
-    SAR: { SAR: 1, AED: 0.98, OMR: 0.10, BHD: 0.10 },
+    // Approximate display rates; for accurate pricing, integrate a live FX API.
+    SAR: { SAR: 1, AED: 0.98, OMR: 0.10, BHD: 0.10, INR: 21.8, KWD: 0.082, QAR: 0.97 },
     AED: { SAR: 1.02, AED: 1, OMR: 0.10, BHD: 0.10 },
     OMR: { SAR: 9.78, AED: 9.58, OMR: 1, BHD: 0.98 },
     BHD: { SAR: 9.94, AED: 9.74, OMR: 1.02, BHD: 1 },
@@ -22,7 +23,10 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
     'AE': 'AED', // UAE
     'OM': 'OMR', // Oman
     'SA': 'SAR', // KSA
-    'BH': 'BHD'  // Bahrain
+    'BH': 'BHD', // Bahrain
+    'IN': 'INR', // India
+    'KW': 'KWD', // Kuwait
+    'QA': 'QAR', // Qatar
   }
 
   const convertPrice = (value, fromCurrency, toCurrency) => {

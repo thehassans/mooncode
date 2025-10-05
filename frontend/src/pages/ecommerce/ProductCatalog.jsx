@@ -6,6 +6,7 @@ import ShoppingCart from '../../components/ecommerce/ShoppingCart'
 import { useToast } from '../../ui/Toast'
 import { trackPageView, trackSearch, trackFilterUsage, trackSortUsage } from '../../utils/analytics'
 import { apiGet } from '../../api'
+import { detectCountryCode } from '../../utils/geo'
 import CategoryFilter from '../../components/ecommerce/CategoryFilter'
 import SearchBar from '../../components/ecommerce/SearchBar'
 import CountrySelector, { countries } from '../../components/ecommerce/CountrySelector'
@@ -114,6 +115,21 @@ export default function ProductCatalog() {
   useEffect(() => {
     try { localStorage.setItem('selected_country', selectedCountry) } catch {}
   }, [selectedCountry])
+
+  // On first visit: auto-detect country if none saved
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = localStorage.getItem('selected_country')
+        if (!saved) {
+          const code = await detectCountryCode()
+          setSelectedCountry(code)
+          try { localStorage.setItem('selected_country', code) } catch {}
+        }
+      } catch {}
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Filter and sort products when dependencies change
   useEffect(() => {
