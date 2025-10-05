@@ -665,7 +665,7 @@ export default function InhouseProducts(){
           </div>
           <div>
             <div className="label">Images</div>
-            <input className="input" type="file" accept="image/*" multiple onChange={onChange} />
+            <input className="input" type="file" accept="image/*" multiple name="images" onChange={onChange} />
             {imagePreviews.length > 0 && (
               <div style={{display:'flex', gap:8, marginTop:8, flexWrap:'wrap'}}>
                 {imagePreviews.map((p,i)=>(

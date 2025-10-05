@@ -45,7 +45,8 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
   }
   
   const files = Array.isArray(req.files) ? req.files : []
-  const imageFiles = files.filter(f => f.fieldname === 'images' || f.fieldname === 'image')
+  // Accept any file with an image mimetype or fieldname starting with 'image'
+  const imageFiles = files.filter(f => (String(f?.mimetype||'').startsWith('image/') || String(f?.fieldname||'').toLowerCase().startsWith('image')))
   const imagePaths = imageFiles.map(f => `/uploads/${f.filename}`)
   
   // per-country stock
@@ -296,7 +297,7 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
     prod.stockQty = (sbc.UAE + sbc.Oman + sbc.KSA + sbc.Bahrain + sbc.India + sbc.Kuwait + sbc.Qatar)
   }
   const files = Array.isArray(req.files) ? req.files : []
-  const imageFiles = files.filter(f => f.fieldname === 'images' || f.fieldname === 'image')
+  const imageFiles = files.filter(f => (String(f?.mimetype||'').startsWith('image/') || String(f?.fieldname||'').toLowerCase().startsWith('image')))
   if (imageFiles.length){
     const imagePaths = imageFiles.map(f => `/uploads/${f.filename}`)
     prod.imagePath = imagePaths[0]
