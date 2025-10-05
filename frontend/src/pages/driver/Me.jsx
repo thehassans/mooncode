@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { API_BASE, apiGet, apiPatch } from '../../api.js'
 import { io } from 'socket.io-client'
 
@@ -12,6 +12,12 @@ export default function DriverMe() {
   const [remSummary, setRemSummary] = useState({ totalDeliveredOrders: 0, totalCollectedAmount: 0, deliveredToCompany: 0, pendingToCompany: 0, currency: '' })
   const [payout, setPayout] = useState(()=>({ method: me?.payoutProfile?.method || 'bank', accountName: me?.payoutProfile?.accountName||'', bankName: me?.payoutProfile?.bankName||'', iban: me?.payoutProfile?.iban||'', accountNumber: me?.payoutProfile?.accountNumber||'', phoneNumber: me?.payoutProfile?.phoneNumber||'' }))
   const [savingPayout, setSavingPayout] = useState(false)
+  // Recent orders pagination
+  const [recent, setRecent] = useState([])
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const loadingMoreRef = useRef(false)
+  const endRef = useRef(null)
 
   useEffect(() => {
     let alive = true
@@ -22,6 +28,36 @@ export default function DriverMe() {
     })()
     return () => { alive = false }
   }, [])
+
+  // Load recent orders (paginated)
+  async function loadRecent(reset=false){
+    if (loadingMoreRef.current) return
+    loadingMoreRef.current = true
+    try{
+      const nextPage = reset ? 1 : (page + 1)
+      const r = await apiGet(`/api/orders/driver/recent?page=${nextPage}&limit=20`)
+      const rows = Array.isArray(r?.orders) ? r.orders : []
+      setRecent(prev => reset ? rows : [...prev, ...rows])
+      setHasMore(!!r?.hasMore)
+      setPage(nextPage)
+    }catch{
+      if (reset) setRecent([])
+      setHasMore(false)
+    }finally{
+      loadingMoreRef.current = false
+    }
+  }
+  useEffect(()=>{ loadRecent(true) },[])
+  useEffect(()=>{
+    const el = endRef.current
+    if (!el) return
+    const obs = new IntersectionObserver((entries)=>{
+      const [e] = entries
+      if (e.isIntersecting && hasMore && !loadingMoreRef.current){ loadRecent(false) }
+    }, { rootMargin: '200px' })
+    obs.observe(el)
+    return ()=> { try{ obs.disconnect() }catch{} }
+  }, [endRef.current, hasMore, page])
 
   // Socket: live updates for remittance acceptance
   useEffect(()=>{
@@ -108,6 +144,40 @@ export default function DriverMe() {
       <div style={{ display: 'grid', gap: 6 }}>
         <div style={{ fontWeight: 800, fontSize: 20 }}>Driver Profile</div>
         <div className="helper">Your profile and delivery stats</div>
+      </div>
+
+      {/* Recent Orders (Paginated) */}
+      <div className="card" style={{ display:'grid', gap:10 }}>
+        <div className="card-header">
+          <div className="card-title">Recent Orders</div>
+          <div className="card-subtitle">Scroll to load more</div>
+        </div>
+        <div className="section" style={{ display:'grid', gap:8 }}>
+          {recent.length === 0 ? (
+            <div className="empty-state">No orders yet</div>
+          ) : (
+            <div style={{display:'grid', gap:8}}>
+              {recent.map(o => {
+                const id = String(o?._id||o.id||'')
+                const code = o?.invoiceNumber ? `#${o.invoiceNumber}` : `#${id.slice(-5)}`
+                const st = String(o?.shipmentStatus||o?.status||'').replace('_',' ')
+                const when = o?.updatedAt || o?.createdAt
+                const whenStr = when ? new Date(when).toLocaleString() : ''
+                return (
+                  <div key={id} className="panel" style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px'}}>
+                    <div style={{display:'grid'}}>
+                      <div style={{fontWeight:700}}>{code} • <span style={{opacity:.9}}>{o?.customerName||'Customer'}</span></div>
+                      <div className="helper" style={{fontSize:12}}>{whenStr}</div>
+                    </div>
+                    <div className="chip" style={{background:'transparent'}}>{st||'-'}</div>
+                  </div>
+                )
+              })}
+              {hasMore ? <div className="helper" style={{textAlign:'center'}}>Loading more…</div> : <div className="helper" style={{textAlign:'center'}}>No more</div>}
+              <div ref={endRef} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Settlement Summary */}

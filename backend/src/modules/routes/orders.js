@@ -954,6 +954,30 @@ router.get('/driver/cancelled', auth, allowRoles('driver'), async (req, res) => 
   res.json({ orders })
 })
 
+// Driver: recent orders with pagination (all statuses unless ship specified)
+router.get('/driver/recent', auth, allowRoles('driver'), async (req, res) => {
+  try{
+    const page = Math.max(1, Number(req.query.page||1))
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit||20)))
+    const skip = (page-1) * limit
+    const ship = String(req.query.ship||'').trim()
+    const match = { deliveryBoy: req.user.id }
+    if (ship) match.shipmentStatus = ship
+    const total = await Order.countDocuments(match)
+    const orders = await Order.find(match)
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('productId')
+      .populate('items.productId')
+      .lean()
+    const hasMore = skip + orders.length < total
+    return res.json({ orders, page, limit, total, hasMore })
+  }catch(err){
+    return res.status(500).json({ message: 'Failed to load recent orders', error: err?.message })
+  }
+})
+
 // Driver: history (archive) - default to delivered, optional date filter
 router.get('/driver/history', auth, allowRoles('driver'), async (req, res) => {
   const { from = '', to = '' } = req.query || {}
