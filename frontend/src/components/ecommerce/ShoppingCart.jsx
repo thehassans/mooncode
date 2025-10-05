@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../ui/Toast'
+import { apiPost } from '../../api.js'
 import { trackRemoveFromCart, trackCheckoutStart } from '../../utils/analytics'
 
 export default function ShoppingCart({ isOpen, onClose }) {
@@ -8,6 +9,18 @@ export default function ShoppingCart({ isOpen, onClose }) {
   const [isLoading, setIsLoading] = useState(false)
   const toast = useToast()
   const navigate = useNavigate()
+  const [form, setForm] = useState({ name:'', phone:'', country:'SA', city:'', area:'', address:'', details:'' })
+
+  const COUNTRIES = [
+    { code:'SA', name:'KSA', flag:'🇸🇦', dial:'+966' },
+    { code:'AE', name:'UAE', flag:'🇦🇪', dial:'+971' },
+    { code:'OM', name:'Oman', flag:'🇴🇲', dial:'+968' },
+    { code:'BH', name:'Bahrain', flag:'🇧🇭', dial:'+973' },
+    { code:'IN', name:'India', flag:'🇮🇳', dial:'+91' },
+    { code:'KW', name:'Kuwait', flag:'🇰🇼', dial:'+965' },
+    { code:'QA', name:'Qatar', flag:'🇶🇦', dial:'+974' },
+  ]
+  const selectedCountry = COUNTRIES.find(c => c.code === form.country) || COUNTRIES[0]
 
   // Load cart from localStorage on component mount
   useEffect(() => {
@@ -31,7 +44,6 @@ export default function ShoppingCart({ isOpen, onClose }) {
       removeFromCart(productId)
       return
     }
-
     setCartItems(prevItems =>
       prevItems.map(item =>
         item.id === productId
@@ -70,18 +82,50 @@ export default function ShoppingCart({ isOpen, onClose }) {
   }
 
   const handleCheckout = () => {
-    if (cartItems.length === 0) {
-      toast.error('Your cart is empty')
-      return
+    submitOrder()
+  }
+
+  const onChange = (e)=>{
+    const { name, value } = e.target
+    setForm(prev => ({ ...prev, [name]: value }))
+  }
+
+  async function submitOrder(){
+    if (cartItems.length === 0){ toast.error('Your cart is empty'); return }
+    if (!form.name.trim()){ toast.error('Please enter your full name'); return }
+    if (!form.phone.trim()){ toast.error('Please enter your phone number'); return }
+    if (!form.city.trim()){ toast.error('Please enter your city'); return }
+    if (!form.address.trim()){ toast.error('Please enter your full address'); return }
+
+    try{
+      setIsLoading(true)
+      // Track checkout start
+      const cartValue = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0)
+      const itemCount = cartItems.reduce((total, item) => total + item.quantity, 0)
+      trackCheckoutStart(cartValue, itemCount)
+
+      const items = cartItems.map(it => ({ productId: it.id, quantity: Math.max(1, Number(it.quantity||1)) }))
+      const body = {
+        customerName: form.name.trim(),
+        customerPhone: form.phone.trim(),
+        phoneCountryCode: selectedCountry.dial,
+        orderCountry: selectedCountry.name,
+        city: form.city.trim(),
+        area: String(form.area||'').trim(),
+        address: form.address.trim(),
+        details: String(form.details||'').trim(),
+        items,
+        currency: 'SAR',
+      }
+      await apiPost('/api/ecommerce/orders', body)
+      toast.success('Order submitted! We will contact you shortly.')
+      setCartItems([])
+      onClose && onClose()
+    }catch(err){
+      toast.error(err?.message || 'Failed to submit order')
+    }finally{
+      setIsLoading(false)
     }
-
-    // Track checkout start
-    const cartValue = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0)
-    const itemCount = cartItems.reduce((total, item) => total + item.quantity, 0)
-    trackCheckoutStart(cartValue, itemCount)
-
-    navigate('/checkout')
-    onClose()
   }
 
   if (!isOpen) return null
@@ -89,7 +133,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end" onClick={onClose}>
       <div 
-        className="w-full max-w-md sm:max-w-lg bg-white h-full shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col" 
+        className="w-full max-w-md sm:max-w-lg bg-white h-full shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col border-l-4 border-orange-500" 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -128,7 +172,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
                   <div key={item.id} className="flex gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
                     <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-white rounded-lg overflow-hidden border border-gray-200">
                       <img 
-                        src={item.imagePath || '/placeholder-product.svg'} 
+                        src={(item.image || item.imagePath) || '/placeholder-product.svg'} 
                         alt={item.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -189,7 +233,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer: Slide-in checkout form */}
         {cartItems.length > 0 && (
           <div className="border-t border-gray-200 p-4 sm:p-6 bg-white">
             <div className="space-y-3 mb-4">
@@ -203,13 +247,52 @@ export default function ShoppingCart({ isOpen, onClose }) {
               </div>
             </div>
 
+            {/* Order Form */}
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="text-sm text-gray-700">Full Name</label>
+                <input name="name" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.name} onChange={onChange} placeholder="Your full name" />
+              </div>
+              <div>
+                <label className="text-sm text-gray-700">Phone</label>
+                <div className="grid grid-cols-[auto_1fr] gap-2 items-center">
+                  <select name="country" value={form.country} onChange={onChange} className="border border-gray-300 rounded-lg px-2 py-2">
+                    {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.dial}</option>)}
+                  </select>
+                  <input name="phone" className="border border-gray-300 rounded-lg px-3 py-2" value={form.phone} onChange={onChange} placeholder="5xxxxxxx" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-sm text-gray-700">Country</label>
+                  <input className="w-full border border-gray-300 rounded-lg px-3 py-2" value={selectedCountry.name} readOnly />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-700">City</label>
+                  <input name="city" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.city} onChange={onChange} placeholder="City" />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-gray-700">Area</label>
+                <input name="area" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.area} onChange={onChange} placeholder="Area / district" />
+              </div>
+              <div>
+                <label className="text-sm text-gray-700">Full Address</label>
+                <input name="address" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.address} onChange={onChange} placeholder="Street, building" />
+              </div>
+              <div>
+                <label className="text-sm text-gray-700">Notes (optional)</label>
+                <textarea name="details" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.details} onChange={onChange} placeholder="Any notes for delivery" />
+              </div>
+            </div>
+
             <div className="space-y-3">
               <button 
                 className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
                 onClick={handleCheckout}
                 disabled={isLoading}
               >
-                {isLoading ? 'Processing...' : 'Proceed to Checkout'}
+                {isLoading ? 'Submitting…' : 'Place Order'}
               </button>
               <button 
                 className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
@@ -223,5 +306,4 @@ export default function ShoppingCart({ isOpen, onClose }) {
       </div>
     </div>
   )
-
 }

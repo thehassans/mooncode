@@ -59,8 +59,9 @@ import AgentMe from './pages/agent/Me.jsx'
 import PrintLabel from './pages/orders/PrintLabel.jsx'
 import SubmitOrder from './pages/orders/SubmitOrder.jsx'
 import EditOrder from './pages/orders/EditOrder.jsx'
-import Catalog from './pages/store/Catalog.jsx'
+import ProductCatalog from './pages/ecommerce/ProductCatalog.jsx'
 import Checkout from './pages/store/Checkout.jsx'
+import OnlineOrders from './pages/user/OnlineOrders.jsx'
 import UserFinances from './pages/user/Finances.jsx'
 
 import AnalyticsDashboard from './components/analytics/AnalyticsDashboard'
@@ -200,7 +201,7 @@ export default function App() {
       <Route path="/" element={<Navigate to="/login" replace />} />
       
       {/* Public routes */}
-      <Route path="/catalog" element={<Catalog />} />
+      <Route path="/catalog" element={<ProductCatalog />} />
       <Route path="/checkout" element={<Checkout />} />
       
       {/* Staff/Admin Login */}
@@ -318,6 +319,7 @@ export default function App() {
         <Route path="notifications" element={<Notifications />} />
         <Route path="campaigns" element={<Campaign />} />
         <Route path="orders" element={<UserOrders />} />
+        <Route path="online-orders" element={<OnlineOrders />} />
         <Route path="inhouse-products" element={<InhouseProducts />} />
         <Route path="warehouses" element={<Warehouse />} />
         <Route path="shipments" element={<Shipments />} />

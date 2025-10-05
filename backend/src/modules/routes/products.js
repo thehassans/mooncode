@@ -50,6 +50,15 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
   // if stockQty not provided, sum from per-country
   let finalStockQty = stockQty != null ? Number(stockQty) : (sbc.UAE + sbc.Oman + sbc.KSA + sbc.Bahrain + sbc.India + sbc.Kuwait + sbc.Qatar)
   
+  // availableCountries may be sent as comma-separated string or array
+  let availableCountries = []
+  try{
+    const raw = req.body?.availableCountries
+    if (Array.isArray(raw)) availableCountries = raw.filter(Boolean)
+    else if (typeof raw === 'string') availableCountries = raw.split(',').map(s=>s.trim()).filter(Boolean)
+  }catch{}
+  const displayOnWebsite = String(req.body?.displayOnWebsite||'').toLowerCase() === 'true' || req.body?.displayOnWebsite === true
+
   const doc = new Product({
     name: String(name).trim(),
     price: Number(price),
@@ -61,6 +70,8 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
     category: ['Skincare','Haircare','Bodycare','Other'].includes(category) ? category : 'Other',
     madeInCountry: madeInCountry || '',
     description: description || '',
+    availableCountries,
+    displayOnWebsite,
     createdBy: ownerId,
   })
   await doc.save()
@@ -137,7 +148,7 @@ router.get('/public', async (req, res) => {
   try {
     const { category, search, sort, limit = 50, page = 1 } = req.query
     
-    let query = {}
+    let query = { displayOnWebsite: true }
     
     // Category filter
     if (category && category !== 'all') {
@@ -247,6 +258,18 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
   if (inStock != null) prod.inStock = Boolean(inStock)
   if (madeInCountry != null) prod.madeInCountry = String(madeInCountry)
   if (description != null) prod.description = String(description)
+  // Update availableCountries if provided
+  if (req.body?.availableCountries != null){
+    try{
+      const raw = req.body.availableCountries
+      if (Array.isArray(raw)) prod.availableCountries = raw.filter(Boolean)
+      else if (typeof raw === 'string') prod.availableCountries = raw.split(',').map(s=>s.trim()).filter(Boolean)
+    }catch{}
+  }
+  // Update displayOnWebsite if provided
+  if (req.body?.displayOnWebsite != null){
+    prod.displayOnWebsite = (req.body.displayOnWebsite === true || String(req.body.displayOnWebsite).toLowerCase() === 'true')
+  }
   // per-country stock updates
   const sbc = { ...(prod.stockByCountry || { UAE:0, Oman:0, KSA:0, Bahrain:0, India:0, Kuwait:0, Qatar:0 }) }
   if (stockUAE != null) sbc.UAE = Math.max(0, Number(stockUAE))

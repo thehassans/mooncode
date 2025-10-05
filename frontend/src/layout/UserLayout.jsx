@@ -42,6 +42,12 @@ export default function UserLayout(){
         { to: '/user/transactions', label: 'Transactions', icon: '💳' },
       ]
     },
+    {
+      label: 'E-Commerce', icon: '🛒',
+      children: [
+        { to: '/user/online-orders', label: 'Online Orders', icon: '🌐' },
+      ]
+    },
     { 
       label: 'Insights', 
       icon: '📈', 

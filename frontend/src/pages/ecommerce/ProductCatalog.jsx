@@ -155,9 +155,8 @@ export default function ProductCatalog() {
   }
 
   const handleAddToCart = (product) => {
-    // TODO: Implement cart functionality
-    console.log('Add to cart:', product)
-    alert(`Added "${product.name}" to cart!`)
+    // ProductCard stores item in localStorage; just open cart panel
+    setIsCartOpen(true)
   }
 
   // Calculate pagination for display

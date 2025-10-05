@@ -44,6 +44,7 @@ const ProductSchema = new mongoose.Schema({
   rating: { type: Number, default: 0, min: 0, max: 5 },
   reviewCount: { type: Number, default: 0 },
   featured: { type: Boolean, default: false },
+  displayOnWebsite: { type: Boolean, default: false },
   onSale: { type: Boolean, default: false },
   salePrice: { type: Number, default: 0 },
   sku: { type: String, unique: true, sparse: true },

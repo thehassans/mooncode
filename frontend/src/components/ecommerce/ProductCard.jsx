@@ -119,6 +119,9 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
       
       // Show success message
       console.log('Added to cart:', product.name)
+      if (typeof onAddToCart === 'function') {
+        try { onAddToCart(product) } catch {}
+      }
     } catch (error) {
       console.error('Error adding to cart:', error)
     }
