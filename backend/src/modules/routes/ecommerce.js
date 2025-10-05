@@ -67,10 +67,24 @@ router.post('/orders', async (req, res) => {
   }
 })
 
+// Distinct options: countries and cities for ecommerce orders
+router.get('/orders/options', auth, allowRoles('admin','user','manager'), async (req, res) => {
+  try{
+    const countryParam = String(req.query.country||'').trim()
+    const countriesRaw = (await WebOrder.distinct('orderCountry', {})).filter(Boolean)
+    const countries = Array.from(new Set(countriesRaw)).sort()
+    const matchCity = {}
+    if (countryParam) matchCity.orderCountry = countryParam
+    const cities = (await WebOrder.distinct('city', matchCity)).filter(Boolean).sort()
+    return res.json({ countries, cities })
+  }catch(err){
+    return res.status(500).json({ message: 'Failed to load options', error: err?.message })
+  }
+})
 // GET /api/ecommerce/orders (admin/user/manager)
 router.get('/orders', auth, allowRoles('admin','user','manager'), async (req, res) => {
   try{
-    const { q = '', status = '', start = '', end = '', product = '', ship = '' } = req.query || {}
+    const { q = '', status = '', start = '', end = '', product = '', ship = '', country = '', city = '', onlyUnassigned = '' } = req.query || {}
     const match = {}
     if (q){
       const rx = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
@@ -81,17 +95,24 @@ router.get('/orders', auth, allowRoles('admin','user','manager'), async (req, re
         { city: rx },
         { area: rx },
         { details: rx },
+        { 'items.name': rx },
       ]
     }
     if (status) match.status = status
     if (ship) match.shipmentStatus = ship
-    if (start || end){ match.createdAt = {}; if (start) match.createdAt.$gte = new Date(start); if (end) match.createdAt.$lte = new Date(end) }
+    if (country) match.orderCountry = country
+    if (city) match.city = city
+    if (String(onlyUnassigned).toLowerCase() === 'true') match.deliveryBoy = { $in: [null, undefined] }
+    if (start || end){
+      match.createdAt = {}
+      if (start) match.createdAt.$gte = new Date(start)
+      if (end) match.createdAt.$lte = new Date(end)
+    }
     if (product){ match['items.productId'] = product }
 
     const page = Math.max(1, Number(req.query.page||1))
     const limit = Math.min(100, Math.max(1, Number(req.query.limit||20)))
     const skip = (page-1) * limit
-
     const total = await WebOrder.countDocuments(match)
     const rows = await WebOrder.find(match)
       .sort({ createdAt: -1 })

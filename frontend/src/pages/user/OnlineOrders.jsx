@@ -2,16 +2,30 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { apiGet, apiPatch, apiPost } from '../../api'
 import { useToast } from '../../ui/Toast.jsx'
 
+function StatusBadge({ status }){
+  const s = String(status||'').toLowerCase()
+  let color = { borderColor:'#e5e7eb', color:'#374151' }
+  if (s==='delivered') color = { borderColor:'#10b981', color:'#065f46' }
+  else if (['in_transit','assigned','picked_up'].includes(s)) color = { borderColor:'#3b82f6', color:'#1d4ed8' }
+  else if (['returned','cancelled'].includes(s)) color = { borderColor:'#ef4444', color:'#991b1b' }
+  else if (s==='pending') color = { borderColor:'#f59e0b', color:'#b45309' }
+  return <span className="chip" style={{ background:'transparent', ...color }}>{status||'-'}</span>
+}
+
 export default function OnlineOrders(){
   const toast = useToast()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [q, setQ] = useState('')
+  const [productQuery, setProductQuery] = useState('')
   const [status, setStatus] = useState('') // new|processing|done|cancelled
   const [ship, setShip] = useState('') // pending|assigned|picked_up|in_transit|delivered|returned|cancelled
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
+  const [country, setCountry] = useState('')
+  const [city, setCity] = useState('')
+  const [onlyUnassigned, setOnlyUnassigned] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const loadingMoreRef = useRef(false)
@@ -23,15 +37,22 @@ export default function OnlineOrders(){
   const [editingShipment, setEditingShipment] = useState({})
   const [updating, setUpdating] = useState({})
 
+  // Options
+  const [countryOptions, setCountryOptions] = useState([])
+  const [cityOptions, setCityOptions] = useState([])
+
   const buildQuery = useMemo(()=>{
     const sp = new URLSearchParams()
     if (q.trim()) sp.set('q', q.trim())
     if (status.trim()) sp.set('status', status.trim())
     if (ship.trim()) sp.set('ship', ship.trim())
+    if (country.trim()) sp.set('country', country.trim())
+    if (city.trim()) sp.set('city', city.trim())
+    if (onlyUnassigned) sp.set('onlyUnassigned', 'true')
     if (start) sp.set('start', start)
     if (end) sp.set('end', end)
     return sp
-  }, [q, status, ship, start, end])
+  }, [q, status, ship, country, city, onlyUnassigned, start, end])
 
   async function load(reset=false){
     if (loadingMoreRef.current) return
@@ -54,6 +75,19 @@ export default function OnlineOrders(){
 
   useEffect(()=>{ load(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [buildQuery])
   useEffect(()=>{ load(true) }, [])
+
+  // Load options for filters
+  async function loadOptions(selectedCountry=''){
+    try{
+      const qs = selectedCountry ? `?country=${encodeURIComponent(selectedCountry)}` : ''
+      const r = await apiGet(`/api/ecommerce/orders/options${qs}`)
+      setCountryOptions(Array.isArray(r?.countries)? r.countries: [])
+      setCityOptions(Array.isArray(r?.cities)? r.cities: [])
+    }catch{ setCountryOptions([]); setCityOptions([]) }
+  }
+  useEffect(()=>{ loadOptions('') },[])
+  useEffect(()=>{ loadOptions(country||'') }, [country])
+  useEffect(()=>{ if (city && !cityOptions.includes(city)) setCity('') }, [cityOptions])
 
   // Infinite scroll
   useEffect(()=>{
@@ -94,6 +128,18 @@ export default function OnlineOrders(){
     countries.forEach(c => { fetchDriversByCountry(c) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows])
+
+  // Client-side product name filtering
+  const productFiltered = useMemo(()=>{
+    const pq = productQuery.trim().toLowerCase()
+    if (!pq) return rows
+    return rows.filter(r => {
+      const names = Array.isArray(r.items) ? r.items.map(it => String(it?.name||'').toLowerCase()).filter(Boolean) : []
+      return names.some(n => n.includes(pq))
+    })
+  }, [rows, productQuery])
+
+  function shortId(id){ return String(id||'').slice(-5).toUpperCase() }
 
   async function saveRow(id){
     const key = `save-${id}`
@@ -136,13 +182,15 @@ export default function OnlineOrders(){
       <div className="card" style={{display:'grid', gap:10}}>
         <div className="card-header"><div className="card-title">Filters</div></div>
         <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:8}}>
-          <input className="input" placeholder="Search name, phone, address, city, area" value={q} onChange={e=> setQ(e.target.value)} />
-          <select className="input" value={status} onChange={e=> setStatus(e.target.value)}>
-            <option value="">All Status</option>
-            <option value="new">New</option>
-            <option value="processing">Processing</option>
-            <option value="done">Done</option>
-            <option value="cancelled">Cancelled</option>
+          <input className="input" placeholder="Search invoice, name, phone, address, details" value={q} onChange={e=> setQ(e.target.value)} />
+          <input className="input" placeholder="Search product" value={productQuery} onChange={e=> setProductQuery(e.target.value)} />
+          <select className="input" value={country} onChange={e=> setCountry(e.target.value)}>
+            <option value=''>All Countries</option>
+            {countryOptions.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="input" value={city} onChange={e=> setCity(e.target.value)}>
+            <option value=''>All Cities</option>
+            {cityOptions.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <select className="input" value={ship} onChange={e=> setShip(e.target.value)}>
             <option value="">All Shipment</option>
@@ -154,54 +202,71 @@ export default function OnlineOrders(){
             <option value="returned">Returned</option>
             <option value="cancelled">Cancelled</option>
           </select>
-          <input className="input" type="date" value={start} onChange={e=> setStart(e.target.value)} />
-          <input className="input" type="date" value={end} onChange={e=> setEnd(e.target.value)} />
+          <label className="input" style={{display:'flex', alignItems:'center', gap:8}}>
+            <input type="checkbox" checked={onlyUnassigned} onChange={e=> setOnlyUnassigned(e.target.checked)} /> Unassigned only
+          </label>
           <button className="btn secondary" onClick={()=> load(true)} disabled={loading}>{loading? 'Refreshing…' : 'Refresh'}</button>
         </div>
       </div>
 
-      {/* List */}
-      <div className="card" style={{display:'grid', gap:8}}>
+      {/* Cards list */}
+      <div style={{display:'grid', gap:12}}>
         {loading && rows.length===0 ? (
-          <div className="section">Loading…</div>
+          <div className="card"><div className="section">Loading…</div></div>
         ) : error ? (
-          <div className="section error">{error}</div>
-        ) : rows.length===0 ? (
-          <div className="section">No online orders found.</div>
+          <div className="card"><div className="section error">{error}</div></div>
+        ) : productFiltered.length === 0 ? (
+          <div className="card"><div className="section">No online orders found.</div></div>
         ) : (
-          <div className="section" style={{overflowX:'auto'}}>
-            <table className="table" style={{width:'100%', borderCollapse:'separate', borderSpacing:0}}>
-              <thead>
-                <tr>
-                  <th style={{textAlign:'left'}}>Timestamp</th>
-                  <th style={{textAlign:'left'}}>Customer</th>
-                  <th style={{textAlign:'left'}}>Phone</th>
-                  <th style={{textAlign:'left'}}>Product(s)</th>
-                  <th style={{textAlign:'right'}}>Total</th>
-                  <th style={{textAlign:'left'}}>Address</th>
-                  <th style={{textAlign:'left'}}>Shipment</th>
-                  <th style={{textAlign:'left'}}>Driver</th>
-                  <th style={{textAlign:'left'}}>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(r => {
-                  const products = Array.isArray(r.items) ? r.items.map(it => `${it.name||''} (${it.quantity||1})`).join(', ') : '-'
-                  const addr = [r.address, r.area, r.city, r.orderCountry].filter(Boolean).join(', ')
-                  const countryDrivers = driversByCountry[r.orderCountry] || []
-                  const currDriver = editingDriver[r._id] !== undefined ? editingDriver[r._id] : (r?.deliveryBoy?._id || r?.deliveryBoy || '')
-                  const currShip = editingShipment[r._id] || r?.shipmentStatus || 'pending'
-                  return (
-                    <tr key={r._id} style={{borderTop:'1px solid var(--border)'}}>
-                      <td>{r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}</td>
-                      <td>{r.customerName||'-'}</td>
-                      <td>{r.customerPhone||'-'}</td>
-                      <td style={{maxWidth:280, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}} title={products}>{products}</td>
-                      <td style={{textAlign:'right'}}>{(r.currency||'SAR')} {Number(r.total||0).toFixed(2)}</td>
-                      <td style={{maxWidth:300, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}} title={addr}>{addr}</td>
-                      <td>
-                        <select className="input" value={currShip} onChange={e=> setEditingShipment(prev => ({...prev, [r._id]: e.target.value}))}>
+          productFiltered.map((r) => {
+            const id = String(r._id||r.id)
+            const ordNo = '#' + shortId(id)
+            const products = Array.isArray(r.items) ? r.items.map(it => `${it.name||''} (${it.quantity||1})`).join(', ') : '-'
+            const qty = Array.isArray(r.items) ? r.items.reduce((s, it)=> s + (Number(it.quantity||1)), 0) : 1
+            const price = Number(r.total||0)
+            const currDriver = editingDriver[id] !== undefined ? editingDriver[id] : (r?.deliveryBoy?._id || r?.deliveryBoy || '')
+            const currShip = editingShipment[id] || r?.shipmentStatus || 'pending'
+            const countryDrivers = driversByCountry[r.orderCountry] || []
+            const addressFull = [r.address, r.area, r.city, r.orderCountry].filter(Boolean).join(', ')
+            const saveKey = `save-${id}`
+            const hasChanges = editingDriver[id] !== undefined || editingShipment[id] !== undefined
+            return (
+              <div key={id} className="card" style={{display:'grid', gap:10}}>
+                <div className="card-header" style={{alignItems:'center'}}>
+                  <div style={{display:'flex', alignItems:'center', gap:8}}>
+                    <div className="badge">{r.orderCountry || '-'}</div>
+                    <div className="chip" style={{background:'transparent'}}>{r.city || '-'}</div>
+                    <StatusBadge status={r.shipmentStatus || r.status} />
+                  </div>
+                  <div style={{display:'flex', alignItems:'center', gap:8}}>
+                    <div style={{fontWeight:800}}>{ordNo}</div>
+                  </div>
+                </div>
+                <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
+                  <div>
+                    <div className="label">Customer</div>
+                    <div style={{fontWeight:700}}>{r.customerName || '-'}</div>
+                    <div className="helper">{`${r.phoneCountryCode||''} ${r.customerPhone||''}`.trim()}</div>
+                    <div className="helper" title={addressFull} style={{overflow:'hidden', textOverflow:'ellipsis'}}>{addressFull || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="label">Product</div>
+                    <div style={{fontWeight:700}}>{products || '-'}</div>
+                    <div className="helper">Qty: {qty}</div>
+                    <div className="helper">Total: {price.toFixed(2)} {r.currency||'SAR'}</div>
+                  </div>
+                  <div>
+                    <div className="label">Assign Driver</div>
+                    <div style={{display:'grid', gap:8}}>
+                      <select className="input" value={currDriver} onChange={e=> setEditingDriver(prev => ({...prev, [id]: e.target.value}))} disabled={!!updating[saveKey]}>
+                        <option value="">-- Select Driver --</option>
+                        {countryDrivers.map(d => (
+                          <option key={String(d._id)} value={String(d._id)}>{`${d.firstName||''} ${d.lastName||''}${d.city? ' • '+d.city:''}`}</option>
+                        ))}
+                        {countryDrivers.length === 0 && <option disabled>No drivers</option>}
+                      </select>
+                      <div style={{display:'flex', gap:8}}>
+                        <select className="input" value={currShip} onChange={e=> setEditingShipment(prev => ({...prev, [id]: e.target.value}))} disabled={!!updating[saveKey]}>
                           <option value="pending">Pending</option>
                           <option value="assigned">Assigned</option>
                           <option value="picked_up">Picked Up</option>
@@ -210,34 +275,20 @@ export default function OnlineOrders(){
                           <option value="returned">Returned</option>
                           <option value="cancelled">Cancelled</option>
                         </select>
-                      </td>
-                      <td>
-                        <select className="input" value={currDriver} onChange={e=> setEditingDriver(prev => ({...prev, [r._id]: e.target.value}))}>
-                          <option value="">-- Select Driver --</option>
-                          {countryDrivers.map(d => (
-                            <option key={String(d._id)} value={String(d._id)}>{`${d.firstName||''} ${d.lastName||''}${d.city? ' • '+d.city:''}`}</option>
-                          ))}
-                          {countryDrivers.length === 0 && <option disabled>No drivers</option>}
-                        </select>
-                      </td>
-                      <td>{r.status||'new'}</td>
-                      <td style={{textAlign:'right', display:'grid', gap:8}}>
-                        <select className="input" value={r.status||'new'} onChange={e=> updateStatus(r._id, e.target.value)}>
-                          <option value="new">New</option>
-                          <option value="processing">Processing</option>
-                          <option value="done">Done</option>
-                          <option value="cancelled">Cancelled</option>
-                        </select>
-                        {(editingDriver[r._id] !== undefined || editingShipment[r._id] !== undefined) && (
-                          <button className="btn success" onClick={()=> saveRow(r._id)} disabled={!!updating[`save-${r._id}`]}>💾 Save</button>
+                        {hasChanges && (
+                          <button className="btn success" onClick={()=> saveRow(id)} disabled={!!updating[saveKey]}>💾 Save</button>
                         )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="section" style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                  <div className="helper">Created by: Website</div>
+                  <div className="helper">Created: {r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}</div>
+                </div>
+              </div>
+            )
+          })
         )}
       </div>
 
