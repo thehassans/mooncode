@@ -50,6 +50,16 @@ export default function ShoppingCart({ isOpen, onClose }) {
   }
   const formatPrice = (value, currency) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || displayCurrency, minimumFractionDigits: 2 }).format(Number(value||0))
 
+  // Free shipping progress (base threshold in SAR)
+  const FREE_SHIP_THRESHOLD_SAR = 100
+  const getFreeShippingInfo = () => {
+    const threshold = convertPrice(FREE_SHIP_THRESHOLD_SAR, 'SAR', displayCurrency)
+    const total = getTotalPrice()
+    const remaining = Math.max(0, threshold - total)
+    const progress = threshold > 0 ? Math.min(1, total / threshold) : 0
+    return { threshold, total, remaining, progress }
+  }
+
   const getImageUrl = (p) => {
     const imagePath = p || ''
     if (!imagePath) return '/placeholder-product.svg'
@@ -145,6 +155,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
   const clearCart = () => {
     setCartItems([])
     toast.success('Cart cleared')
+    try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
   }
 
   const getTotalPrice = () => {
@@ -324,6 +335,26 @@ export default function ShoppingCart({ isOpen, onClose }) {
         {cartItems.length > 0 && (
           <div className="border-t border-gray-200 p-4 sm:p-6 bg-white">
             <div className="space-y-3 mb-4">
+              {/* Free Shipping Progress */}
+              {(() => {
+                const info = getFreeShippingInfo()
+                return (
+                  <div className="p-3 rounded-lg bg-orange-50 border border-orange-200">
+                    <div className="flex items-center justify-between text-xs sm:text-sm text-orange-800 font-medium">
+                      <span>
+                        {info.remaining > 0
+                          ? `You're ${formatPrice(info.remaining, displayCurrency)} away from free shipping`
+                          : 'You’ve unlocked free shipping!'}
+                      </span>
+                      <span>{formatPrice(info.threshold, displayCurrency)}</span>
+                    </div>
+                    <div className="mt-2 h-2 bg-orange-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-orange-500" style={{ width: `${Math.round(info.progress * 100)}%` }}></div>
+                    </div>
+                  </div>
+                )
+              })()}
+
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Subtotal:</span>
                 <span>{formatPrice(getTotalPrice(), displayCurrency)}</span>

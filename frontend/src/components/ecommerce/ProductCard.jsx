@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../ui/Toast'
 import { trackProductView, trackAddToCart } from '../../utils/analytics'
@@ -6,6 +6,8 @@ import { API_BASE } from '../../api.js'
 
 export default function ProductCard({ product, onAddToCart, selectedCountry = 'SA' }) {
   const navigate = useNavigate()
+  const toast = useToast()
+  const [qty, setQty] = useState(1)
 
   // Currency conversion rates (same as used in other components)
   const RATES = {
@@ -108,10 +110,18 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
       }
 
       const existingItemIndex = cartItems.findIndex(item => item.id === product._id)
+      const max = Number(product.stockQty || 0)
       
       if (existingItemIndex > -1) {
-        // Item already exists, increase quantity
-        cartItems[existingItemIndex].quantity += 1
+        // Item already exists, increase quantity within stock limits
+        const current = Number(cartItems[existingItemIndex].quantity || 0)
+        const candidate = current + qty
+        if (max > 0 && candidate > max) {
+          cartItems[existingItemIndex].quantity = max
+          toast.info(`Only ${max} in stock`)
+        } else {
+          cartItems[existingItemIndex].quantity = candidate
+        }
       } else {
         // Add new item to cart
         cartItems.push({
@@ -120,7 +130,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
           price: product.price,
           currency: product.baseCurrency || 'SAR',
           image: product.images?.[0] || '',
-          quantity: 1,
+          quantity: Math.max(1, qty),
           maxStock: product.stockQty
         })
       }
@@ -129,13 +139,13 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
       localStorage.setItem('shopping_cart', JSON.stringify(cartItems))
       
       // Track add to cart event
-      trackAddToCart(product._id, product.name, product.price, 1)
+      trackAddToCart(product._id, product.name, product.price, Math.max(1, qty))
       
       // Dispatch custom event to update cart count in header
       window.dispatchEvent(new CustomEvent('cartUpdated'))
       
       // Show success message
-      console.log('Added to cart:', product.name)
+      toast.success(`Added ${Math.max(1, qty)} × ${product.name} to cart`)
       if (typeof onAddToCart === 'function') {
         try { onAddToCart(product) } catch {}
       }
@@ -247,13 +257,41 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
         </div>
 
         {/* Add to Cart Button */}
-        <button
-          onClick={handleAddToCart}
-          disabled={!product.inStock || product.stockQty === 0}
-          className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-2.5 px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm sm:text-base shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-[0.98]"
-        >
-          {!product.inStock || product.stockQty === 0 ? 'Out of Stock' : 'Add to Cart'}
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-white border border-gray-300 rounded-lg">
+            <button
+              className={`p-2 transition-colors rounded-l-lg ${qty <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+              onClick={(e) => { e.stopPropagation(); if (qty > 1) setQty(qty - 1) }}
+              disabled={qty <= 1}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+              </svg>
+            </button>
+            <span className="px-3 py-2 text-sm font-medium min-w-[2.5rem] text-center">{qty}</span>
+            <button
+              className={`p-2 transition-colors rounded-r-lg ${Number(product.stockQty) > 0 && qty >= Number(product.stockQty) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                const max = Number(product.stockQty)
+                if (max > 0 && qty >= max) return
+                setQty(qty + 1)
+              }}
+              disabled={Number(product.stockQty) > 0 && qty >= Number(product.stockQty)}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </button>
+          </div>
+          <button
+            onClick={handleAddToCart}
+            disabled={!product.inStock || product.stockQty === 0}
+            className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-2.5 px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm sm:text-base shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-[0.98]"
+          >
+            {!product.inStock || product.stockQty === 0 ? 'Out of Stock' : 'Add to Cart'}
+          </button>
+        </div>
       </div>
     </div>
   )

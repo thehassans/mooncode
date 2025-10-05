@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 
 const getCartItemCount = () => {
   try {
@@ -53,18 +54,18 @@ export default function Header({ onCartClick }) {
               <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
           </button>
-          <a href="/" className="logo">
+          <Link to="/" className="logo">
             <img src="/BuySial2.png" alt="BuySial" className="logo-img" />
-          </a>
+          </Link>
         </div>
 
         <div className="header-center">
           <nav className="main-nav">
-            <a href="/" className="nav-link">Home</a>
-            <a href="/products" className="nav-link">Products</a>
-            <a href="/categories" className="nav-link">Categories</a>
-            <a href="/about" className="nav-link">About</a>
-            <a href="/contact" className="nav-link">Contact</a>
+            <Link to="/" className="nav-link">Home</Link>
+            <Link to="/catalog" className="nav-link">Products</Link>
+            <Link to="/categories" className="nav-link">Categories</Link>
+            <Link to="/about" className="nav-link">About</Link>
+            <Link to="/contact" className="nav-link">Contact</Link>
           </nav>
         </div>
 
@@ -89,8 +90,8 @@ export default function Header({ onCartClick }) {
             </button>
 
             <div className="auth-buttons">
-              <a href="/login" className="login-btn">Login</a>
-              <a href="/register" className="register-btn">Sign Up</a>
+              <Link to="/login" className="login-btn">Login</Link>
+              <Link to="/register" className="register-btn">Sign Up</Link>
             </div>
           </div>
         </div>
@@ -131,22 +132,22 @@ export default function Header({ onCartClick }) {
               </button>
             </div>
             <nav className="mobile-nav">
-              <a href="/" className="mobile-nav-link" onClick={toggleMobileMenu}>
+              <Link to="/" className="mobile-nav-link" onClick={toggleMobileMenu}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                   <polyline points="9,22 9,12 15,12 15,22"></polyline>
                 </svg>
                 Home
-              </a>
-              <a href="/products" className="mobile-nav-link" onClick={toggleMobileMenu}>
+              </Link>
+              <Link to="/catalog" className="mobile-nav-link" onClick={toggleMobileMenu}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
                   <line x1="3" y1="6" x2="21" y2="6"></line>
                   <path d="M16 10a4 4 0 0 1-8 0"></path>
                 </svg>
                 Products
-              </a>
-              <a href="/categories" className="mobile-nav-link" onClick={toggleMobileMenu}>
+              </Link>
+              <Link to="/categories" className="mobile-nav-link" onClick={toggleMobileMenu}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="3" width="7" height="7"></rect>
                   <rect x="14" y="3" width="7" height="7"></rect>
@@ -154,26 +155,26 @@ export default function Header({ onCartClick }) {
                   <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
                 Categories
-              </a>
-              <a href="/about" className="mobile-nav-link" onClick={toggleMobileMenu}>
+              </Link>
+              <Link to="/about" className="mobile-nav-link" onClick={toggleMobileMenu}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10"></circle>
                   <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                   <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
                 About
-              </a>
-              <a href="/contact" className="mobile-nav-link" onClick={toggleMobileMenu}>
+              </Link>
+              <Link to="/contact" className="mobile-nav-link" onClick={toggleMobileMenu}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                   <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
                 Contact
-              </a>
+              </Link>
             </nav>
             <div className="mobile-auth">
-              <a href="/login" className="mobile-login-btn" onClick={toggleMobileMenu}>Login</a>
-              <a href="/register" className="mobile-register-btn" onClick={toggleMobileMenu}>Sign Up</a>
+              <Link to="/login" className="mobile-login-btn" onClick={toggleMobileMenu}>Login</Link>
+              <Link to="/register" className="mobile-register-btn" onClick={toggleMobileMenu}>Sign Up</Link>
             </div>
           </div>
         </div>

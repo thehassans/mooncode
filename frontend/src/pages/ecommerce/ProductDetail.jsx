@@ -145,12 +145,17 @@ const ProductDetail = () => {
         cartItems = JSON.parse(savedCart)
       }
       
-      const existingItemIndex = cartItems.findIndex(item => 
-        item.id === product._id
-      )
+      const existingItemIndex = cartItems.findIndex(item => item.id === product._id)
+      const max = Number(product?.stockQty || 0)
       
       if (existingItemIndex >= 0) {
-        cartItems[existingItemIndex].quantity += quantity
+        const current = Number(cartItems[existingItemIndex].quantity || 0)
+        const candidate = current + quantity
+        if (max > 0 && candidate > max) {
+          cartItems[existingItemIndex].quantity = max
+        } else {
+          cartItems[existingItemIndex].quantity = candidate
+        }
       } else {
         cartItems.push({
           id: product._id,
@@ -158,7 +163,8 @@ const ProductDetail = () => {
           price: product.price,
           currency: product.baseCurrency || 'SAR',
           image: (Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.imagePath || '')),
-          quantity: quantity
+          quantity: Math.max(1, Math.min(max > 0 ? max : quantity, quantity)),
+          maxStock: product.stockQty
         })
       }
       
@@ -512,7 +518,7 @@ const ProductDetail = () => {
                       </span>
                     </div>
                     <span className="text-sm text-gray-600">
-                      {product.stockQty} available
+                      {product.stockQty} available {product.stockQty <= 5 ? '(Low stock)' : ''}
                     </span>
                   </div>
                 ) : (
@@ -541,8 +547,13 @@ const ProductDetail = () => {
                         {quantity}
                       </span>
                       <button
-                        onClick={() => setQuantity(quantity + 1)}
+                        onClick={() => {
+                          const max = Number(product?.stockQty || 0)
+                          if (max > 0 && quantity >= max) return
+                          setQuantity(quantity + 1)
+                        }}
                         className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                        disabled={Number(product?.stockQty || 0) > 0 && quantity >= Number(product.stockQty)}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
