@@ -33,6 +33,9 @@ export default function CategoryFilter({ selectedCategory, onCategoryChange, pro
           const count = category.id === 'all' 
             ? Object.values(productCounts).reduce((sum, count) => sum + count, 0)
             : productCounts[category.id] || 0
+          // Only show categories that have products, always show "All Categories"
+          const visible = category.id === 'all' || count > 0
+          if (!visible) return null
             
           return (
             <button
@@ -48,7 +51,11 @@ export default function CategoryFilter({ selectedCategory, onCategoryChange, pro
                 <span className="text-lg">{category.icon}</span>
                 <span className="font-medium">{category.name}</span>
               </div>
-              {count > 0 && (
+              {category.id === 'all' ? (
+                <span className={`text-sm px-2 py-1 rounded-full ${
+                  selectedCategory === category.id ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'
+                }`}>{count}</span>
+              ) : count > 0 && (
                 <span className={`text-sm px-2 py-1 rounded-full ${
                   selectedCategory === category.id
                     ? 'bg-orange-100 text-orange-700'

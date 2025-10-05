@@ -30,6 +30,24 @@ const storage = multer.diskStorage({
     cb(null, `${name}-${Date.now()}${ext}`)
   }
 })
+
+// Public: return category usage counts for visible products
+router.get('/public/categories-usage', async (req, res) => {
+  try{
+    const rows = await Product.aggregate([
+      { $match: { displayOnWebsite: true } },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $project: { _id: 0, category: '$_id', count: 1 } },
+      { $sort: { category: 1 } }
+    ])
+    const counts = Object.fromEntries(rows.map(r => [String(r.category||'Other'), Number(r.count||0)]))
+    const total = Object.values(counts).reduce((a,b)=>a+b,0)
+    return res.json({ counts, total })
+  }catch(err){
+    console.error('categories-usage error:', err)
+    return res.status(500).json({ message: 'Failed to fetch category usage' })
+  }
+})
 const upload = multer({ storage })
 
 // Create product (admin; user; manager with permission)

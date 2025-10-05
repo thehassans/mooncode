@@ -316,7 +316,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
           <button
             onClick={handleAddToCart}
             disabled={!product.inStock || product.stockQty === 0}
-            className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-2.5 px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm sm:text-base shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-[0.98]"
+            className="flex-1 min-w-[120px] sm:min-w-[140px] h-9 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm shadow-sm hover:shadow-md"
           >
             {!product.inStock || product.stockQty === 0 ? 'Out of Stock' : 'Add to Cart'}
           </button>

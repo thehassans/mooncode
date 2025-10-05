@@ -19,6 +19,7 @@ export default function ProductCatalog() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 })
+  const [categoryCounts, setCategoryCounts] = useState({})
   
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -45,6 +46,21 @@ export default function ProductCatalog() {
       return next
     })
   }
+
+  // Load category usage counts (public)
+  useEffect(() => {
+    let alive = true
+    ;(async()=>{
+      try{
+        const res = await apiGet('/api/products/public/categories-usage')
+        const counts = res?.counts || {}
+        if (alive) setCategoryCounts(counts)
+      }catch{
+        if (alive) setCategoryCounts({})
+      }
+    })()
+    return ()=>{ alive = false }
+  }, [])
   const toggleSelectFor = (id) => {
     setSelectedIds(prev => {
       const s = new Set(prev)
@@ -194,13 +210,7 @@ export default function ProductCatalog() {
     setCurrentPage(1) // Reset to first page when filters change
   }
 
-  const getProductCounts = () => {
-    const counts = {}
-    products.forEach(product => {
-      counts[product.category] = (counts[product.category] || 0) + 1
-    })
-    return counts
-  }
+  const getProductCounts = () => categoryCounts
 
   const handleCategoryChange = (category) => {
     setSelectedCategory(category)
