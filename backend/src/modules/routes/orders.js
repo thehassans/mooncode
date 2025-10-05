@@ -563,6 +563,195 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
   }
 })
 
+// Export orders as CSV with the same scoping and filters as the list endpoint
+router.get('/export', auth, allowRoles('admin','user','agent','manager'), async (req, res) => {
+  try{
+    // Scope (same as list)
+    let base = {}
+    if (req.user.role === 'admin') {
+      base = {}
+    } else if (req.user.role === 'user') {
+      const agents = await User.find({ role: 'agent', createdBy: req.user.id }, { _id: 1 }).lean()
+      const managers = await User.find({ role: 'manager', createdBy: req.user.id }, { _id: 1 }).lean()
+      const agentIds = agents.map(a => a._id)
+      const managerIds = managers.map(m => m._id)
+      base = { createdBy: { $in: [req.user.id, ...agentIds, ...managerIds] } }
+    } else if (req.user.role === 'manager') {
+      const mgr = await User.findById(req.user.id).select('createdBy assignedCountry').lean()
+      const ownerId = mgr?.createdBy
+      const assignedCountry = mgr?.assignedCountry
+      if (ownerId){
+        const agents = await User.find({ role: 'agent', createdBy: ownerId }, { _id: 1 }).lean()
+        const managers = await User.find({ role: 'manager', createdBy: ownerId }, { _id: 1 }).lean()
+        const agentIds = agents.map(a => a._id)
+        const managerIds = managers.map(m => m._id)
+        base = { createdBy: { $in: [ownerId, ...agentIds, ...managerIds] } }
+        if (assignedCountry) base.orderCountry = assignedCountry
+      } else {
+        base = { createdBy: req.user.id }
+        if (assignedCountry) base.orderCountry = assignedCountry
+      }
+    } else {
+      base = { createdBy: req.user.id }
+    }
+
+    // Filters
+    const q = String(req.query.q||'').trim()
+    const country = String(req.query.country||'').trim()
+    const city = String(req.query.city||'').trim()
+    const onlyUnassigned = String(req.query.onlyUnassigned||'').toLowerCase() === 'true'
+    const statusFilter = String(req.query.status||'').trim().toLowerCase()
+    const shipFilter = String(req.query.ship||'').trim().toLowerCase()
+    const payment = String(req.query.payment||'').trim().toUpperCase()
+    const collectedOnly = String(req.query.collected||'').toLowerCase() === 'true'
+    const agentId = String(req.query.agent||'').trim()
+    const driverId = String(req.query.driver||'').trim()
+    const productParam = String(req.query.product||'').trim()
+
+    const match = { ...base }
+    if (country) {
+      const aliases = {
+        'KSA': ['KSA','Saudi Arabia'],
+        'Saudi Arabia': ['KSA','Saudi Arabia'],
+        'UAE': ['UAE','United Arab Emirates'],
+        'United Arab Emirates': ['UAE','United Arab Emirates'],
+      }
+      match.orderCountry = aliases[country] ? { $in: aliases[country] } : country
+    }
+    if (city) match.city = city
+    if (onlyUnassigned) match.deliveryBoy = { $in: [null, undefined] }
+    if (statusFilter) match.status = statusFilter
+    if (shipFilter) match.shipmentStatus = shipFilter
+    if (payment === 'COD') match.paymentMethod = 'COD'
+    else if (payment === 'PREPAID') match.paymentMethod = { $ne: 'COD' }
+    if (collectedOnly) match.collectedAmount = { $gt: 0 }
+    if (agentId) match.createdBy = agentId
+    if (driverId) match.deliveryBoy = driverId
+    if (productParam){
+      try{
+        const pid = new mongoose.Types.ObjectId(productParam)
+        const orList = match.$or ? [...match.$or] : []
+        orList.push({ productId: pid })
+        orList.push({ 'items.productId': pid })
+        match.$or = orList
+      }catch{}
+    }
+    if (q){
+      const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const rx = new RegExp(safe, 'i')
+      const stripped = q.startsWith('#') ? q.slice(1) : q
+      const rxInv = stripped && stripped !== q ? new RegExp(stripped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : null
+      const textConds = [
+        { invoiceNumber: rx },
+        ...(rxInv ? [{ invoiceNumber: rxInv }] : []),
+        { customerPhone: rx },
+        { customerName: rx },
+        { details: rx },
+        { city: rx },
+      ]
+      try{
+        let ownerIds = null
+        if (req.user.role === 'user') ownerIds = [ req.user.id ]
+        else if (req.user.role === 'manager') {
+          const mgr = await User.findById(req.user.id).select('createdBy').lean()
+          if (mgr?.createdBy) ownerIds = [ String(mgr.createdBy) ]
+        }
+        const userNameConds = [ { firstName: rx }, { lastName: rx }, { email: rx } ]
+        const baseUserFilter = ownerIds ? { createdBy: { $in: ownerIds } } : {}
+        const agentsByName = await User.find({ role: 'agent', ...baseUserFilter, $or: userNameConds }).select('_id').lean()
+        const driversByName = await User.find({ role: 'driver', ...baseUserFilter, $or: userNameConds }).select('_id').lean()
+        const agentIds2 = agentsByName.map(a => a._id)
+        const driverIds2 = driversByName.map(d => d._id)
+        if (agentIds2.length) textConds.push({ createdBy: { $in: agentIds2 } })
+        if (driverIds2.length) textConds.push({ deliveryBoy: { $in: driverIds2 } })
+      }catch{}
+      try{
+        const prods = await Product.find({ name: rx }).select('_id').lean()
+        const pids = prods.map(p => p._id)
+        if (pids.length){
+          textConds.push({ productId: { $in: pids } })
+          textConds.push({ 'items.productId': { $in: pids } })
+        }
+      }catch{}
+      match.$or = (match.$or ? match.$or : []).concat(textConds)
+    }
+
+    const cap = Math.min(20000, Math.max(1, Number(req.query.max||10000)))
+    const rows = await Order
+      .find(match)
+      .sort({ createdAt: -1 })
+      .limit(cap)
+      .populate('productId')
+      .populate('items.productId')
+      .populate('deliveryBoy', 'firstName lastName email')
+      .populate('createdBy', 'firstName lastName email role')
+      .lean()
+
+    const esc = (v) => {
+      if (v == null) return ''
+      const s = String(v)
+      if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"'
+      return s
+    }
+    const fmtDate = (d) => { try{ return new Date(d).toISOString() }catch{ return '' } }
+    const productSummary = (o) => {
+      try{
+        if (Array.isArray(o?.items) && o.items.length){
+          return o.items.map(it => `${it?.productId?.name||'Product'} (${Math.max(1, Number(it?.quantity||1))})`).join('; ')
+        }
+        return o?.productId?.name ? `${o.productId.name} (${Math.max(1, Number(o?.quantity||1))})` : ''
+      }catch{ return '' }
+    }
+    const itemsCount = (o) => {
+      try{
+        if (Array.isArray(o?.items) && o.items.length){ return o.items.reduce((s,it)=> s + Math.max(1, Number(it?.quantity||1)), 0) }
+        return Math.max(1, Number(o?.quantity||1))
+      }catch{ return 0 }
+    }
+
+    const header = [
+      'Invoice','OrderID','CreatedAt','Country','City','Customer','PhoneCode','Phone','Address','Status','ShipmentStatus','COD','Collected','ShippingFee','BalanceDue','Total','Discount','Products','ItemsCount','DriverName','AgentName'
+    ]
+    const lines = [header.join(',')]
+    for (const r of rows){
+      const driverName = r?.deliveryBoy ? `${r.deliveryBoy.firstName||''} ${r.deliveryBoy.lastName||''}`.trim() : ''
+      const agentName = r?.createdBy ? `${r.createdBy.firstName||''} ${r.createdBy.lastName||''}`.trim() : ''
+      const line = [
+        esc(r?.invoiceNumber||''),
+        esc(r?._id||''),
+        esc(fmtDate(r?.createdAt)),
+        esc(r?.orderCountry||''),
+        esc(r?.city||''),
+        esc(r?.customerName||''),
+        esc(r?.phoneCountryCode||''),
+        esc(r?.customerPhone||''),
+        esc(r?.customerAddress||''),
+        esc(r?.status||''),
+        esc(r?.shipmentStatus||''),
+        esc(Number(r?.codAmount||0).toFixed(2)),
+        esc(Number(r?.collectedAmount||0).toFixed(2)),
+        esc(Number(r?.shippingFee||0).toFixed(2)),
+        esc(Number(r?.balanceDue||0).toFixed(2)),
+        esc(r?.total!=null ? Number(r.total).toFixed(2) : ''),
+        esc(r?.discount!=null ? Number(r.discount).toFixed(2) : ''),
+        esc(productSummary(r)),
+        esc(itemsCount(r)),
+        esc(driverName),
+        esc(agentName),
+      ].join(',')
+      lines.push(line)
+    }
+
+    const csv = '\ufeff' + lines.join('\n')
+    const ts = new Date().toISOString().slice(0,10)
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="orders-${ts}.csv"`)
+    return res.status(200).send(csv)
+  }catch(err){
+    res.status(500).json({ message: 'Failed to export orders', error: err?.message })
+  }
+})
+
 // Distinct options: countries and cities (optionally filtered by country)
 router.get('/options', auth, allowRoles('admin','user','agent','manager'), async (req, res) => {
   try{

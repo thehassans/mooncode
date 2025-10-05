@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { apiGet, apiPost, API_BASE } from '../../api'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { apiGet, apiPost, API_BASE, apiGetBlob } from '../../api'
 import { io } from 'socket.io-client'
 
 export default function ManagerOrders(){
@@ -8,6 +8,7 @@ export default function ManagerOrders(){
   const [drivers, setDrivers] = useState([])
   const [driversByCountry, setDriversByCountry] = useState({}) // Cache drivers by country
   const [loading, setLoading] = useState(true)
+  const exportingRef = useRef(false)
   const [assigning, setAssigning] = useState('')
   const [q, setQ] = useState('')
   const [country, setCountry] = useState('')
@@ -102,6 +103,29 @@ export default function ManagerOrders(){
   }, [orders])
 
   const countries = ['UAE','Oman','KSA','Bahrain']
+
+  async function exportCsv(){
+    if (exportingRef.current) return
+    exportingRef.current = true
+    try{
+      const params = new URLSearchParams()
+      if (q.trim()) params.set('q', q.trim())
+      if (country.trim()) params.set('country', country.trim())
+      if (city.trim()) params.set('city', city.trim())
+      params.set('max','10000')
+      const blob = await apiGetBlob(`/api/orders/export?${params.toString()}`)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const ts = new Date().toISOString().slice(0,10)
+      a.href = url
+      a.download = `orders-${ts}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    }catch(e){ alert(e?.message || 'Failed to export') }
+    finally{ exportingRef.current = false }
+  }
 
   async function assignDriver(orderId, driverId){
     setAssigning(orderId)
@@ -206,6 +230,7 @@ export default function ManagerOrders(){
             <option value=''>All Cities</option>
             {cities.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
+          <button className="btn" onClick={exportCsv}>Export CSV</button>
         </div>
       </div>
 

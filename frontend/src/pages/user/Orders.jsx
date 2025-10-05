@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { API_BASE, apiGet, apiPatch } from '../../api.js'
+import { API_BASE, apiGet, apiPatch, apiGetBlob } from '../../api.js'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
@@ -92,6 +92,7 @@ export default function UserOrders(){
   const [hasMore, setHasMore] = useState(true)
   const loadingMoreRef = useRef(false)
   const endRef = useRef(null)
+  const exportingRef = useRef(false)
   const toast = useToast()
   // Columns: Order | Customer | Product | Price | Country | Agent | Driver | Shipment | Actions
   // Made Driver column wider (from 1fr to 1.3fr)
@@ -175,6 +176,27 @@ export default function UserOrders(){
   useEffect(()=>{ loadOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
   // Reload on filter changes (except productQuery which is client-side)
   useEffect(()=>{ loadOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [buildQuery])
+
+  async function exportCsv(){
+    if (exportingRef.current) return
+    exportingRef.current = true
+    try{
+      const params = new URLSearchParams(buildQuery.toString())
+      params.set('max','10000')
+      const blob = await apiGetBlob(`/api/orders/export?${params.toString()}`)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const ts = new Date().toISOString().slice(0,10)
+      a.href = url
+      a.download = `orders-${ts}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast.success('Export started')
+    }catch(e){ toast.error(e?.message || 'Failed to export') }
+    finally{ exportingRef.current = false }
+  }
 
   // Initialize filters from URL query params and keep in sync on navigation
   useEffect(()=>{
@@ -361,6 +383,7 @@ export default function UserOrders(){
           <label className="input" style={{display:'flex', alignItems:'center', gap:8}}>
             <input type="checkbox" checked={collectedOnly} onChange={e=> setCollectedOnly(e.target.checked)} /> Collected only
           </label>
+          <button className="btn" onClick={exportCsv}>Export CSV</button>
         </div>
       </div>
 
