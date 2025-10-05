@@ -1,6 +1,7 @@
 import express from 'express'
 import WebOrder from '../models/WebOrder.js'
 import Product from '../models/Product.js'
+import User from '../models/User.js'
 import { auth, allowRoles } from '../middleware/auth.js'
 
 const router = express.Router()
@@ -69,7 +70,7 @@ router.post('/orders', async (req, res) => {
 // GET /api/ecommerce/orders (admin/user/manager)
 router.get('/orders', auth, allowRoles('admin','user','manager'), async (req, res) => {
   try{
-    const { q = '', status = '', start = '', end = '', product = '' } = req.query || {}
+    const { q = '', status = '', start = '', end = '', product = '', ship = '' } = req.query || {}
     const match = {}
     if (q){
       const rx = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
@@ -83,6 +84,7 @@ router.get('/orders', auth, allowRoles('admin','user','manager'), async (req, re
       ]
     }
     if (status) match.status = status
+    if (ship) match.shipmentStatus = ship
     if (start || end){ match.createdAt = {}; if (start) match.createdAt.$gte = new Date(start); if (end) match.createdAt.$lte = new Date(end) }
     if (product){ match['items.productId'] = product }
 
@@ -91,7 +93,11 @@ router.get('/orders', auth, allowRoles('admin','user','manager'), async (req, re
     const skip = (page-1) * limit
 
     const total = await WebOrder.countDocuments(match)
-    const rows = await WebOrder.find(match).sort({ createdAt: -1 }).skip(skip).limit(limit)
+    const rows = await WebOrder.find(match)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('deliveryBoy', 'firstName lastName email city')
     const hasMore = skip + rows.length < total
     return res.json({ orders: rows, page, limit, total, hasMore })
   }catch(err){
@@ -103,16 +109,62 @@ router.get('/orders', auth, allowRoles('admin','user','manager'), async (req, re
 router.patch('/orders/:id', auth, allowRoles('admin','user','manager'), async (req, res) => {
   try{
     const { id } = req.params
-    const { status } = req.body || {}
+    const { status, shipmentStatus } = req.body || {}
     const allowed = ['new','processing','done','cancelled']
     if (status && !allowed.includes(String(status))) return res.status(400).json({ message: 'Invalid status' })
+    const allowedShip = ['pending','assigned','picked_up','in_transit','delivered','returned','cancelled']
+    if (shipmentStatus && !allowedShip.includes(String(shipmentStatus))) return res.status(400).json({ message: 'Invalid shipment status' })
     const ord = await WebOrder.findById(id)
     if (!ord) return res.status(404).json({ message: 'Order not found' })
     if (status) ord.status = status
+    if (shipmentStatus) ord.shipmentStatus = shipmentStatus
     await ord.save()
     return res.json({ message: 'Updated', order: ord })
   }catch(err){
     return res.status(500).json({ message: 'Failed to update online order', error: err?.message })
+  }
+})
+
+// Assign driver to an online (web) order
+router.post('/orders/:id/assign-driver', auth, allowRoles('admin','user','manager'), async (req, res) => {
+  try{
+    const { id } = req.params
+    const { driverId } = req.body || {}
+    if (!driverId) return res.status(400).json({ message: 'driverId required' })
+    const ord = await WebOrder.findById(id)
+    if (!ord) return res.status(404).json({ message: 'Order not found' })
+    const driver = await User.findById(driverId)
+    if (!driver || driver.role !== 'driver') return res.status(400).json({ message: 'Driver not found' })
+
+    // Workspace scoping similar to /api/orders
+    if (req.user.role === 'user'){
+      if (String(driver.createdBy) !== String(req.user.id)) return res.status(403).json({ message: 'Not allowed' })
+    } else if (req.user.role === 'manager'){
+      const mgr = await User.findById(req.user.id).select('createdBy assignedCountry')
+      const ownerId = String(mgr?.createdBy || '')
+      if (!ownerId || String(driver.createdBy) !== ownerId) return res.status(403).json({ message: 'Not allowed' })
+      if (mgr?.assignedCountry) {
+        if (driver.country && driver.country !== mgr.assignedCountry) {
+          return res.status(403).json({ message: `Manager can only assign drivers from ${mgr.assignedCountry}` })
+        }
+        if (ord.orderCountry && ord.orderCountry !== mgr.assignedCountry) {
+          return res.status(403).json({ message: `Manager can only assign to orders from ${mgr.assignedCountry}` })
+        }
+      }
+    }
+
+    // City rule: enforce order city matches driver city if provided
+    if (driver.city && ord.city && String(driver.city).toLowerCase() !== String(ord.city).toLowerCase()){
+      return res.status(400).json({ message: 'Driver city does not match order city' })
+    }
+
+    ord.deliveryBoy = driver._id
+    if (!ord.shipmentStatus || ord.shipmentStatus === 'pending') ord.shipmentStatus = 'assigned'
+    await ord.save()
+    await ord.populate('deliveryBoy','firstName lastName email city')
+    return res.json({ message: 'Driver assigned', order: ord })
+  }catch(err){
+    return res.status(500).json({ message: 'Failed to assign driver', error: err?.message })
   }
 })
 

@@ -20,6 +20,9 @@ const WebOrderSchema = new mongoose.Schema({
   total: { type: Number, default: 0 },
   currency: { type: String, default: 'SAR' },
   status: { type: String, enum: ['new','processing','done','cancelled'], default: 'new' },
+  // Driver assignment and shipment tracking
+  deliveryBoy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  shipmentStatus: { type: String, enum: ['pending','assigned','picked_up','in_transit','delivered','returned','cancelled'], default: 'pending' },
 }, { timestamps: true })
 
 export default mongoose.model('WebOrder', WebOrderSchema)
