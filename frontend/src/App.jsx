@@ -63,6 +63,10 @@ import ProductCatalog from './pages/ecommerce/ProductCatalog.jsx'
 import ProductDetail from './pages/ecommerce/ProductDetail.jsx'
 import Checkout from './pages/store/Checkout.jsx'
 import OnlineOrders from './pages/user/OnlineOrders.jsx'
+import SiteHome from './pages/site/Home.jsx'
+import SiteAbout from './pages/site/About.jsx'
+import SiteContact from './pages/site/Contact.jsx'
+import SiteCategories from './pages/site/Categories.jsx'
 import UserFinances from './pages/user/Finances.jsx'
 
 import AnalyticsDashboard from './components/analytics/AnalyticsDashboard'
@@ -198,10 +202,13 @@ export default function App() {
   return (
     <ErrorBoundary>
       <Routes>
-      {/* Root redirect to login */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      {/* Public site pages */}
+      <Route path="/" element={<SiteHome />} />
+      <Route path="/about" element={<SiteAbout />} />
+      <Route path="/contact" element={<SiteContact />} />
+      <Route path="/categories" element={<SiteCategories />} />
       
-      {/* Public routes */}
+      {/* Public ecommerce routes */}
       <Route path="/catalog" element={<ProductCatalog />} />
       <Route path="/product/:id" element={<ProductDetail />} />
       <Route path="/checkout" element={<Checkout />} />

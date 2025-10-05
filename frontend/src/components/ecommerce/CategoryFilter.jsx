@@ -1,6 +1,6 @@
 import React from 'react'
 
-const categories = [
+export const categories = [
   { id: 'all', name: 'All Categories', icon: '🏪' },
   { id: 'Skincare', name: 'Skincare', icon: '🧴' },
   { id: 'Haircare', name: 'Haircare', icon: '💇' },

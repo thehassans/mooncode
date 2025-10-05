@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import ProductCard from '../../components/ecommerce/ProductCard'
 import Header from '../../components/layout/Header'
 import ShoppingCart from '../../components/ecommerce/ShoppingCart'
@@ -12,6 +12,8 @@ import CountrySelector, { countries } from '../../components/ecommerce/CountrySe
 
 export default function ProductCatalog() {
   const toast = useToast()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [products, setProducts] = useState([])
   const [filteredProducts, setFilteredProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -59,6 +61,38 @@ export default function ProductCatalog() {
     // Track page view
     trackPageView('/products', 'Product Catalog')
   }, [selectedCategory, searchQuery, sortBy, currentPage, selectedCountry])
+
+  // Read initial category/search from URL (and on URL change)
+  useEffect(() => {
+    const sp = new URLSearchParams(location.search)
+    const cat = sp.get('category') || 'all'
+    const q = sp.get('search') || ''
+    if (cat !== selectedCategory) setSelectedCategory(cat)
+    if (q !== searchQuery) setSearchQuery(q)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search])
+
+  // Keep URL in sync when user changes filters
+  useEffect(() => {
+    const sp = new URLSearchParams(location.search)
+    let changed = false
+    const currCat = sp.get('category') || 'all'
+    const currQ = sp.get('search') || ''
+    if ((selectedCategory || 'all') !== currCat){
+      if (selectedCategory && selectedCategory !== 'all') sp.set('category', selectedCategory)
+      else sp.delete('category')
+      changed = true
+    }
+    if ((searchQuery || '') !== currQ){
+      if (searchQuery && searchQuery.trim()) sp.set('search', searchQuery.trim())
+      else sp.delete('search')
+      changed = true
+    }
+    if (changed){
+      navigate(`/catalog?${sp.toString()}`, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory, searchQuery])
 
   // Persist selected country for use on product detail/cart
   useEffect(() => {
