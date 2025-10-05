@@ -1005,6 +1005,12 @@ export default function InhouseProducts(){
                     <input type="checkbox" name="inStock" checked={editForm.inStock} onChange={onEditChange} /> Product In Stock
                   </label>
                 </div>
+                <div>
+                  <div className="label">Display on Website</div>
+                  <label style={{display:'inline-flex', alignItems:'center', gap:8}}>
+                    <input type="checkbox" name="displayOnWebsite" checked={!!editForm.displayOnWebsite} onChange={onEditChange} /> Show in public e-commerce
+                  </label>
+                </div>
               </div>
               {(editForm.availableCountries||[]).length > 0 && (
                 <div>

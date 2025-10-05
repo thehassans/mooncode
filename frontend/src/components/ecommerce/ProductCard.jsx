@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../ui/Toast'
 import { trackProductView, trackAddToCart } from '../../utils/analytics'
+import { API_BASE } from '../../api.js'
 
 export default function ProductCard({ product, onAddToCart, selectedCountry = 'SA' }) {
   const navigate = useNavigate()
@@ -56,9 +57,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
   const getImageUrl = (imagePath) => {
     if (!imagePath) return '/placeholder-product.svg'
     if (imagePath.startsWith('http')) return imagePath
-    const isLocal = (typeof window !== 'undefined') && (/^localhost$|^127\.0\.0\.1$/.test(window.location.hostname))
-    const base = (import.meta.env.VITE_API_BASE && String(import.meta.env.VITE_API_BASE).trim()) || (isLocal ? 'http://localhost:4000' : '')
-    return `${base}${imagePath}`
+    return `${API_BASE || ''}${imagePath}`
   }
 
   const renderStars = (rating) => {
