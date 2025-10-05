@@ -60,6 +60,7 @@ import PrintLabel from './pages/orders/PrintLabel.jsx'
 import SubmitOrder from './pages/orders/SubmitOrder.jsx'
 import EditOrder from './pages/orders/EditOrder.jsx'
 import ProductCatalog from './pages/ecommerce/ProductCatalog.jsx'
+import ProductDetail from './pages/ecommerce/ProductDetail.jsx'
 import Checkout from './pages/store/Checkout.jsx'
 import OnlineOrders from './pages/user/OnlineOrders.jsx'
 import UserFinances from './pages/user/Finances.jsx'
@@ -202,6 +203,7 @@ export default function App() {
       
       {/* Public routes */}
       <Route path="/catalog" element={<ProductCatalog />} />
+      <Route path="/product/:id" element={<ProductDetail />} />
       <Route path="/checkout" element={<Checkout />} />
       
       {/* Staff/Admin Login */}

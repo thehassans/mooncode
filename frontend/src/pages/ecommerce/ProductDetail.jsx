@@ -128,7 +128,8 @@ const ProductDetail = () => {
           id: product._id,
           name: product.name,
           price: product.price,
-          imagePath: product.imagePath,
+          currency: product.baseCurrency || 'SAR',
+          image: (Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.imagePath || '')),
           quantity: quantity
         })
       }

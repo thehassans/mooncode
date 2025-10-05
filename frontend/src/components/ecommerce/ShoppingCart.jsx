@@ -22,6 +22,25 @@ export default function ShoppingCart({ isOpen, onClose }) {
   ]
   const selectedCountry = COUNTRIES.find(c => c.code === form.country) || COUNTRIES[0]
 
+  // Currency conversion (same base as elsewhere)
+  const RATES = {
+    SAR: { SAR: 1, AED: 0.98, OMR: 0.10, BHD: 0.10 },
+    AED: { SAR: 1.02, AED: 1, OMR: 0.10, BHD: 0.10 },
+    OMR: { SAR: 9.78, AED: 9.58, OMR: 1, BHD: 0.98 },
+    BHD: { SAR: 9.94, AED: 9.74, OMR: 1.02, BHD: 1 },
+  }
+  const COUNTRY_TO_CURRENCY = { SA: 'SAR', AE: 'AED', OM: 'OMR', BH: 'BHD' }
+  const displayCurrency = COUNTRY_TO_CURRENCY[selectedCountry.code] || 'SAR'
+  const convertPrice = (value, fromCurrency, toCurrency) => {
+    const v = Number(value || 0)
+    const from = fromCurrency || 'SAR'
+    const to = toCurrency || displayCurrency
+    if (from === to) return v
+    const rate = RATES[from]?.[to]
+    return rate ? v * rate : v
+  }
+  const formatPrice = (value, currency) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || displayCurrency, minimumFractionDigits: 2 }).format(Number(value||0))
+
   const getImageUrl = (p) => {
     const imagePath = p || ''
     if (!imagePath) return '/placeholder-product.svg'
@@ -95,7 +114,11 @@ export default function ShoppingCart({ isOpen, onClose }) {
   }
 
   const getTotalPrice = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0)
+    return cartItems.reduce((total, item) => {
+      const from = item.currency || 'SAR'
+      const unit = convertPrice(item.price, from, displayCurrency)
+      return total + (unit * item.quantity)
+    }, 0)
   }
 
   const getTotalItems = () => {
@@ -121,7 +144,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
     try{
       setIsLoading(true)
       // Track checkout start
-      const cartValue = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0)
+      const cartValue = getTotalPrice()
       const itemCount = cartItems.reduce((total, item) => total + item.quantity, 0)
       trackCheckoutStart(cartValue, itemCount)
 
@@ -136,7 +159,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
         address: form.address.trim(),
         details: String(form.details||'').trim(),
         items,
-        currency: 'SAR',
+        currency: displayCurrency,
       }
       await apiPost('/api/ecommerce/orders', body)
       toast.success('Order submitted! We will contact you shortly.')
@@ -152,7 +175,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/15 backdrop-blur-[1px] z-50 flex justify-end" onClick={onClose}>
       <div 
         className="w-full max-w-md sm:max-w-lg bg-white h-full shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col border-l-4 border-orange-500" 
         onClick={(e) => e.stopPropagation()}
@@ -207,7 +230,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
                         {item.name}
                       </h4>
                       <p className="text-orange-600 font-bold text-sm sm:text-base mb-3">
-                        ${item.price.toFixed(2)}
+                        {formatPrice(convertPrice(item.price, item.currency || 'SAR', displayCurrency), displayCurrency)}
                       </p>
                       
                       <div className="flex items-center justify-between">
@@ -244,7 +267,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
                     
                     <div className="text-right">
                       <div className="font-bold text-gray-900 text-sm sm:text-base">
-                        ${(item.price * item.quantity).toFixed(2)}
+                        {formatPrice(convertPrice(item.price, item.currency || 'SAR', displayCurrency) * item.quantity, displayCurrency)}
                       </div>
                     </div>
                   </div>
@@ -260,11 +283,11 @@ export default function ShoppingCart({ isOpen, onClose }) {
             <div className="space-y-3 mb-4">
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Subtotal:</span>
-                <span>${getTotalPrice().toFixed(2)}</span>
+                <span>{formatPrice(getTotalPrice(), displayCurrency)}</span>
               </div>
               <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-200">
                 <span>Total:</span>
-                <span>${getTotalPrice().toFixed(2)}</span>
+                <span>{formatPrice(getTotalPrice(), displayCurrency)}</span>
               </div>
             </div>
 
