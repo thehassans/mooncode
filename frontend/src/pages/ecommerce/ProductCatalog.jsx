@@ -23,7 +23,9 @@ export default function ProductCatalog() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('name')
   const [showFilters, setShowFilters] = useState(false)
-  const [selectedCountry, setSelectedCountry] = useState('SA') // Default to KSA
+  const [selectedCountry, setSelectedCountry] = useState(() => {
+    try { return localStorage.getItem('selected_country') || 'SA' } catch { return 'SA' }
+  }) // Default to KSA
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -36,6 +38,11 @@ export default function ProductCatalog() {
     // Track page view
     trackPageView('/products', 'Product Catalog')
   }, [selectedCategory, searchQuery, sortBy, currentPage, selectedCountry])
+
+  // Persist selected country for use on product detail/cart
+  useEffect(() => {
+    try { localStorage.setItem('selected_country', selectedCountry) } catch {}
+  }, [selectedCountry])
 
   // Filter and sort products when dependencies change
   useEffect(() => {

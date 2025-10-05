@@ -21,6 +21,34 @@ const ProductDetail = () => {
   const [newReview, setNewReview] = useState({ rating: 5, comment: '', name: '' })
   const [showReviewForm, setShowReviewForm] = useState(false)
 
+  // Country selection (persisted from catalog via localStorage)
+  const [selectedCountry, setSelectedCountry] = useState(() => {
+    try { return localStorage.getItem('selected_country') || 'SA' } catch { return 'SA' }
+  })
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem('selected_country')
+      if (s) setSelectedCountry(s)
+    } catch {}
+  }, [])
+
+  // Currency conversion helpers (same mapping as other components)
+  const RATES = {
+    SAR: { SAR: 1, AED: 0.98, OMR: 0.10, BHD: 0.10 },
+    AED: { SAR: 1.02, AED: 1, OMR: 0.10, BHD: 0.10 },
+    OMR: { SAR: 9.78, AED: 9.58, OMR: 1, BHD: 0.98 },
+    BHD: { SAR: 9.94, AED: 9.74, OMR: 1.02, BHD: 1 },
+  }
+  const COUNTRY_TO_CURRENCY = { AE: 'AED', OM: 'OMR', SA: 'SAR', BH: 'BHD' }
+  const getDisplayCurrency = () => COUNTRY_TO_CURRENCY[selectedCountry] || 'SAR'
+  const convertPrice = (value, fromCurrency, toCurrency) => {
+    const v = Number(value || 0)
+    if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) return v
+    const rate = RATES[fromCurrency]?.[toCurrency]
+    return rate ? v * rate : v
+  }
+  const formatPrice = (price, currency = 'SAR') => new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2 }).format(Number(price||0))
+
   useEffect(() => {
     if (id) {
       loadProduct()
@@ -277,7 +305,7 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <Header />
+      <Header onCartClick={() => setIsCartOpen(true)} />
       
       {/* Breadcrumb Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -443,18 +471,27 @@ const ProductDetail = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center space-x-3">
                     <span className="text-3xl sm:text-4xl font-bold text-gray-900">
-                      ${product.price.toFixed(2)}
+                      {formatPrice(
+                        convertPrice(product.price, product.baseCurrency || 'SAR', getDisplayCurrency()),
+                        getDisplayCurrency()
+                      )}
                     </span>
                     {originalPrice && (
                       <span className="text-xl text-gray-500 line-through">
-                        ${originalPrice.toFixed(2)}
+                        {formatPrice(
+                          convertPrice(originalPrice, product.baseCurrency || 'SAR', getDisplayCurrency()),
+                          getDisplayCurrency()
+                        )}
                       </span>
                     )}
                   </div>
                   {originalPrice && (
                     <div className="text-right">
                       <p className="text-sm text-green-600 font-semibold">
-                        Save ${(originalPrice - product.price).toFixed(2)}
+                        {formatPrice(
+                          convertPrice(originalPrice - product.price, product.baseCurrency || 'SAR', getDisplayCurrency()),
+                          getDisplayCurrency()
+                        )} saved
                       </p>
                       <p className="text-xs text-green-500">
                         {Math.round(((originalPrice - product.price) / originalPrice) * 100)}% off
