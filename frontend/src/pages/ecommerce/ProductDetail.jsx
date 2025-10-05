@@ -147,10 +147,12 @@ const ProductDetail = () => {
       
       const existingItemIndex = cartItems.findIndex(item => item.id === product._id)
       const max = Number(product?.stockQty || 0)
+      const unitPrice = Number(product?.onSale ? (product?.salePrice ?? product?.price) : product?.price) || 0
+      const addQty = Math.max(1, Math.floor(Number(quantity) || 1))
       
       if (existingItemIndex >= 0) {
         const current = Number(cartItems[existingItemIndex].quantity || 0)
-        const candidate = current + quantity
+        const candidate = current + addQty
         if (max > 0 && candidate > max) {
           cartItems[existingItemIndex].quantity = max
         } else {
@@ -160,10 +162,10 @@ const ProductDetail = () => {
         cartItems.push({
           id: product._id,
           name: product.name,
-          price: product.price,
+          price: unitPrice,
           currency: product.baseCurrency || 'SAR',
           image: (Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.imagePath || '')),
-          quantity: Math.max(1, Math.min(max > 0 ? max : quantity, quantity)),
+          quantity: Math.max(1, Math.min(max > 0 ? max : addQty, addQty)),
           maxStock: product.stockQty
         })
       }
@@ -172,12 +174,12 @@ const ProductDetail = () => {
       try { localStorage.setItem('last_added_product', String(product._id)) } catch {}
       
       // Track add to cart
-      trackAddToCart(product._id, product.name, product.category, product.price, quantity)
+      trackAddToCart(product._id, product.name, product.category, unitPrice, addQty)
       
       // Dispatch custom event to update cart count in header
       window.dispatchEvent(new CustomEvent('cartUpdated'))
       
-      toast.success(`Added ${quantity} ${product.name} to cart`)
+      toast.success(`Added ${addQty} ${product.name} to cart`)
       setIsCartOpen(true)
     } catch (error) {
       console.error('Error adding to cart:', error)

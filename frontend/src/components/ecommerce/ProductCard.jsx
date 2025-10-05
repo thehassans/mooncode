@@ -102,6 +102,8 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
     e.stopPropagation() // Prevent navigation when clicking add to cart
     
     try {
+      const unitPrice = Number(product?.onSale ? (product?.salePrice ?? product?.price) : product?.price) || 0
+      const addQty = Math.max(1, Math.floor(Number(qty) || 1))
       const savedCart = localStorage.getItem('shopping_cart')
       let cartItems = []
       
@@ -115,7 +117,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
       if (existingItemIndex > -1) {
         // Item already exists, increase quantity within stock limits
         const current = Number(cartItems[existingItemIndex].quantity || 0)
-        const candidate = current + qty
+        const candidate = current + addQty
         if (max > 0 && candidate > max) {
           cartItems[existingItemIndex].quantity = max
           toast.info(`Only ${max} in stock`)
@@ -127,10 +129,10 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
         cartItems.push({
           id: product._id,
           name: product.name,
-          price: product.price,
+          price: unitPrice,
           currency: product.baseCurrency || 'SAR',
           image: product.images?.[0] || '',
-          quantity: Math.max(1, qty),
+          quantity: addQty,
           maxStock: product.stockQty
         })
       }
@@ -140,13 +142,13 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
       try { localStorage.setItem('last_added_product', String(product._id)) } catch {}
       
       // Track add to cart event
-      trackAddToCart(product._id, product.name, product.price, Math.max(1, qty))
+      trackAddToCart(product._id, product.name, unitPrice, addQty)
       
       // Dispatch custom event to update cart count in header
       window.dispatchEvent(new CustomEvent('cartUpdated'))
       
       // Show success message
-      toast.success(`Added ${Math.max(1, qty)} × ${product.name} to cart`)
+      toast.success(`Added ${addQty} × ${product.name} to cart`)
       if (typeof onAddToCart === 'function') {
         try { onAddToCart(product) } catch {}
       }

@@ -281,8 +281,11 @@ export default function ShoppingCart({ isOpen, onClose }) {
                       <h4 className="font-semibold text-gray-900 text-sm sm:text-base line-clamp-2 mb-1">
                         {item.name}
                       </h4>
-                      <p className="text-orange-600 font-bold text-sm sm:text-base mb-3">
+                      <p className="text-orange-600 font-bold text-sm sm:text-base">
                         {formatPrice(convertPrice(item.price, item.currency || 'SAR', displayCurrency), displayCurrency)}
+                      </p>
+                      <p className="text-xs text-gray-500 mb-3">
+                        {formatPrice(convertPrice(item.price, item.currency || 'SAR', displayCurrency), displayCurrency)} × {item.quantity} = {formatPrice(convertPrice(item.price, item.currency || 'SAR', displayCurrency) * item.quantity, displayCurrency)}
                       </p>
                       
                       <div className="flex items-center justify-between">
