@@ -510,6 +510,7 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
         { customerPhone: rx },
         { customerName: rx },
         { details: rx },
+        { city: rx },
       ]
 
       // Agent/Driver name search in same 'q' filter

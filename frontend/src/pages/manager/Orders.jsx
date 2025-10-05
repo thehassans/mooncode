@@ -67,11 +67,28 @@ export default function ManagerOrders(){
     const t = q.trim().toLowerCase()
     if (t){
       rows = rows.filter(o => {
+        const invoice = String(o.invoiceNumber||'').toLowerCase()
+        const custName = String(o.customerName||'').toLowerCase()
+        const custPhone = String(o.customerPhone||'').toLowerCase()
+        const details = String(o.details||'').toLowerCase()
+        const cityName = String(o.city||'').toLowerCase()
+        const productNameTop = String(o?.productId?.name||'').toLowerCase()
+        const productNamesMulti = Array.isArray(o?.items) ? o.items.map(it => String(it?.productId?.name||'').toLowerCase()).filter(Boolean) : []
+        const driverName = `${o?.deliveryBoy?.firstName||''} ${o?.deliveryBoy?.lastName||''}`.trim().toLowerCase()
+        const agentName = `${o?.createdBy?.firstName||''} ${o?.createdBy?.lastName||''}`.trim().toLowerCase()
+        const agentEmail = String(o?.createdBy?.email||'').toLowerCase()
+        const productsHit = productNameTop.includes(t) || productNamesMulti.some(n => n.includes(t))
+        const driverHit = driverName.includes(t)
+        const agentHit = agentName.includes(t) || agentEmail.includes(t)
         return (
-          String(o.customerName||'').toLowerCase().includes(t) ||
-          String(o.customerPhone||'').toLowerCase().includes(t) ||
-          String(o.details||'').toLowerCase().includes(t) ||
-          String(o.invoiceNumber||'').toLowerCase().includes(t)
+          invoice.includes(t) ||
+          custName.includes(t) ||
+          custPhone.includes(t) ||
+          details.includes(t) ||
+          cityName.includes(t) ||
+          productsHit ||
+          driverHit ||
+          agentHit
         )
       })
     }
@@ -180,7 +197,7 @@ export default function ManagerOrders(){
           <div className="card-title">Filters</div>
         </div>
         <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:8}}>
-          <input className="input" placeholder="Search by name, phone, invoice, details" value={q} onChange={e=> setQ(e.target.value)} />
+          <input className="input" placeholder="Search invoice, product, driver, agent, city, phone, details" value={q} onChange={e=> setQ(e.target.value)} />
           <select className="input" value={country} onChange={e=> setCountry(e.target.value)}>
             <option value=''>All Countries</option>
             {countries.map(c => <option key={c} value={c}>{c}</option>)}
