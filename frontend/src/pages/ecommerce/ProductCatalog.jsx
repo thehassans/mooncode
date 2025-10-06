@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import ProductCard from '../../components/ecommerce/ProductCard'
 import Header from '../../components/layout/Header'
@@ -10,6 +10,54 @@ import { detectCountryCode } from '../../utils/geo'
 import CategoryFilter from '../../components/ecommerce/CategoryFilter'
 import SearchBar from '../../components/ecommerce/SearchBar'
 import CountrySelector, { countries } from '../../components/ecommerce/CountrySelector'
+
+function BannerCarousel({ images=[] }){
+  const [index, setIndex] = useState(0)
+  const touchStartX = useRef(0)
+  const slides = (Array.isArray(images) && images.length) ? images : ['/banners/banner1.jpg.png','/banners/banner2.jpg.png','/banners/banner3.jpg.png']
+  const N = slides.length
+  useEffect(()=>{
+    const id = setInterval(()=> setIndex(i => (i+1)%N), 5000)
+    return ()=> clearInterval(id)
+  }, [N])
+  const prev = ()=> setIndex(i => (i-1+N)%N)
+  const next = ()=> setIndex(i => (i+1)%N)
+  const onTouchStart = (e)=>{ try{ touchStartX.current = e.touches[0].clientX }catch{} }
+  const onTouchEnd = (e)=>{ try{ const dx = e.changedTouches[0].clientX - touchStartX.current; if (Math.abs(dx) > 40){ if (dx < 0) next(); else prev(); } }catch{} }
+  const fallback = '/BuySial2.png'
+  return (
+    <div className="relative rounded-xl overflow-hidden shadow-sm group select-none" role="region" aria-label="Promotions">
+      {/* Fixed aspect ratio to keep uniform size across images */}
+      <div className="relative w-full aspect-[16/7] bg-gray-200">
+        {slides.map((src, i)=> (
+          <img
+            key={i}
+            src={src}
+            alt={`Banner ${i+1}`}
+            onError={(e)=>{ if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback }}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${i===index? 'opacity-100':'opacity-0'}`}
+            draggable={false}
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+          />
+        ))}
+      </div>
+      {/* Arrows */}
+      <button onClick={prev} aria-label="Previous banner" className="hidden sm:inline-flex absolute left-3 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-700 w-9 h-9 rounded-full items-center justify-center shadow">
+        ‹
+      </button>
+      <button onClick={next} aria-label="Next banner" className="hidden sm:inline-flex absolute right-3 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-700 w-9 h-9 rounded-full items-center justify-center shadow">
+        ›
+      </button>
+      {/* Dots */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
+        {slides.map((_, i)=> (
+          <button key={i} onClick={()=> setIndex(i)} aria-label={`Go to banner ${i+1}`} className={`w-2.5 h-2.5 rounded-full ${i===index? 'bg-white':'bg-white/60'}`}></button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default function ProductCatalog() {
   const toast = useToast()
@@ -321,14 +369,11 @@ export default function ProductCatalog() {
       <Header onCartClick={() => setIsCartOpen(true)} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Page Header */}
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Products</h1>
-            <p className="text-gray-600">Discover our amazing collection of products</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <CountrySelector 
+        {/* Top Banner */}
+        <div className="mb-6">
+          <BannerCarousel images={[ '/banners/banner1.jpg.png','/banners/banner2.jpg.png','/banners/banner3.jpg.png' ]} />
+          <div className="mt-3 flex items-center justify-end">
+            <CountrySelector
               selectedCountry={selectedCountry}
               onCountryChange={(country) => setSelectedCountry(country.code)}
             />

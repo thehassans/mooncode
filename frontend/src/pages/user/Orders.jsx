@@ -367,6 +367,7 @@ export default function UserOrders(){
             <option value="">All Shipment</option>
             <option value="pending">Pending</option>
             <option value="assigned">Assigned</option>
+            <option value="picked_up">Picked Up</option>
             <option value="in_transit">In Transit</option>
             <option value="delivered">Delivered</option>
             <option value="returned">Returned</option>

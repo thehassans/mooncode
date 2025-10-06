@@ -89,26 +89,24 @@ export default function UserDashboard(){
   const [salesByCountry, setSalesByCountry] = useState({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 })
   const [orders, setOrders] = useState([])
   const [drivers, setDrivers] = useState([])
-  const driverCounts = useMemo(()=>{
-    let totalOrders = 0, delivered = 0, cancelled = 0
-    for (const d of (Array.isArray(drivers)? drivers: [])){
-      totalOrders += Number(d?.assigned||0)
-      delivered += Number(d?.deliveredCount||0)
-      cancelled += Number(d?.canceled||0)
+  const driverCountrySummary = useMemo(()=>{
+    const canonical = (c)=> (c === 'Saudi Arabia' ? 'KSA' : String(c||''))
+    const currencyByCountry = { KSA:'SAR', UAE:'AED', Oman:'OMR', Bahrain:'BHD', India:'INR', Kuwait:'KWD', Qatar:'QAR' }
+    const countries = ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar']
+    const init = {}
+    for (const c of countries){ init[c] = { country:c, currency: currencyByCountry[c], assigned:0, delivered:0, cancelled:0, collected:0, deliveredToCompany:0, pendingToCompany:0 } }
+    const list = Array.isArray(drivers)? drivers: []
+    for (const d of list){
+      const c = canonical(d?.country)
+      if (!init[c]) continue
+      init[c].assigned += Number(d?.assigned||0)
+      init[c].delivered += Number(d?.deliveredCount||0)
+      init[c].cancelled += Number(d?.canceled||0)
+      init[c].collected += Number(d?.collected||0)
+      init[c].deliveredToCompany += Number(d?.deliveredToCompany||0)
+      init[c].pendingToCompany += Number(d?.pendingToCompany||0)
     }
-    return { totalOrders, delivered, cancelled }
-  }, [drivers])
-  const driverMoneyByCurrency = useMemo(()=>{
-    const map = {}
-    for (const d of (Array.isArray(drivers)? drivers: [])){
-      const cur = String(d?.currency||'').toUpperCase()
-      if (!cur) continue
-      if (!map[cur]) map[cur] = { collected:0, deliveredToCompany:0, pendingToCompany:0 }
-      map[cur].collected += Number(d?.collected||0)
-      map[cur].deliveredToCompany += Number(d?.deliveredToCompany||0)
-      map[cur].pendingToCompany += Number(d?.pendingToCompany||0)
-    }
-    return map
+    return countries.map(c=> init[c])
   }, [drivers])
   async function load(){
     try{ setAnalytics(await apiGet('/api/orders/analytics/last7days')) }catch(_e){ setAnalytics({ days: [], totals:{} }) }
@@ -187,29 +185,57 @@ export default function UserDashboard(){
           <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#06b6d4,#0891b2)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🚚</div>
           <div>
             <div style={{fontWeight:800,fontSize:16}}>Drivers Summary</div>
-            <div className="helper">Minimal totals with quick links</div>
+            <div className="helper">Per-country totals with quick links</div>
           </div>
         </div>
-        {(!Array.isArray(drivers) || drivers.length===0) ? (
-          <div className="section"><div className="empty-state">No driver data</div></div>
-        ) : (
-          <div className="section" style={{display:'grid', gap:12}}>
-            <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-              <MetricCard title="Driver Orders" value={driverCounts.totalOrders} icon="🧾" to="/user/orders" />
-              <MetricCard title="Delivered" value={driverCounts.delivered} icon="✅" to="/user/orders?ship=delivered" />
-              <MetricCard title="Cancelled" value={driverCounts.cancelled} icon="❌" to="/user/orders?ship=cancelled" />
-            </div>
-            <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-              {Object.entries(driverMoneyByCurrency).map(([cur, m]) => (
-                <React.Fragment key={cur}>
-                  <MetricCard title={`Collected (${cur})`} value={`${cur} ${Math.round(m.collected).toLocaleString()}`} icon="🧾" to="/user/orders?ship=delivered&collected=true" />
-                  <MetricCard title={`Delivered to Company (${cur})`} value={`${cur} ${Math.round(m.deliveredToCompany).toLocaleString()}`} icon="🏦" to="/user/finances?section=driver" />
-                  <MetricCard title={`Pending to Company (${cur})`} value={`${cur} ${Math.round(m.pendingToCompany).toLocaleString()}`} icon="⏳" to="/user/finances?section=driver" />
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="section" style={{ overflowX:'auto' }}>
+          {(!Array.isArray(drivers) || drivers.length===0) ? (
+            <div className="empty-state">No driver data</div>
+          ) : (
+            <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:0 }}>
+              <thead>
+                <tr>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Country</th>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Orders</th>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Delivered</th>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Cancelled</th>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Collected</th>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Delivered to Company</th>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Pending to Company</th>
+                </tr>
+              </thead>
+              <tbody>
+                {driverCountrySummary.map(row => {
+                  const label = row.country === 'KSA' ? 'Saudi Arabia' : row.country
+                  const qsCountry = encodeURIComponent(row.country)
+                  return (
+                    <tr key={row.country} style={{ borderTop:'1px solid var(--border)' }}>
+                      <td style={{ padding:'8px 10px', fontWeight:700 }}>{label}</td>
+                      <td style={{ padding:'8px 10px' }}>
+                        <a className="link" href={`/user/orders?country=${qsCountry}`}>{Number(row.assigned||0).toLocaleString()}</a>
+                      </td>
+                      <td style={{ padding:'8px 10px' }}>
+                        <a className="link" href={`/user/orders?country=${qsCountry}&ship=delivered`}>{Number(row.delivered||0).toLocaleString()}</a>
+                      </td>
+                      <td style={{ padding:'8px 10px' }}>
+                        <a className="link" href={`/user/orders?country=${qsCountry}&ship=cancelled`}>{Number(row.cancelled||0).toLocaleString()}</a>
+                      </td>
+                      <td style={{ padding:'8px 10px', whiteSpace:'nowrap' }}>
+                        <a className="link" href={`/user/orders?country=${qsCountry}&ship=delivered&collected=true`}>{row.currency} {Math.round(row.collected||0).toLocaleString()}</a>
+                      </td>
+                      <td style={{ padding:'8px 10px', whiteSpace:'nowrap' }}>
+                        <a className="link" href="/user/finances?section=driver">{row.currency} {Math.round(row.deliveredToCompany||0).toLocaleString()}</a>
+                      </td>
+                      <td style={{ padding:'8px 10px', whiteSpace:'nowrap', fontWeight:700, color:'var(--warning)' }}>
+                        <a className="link" href="/user/finances?section=driver">{row.currency} {Math.round(row.pendingToCompany||0).toLocaleString()}</a>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
       {/* Orders Overview */}
