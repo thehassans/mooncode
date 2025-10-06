@@ -17,6 +17,9 @@ export default function ManagerOrders(){
   const [city, setCity] = useState('')
   const [ship, setShip] = useState('')
   const [onlyUnassigned, setOnlyUnassigned] = useState(false)
+  const [agentFilter, setAgentFilter] = useState('')
+  const [driverFilter, setDriverFilter] = useState('')
+  const [agentOptions, setAgentOptions] = useState([])
 
   const perms = me?.managerPermissions || {}
 
@@ -53,6 +56,14 @@ export default function ManagerOrders(){
   }, [orders])
 
   useEffect(()=>{ fetchMe(); load() },[])
+  // Load agents for workspace (owner scope handled server-side)
+  useEffect(()=>{
+    (async()=>{
+      try{ const a = await apiGet('/api/users/agents'); setAgentOptions(Array.isArray(a?.users)? a.users: []) }catch{ setAgentOptions([]) }
+    })()
+  },[])
+  // Load driver list for selected filter country
+  useEffect(()=>{ if (country) fetchDriversByCountry(country) }, [country])
   // Apply URL params to filters
   useEffect(()=>{
     try{
@@ -88,7 +99,11 @@ export default function ManagerOrders(){
     let rows = Array.isArray(orders)? orders:[]
     if (country) rows = rows.filter(o => String(o.orderCountry||'') === country)
     if (city) rows = rows.filter(o => String(o.city||'').toLowerCase() === city.toLowerCase())
+    if (ship) rows = rows.filter(o => String(o.shipmentStatus||'').toLowerCase() === ship)
+    if (agentFilter) rows = rows.filter(o => String(o?.createdBy?._id||'') === agentFilter)
+    if (driverFilter) rows = rows.filter(o => String(o?.deliveryBoy?._id || o?.deliveryBoy || '') === driverFilter)
     const t = q.trim().toLowerCase()
+    const tNorm = t.startsWith('#') ? t.slice(1) : t
     if (t){
       rows = rows.filter(o => {
         const invoice = String(o.invoiceNumber||'').toLowerCase()
@@ -105,7 +120,7 @@ export default function ManagerOrders(){
         const driverHit = driverName.includes(t)
         const agentHit = agentName.includes(t) || agentEmail.includes(t)
         return (
-          invoice.includes(t) ||
+          invoice.includes(t) || invoice.includes(tNorm) ||
           custName.includes(t) ||
           custPhone.includes(t) ||
           details.includes(t) ||
@@ -117,7 +132,7 @@ export default function ManagerOrders(){
       })
     }
     return rows
-  }, [orders, country, city, q])
+  }, [orders, country, city, ship, agentFilter, driverFilter, q])
 
   const cities = useMemo(()=>{
     const set = new Set()
@@ -136,6 +151,8 @@ export default function ManagerOrders(){
       if (country.trim()) params.set('country', country.trim())
       if (city.trim()) params.set('city', city.trim())
       if (ship.trim()) params.set('ship', ship.trim())
+      if (agentFilter.trim()) params.set('agent', agentFilter.trim())
+      if (driverFilter.trim()) params.set('driver', driverFilter.trim())
       if (onlyUnassigned) params.set('onlyUnassigned','true')
       params.set('max','10000')
       const blob = await apiGetBlob(`/api/orders/export?${params.toString()}`)
@@ -179,7 +196,7 @@ export default function ManagerOrders(){
 
   function statusBadge(st){
     const s = String(st||'').toLowerCase()
-    const map = { pending:'#f59e0b', assigned:'#6366f1', in_transit:'#3b82f6', delivered:'#10b981', cancelled:'#ef4444', returned:'#e11d48' }
+    const map = { pending:'#f59e0b', assigned:'#6366f1', picked_up:'#3b82f6', in_transit:'#3b82f6', out_for_delivery:'#3b82f6', delivered:'#10b981', no_response:'#ef4444', cancelled:'#ef4444', returned:'#e11d48' }
     const color = map[s] || 'var(--muted)'
     return <span className="chip" style={{border:`1px solid ${color}`, color, background:'transparent'}}>{s.replace('_',' ')||'-'}</span>
   }
@@ -236,7 +253,9 @@ export default function ManagerOrders(){
                   <option value="assigned">Assigned</option>
                   <option value="picked_up">Picked Up</option>
                   <option value="in_transit">In Transit</option>
+                  <option value="out_for_delivery">Out for Delivery</option>
                   <option value="delivered">Delivered</option>
+                  <option value="no_response">No Response</option>
                   <option value="returned">Returned</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
@@ -278,13 +297,37 @@ export default function ManagerOrders(){
         </div>
         <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:8}}>
           <input className="input" placeholder="Search invoice, product, driver, agent, city, phone, details" value={q} onChange={e=> setQ(e.target.value)} />
-          <select className="input" value={country} onChange={e=> setCountry(e.target.value)}>
+          <select className="input" value={country} onChange={e=> { setCountry(e.target.value); setDriverFilter('') }}>
             <option value=''>All Countries</option>
             {countries.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <select className="input" value={city} onChange={e=> setCity(e.target.value)}>
             <option value=''>All Cities</option>
             {cities.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="input" value={ship} onChange={e=> setShip(e.target.value)}>
+            <option value="">Total Orders</option>
+            <option value="pending">Pending</option>
+            <option value="assigned">Assigned</option>
+            <option value="picked_up">Picked Up</option>
+            <option value="in_transit">In Transit</option>
+            <option value="out_for_delivery">Out for Delivery</option>
+            <option value="delivered">Delivered</option>
+            <option value="no_response">No Response</option>
+            <option value="returned">Returned</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <select className="input" value={agentFilter} onChange={e=> setAgentFilter(e.target.value)}>
+            <option value=''>All Agents</option>
+            {agentOptions.map(a => (
+              <option key={String(a._id)} value={String(a._id)}>{`${a.firstName||''} ${a.lastName||''} (${a.email||''})`}</option>
+            ))}
+          </select>
+          <select className="input" value={driverFilter} onChange={e=> setDriverFilter(e.target.value)} disabled={!country}>
+            <option value=''>{country? `All Drivers in ${country}` : 'Select Country to filter Drivers'}</option>
+            {(driversByCountry[country] || []).map(d => (
+              <option key={String(d._id)} value={String(d._id)}>{`${d.firstName||''} ${d.lastName||''}${d.city? ' • '+d.city:''}`}</option>
+            ))}
           </select>
           <button className="btn" onClick={exportCsv}>Export CSV</button>
         </div>

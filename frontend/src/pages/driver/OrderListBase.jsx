@@ -2,22 +2,35 @@ import React, { useEffect, useState } from 'react'
 import { apiGet, apiPost } from '../../api'
 import { useNavigate } from 'react-router-dom'
 
-export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false }){
+export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false, withFilters=false }){
   const nav = useNavigate()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [q, setQ] = useState('')
+  const [ship, setShip] = useState('')
   const totalCollected = React.useMemo(()=>{
     try{ return (rows||[]).reduce((sum,o)=> sum + (Number(o?.collectedAmount)||0), 0) }catch{ return 0 }
   }, [rows])
 
   async function load(){
     setLoading(true); setError('')
-    try{ const res = await apiGet(endpoint); setRows(res.orders||[]) }
+    try{
+      const url = (()=>{
+        if (!withFilters || (!q.trim() && !ship.trim())) return endpoint
+        const hasQ = endpoint.includes('?')
+        const sp = new URLSearchParams()
+        if (q.trim()) sp.set('q', q.trim())
+        if (ship.trim()) sp.set('ship', ship.trim())
+        return endpoint + (hasQ ? '&' : '?') + sp.toString()
+      })()
+      const res = await apiGet(url)
+      setRows(res.orders||[])
+    }
     catch(e){ setRows([]); setError(e?.message||'Failed to load') }
     finally{ setLoading(false) }
   }
-  useEffect(()=>{ load() },[endpoint])
+  useEffect(()=>{ load() },[endpoint, q, ship, withFilters])
 
   function mapsUrl(o){
     const lat = o?.locationLat, lng = o?.locationLng
@@ -59,6 +72,23 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
       </div>
 
       <div className="card" style={{display:'grid'}}>
+        {withFilters && (
+          <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:8}}>
+            <input className="input" placeholder="Search invoice, product, customer, city" value={q} onChange={e=> setQ(e.target.value)} />
+            <select className="input" value={ship} onChange={e=> setShip(e.target.value)}>
+              <option value="">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="assigned">Assigned</option>
+              <option value="picked_up">Picked Up</option>
+              <option value="in_transit">In Transit</option>
+              <option value="out_for_delivery">Out for Delivery</option>
+              <option value="delivered">Delivered</option>
+              <option value="no_response">No Response</option>
+              <option value="returned">Returned</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+        )}
         {showTotalCollected && !loading && !error && (
           <div className="section" style={{display:'flex', justifyContent:'flex-end'}}>
             <div className="chip" title="Sum of collectedAmount on these orders">Total Collected: {totalCollected.toFixed(2)}</div>

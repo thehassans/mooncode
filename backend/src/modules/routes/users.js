@@ -905,7 +905,15 @@ router.post('/drivers', auth, allowRoles('admin','user','manager'), async (req, 
   const exists = await User.findOne({ email })
   if (exists) return res.status(400).json({ message: 'Email already in use' })
   const createdBy = req.user?.id
-  const driver = new User({ firstName, lastName, email, password, phone, country, city, role: 'driver', createdBy })
+  // Commission handling: default currency from working country if not provided
+  const COUNTRY_TO_CCY = { 'UAE':'AED', 'Oman':'OMR', 'KSA':'SAR', 'Bahrain':'BHD', 'India':'INR', 'Kuwait':'KWD', 'Qatar':'QAR' }
+  const commissionPerOrder = Number(req.body?.commissionPerOrder)
+  const cpo = (Number.isFinite(commissionPerOrder) && commissionPerOrder > 0) ? commissionPerOrder : 0
+  const commissionCurrency = (req.body?.commissionCurrency && String(req.body.commissionCurrency).toUpperCase()) || COUNTRY_TO_CCY[String(country)] || 'SAR'
+  const driver = new User({ 
+    firstName, lastName, email, password, phone, country, city, role: 'driver', createdBy,
+    driverProfile: { commissionPerOrder: cpo, commissionCurrency }
+  })
   await driver.save()
   // Broadcast to workspace so managers/owners can see the new driver immediately
   try{ const io = getIO(); io.to(`workspace:${createdBy}`).emit('driver.created', { id: String(driver._id) }) }catch{}
@@ -967,6 +975,18 @@ router.patch('/drivers/:id', auth, allowRoles('admin','user'), async (req, res) 
       const pw = String(password||'').trim()
       if (pw && pw.length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' })
       if (pw) driver.password = pw
+    }
+    // Commission updates
+    {
+      const COUNTRY_TO_CCY = { 'UAE':'AED', 'Oman':'OMR', 'KSA':'SAR', 'Bahrain':'BHD', 'India':'INR', 'Kuwait':'KWD', 'Qatar':'QAR' }
+      const cpoRaw = req.body?.commissionPerOrder
+      const cpo = (cpoRaw !== undefined) ? (Number.isFinite(Number(cpoRaw)) && Number(cpoRaw) > 0 ? Number(cpoRaw) : 0) : (driver.driverProfile?.commissionPerOrder ?? 0)
+      const curRaw = req.body?.commissionCurrency
+      const cur = curRaw ? String(curRaw).toUpperCase() : (COUNTRY_TO_CCY[String(country || driver.country)] || driver.driverProfile?.commissionCurrency || 'SAR')
+      driver.driverProfile = {
+        commissionPerOrder: cpo,
+        commissionCurrency: cur,
+      }
     }
     await driver.save()
     const out = await User.findById(driver._id, '-password')

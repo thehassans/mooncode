@@ -27,6 +27,7 @@ import AgentInhouseProducts from './pages/agent/AgentInhouseProducts.jsx'
 import InvestorDashboard from './pages/investor/Dashboard.jsx'
 import InvestorLayout from './layout/InvestorLayout.jsx'
 import DriverLayout from './layout/DriverLayout.jsx'
+import AgentOrdersHistory from './pages/agent/OrdersHistory.jsx'
 
 import WhatsAppConnect from './pages/inbox/WhatsAppConnect.jsx'
 import WhatsAppInbox from './pages/inbox/WhatsAppInbox.jsx'
@@ -358,6 +359,7 @@ export default function App() {
         <Route index element={<AgentDashboard />} />
         <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
         <Route path="orders" element={<SubmitOrder />} />
+        <Route path="orders/history" element={<AgentOrdersHistory />} />
         <Route path="inhouse-products" element={<AgentInhouseProducts />} />
         <Route path="me" element={<AgentMe />} />
         <Route path="support" element={<Support />} />

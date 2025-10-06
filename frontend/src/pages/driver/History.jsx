@@ -9,6 +9,7 @@ export default function DriverHistory(){
       endpoint="/api/orders/driver/history"
       showTotalCollected
       showMap={false}
+      withFilters
     />
   )
 }

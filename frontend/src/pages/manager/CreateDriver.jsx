@@ -25,6 +25,7 @@ export default function ManagerCreateDriver(){
   const DEFAULT_COUNTRY = COUNTRY_OPTS[2] // KSA
 
   const [form, setForm] = useState({ firstName:'', lastName:'', email:'', password:'', phone:'', country: DEFAULT_COUNTRY.name, city:'' })
+  const [commissionPerOrder, setCommissionPerOrder] = useState('')
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [phoneError, setPhoneError] = useState('')
@@ -34,6 +35,8 @@ export default function ManagerCreateDriver(){
     return byName?.key || DEFAULT_COUNTRY.key
   },[form.country])
   const cities = COUNTRY_CITIES[currentCountryKey] || []
+  const COUNTRY_TO_CCY = useMemo(()=>({ UAE:'AED', Oman:'OMR', KSA:'SAR', Bahrain:'BHD', India:'INR', Kuwait:'KWD', Qatar:'QAR' }), [])
+  const commissionCurrency = COUNTRY_TO_CCY[form.country] || 'SAR'
 
   const phoneDefaultCountry = useMemo(()=>{
     const map = { UAE:'AE', Oman:'OM', KSA:'SA', Bahrain:'BH', India:'IN', Kuwait:'KW', Qatar:'QA' }
@@ -57,9 +60,14 @@ export default function ManagerCreateDriver(){
       const clean = form.phone.replace(/\s/g,'')
       if (!allowedCodes.some(c=> clean.startsWith(c))){ setLoading(false); setPhoneError('Only UAE, Oman, KSA, Bahrain, Kuwait, Qatar or India numbers allowed'); return }
 
-      await apiPost('/api/users/drivers', { ...form })
+      await apiPost('/api/users/drivers', { 
+        ...form,
+        commissionPerOrder: Number(commissionPerOrder||0),
+        commissionCurrency,
+      })
       setMsg('Driver created successfully')
       setForm({ firstName:'', lastName:'', email:'', password:'', phone:'', country: DEFAULT_COUNTRY.name, city:'' })
+      setCommissionPerOrder('')
       setPhoneError('')
     }catch(err){ setMsg(err?.message || 'Failed to create driver') }
     finally{ setLoading(false) }
@@ -131,6 +139,25 @@ export default function ManagerCreateDriver(){
           <div>
             <div className="label">Password</div>
             <input className="input" type="password" name="password" value={form.password} onChange={onChange} placeholder="Minimum 6 characters" required />
+          </div>
+
+          <div className="form-grid">
+            <div>
+              <div className="label">Commission Per Order ({commissionCurrency})</div>
+              <input
+                className="input"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder={`0.00 ${commissionCurrency}`}
+                value={commissionPerOrder}
+                onChange={e=> setCommissionPerOrder(e.target.value)}
+              />
+            </div>
+            <div>
+              <div className="label">Currency</div>
+              <input className="input" value={commissionCurrency} readOnly />
+            </div>
           </div>
 
           <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>

@@ -239,7 +239,6 @@ export default function PrintLabel(){
           </div>
           <div className="sec" style={{display:'grid', gap:2, alignItems:'center', justifyItems:'center'}}>
             <svg ref={barcodeRef} style={{width:'100%', height:46}} shapeRendering="crispEdges"/>
-            <div style={{fontSize:10, opacity:0.8}}>Short barcode</div>
           </div>
         </div>
 

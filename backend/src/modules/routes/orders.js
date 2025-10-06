@@ -855,13 +855,20 @@ router.get('/view/:id', auth, allowRoles('admin','user','agent','manager'), asyn
     const allowed = new Set([String(req.user.id), ...agents.map(a=>String(a._id)), ...managers.map(m=>String(m._id))])
     if (!allowed.has(creatorId)) return res.status(403).json({ message: 'Not allowed' })
   } else if (req.user.role === 'manager') {
-    const mgr = await User.findById(req.user.id).select('createdBy').lean()
+    const mgr = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
     const ownerId = String(mgr?.createdBy || '')
     if (!ownerId) return res.status(403).json({ message: 'Not allowed' })
     const agents = await User.find({ role: 'agent', createdBy: ownerId }, { _id: 1 }).lean()
     const managers = await User.find({ role: 'manager', createdBy: ownerId }, { _id: 1 }).lean()
     const allowed = new Set([ownerId, ...agents.map(a=>String(a._id)), ...managers.map(m=>String(m._id))])
     if (!allowed.has(creatorId)) return res.status(403).json({ message: 'Not allowed' })
+    // Country restriction for managers
+    const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
+    const arr = (Array.isArray(mgr?.assignedCountries) && mgr.assignedCountries.length) ? mgr.assignedCountries : (mgr?.assignedCountry ? [mgr.assignedCountry] : [])
+    if (arr.length){
+      const set = new Set(); for (const c of arr){ for (const x of expand(c)) set.add(x) }
+      if (!set.has(String(ord.orderCountry||''))) return res.status(403).json({ message: 'Not allowed' })
+    }
   } else if (req.user.role === 'agent') {
     if (creatorId !== String(req.user.id)) return res.status(403).json({ message: 'Not allowed' })
   }
@@ -987,20 +994,56 @@ router.get('/driver/cancelled', auth, allowRoles('driver'), async (req, res) => 
   res.json({ orders })
 })
 
-// Driver: history (archive) - default to delivered, optional date filter
+// Driver: history (archive) - default to delivered only, supports date, status and text search
 router.get('/driver/history', auth, allowRoles('driver'), async (req, res) => {
-  const { from = '', to = '' } = req.query || {}
-  const match = { deliveryBoy: req.user.id, shipmentStatus: { $in: ['delivered','cancelled'] } }
-  if (from) {
-    const d = new Date(from)
-    if (!Number.isNaN(d.getTime())) match.updatedAt = { ...(match.updatedAt||{}), $gte: d }
+  try{
+    const { from = '', to = '', q = '', ship = '' } = req.query || {}
+    // Base: own orders, delivered only by default
+    const statusIn = (()=>{
+      const s = String(ship||'').toLowerCase()
+      if (!s || s === 'all') return ['delivered']
+      return [s]
+    })()
+    const match = { deliveryBoy: req.user.id, shipmentStatus: { $in: statusIn } }
+    if (from) {
+      const d = new Date(from)
+      if (!Number.isNaN(d.getTime())) match.updatedAt = { ...(match.updatedAt||{}), $gte: d }
+    }
+    if (to) {
+      const d = new Date(to)
+      if (!Number.isNaN(d.getTime())) match.updatedAt = { ...(match.updatedAt||{}), $lte: d }
+    }
+
+    // Text search over invoice, phone, name, city, details and product names
+    if (q && String(q).trim()){
+      const safe = String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const rx = new RegExp(safe, 'i')
+      const stripped = String(q).trim().startsWith('#') ? String(q).trim().slice(1) : ''
+      const rxInv = stripped ? new RegExp(stripped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : null
+      const or = [
+        { invoiceNumber: rx },
+        ...(rxInv ? [{ invoiceNumber: rxInv }] : []),
+        { customerPhone: rx },
+        { customerName: rx },
+        { details: rx },
+        { city: rx },
+      ]
+      try{
+        const prods = await Product.find({ name: rx }).select('_id').lean()
+        const pids = prods.map(p => p._id)
+        if (pids.length){
+          or.push({ productId: { $in: pids } })
+          or.push({ 'items.productId': { $in: pids } })
+        }
+      }catch{}
+      match.$or = or
+    }
+
+    const orders = await Order.find(match).sort({ updatedAt: -1 }).populate('productId').populate('items.productId')
+    res.json({ orders })
+  }catch(err){
+    res.status(500).json({ message: err?.message || 'Failed to load driver history' })
   }
-  if (to) {
-    const d = new Date(to)
-    if (!Number.isNaN(d.getTime())) match.updatedAt = { ...(match.updatedAt||{}), $lte: d }
-  }
-  const orders = await Order.find(match).sort({ updatedAt: -1 }).populate('productId')
-  res.json({ orders })
 })
 
 // Driver: list orders in my country (optionally filter by city); unassigned only by default
@@ -1133,6 +1176,26 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), async (req, res
       const allowedCreators = [String(req.user.id), ...agentIds, ...managerIds]
       if (!allowedCreators.includes(String(ord.createdBy))) {
         return res.status(403).json({ message: 'Not allowed' })
+      }
+    }
+    // Access control: manager can only update within workspace and assigned countries
+    else if (req.user.role === 'manager') {
+      const mgr = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
+      const ownerId = String(mgr?.createdBy || '')
+      if (!ownerId) return res.status(403).json({ message: 'Not allowed' })
+      const agents = await User.find({ role: 'agent', createdBy: ownerId }, { _id: 1 }).lean()
+      const managers = await User.find({ role: 'manager', createdBy: ownerId }, { _id: 1 }).lean()
+      const allowedCreators = new Set([ownerId, ...agents.map(a=>String(a._id)), ...managers.map(m=>String(m._id))])
+      if (!allowedCreators.has(String(ord.createdBy || ''))){
+        return res.status(403).json({ message: 'Not allowed' })
+      }
+      const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
+      const arr = (Array.isArray(mgr?.assignedCountries) && mgr.assignedCountries.length) ? mgr.assignedCountries : (mgr?.assignedCountry ? [mgr.assignedCountry] : [])
+      if (arr.length){
+        const set = new Set(); for (const c of arr){ for (const x of expand(c)) set.add(x) }
+        if (!set.has(String(ord.orderCountry||''))){
+          return res.status(403).json({ message: 'Manager not allowed to edit orders outside assigned countries' })
+        }
       }
     }
     

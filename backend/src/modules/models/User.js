@@ -47,6 +47,11 @@ const UserSchema = new mongoose.Schema({
     accountNumber: { type: String, default: '' },
     phoneNumber: { type: String, default: '' },
   },
+  // Driver-specific profile
+  driverProfile: {
+    commissionPerOrder: { type: Number, default: 0 },
+    commissionCurrency: { type: String, enum: ['AED','OMR','SAR','BHD','INR','KWD','QAR'], default: 'SAR' },
+  },
   // Workspace/user-level settings
   settings: {
     autoSendInvoice: { type: Boolean, default: true }, // controls auto WhatsApp invoice PDF on order create

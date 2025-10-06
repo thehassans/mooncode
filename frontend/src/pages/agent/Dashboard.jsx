@@ -303,11 +303,14 @@ export default function AgentDashboard(){
               <div style={{display:'flex', alignItems:'center', gap:10}}>
                 <div style={{width:32,height:32,borderRadius:8,background:'linear-gradient(135deg,#10b981,#22c55e)',display:'grid',placeItems:'center',color:'#fff',fontWeight:800, fontSize:18}}>📄</div>
                 <div>
-                  <div style={{fontWeight:800}}>Recent Orders</div>
+                  <div style={{fontWeight:800}}>Order History</div>
                   <div className="helper">Latest 50 orders you submitted</div>
                 </div>
               </div>
-              <div className="helper">Total: {fmtCurrency(Math.round(totalsRecent.delivered))} • Upcoming Income: {fmtCurrency(Math.round(totalsRecent.upcoming))}</div>
+              <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
+                <div className="helper">Total: {fmtCurrency(Math.round(totalsRecent.delivered))} • Upcoming Income: {fmtCurrency(Math.round(totalsRecent.upcoming))}</div>
+                <button className="btn" onClick={() => navigate('/agent/orders/history')}>Open full history</button>
+              </div>
             </div>
             <div style={{overflowX:'auto'}}>
               <table style={{width:'100%', borderCollapse:'separate', borderSpacing:0}}>

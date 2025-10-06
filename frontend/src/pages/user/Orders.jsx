@@ -9,8 +9,8 @@ function StatusBadge({ status, kind='status' }){
   let color = { borderColor:'#e5e7eb', color:'#374151' }
   if (kind==='shipment'){
     if (s==='delivered') color = { borderColor:'#10b981', color:'#065f46' }
-    else if (['in_transit','assigned','shipped','picked_up'].includes(s)) color = { borderColor:'#3b82f6', color:'#1d4ed8' }
-    else if (['returned','cancelled'].includes(s)) color = { borderColor:'#ef4444', color:'#991b1b' }
+    else if (['in_transit','assigned','shipped','picked_up','out_for_delivery'].includes(s)) color = { borderColor:'#3b82f6', color:'#1d4ed8' }
+    else if (['returned','cancelled','no_response'].includes(s)) color = { borderColor:'#ef4444', color:'#991b1b' }
     else if (s==='pending') color = { borderColor:'#f59e0b', color:'#b45309' }
   } else {
     if (s==='shipped') color = { borderColor:'#3b82f6', color:'#1d4ed8' }
@@ -103,6 +103,11 @@ export default function UserOrders(){
   const [cityOptions, setCityOptions] = useState([])
   const [agentOptions, setAgentOptions] = useState([])
   const [driverOptions, setDriverOptions] = useState([])
+  const countryDriverOptions = useMemo(()=>{
+    const c = String(country||'').trim()
+    if (!c) return []
+    return (driverOptions||[]).filter(d => String(d?.country||'') === c)
+  }, [driverOptions, country])
   async function loadOptions(selectedCountry=''){
     try{
       const qs = selectedCountry ? `?country=${encodeURIComponent(selectedCountry)}` : ''
@@ -364,14 +369,28 @@ export default function UserOrders(){
             {cityOptions.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <select className="input" value={shipFilter} onChange={e=> setShipFilter(e.target.value)}>
-            <option value="">All Shipment</option>
+            <option value="">Total Orders</option>
             <option value="pending">Pending</option>
             <option value="assigned">Assigned</option>
             <option value="picked_up">Picked Up</option>
             <option value="in_transit">In Transit</option>
+            <option value="out_for_delivery">Out for Delivery</option>
             <option value="delivered">Delivered</option>
+            <option value="no_response">No Response</option>
             <option value="returned">Returned</option>
             <option value="cancelled">Cancelled</option>
+          </select>
+          <select className="input" value={agentFilter} onChange={e=> setAgentFilter(e.target.value)}>
+            <option value=''>All Agents</option>
+            {agentOptions.map(a => (
+              <option key={String(a._id)} value={String(a._id)}>{`${a.firstName||''} ${a.lastName||''} (${a.email||''})`}</option>
+            ))}
+          </select>
+          <select className="input" value={driverFilter} onChange={e=> setDriverFilter(e.target.value)} disabled={!country}>
+            <option value=''>{country? `All Drivers in ${country}` : 'Select Country to filter Drivers'}</option>
+            {countryDriverOptions.map(d => (
+              <option key={String(d._id)} value={String(d._id)}>{`${d.firstName||''} ${d.lastName||''}${d.city? ' • '+d.city:''}`}</option>
+            ))}
           </select>
           <label className="input" style={{display:'flex', alignItems:'center', gap:8}}>
             <input type="checkbox" checked={onlyUnassigned} onChange={e=> setOnlyUnassigned(e.target.checked)} /> Unassigned only
@@ -477,7 +496,9 @@ export default function UserOrders(){
                                 <option value="assigned">Assigned</option>
                                 <option value="picked_up">Picked Up</option>
                                 <option value="in_transit">In Transit</option>
+                                <option value="out_for_delivery">Out for Delivery</option>
                                 <option value="delivered">Delivered</option>
+                                <option value="no_response">No Response</option>
                                 <option value="returned">Returned</option>
                                 <option value="cancelled">Cancelled</option>
                               </select>

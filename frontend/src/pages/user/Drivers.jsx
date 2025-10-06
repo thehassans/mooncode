@@ -27,6 +27,7 @@ export default function Drivers(){
 
   const DEFAULT_COUNTRY = COUNTRY_OPTS[2] // KSA
   const [form, setForm] = useState({ firstName:'', lastName:'', email:'', password:'', phone:'', country: DEFAULT_COUNTRY.name, city:'' })
+  const [commissionPerOrder, setCommissionPerOrder] = useState('')
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [q, setQ] = useState('')
@@ -55,12 +56,15 @@ export default function Drivers(){
     }
     return countryMap[form.country] || 'AE'
   },[form.country])
+  const COUNTRY_TO_CCY = useMemo(()=>({ UAE:'AED', Oman:'OMR', KSA:'SAR', Bahrain:'BHD', India:'INR', Kuwait:'KWD', Qatar:'QAR' }), [])
+  const commissionCurrency = COUNTRY_TO_CCY[form.country] || 'SAR'
 
   function openEdit(driver){
     const d = driver || {}
     setEditModal({
       open:true, busy:false, error:'', driver: d,
-      firstName: d.firstName||'', lastName: d.lastName||'', email: d.email||'', phone: d.phone||'', country: d.country||DEFAULT_COUNTRY.name, city: d.city||'', password:''
+      firstName: d.firstName||'', lastName: d.lastName||'', email: d.email||'', phone: d.phone||'', country: d.country||DEFAULT_COUNTRY.name, city: d.city||'', password:'',
+      commissionPerOrder: (d.commissionPerOrder!=null ? String(d.commissionPerOrder) : ''),
     })
   }
   function closeEdit(){ setEditModal(m=>({ ...m, open:false })) }
@@ -78,6 +82,8 @@ export default function Drivers(){
         country: editModal.country,
         city: editModal.city,
         ...(editModal.password ? { password: editModal.password } : {}),
+        commissionPerOrder: Number(editModal.commissionPerOrder||0),
+        commissionCurrency: COUNTRY_TO_CCY[editModal.country] || 'SAR',
       })
       setEditModal({ open:false, busy:false, error:'', driver:null, firstName:'', lastName:'', email:'', phone:'', country: DEFAULT_COUNTRY.name, city:'', password:'' })
       await loadDrivers(q)
@@ -108,6 +114,8 @@ export default function Drivers(){
         country: u.country,
         city: u.city,
         createdAt: u.createdAt,
+        commissionPerOrder: Number(u?.driverProfile?.commissionPerOrder || 0),
+        commissionCurrency: String(u?.driverProfile?.commissionCurrency || (COUNTRY_TO_CCY[u.country] || 'SAR')),
       })))
     }catch(_e){ setRows([]) }
     finally{ setLoadingList(false) }
@@ -169,10 +177,15 @@ export default function Drivers(){
         return
       }
       
-      const payload = { ...form }
+      const payload = { 
+        ...form,
+        commissionPerOrder: Number(commissionPerOrder||0),
+        commissionCurrency,
+      }
       await apiPost('/api/users/drivers', payload)
       setMsg('Driver created successfully')
       setForm({ firstName:'', lastName:'', email:'', password:'', phone:'', country: DEFAULT_COUNTRY.name, city:'' })
+      setCommissionPerOrder('')
       setPhoneError('')
       loadDrivers(q)
     }catch(err){ setMsg(err?.message || 'Failed to create driver') }
@@ -422,6 +435,23 @@ export default function Drivers(){
                   return [<option key="_" value="">-- Select City --</option>, ...list.map(c=> <option key={c} value={c}>{c}</option>)]
                 })()}
               </select>
+            </div>
+          </div>
+          <div className="form-grid">
+            <div>
+              <div className="label">Commission Per Order ({COUNTRY_TO_CCY[editModal.country] || 'SAR'})</div>
+              <input
+                className="input"
+                type="number"
+                min="0"
+                step="0.01"
+                value={editModal.commissionPerOrder||''}
+                onChange={e=> setEditModal(m=>({ ...m, commissionPerOrder: e.target.value }))}
+              />
+            </div>
+            <div>
+              <div className="label">Currency</div>
+              <input className="input" value={COUNTRY_TO_CCY[editModal.country] || 'SAR'} readOnly />
             </div>
           </div>
           <div>
