@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { apiGet, apiPost, API_BASE, apiGetBlob } from '../../api'
+import { apiGet, apiPost, apiPatch, API_BASE, apiGetBlob } from '../../api'
 import { io } from 'socket.io-client'
 
 export default function ManagerOrders(){
@@ -49,6 +49,11 @@ export default function ManagerOrders(){
   }, [orders])
 
   useEffect(()=>{ fetchMe(); load() },[])
+  useEffect(()=>{
+    // Default country: if exactly one assigned, set it; if multiple, show all
+    const arr = Array.isArray(me?.assignedCountries) && me.assignedCountries.length ? me.assignedCountries : (me?.assignedCountry ? [me.assignedCountry] : [])
+    if (arr.length === 1) setCountry(arr[0])
+  }, [me])
 
   // live updates
   useEffect(()=>{
@@ -102,7 +107,7 @@ export default function ManagerOrders(){
     return Array.from(set)
   }, [orders])
 
-  const countries = ['UAE','Oman','KSA','Bahrain']
+  const countries = ['UAE','Oman','KSA','Bahrain','India','Kuwait','Qatar']
 
   async function exportCsv(){
     if (exportingRef.current) return
@@ -130,6 +135,26 @@ export default function ManagerOrders(){
   async function assignDriver(orderId, driverId){
     setAssigning(orderId)
     try{ await apiPost(`/api/orders/${orderId}/assign-driver`, { driverId }); await load() }catch(err){ alert(err?.message||'Failed to assign') }finally{ setAssigning('') }
+  }
+
+  // Save handler like user Orders page
+  const [editingDriver, setEditingDriver] = useState({})
+  const [editingStatus, setEditingStatus] = useState({})
+  const [updating, setUpdating] = useState({})
+  async function saveOrder(orderId){
+    const key = `save-${orderId}`
+    setUpdating(prev => ({ ...prev, [key]: true }))
+    try{
+      const payload = {}
+      if (editingDriver[orderId] !== undefined) payload.deliveryBoy = editingDriver[orderId] || null
+      if (editingStatus[orderId] !== undefined) payload.shipmentStatus = editingStatus[orderId]
+      await apiPatch(`/api/orders/${orderId}`, payload)
+      await load()
+      // clear local edits
+      setEditingDriver(prev=>{ const n={...prev}; delete n[orderId]; return n })
+      setEditingStatus(prev=>{ const n={...prev}; delete n[orderId]; return n })
+    }catch(err){ alert(err?.message || 'Failed to save') }
+    finally{ setUpdating(prev => ({ ...prev, [key]: false })) }
   }
 
   function statusBadge(st){
@@ -176,18 +201,29 @@ export default function ManagerOrders(){
             <div className="helper">Total: {o.total != null ? Number(o.total).toFixed(2) : '-'}</div>
           </div>
           <div>
-            <div className="label">Assigned Driver</div>
-            <div style={{display:'grid', gap:8, alignItems:'start'}}>
-              <select className="input" value={driverId} onChange={e=> assignDriver(id, e.target.value)} disabled={assigning===id} title={driverId ? 'Change assigned driver' : 'Select a driver'}>
+            <div className="label">Assign Driver</div>
+            <div style={{display:'grid', gap:8}}>
+              <select className="input" value={editingDriver[id] !== undefined ? editingDriver[id] : driverId} onChange={(e)=> setEditingDriver(prev => ({...prev, [id]: e.target.value}))} disabled={updating[`save-${id}`]}>
                 <option value="">-- Select Driver --</option>
                 {countryDrivers.map(d => (
                   <option key={String(d._id)} value={String(d._id)}>{`${d.firstName||''} ${d.lastName||''}${d.city? ' • '+d.city:''}`}</option>
                 ))}
                 {countryDrivers.length === 0 && <option disabled>No drivers in {o.orderCountry}</option>}
               </select>
-              <button className="btn" onClick={()=> assignDriver(id, driverId)} disabled={!driverId || assigning===id} style={{width:'100%'}}>
-                {assigning===id? 'Assigning…':'Assign'}
-              </button>
+              <div style={{display:'flex', gap:8}}>
+                <select className="input" value={editingStatus[id] || (o.shipmentStatus || 'pending')} onChange={(e)=> setEditingStatus(prev => ({...prev, [id]: e.target.value}))} disabled={updating[`save-${id}`]}>
+                  <option value="pending">Pending</option>
+                  <option value="assigned">Assigned</option>
+                  <option value="picked_up">Picked Up</option>
+                  <option value="in_transit">In Transit</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="returned">Returned</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+                {(editingDriver[id] !== undefined || editingStatus[id] !== undefined) && (
+                  <button className="btn success" onClick={()=> saveOrder(id)} disabled={updating[`save-${id}`]}>💾 Save</button>
+                )}
+              </div>
             </div>
           </div>
         </div>

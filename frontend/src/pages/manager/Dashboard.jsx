@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { apiGet } from '../../api'
 
@@ -8,6 +8,8 @@ export default function ManagerDashboard(){
     try{ return JSON.parse(localStorage.getItem('me')||'null') }catch{ return null }
   })
   const [loading, setLoading] = useState(true)
+  const [drivers, setDrivers] = useState([])
+  const [summary, setSummary] = useState({}) // { KSA:{orders,delivered,cancelled}, ... }
 
   useEffect(()=>{
     function onResize(){ setIsMobile(window.innerWidth <= 768) }
@@ -36,6 +38,54 @@ export default function ManagerDashboard(){
   const canManageProducts = !!(me && me.managerPermissions && me.managerPermissions.canManageProducts)
   const canCreateOrders = !!(me && me.managerPermissions && me.managerPermissions.canCreateOrders)
   const canCreateDrivers = !!(me && me.managerPermissions && me.managerPermissions.canCreateDrivers)
+
+  const assignedList = useMemo(()=>{
+    const arr = Array.isArray(me?.assignedCountries) && me.assignedCountries.length ? me.assignedCountries : (me?.assignedCountry ? [me.assignedCountry] : [])
+    // Default to all if none assigned
+    return arr.length ? arr : ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar']
+  }, [me])
+
+  // Load drivers finance summary and compute amounts per country
+  const moneyByCountry = useMemo(()=>{
+    const map = {}
+    for (const d of (Array.isArray(drivers)? drivers: [])){
+      const c = String(d?.country||'')
+      if (!c) continue
+      if (!map[c]) map[c] = { collected:0, deliveredToCompany:0, pendingToCompany:0 }
+      map[c].collected += Number(d?.collected||0)
+      map[c].deliveredToCompany += Number(d?.deliveredToCompany||0)
+      map[c].pendingToCompany += Number(d?.pendingToCompany||0)
+    }
+    return map
+  }, [drivers])
+
+  useEffect(()=>{
+    // Load drivers summary once (manager-scoped backend)
+    (async()=>{
+      try{ const ds = await apiGet('/api/finance/drivers/summary?page=1&limit=200'); setDrivers(Array.isArray(ds?.drivers)? ds.drivers: []) }catch{ setDrivers([]) }
+    })()
+  },[])
+
+  useEffect(()=>{
+    // Compute per-country counts via lightweight total queries
+    (async()=>{
+      try{
+        const rows = {}
+        await Promise.all(assignedList.map(async (ctry)=>{
+          const qs = encodeURIComponent(ctry)
+          const all = await apiGet(`/api/orders?country=${qs}&limit=1`)
+          const del = await apiGet(`/api/orders?country=${qs}&ship=delivered&limit=1`)
+          const can = await apiGet(`/api/orders?country=${qs}&ship=cancelled&limit=1`)
+          rows[ctry] = {
+            orders: Number(all?.total||0),
+            delivered: Number(del?.total||0),
+            cancelled: Number(can?.total||0),
+          }
+        }))
+        setSummary(rows)
+      }catch{ setSummary({}) }
+    })()
+  }, [assignedList.join('|')])
 
   return (
     <div className="section">
@@ -89,6 +139,62 @@ export default function ManagerDashboard(){
             </NavLink>
           </div>
         )}
+      </div>
+
+      {/* Country Summary (assigned only) */}
+      <div className="card" style={{marginTop:12}}>
+        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
+          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🌍</div>
+          <div>
+            <div style={{fontWeight:800,fontSize:16}}>Country Summary</div>
+            <div className="helper">Orders, Delivered, Cancelled, and Collections for your assigned countries</div>
+          </div>
+        </div>
+        <div className="section" style={{overflowX:'auto'}}>
+          <div style={{display:'flex', gap:12, minWidth:700}}>
+            {assignedList.map(ctry=>{
+              const label = ctry==='KSA' ? 'Saudi Arabia' : ctry
+              const qs = encodeURIComponent(ctry)
+              const sums = summary?.[ctry] || { orders:0, delivered:0, cancelled:0 }
+              const m = moneyByCountry[ctry] || { collected:0, deliveredToCompany:0, pendingToCompany:0 }
+              const currency = ctry==='KSA' ? 'SAR' : ctry==='UAE' ? 'AED' : ctry==='Oman' ? 'OMR' : ctry==='Bahrain' ? 'BHD' : ctry==='India' ? 'INR' : ctry==='Kuwait' ? 'KWD' : 'QAR'
+              return (
+                <div key={ctry} className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'10px 12px', background:'var(--panel)', minWidth:280}}>
+                  <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6}}>
+                    <div style={{fontWeight:800}}>{label}</div>
+                    <a className="chip" style={{background:'transparent'}} href={`/manager/orders?country=${qs}`}>View</a>
+                  </div>
+                  <div style={{display:'grid', gap:6}}>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Orders</div>
+                      <a className="link" href={`/manager/orders?country=${qs}`}>{sums.orders.toLocaleString()}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Delivered</div>
+                      <a className="link" href={`/manager/orders?country=${qs}&ship=delivered`}>{sums.delivered.toLocaleString()}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Cancelled</div>
+                      <a className="link" href={`/manager/orders?country=${qs}&ship=cancelled`}>{sums.cancelled.toLocaleString()}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Collected</div>
+                      <a className="link" href={`/manager/orders?country=${qs}&ship=delivered&collected=true`}>{currency} {Math.round(m.collected||0).toLocaleString()}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Delivered to Company</div>
+                      <a className="link" href={`/manager/finances`}>{currency} {Math.round(m.deliveredToCompany||0).toLocaleString()}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Pending to Company</div>
+                      <a className="link" href={`/manager/finances`}>{currency} {Math.round(m.pendingToCompany||0).toLocaleString()}</a>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
     </div>
   )

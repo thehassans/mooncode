@@ -108,6 +108,26 @@ export default function UserDashboard(){
     }
     return countries.map(c=> init[c])
   }, [drivers])
+  const countrySummaryRows = useMemo(()=>{
+    const rows = []
+    const mapByCountry = Object.fromEntries(driverCountrySummary.map(r=>[r.country, r]))
+    const aliasMetrics = (c)=> (metrics?.countries?.[c] || (c==='KSA' ? (metrics?.countries?.['Saudi Arabia']||{}) : {}))
+    const list = ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar']
+    for (const c of list){
+      const m = aliasMetrics(c)
+      const d = mapByCountry[c] || { collected:0, deliveredToCompany:0, pendingToCompany:0, cancelled:0 }
+      rows.push({
+        country:c,
+        orders: Number(m?.orders||0),
+        delivered: Number(m?.delivered||0),
+        cancelled: Number(d?.cancelled||0),
+        collected: Math.round(Number(d?.collected||0)),
+        deliveredToCompany: Math.round(Number(d?.deliveredToCompany||0)),
+        pendingToCompany: Math.round(Number(d?.pendingToCompany||0)),
+      })
+    }
+    return rows
+  }, [metrics, driverCountrySummary])
   async function load(){
     try{ setAnalytics(await apiGet('/api/orders/analytics/last7days')) }catch(_e){ setAnalytics({ days: [], totals:{} }) }
     try{ setMetrics(await apiGet('/api/reports/user-metrics')) }catch(_e){ console.error('Failed to fetch metrics') }
@@ -176,6 +196,59 @@ export default function UserDashboard(){
           <MetricCard title="Prepaid Sales" value={formatCurrency(metrics.totalPrepaid||0, 'UAE')} icon="💳" to="/user/orders?ship=delivered&payment=PREPAID" />
           <MetricCard title="Total Collected" value={formatCurrency(metrics.totalCollected||0, 'UAE')} icon="🧾" to="/user/orders?ship=delivered&collected=true" />
           <MetricCard title="Net Revenue" value={formatCurrency(metrics.totalRevenue||0, 'UAE')} icon="📈" to="/user/transactions" />
+        </div>
+      </div>
+
+      {/* Country Summary */}
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
+          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🌍</div>
+          <div>
+            <div style={{fontWeight:800,fontSize:16}}>Country Summary</div>
+            <div className="helper">Orders, Delivered, Cancelled, and Collections per country</div>
+          </div>
+        </div>
+        <div className="section" style={{overflowX:'auto'}}>
+          <div style={{display:'flex', gap:12, minWidth:700}}>
+            {countrySummaryRows.map(row=>{
+              const qsCountry = encodeURIComponent(row.country)
+              const currency = row.country==='KSA' ? 'SAR' : row.country==='UAE' ? 'AED' : row.country==='Oman' ? 'OMR' : row.country==='Bahrain' ? 'BHD' : row.country==='India' ? 'INR' : row.country==='Kuwait' ? 'KWD' : 'QAR'
+              return (
+                <div key={row.country} className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'10px 12px', background:'var(--panel)', minWidth:280}}>
+                  <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6}}>
+                    <div style={{fontWeight:800}}>{row.country==='KSA' ? 'Saudi Arabia' : row.country}</div>
+                    <a className="chip" style={{background:'transparent'}} href={`/user/orders?country=${qsCountry}`}>View</a>
+                  </div>
+                  <div style={{display:'grid', gap:6}}>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Orders</div>
+                      <a className="link" href={`/user/orders?country=${qsCountry}`}>{row.orders.toLocaleString()}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Delivered</div>
+                      <a className="link" href={`/user/orders?country=${qsCountry}&ship=delivered`}>{row.delivered.toLocaleString()}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Cancelled</div>
+                      <a className="link" href={`/user/orders?country=${qsCountry}&ship=cancelled`}>{row.cancelled.toLocaleString()}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Collected</div>
+                      <a className="link" href={`/user/orders?country=${qsCountry}&ship=delivered&collected=true`}>{currency} {row.collected.toLocaleString()}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Delivered to Company</div>
+                      <a className="link" href={`/user/finances?section=driver`}>{currency} {row.deliveredToCompany.toLocaleString()}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Pending to Company</div>
+                      <a className="link" href={`/user/finances?section=driver`}>{currency} {row.pendingToCompany.toLocaleString()}</a>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
 

@@ -933,6 +933,15 @@ router.post('/:id/assign-driver', auth, allowRoles('admin','user','manager'), as
       if (!set.has(ord.orderCountry)) return res.status(403).json({ message: `Manager can only assign to orders from ${Array.from(set).join(', ')}` })
     }
   }
+  // Global: driver's country must match order's country (support KSA/UAE aliases)
+  {
+    const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
+    const ds = new Set(expand(String(driver.country||'')))
+    const os = new Set(expand(String(ord.orderCountry||'')))
+    let ok = false
+    for (const v of ds){ if (os.has(v)) { ok = true; break } }
+    if (!ok){ return res.status(400).json({ message: 'Driver and order country must match' }) }
+  }
   // City rule: enforce order city matches driver city if provided
   if (driver.city && ord.city && String(driver.city).toLowerCase() !== String(ord.city).toLowerCase()){
     return res.status(400).json({ message: 'Driver city does not match order city' })
