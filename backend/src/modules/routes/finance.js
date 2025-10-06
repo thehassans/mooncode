@@ -14,6 +14,24 @@ import { generatePayoutReceiptPDF } from '../utils/payoutReceipt.js'
 
 const router = express.Router()
 
+// Centralized currency config helpers
+function defaultCurrencyConfig(){
+  return {
+    sarPerUnit: { SAR:1, AED:1.02, OMR:9.78, BHD:9.94, INR:0.046, KWD:12.2, QAR:1.03, USD:3.75, CNY:0.52 },
+    pkrPerUnit: { AED:76, OMR:726, SAR:72, BHD:830, KWD:880, QAR:79, INR:3.3, USD:278, CNY:39 },
+    enabled: ['AED','OMR','SAR','BHD','INR','KWD','QAR','USD','CNY'],
+    updatedAt: new Date(),
+  }
+}
+async function getCurrencyConfig(){
+  try{
+    const doc = await Setting.findOne({ key: 'currency' }).lean()
+    const val = (doc && doc.value) || {}
+    const base = defaultCurrencyConfig()
+    return { ...base, ...val, sarPerUnit: { ...base.sarPerUnit, ...(val?.sarPerUnit||{}) }, pkrPerUnit: { ...base.pkrPerUnit, ...(val?.pkrPerUnit||{}) } }
+  }catch{ return defaultCurrencyConfig() }
+}
+
 // Multer config for receipt uploads (reuse uploads/ folder)
 try{ fs.mkdirSync('uploads', { recursive: true }) }catch{}
 const storage = multer.diskStorage({
@@ -94,7 +112,8 @@ router.post('/agent-remittances', auth, allowRoles('agent'), async (req, res) =>
     const approverId = ownerId
     const role = 'user'
     // Validate amount against available wallet (delivered commissions at 12% minus sent payouts)
-    const fx = { AED: 76, OMR: 726, SAR: 72, BHD: 830, KWD: 880, QAR: 79, INR: 3.3 }
+    const cfg = await getCurrencyConfig()
+    const fx = cfg.pkrPerUnit || {}
     const orders = await Order.find({ createdBy: req.user.id, shipmentStatus: 'delivered' }).populate('productId','price baseCurrency quantity')
     let deliveredCommissionPKR = 0
     for (const o of orders){
@@ -103,7 +122,7 @@ router.post('/agent-remittances', auth, allowRoles('agent'), async (req, res) =>
         continue
       }
       const totalVal = (o.total!=null ? Number(o.total) : (Number(o?.productId?.price||0) * Math.max(1, Number(o?.quantity||1))))
-      const cur = ['AED','OMR','SAR','BHD','KWD','QAR','INR'].includes(String(o?.productId?.baseCurrency)) ? o.productId.baseCurrency : 'SAR'
+      const cur = ['AED','OMR','SAR','BHD','KWD','QAR','INR','USD','CNY'].includes(String(o?.productId?.baseCurrency)) ? o.productId.baseCurrency : 'SAR'
       const rate = fx[cur] || 0
       deliveredCommissionPKR += totalVal * 0.12 * rate
     }
@@ -193,12 +212,13 @@ router.post('/agent-remittances/:id/send', auth, allowRoles('user'), async (req,
     const amt = Math.max(0, bodyAmt)
     if (amt < 10000) return res.status(400).json({ message: 'Minimum amount to send is PKR 10000' })
     // Recompute available for the agent
-    const fx = { AED: 76, OMR: 726, SAR: 72, BHD: 830, KWD: 880, QAR: 79, INR: 3.3 }
+    const cfg = await getCurrencyConfig()
+    const fx = cfg.pkrPerUnit || {}
     const orders = await Order.find({ createdBy: r.agent, shipmentStatus: 'delivered' }).populate('productId','price baseCurrency quantity')
     let deliveredCommissionPKR = 0
     for (const o of orders){
       const totalVal = (o.total!=null ? Number(o.total) : (Number(o?.productId?.price||0) * Math.max(1, Number(o?.quantity||1))))
-      const cur = ['AED','OMR','SAR','BHD'].includes(String(o?.productId?.baseCurrency)) ? o.productId.baseCurrency : 'SAR'
+      const cur = ['AED','OMR','SAR','BHD','KWD','QAR','INR','USD','CNY'].includes(String(o?.productId?.baseCurrency)) ? o.productId.baseCurrency : 'SAR'
       const rate = fx[cur] || 0
       deliveredCommissionPKR += totalVal * 0.12 * rate
     }
@@ -552,7 +572,8 @@ router.get('/agents/commission', auth, allowRoles('admin','user'), async (req, r
     let agentCond = { role: 'agent' }
     if (req.user.role !== 'admin') agentCond.createdBy = req.user.id
     const agents = await User.find(agentCond, 'firstName lastName phone _id payoutProfile').lean()
-    const fx = { AED: 76, OMR: 726, SAR: 72, BHD: 830, KWD: 880, QAR: 79, INR: 3.3 }
+    const cfg = await getCurrencyConfig()
+    const fx = cfg.pkrPerUnit || {}
     const out = []
     for (const a of agents){
       const orders = await Order.find({ createdBy: a._id }).populate('productId','price baseCurrency quantity')
@@ -567,7 +588,7 @@ router.get('/agents/commission', auth, allowRoles('admin','user'), async (req, r
           pkr = Number(o.agentCommissionPKR)
         } else {
           const totalVal = (o.total!=null ? Number(o.total) : (Number(o?.productId?.price||0) * Math.max(1, Number(o?.quantity||1))))
-          const cur = ['AED','OMR','SAR','BHD','KWD','QAR','INR'].includes(String(o?.productId?.baseCurrency)) ? o.productId.baseCurrency : 'SAR'
+          const cur = ['AED','OMR','SAR','BHD','KWD','QAR','INR','USD','CNY'].includes(String(o?.productId?.baseCurrency)) ? o.productId.baseCurrency : 'SAR'
           const rate = fx[cur] || 0
           pkr = totalVal * 0.12 * rate
         }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { apiGet, apiUpload, apiPatch, apiDelete, apiUploadPatch, API_BASE, apiPost } from '../../api'
+import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
 
   // Convert ISO 3166-1 alpha-2 country code to emoji flag
   function codeToFlag(code){
@@ -66,6 +67,7 @@ export default function InhouseProducts(){
   const [aiCount, setAiCount] = useState(2)
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiBusy, setAiBusy] = useState(false)
+  const [ccyCfg, setCcyCfg] = useState(null)
 
   // Generate product images using AI backend endpoint (uses API settings saved in User > API Setup)
   async function aiGenerateImages(productId, count, customPrompt){
@@ -306,6 +308,9 @@ export default function InhouseProducts(){
     loadCategories()
   },[])
 
+  // Load currency config once
+  useEffect(()=>{ let alive=true; getCurrencyConfig().then(cfg=>{ if(alive) setCcyCfg(cfg) }).catch(()=>{}); return ()=>{alive=false} },[])
+
   // Load current user to determine permissions
   useEffect(()=>{
     (async ()=>{
@@ -465,19 +470,8 @@ export default function InhouseProducts(){
     }catch(err){ alert(err?.message||'Failed to update') }
   }
 
-  const RATES = {
-    // Approx cross rates relative to SAR
-    SAR: { SAR: 1, AED: 0.98, OMR: 0.10, BHD: 0.10 },
-    AED: { SAR: 1.02, AED: 1, OMR: 0.10, BHD: 0.10 },
-    OMR: { SAR: 9.78, AED: 9.58, OMR: 1, BHD: 0.98 },
-    BHD: { SAR: 9.94, AED: 9.74, OMR: 1.02, BHD: 1 },
-  }
-
   function convertPrice(value, from, to){
-    const v = Number(value||0)
-    const r = RATES[from]?.[to]
-    if (!r) return v
-    return v * r
+    return fxConvert(value, from||'SAR', to||'SAR', ccyCfg)
   }
 
   return (
@@ -518,6 +512,8 @@ export default function InhouseProducts(){
                 <option value="INR">INR</option>
                 <option value="KWD">KWD</option>
                 <option value="QAR">QAR</option>
+                <option value="USD">USD</option>
+                <option value="CNY">CNY</option>
               </select>
             </div>
             <div>
@@ -757,7 +753,7 @@ export default function InhouseProducts(){
               <label className="field">
                 <div>Base Currency</div>
                 <select value={pricePopup.baseCurrency} onChange={e=>setPricePopup(p=>({...p, baseCurrency: e.target.value}))}>
-                  {['AED','OMR','SAR','BHD','INR','KWD','QAR'].map(c => (<option key={c} value={c}>{c}</option>))}
+                  {['AED','OMR','SAR','BHD','INR','KWD','QAR','USD','CNY'].map(c => (<option key={c} value={c}>{c}</option>))}
                 </select>
               </label>
               <label className="field">
@@ -982,6 +978,11 @@ export default function InhouseProducts(){
                     <option value="OMR">OMR</option>
                     <option value="SAR">SAR</option>
                     <option value="BHD">BHD</option>
+                    <option value="INR">INR</option>
+                    <option value="KWD">KWD</option>
+                    <option value="QAR">QAR</option>
+                    <option value="USD">USD</option>
+                    <option value="CNY">CNY</option>
                   </select>
                 </div>
                 <div>

@@ -51,7 +51,7 @@ router.post('/', auth, allowRoles('admin'), async (req, res) => {
 router.post('/agents', auth, allowRoles('admin','user','manager'), async (req, res) => {
   const { firstName, lastName, email, phone, password } = req.body || {}
   if (!firstName || !lastName || !email || !password) return res.status(400).json({ message: 'Missing required fields' })
- 
+
   // Phone is required and must be from allowed countries (UAE, Oman, KSA, Bahrain)
   if (!phone || !String(phone).trim()){
     return res.status(400).json({ message: 'Phone number is required' })
@@ -508,9 +508,9 @@ router.post('/managers', auth, allowRoles('admin','user'), async (req, res) => {
   const ALLOWED_ASSIGNED = new Set(['UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait','Qatar'])
   const normalize = (c)=> c==='KSA' ? 'Saudi Arabia' : (c==='United Arab Emirates' ? 'UAE' : c)
   const assignedCtry = ALLOWED_ASSIGNED.has(String(normalize(assignedCountry))) ? String(normalize(assignedCountry)) : ''
-  // Accept up to 2 assigned countries
+  // Accept unlimited assigned countries from the allowed list
   const arrIn = Array.isArray(assignedCountries) ? assignedCountries.map(x=> normalize(String(x))).filter(Boolean) : []
-  const uniq = Array.from(new Set(arrIn.filter(x=> ALLOWED_ASSIGNED.has(x)).slice(0,2)))
+  const uniq = Array.from(new Set(arrIn.filter(x=> ALLOWED_ASSIGNED.has(x))))
   const manager = new User({ 
     firstName, 
     lastName, 
@@ -561,6 +561,85 @@ router.post('/managers', auth, allowRoles('admin','user'), async (req, res) => {
   res.status(201).json({ message: 'Manager created', user: { id: manager._id, firstName, lastName, email, role: 'manager', managerPermissions: manager.managerPermissions } })
 })
 
+// Update manager (admin, user-owner): name, password, country, permissions, assigned countries
+router.patch('/managers/:id', auth, allowRoles('admin','user'), async (req, res) => {
+  try{
+    const { id } = req.params
+    const mgr = await User.findOne({ _id: id, role: 'manager' })
+    if (!mgr) return res.status(404).json({ message: 'Manager not found' })
+    if (req.user.role !== 'admin' && String(mgr.createdBy) !== String(req.user.id)){
+      return res.status(403).json({ message: 'Not allowed' })
+    }
+    const {
+      firstName, lastName, email, phone, password, country,
+      canCreateAgents, canManageProducts, canCreateOrders, canCreateDrivers,
+      managerPermissions,
+      assignedCountry, assignedCountries
+    } = req.body || {}
+
+    // Email uniqueness if changed
+    if (email !== undefined){
+      const newEmail = String(email||'').trim()
+      if (newEmail && newEmail !== String(mgr.email)){
+        const exists = await User.findOne({ email: newEmail, _id: { $ne: id } })
+        if (exists) return res.status(400).json({ message: 'Email already in use' })
+        mgr.email = newEmail
+      }
+    }
+    // Basic fields
+    if (firstName !== undefined) mgr.firstName = String(firstName||'')
+    if (lastName !== undefined) mgr.lastName = String(lastName||'')
+    if (phone !== undefined) mgr.phone = String(phone||'')
+    if (password !== undefined){
+      const pw = String(password||'').trim()
+      if (pw && pw.length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' })
+      if (pw) mgr.password = pw
+    }
+    if (country !== undefined){
+      const ALLOWED = new Set(['UAE','Oman','KSA','Bahrain','India','Kuwait','Qatar'])
+      mgr.country = ALLOWED.has(String(country)) ? String(country) : ''
+    }
+
+    // Permissions (accept either flags or managerPermissions object)
+    const perm = (typeof managerPermissions === 'object' && managerPermissions) ? managerPermissions : {}
+    if (canCreateAgents !== undefined) perm.canCreateAgents = !!canCreateAgents
+    if (canManageProducts !== undefined) perm.canManageProducts = !!canManageProducts
+    if (canCreateOrders !== undefined) perm.canCreateOrders = !!canCreateOrders
+    if (canCreateDrivers !== undefined) perm.canCreateDrivers = !!canCreateDrivers
+    if (Object.keys(perm).length){
+      mgr.managerPermissions = {
+        canCreateAgents: !!(perm.canCreateAgents ?? mgr.managerPermissions?.canCreateAgents),
+        canManageProducts: !!(perm.canManageProducts ?? mgr.managerPermissions?.canManageProducts),
+        canCreateOrders: !!(perm.canCreateOrders ?? mgr.managerPermissions?.canCreateOrders),
+        canCreateDrivers: !!(perm.canCreateDrivers ?? mgr.managerPermissions?.canCreateDrivers),
+      }
+    }
+
+    // Assigned countries
+    const ALLOWED_ASSIGNED = new Set(['UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait','Qatar'])
+    const normalize = (c)=> c==='KSA' ? 'Saudi Arabia' : (c==='United Arab Emirates' ? 'UAE' : c)
+    if (assignedCountries !== undefined){
+      const arr = Array.isArray(assignedCountries) ? assignedCountries.map(x=> normalize(String(x))).filter(Boolean) : []
+      const uniq = Array.from(new Set(arr.filter(x=> ALLOWED_ASSIGNED.has(x))))
+      mgr.assignedCountries = uniq
+      mgr.assignedCountry = uniq.length ? uniq[0] : (mgr.assignedCountry || '')
+    }
+    if (assignedCountry !== undefined){
+      const single = normalize(String(assignedCountry||''))
+      if (!mgr.assignedCountries || mgr.assignedCountries.length === 0){
+        mgr.assignedCountry = ALLOWED_ASSIGNED.has(single) ? single : ''
+      }
+    }
+
+    await mgr.save()
+    const updated = await User.findById(mgr._id, '-password')
+    try{ const io = getIO(); const ownerId = String(updated.createdBy || req.user.id); if (ownerId) io.to(`workspace:${ownerId}`).emit('manager.updated', { id: String(updated._id) }) }catch{}
+    return res.json({ ok:true, user: updated })
+  }catch(err){
+    return res.status(500).json({ message: err?.message || 'Failed to update manager' })
+  }
+})
+
 // Update manager assigned countries (admin, user-owner)
 router.patch('/managers/:id/countries', auth, allowRoles('admin','user'), async (req, res) => {
   try{
@@ -574,7 +653,7 @@ router.patch('/managers/:id/countries', auth, allowRoles('admin','user'), async 
     const ALLOWED = new Set(['UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait','Qatar'])
     const normalize = (c)=> c==='KSA' ? 'Saudi Arabia' : (c==='United Arab Emirates' ? 'UAE' : c)
     const arr = Array.isArray(assignedCountries) ? assignedCountries.map(x=> normalize(String(x))).filter(Boolean) : []
-    const uniq = Array.from(new Set(arr.filter(x=> ALLOWED.has(x)).slice(0,2)))
+    const uniq = Array.from(new Set(arr.filter(x=> ALLOWED.has(x))))
     // If a single assignedCountry string is provided, prefer it when array is empty
     let single = assignedCountry !== undefined ? normalize(String(assignedCountry||'')) : undefined
     if (single && !ALLOWED.has(single)) single = ''

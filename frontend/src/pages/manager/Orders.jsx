@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { apiGet, apiPost, apiPatch, API_BASE, apiGetBlob } from '../../api'
+import { useLocation } from 'react-router-dom'
 import { io } from 'socket.io-client'
 
 export default function ManagerOrders(){
+  const location = useLocation()
   const [me, setMe] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} } })
   const [orders, setOrders] = useState([])
   const [drivers, setDrivers] = useState([])
@@ -13,6 +15,8 @@ export default function ManagerOrders(){
   const [q, setQ] = useState('')
   const [country, setCountry] = useState('')
   const [city, setCity] = useState('')
+  const [ship, setShip] = useState('')
+  const [onlyUnassigned, setOnlyUnassigned] = useState(false)
 
   const perms = me?.managerPermissions || {}
 
@@ -49,6 +53,20 @@ export default function ManagerOrders(){
   }, [orders])
 
   useEffect(()=>{ fetchMe(); load() },[])
+  // Apply URL params to filters
+  useEffect(()=>{
+    try{
+      const p = new URLSearchParams(location.search || '')
+      const c = p.get('country') || ''
+      const ci = p.get('city') || ''
+      const s = (p.get('ship')||'').toLowerCase()
+      const un = String(p.get('onlyUnassigned')||'').toLowerCase() === 'true'
+      if (c) setCountry(c)
+      if (ci) setCity(ci)
+      if (s) setShip(s)
+      setOnlyUnassigned(un)
+    }catch{}
+  }, [location.search])
   useEffect(()=>{
     // Default country: if exactly one assigned, set it; if multiple, show all
     const arr = Array.isArray(me?.assignedCountries) && me.assignedCountries.length ? me.assignedCountries : (me?.assignedCountry ? [me.assignedCountry] : [])
@@ -117,6 +135,8 @@ export default function ManagerOrders(){
       if (q.trim()) params.set('q', q.trim())
       if (country.trim()) params.set('country', country.trim())
       if (city.trim()) params.set('city', city.trim())
+      if (ship.trim()) params.set('ship', ship.trim())
+      if (onlyUnassigned) params.set('onlyUnassigned','true')
       params.set('max','10000')
       const blob = await apiGetBlob(`/api/orders/export?${params.toString()}`)
       const url = URL.createObjectURL(blob)

@@ -1,22 +1,17 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../ui/Toast'
 import { trackProductView, trackAddToCart } from '../../utils/analytics'
 import { API_BASE } from '../../api.js'
+import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
 
 export default function ProductCard({ product, onAddToCart, selectedCountry = 'SA', selectionEnabled = false, selected = false, onToggleSelect }) {
   const navigate = useNavigate()
   const toast = useToast()
   const [qty, setQty] = useState(1)
 
-  // Currency conversion rates (same as used in other components)
-  const RATES = {
-    // Approximate display rates; for accurate pricing, integrate a live FX API.
-    SAR: { SAR: 1, AED: 0.98, OMR: 0.10, BHD: 0.10, INR: 21.8, KWD: 0.082, QAR: 0.97 },
-    AED: { SAR: 1.02, AED: 1, OMR: 0.10, BHD: 0.10 },
-    OMR: { SAR: 9.78, AED: 9.58, OMR: 1, BHD: 0.98 },
-    BHD: { SAR: 9.94, AED: 9.74, OMR: 1.02, BHD: 1 },
-  }
+  const [ccyCfg, setCcyCfg] = useState(null)
+  useEffect(()=>{ let alive=true; getCurrencyConfig().then(cfg=>{ if(alive) setCcyCfg(cfg) }).catch(()=>{}); return ()=>{alive=false} },[])
 
   // Country to currency mapping
   const COUNTRY_TO_CURRENCY = {
@@ -29,12 +24,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
     'QA': 'QAR', // Qatar
   }
 
-  const convertPrice = (value, fromCurrency, toCurrency) => {
-    const v = Number(value || 0)
-    if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) return v
-    const rate = RATES[fromCurrency]?.[toCurrency]
-    return rate ? v * rate : v
-  }
+  const convertPrice = (value, fromCurrency, toCurrency) => fxConvert(value, fromCurrency||'SAR', toCurrency||getDisplayCurrency(), ccyCfg)
 
   const getDisplayCurrency = () => {
     return COUNTRY_TO_CURRENCY[selectedCountry] || 'SAR'

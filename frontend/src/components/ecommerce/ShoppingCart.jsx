@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../ui/Toast'
 import { apiPost, API_BASE } from '../../api.js'
+import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
 import { trackRemoveFromCart, trackCheckoutStart } from '../../utils/analytics'
 
 export default function ShoppingCart({ isOpen, onClose }) {
@@ -10,6 +11,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
   const toast = useToast()
   const navigate = useNavigate()
   const [form, setForm] = useState({ name:'', phone:'', country:'SA', city:'', cityOther:'', area:'', address:'', details:'' })
+  const [ccyCfg, setCcyCfg] = useState(null)
 
   const COUNTRIES = [
     { code:'SA', name:'KSA', flag:'🇸🇦', dial:'+966' },
@@ -35,23 +37,18 @@ export default function ShoppingCart({ isOpen, onClose }) {
   const quickItem = cartItems.length === 1 ? cartItems[0] : (cartItems.find(i => i.id === lastAddedId) || cartItems[0])
   const selectedCountry = COUNTRIES.find(c => c.code === form.country) || COUNTRIES[0]
 
-  // Currency conversion (same base as elsewhere)
-  const RATES = {
-    // Approximate display rates; use a live FX service for production accuracy.
-    SAR: { SAR: 1, AED: 0.98, OMR: 0.10, BHD: 0.10, INR: 21.8, KWD: 0.082, QAR: 0.97 },
-    AED: { SAR: 1.02, AED: 1, OMR: 0.10, BHD: 0.10 },
-    OMR: { SAR: 9.78, AED: 9.58, OMR: 1, BHD: 0.98 },
-    BHD: { SAR: 9.94, AED: 9.74, OMR: 1.02, BHD: 1 },
-  }
+  // Load currency config for dynamic conversion
+  useEffect(() => {
+    let alive = true
+    getCurrencyConfig().then(cfg => { if (alive) setCcyCfg(cfg) }).catch(()=>{})
+    return () => { alive = false }
+  }, [])
   const COUNTRY_TO_CURRENCY = { SA: 'SAR', AE: 'AED', OM: 'OMR', BH: 'BHD', IN: 'INR', KW: 'KWD', QA: 'QAR' }
   const displayCurrency = COUNTRY_TO_CURRENCY[selectedCountry.code] || 'SAR'
   const convertPrice = (value, fromCurrency, toCurrency) => {
-    const v = Number(value || 0)
     const from = fromCurrency || 'SAR'
     const to = toCurrency || displayCurrency
-    if (from === to) return v
-    const rate = RATES[from]?.[to]
-    return rate ? v * rate : v
+    return fxConvert(value, from, to, ccyCfg)
   }
   const formatPrice = (value, currency) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || displayCurrency, minimumFractionDigits: 2 }).format(Number(value||0))
 

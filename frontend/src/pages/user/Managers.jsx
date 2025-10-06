@@ -13,68 +13,65 @@ export default function Managers(){
   const [loadingList, setLoadingList] = useState(false)
   const [phoneError, setPhoneError] = useState('')
   const [delModal, setDelModal] = useState({ open:false, busy:false, error:'', confirm:'', manager:null })
-  const [permModal, setPermModal] = useState({ open:false, busy:false, error:'', manager:null, canCreateAgents:false, canManageProducts:false, canCreateOrders:false, canCreateDrivers:false })
-  const [countryModal, setCountryModal] = useState({ open:false, busy:false, error:'', manager:null, selected:[] })
-  const [assignErr, setAssignErr] = useState('')
+  const [editModal, setEditModal] = useState({ open:false, busy:false, error:'', manager:null, firstName:'', lastName:'', email:'', phone:'', password:'', country:'', assignedCountries:[], canCreateAgents:false, canManageProducts:false, canCreateOrders:false, canCreateDrivers:false })
 
   function onChange(e){
     const { name, type, value, checked } = e.target
     setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
   }
 
-  function openCountries(u){
+  function openEdit(u){
     const arr = Array.isArray(u?.assignedCountries) && u.assignedCountries.length ? u.assignedCountries : (u?.assignedCountry ? [u.assignedCountry] : [])
-    setCountryModal({ open:true, busy:false, error:'', manager:u, selected: arr })
-  }
-  function closeCountries(){ setCountryModal(m=>({ ...m, open:false })) }
-  function toggleCountryChoice(ctry){
-    setCountryModal(m => {
-      const has = m.selected.includes(ctry)
-      if (has){ return { ...m, selected: m.selected.filter(x=> x!==ctry), error:'' } }
-      if (m.selected.length >= 2){ return { ...m, error:'Select up to 2 countries' } }
-      return { ...m, selected: [...m.selected, ctry], error:'' }
-    })
-  }
-  async function saveCountries(){
-    const u = countryModal.manager
-    if (!u) return
-    setCountryModal(m=>({ ...m, busy:true, error:'' }))
-    try{
-      await apiPatch(`/api/users/managers/${u.id || u._id}/countries`, { assignedCountries: countryModal.selected })
-      setCountryModal(m=>({ ...m, open:false, busy:false }))
-      loadManagers(q)
-    }catch(err){ setCountryModal(m=>({ ...m, busy:false, error: err?.message || 'Failed to update countries' })) }
-  }
-
-  function openPerms(u){
     const mp = u?.managerPermissions || {}
-    setPermModal({
-      open:true,
-      busy:false,
-      error:'',
-      manager:u,
+    setEditModal({
+      open:true, busy:false, error:'', manager:u,
+      firstName: u.firstName || '', lastName: u.lastName || '', email: u.email || '', phone: u.phone || '', password: '',
+      country: u.country || '',
+      assignedCountries: arr,
       canCreateAgents: !!mp.canCreateAgents,
       canManageProducts: !!mp.canManageProducts,
       canCreateOrders: !!mp.canCreateOrders,
       canCreateDrivers: !!mp.canCreateDrivers,
     })
   }
-  function closePerms(){ setPermModal(m=>({ ...m, open:false })) }
-  async function savePerms(){
-    const u = permModal.manager
-    if (!u) return
-    setPermModal(m=>({ ...m, busy:true, error:'' }))
-    try{
-      await apiPatch(`/api/users/managers/${u.id || u._id}/permissions`, {
-        canCreateAgents: permModal.canCreateAgents,
-        canManageProducts: permModal.canManageProducts,
-        canCreateOrders: permModal.canCreateOrders,
-        canCreateDrivers: permModal.canCreateDrivers,
-      })
-      setPermModal(m=>({ ...m, open:false, busy:false }))
-      loadManagers(q)
-    }catch(err){ setPermModal(m=>({ ...m, busy:false, error: err?.message || 'Failed to update permissions' })) }
+  function closeEdit(){ setEditModal(m=>({ ...m, open:false })) }
+  function toggleEditCountry(ctry){
+    setEditModal(m => {
+      const has = m.assignedCountries.includes(ctry)
+      if (has){ return { ...m, assignedCountries: m.assignedCountries.filter(x=> x!==ctry), error:'' } }
+      return { ...m, assignedCountries: [...m.assignedCountries, ctry], error:'' }
+    })
   }
+  async function saveEdit(){
+    const u = editModal.manager
+    if (!u) return
+    setEditModal(m=>({ ...m, busy:true, error:'' }))
+    try{
+      const payload = {
+        firstName: editModal.firstName,
+        lastName: editModal.lastName,
+        email: editModal.email,
+        phone: editModal.phone,
+        country: editModal.country,
+        assignedCountries: Array.isArray(editModal.assignedCountries) ? editModal.assignedCountries : [],
+        canCreateAgents: !!editModal.canCreateAgents,
+        canManageProducts: !!editModal.canManageProducts,
+        canCreateOrders: !!editModal.canCreateOrders,
+        canCreateDrivers: !!editModal.canCreateDrivers,
+      }
+      if (payload.phone && !isValidPhoneNumber(payload.phone)){
+        setEditModal(m=>({ ...m, busy:false, error:'Enter a valid phone number with country code' }))
+        return
+      }
+      const pw = String(editModal.password||'').trim()
+      if (pw){ payload.password = pw }
+      await apiPatch(`/api/users/managers/${u.id || u._id}`, payload)
+      setEditModal(m=>({ ...m, open:false, busy:false }))
+      loadManagers(q)
+    }catch(err){ setEditModal(m=>({ ...m, busy:false, error: err?.message || 'Failed to update manager' })) }
+  }
+
+  // (removed old separate permissions modal handlers)
 
   async function loadManagers(query=''){
     setLoadingList(true)
@@ -102,10 +99,12 @@ export default function Managers(){
       const refresh = ()=>{ loadManagers(q) }
       socket.on('manager.created', refresh)
       socket.on('manager.deleted', refresh)
+      socket.on('manager.updated', refresh)
     }catch{}
     return ()=>{
       try{ socket && socket.off('manager.created') }catch{}
       try{ socket && socket.off('manager.deleted') }catch{}
+      try{ socket && socket.off('manager.updated') }catch{}
       try{ socket && socket.disconnect() }catch{}
     }
   },[q])
@@ -130,7 +129,7 @@ export default function Managers(){
         phone: form.phone,
         country: form.country,
         assignedCountry: form.assignedCountry,
-        assignedCountries: Array.isArray(form.assignedCountries) ? form.assignedCountries.slice(0,2) : [],
+        assignedCountries: Array.isArray(form.assignedCountries) ? form.assignedCountries : [],
         canCreateAgents: !!form.canCreateAgents,
         canManageProducts: !!form.canManageProducts,
         canCreateOrders: !!form.canCreateOrders,
@@ -172,57 +171,86 @@ export default function Managers(){
           <div className="page-subtitle">Create and manage managers with specific permissions.</div>
         </div>
     <Modal
-      title={`Edit Permissions: ${permModal.manager ? (permModal.manager.firstName + ' ' + permModal.manager.lastName) : ''}`}
-      open={permModal.open}
-      onClose={closePerms}
+      title={`Edit Manager${editModal.manager ? `: ${editModal.manager.firstName} ${editModal.manager.lastName}` : ''}`}
+      open={editModal.open}
+      onClose={closeEdit}
       footer={
         <>
-          <button className="btn secondary" type="button" onClick={closePerms} disabled={permModal.busy}>Cancel</button>
-          <button className="btn" type="button" onClick={savePerms} disabled={permModal.busy}>{permModal.busy ? 'Saving…' : 'Save'}</button>
+          <button className="btn secondary" type="button" onClick={closeEdit} disabled={editModal.busy}>Cancel</button>
+          <button className="btn" type="button" onClick={saveEdit} disabled={editModal.busy}>{editModal.busy ? 'Saving…' : 'Save'}</button>
         </>
       }
     >
       <div style={{display:'grid', gap:12}}>
-        <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
-          <input type="checkbox" checked={permModal.canCreateAgents} onChange={e=> setPermModal(m=>({ ...m, canCreateAgents: e.target.checked }))} /> Can create agents
-        </label>
-        <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
-          <input type="checkbox" checked={permModal.canManageProducts} onChange={e=> setPermModal(m=>({ ...m, canManageProducts: e.target.checked }))} /> Can manage inhouse products
-        </label>
-        <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
-          <input type="checkbox" checked={permModal.canCreateOrders} onChange={e=> setPermModal(m=>({ ...m, canCreateOrders: e.target.checked }))} /> Can create orders
-        </label>
-        <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
-          <input type="checkbox" checked={permModal.canCreateDrivers} onChange={e=> setPermModal(m=>({ ...m, canCreateDrivers: e.target.checked }))} /> Can create drivers
-        </label>
-        {permModal.error && <div className="helper-text error">{permModal.error}</div>}
-      </div>
-    </Modal>
-    <Modal
-      title={`Edit Countries: ${countryModal.manager ? (countryModal.manager.firstName + ' ' + countryModal.manager.lastName) : ''}`}
-      open={countryModal.open}
-      onClose={closeCountries}
-      footer={
-        <>
-          <button className="btn secondary" type="button" onClick={closeCountries} disabled={countryModal.busy}>Cancel</button>
-          <button className="btn" type="button" onClick={saveCountries} disabled={countryModal.busy}>{countryModal.busy ? 'Saving…' : 'Save'}</button>
-        </>
-      }
-    >
-      <div style={{display:'grid', gap:12}}>
-        <div className="helper">Select up to 2 countries. Leave empty for All Countries.</div>
-        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:8}}>
-          {['UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait','Qatar'].map(c => (
-            <label key={c} className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
-              <input
-                type="checkbox"
-                checked={countryModal.selected.includes(c)}
-                onChange={()=> toggleCountryChoice(c)}
-              /> {c}
-            </label>
-          ))}
+        <div className="form-grid">
+          <div>
+            <div className="label">First Name</div>
+            <input className="input" value={editModal.firstName} onChange={e=> setEditModal(m=>({ ...m, firstName: e.target.value }))} />
+          </div>
+          <div>
+            <div className="label">Last Name</div>
+            <input className="input" value={editModal.lastName} onChange={e=> setEditModal(m=>({ ...m, lastName: e.target.value }))} />
+          </div>
+          <div>
+            <div className="label">Email</div>
+            <input className="input" type="email" value={editModal.email} onChange={e=> setEditModal(m=>({ ...m, email: e.target.value }))} />
+          </div>
+          <div>
+            <div className="label">Country</div>
+            <select className="input" value={editModal.country} onChange={e=> setEditModal(m=>({ ...m, country: e.target.value }))}>
+              <option value="">-- Select Country --</option>
+              <option value="UAE">UAE</option>
+              <option value="Oman">Oman</option>
+              <option value="KSA">KSA</option>
+              <option value="Bahrain">Bahrain</option>
+              <option value="India">India</option>
+              <option value="Kuwait">Kuwait</option>
+              <option value="Qatar">Qatar</option>
+            </select>
+          </div>
+          <div>
+            <div className="label">Phone</div>
+            <div className={`PhoneInput ${editModal.error? '': ''}`}>
+              <PhoneInput
+                defaultCountry="AE"
+                placeholder="Enter phone number"
+                value={editModal.phone}
+                onChange={(value)=> setEditModal(m=>({ ...m, phone: value||'' }))}
+                international
+                withCountryCallingCode
+              />
+            </div>
+          </div>
         </div>
-        {countryModal.error && <div className="helper-text error">{countryModal.error}</div>}
+        <div>
+          <div className="label">Assigned Countries (Access Control)</div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:8}}>
+            {['UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait','Qatar'].map(c => (
+              <label key={c} className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
+                <input type="checkbox" checked={editModal.assignedCountries.includes(c)} onChange={()=> toggleEditCountry(c)} /> {c}
+              </label>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="label">Password</div>
+          <input className="input" type="password" value={editModal.password} onChange={e=> setEditModal(m=>({ ...m, password: e.target.value }))} placeholder="Leave blank to keep unchanged" />
+        </div>
+        <div style={{display:'flex', gap:16, flexWrap:'wrap'}}>
+          <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
+            <input type="checkbox" checked={editModal.canCreateAgents} onChange={e=> setEditModal(m=>({ ...m, canCreateAgents: e.target.checked }))} /> Can create agents
+          </label>
+          <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
+            <input type="checkbox" checked={editModal.canManageProducts} onChange={e=> setEditModal(m=>({ ...m, canManageProducts: e.target.checked }))} /> Can manage inhouse products
+          </label>
+          <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
+            <input type="checkbox" checked={editModal.canCreateOrders} onChange={e=> setEditModal(m=>({ ...m, canCreateOrders: e.target.checked }))} /> Can create orders
+          </label>
+          <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
+            <input type="checkbox" checked={editModal.canCreateDrivers} onChange={e=> setEditModal(m=>({ ...m, canCreateDrivers: e.target.checked }))} /> Can create drivers
+          </label>
+        </div>
+        {editModal.error && <div className="helper-text error">{editModal.error}</div>}
       </div>
     </Modal>
       </div>
@@ -277,7 +305,7 @@ export default function Managers(){
               </select>
             </div>
             <div>
-              <div className="label">Assigned Countries (Access Control, up to 2)</div>
+              <div className="label">Assigned Countries (Access Control)</div>
               <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))', gap:8}}>
                 {['UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait','Qatar'].map(c => (
                   <label key={c} className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
@@ -285,11 +313,9 @@ export default function Managers(){
                       type="checkbox"
                       checked={form.assignedCountries.includes(c)}
                       onChange={e=>{
-                        setAssignErr('')
                         setForm(f=>{
                           const has = f.assignedCountries.includes(c)
                           if (has){ return { ...f, assignedCountries: f.assignedCountries.filter(x=> x!==c) } }
-                          if (f.assignedCountries.length >= 2){ setAssignErr('Select up to 2 countries'); return f }
                           return { ...f, assignedCountries: [...f.assignedCountries, c] }
                         })
                       }}
@@ -297,7 +323,7 @@ export default function Managers(){
                   </label>
                 ))}
               </div>
-              <div className="helper-text">Leave empty for All Countries. {assignErr && <span className="error">{assignErr}</span>}</div>
+              <div className="helper-text">Leave empty for All Countries.</div>
             </div>
           </div>
           <div>
@@ -377,8 +403,7 @@ export default function Managers(){
                     </td>
                     <td style={{padding:'10px 12px'}}>{fmtDate(u.createdAt)}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', display:'flex', gap:8, justifyContent:'flex-end'}}>
-                      <button className="btn secondary" onClick={()=>openPerms(u)}>Edit Permissions</button>
-                      <button className="btn" onClick={()=>openCountries(u)}>Edit Countries</button>
+                      <button className="btn" onClick={()=>openEdit(u)}>Edit</button>
                       <button className="btn danger" onClick={()=>openDelete(u)}>Delete</button>
                     </td>
                   </tr>

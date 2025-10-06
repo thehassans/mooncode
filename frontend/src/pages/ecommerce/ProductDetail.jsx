@@ -6,6 +6,7 @@ import { useToast } from '../../ui/Toast'
 import Header from '../../components/layout/Header'
 import ShoppingCart from '../../components/ecommerce/ShoppingCart'
 import { trackPageView, trackProductView, trackAddToCart } from '../../utils/analytics'
+import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
 
 const ProductDetail = () => {
   const { id } = useParams()
@@ -21,6 +22,7 @@ const ProductDetail = () => {
   const [reviews, setReviews] = useState([])
   const [newReview, setNewReview] = useState({ rating: 5, comment: '', name: '' })
   const [showReviewForm, setShowReviewForm] = useState(false)
+  const [ccyCfg, setCcyCfg] = useState(null)
 
   // Country selection (persisted from catalog via localStorage)
   const [selectedCountry, setSelectedCountry] = useState(() => {
@@ -47,22 +49,12 @@ const ProductDetail = () => {
     })()
   }, [])
 
-  // Currency conversion helpers (same mapping as other components)
-  const RATES = {
-    // Approximate display rates; for precise pricing, integrate a live FX API.
-    SAR: { SAR: 1, AED: 0.98, OMR: 0.10, BHD: 0.10, INR: 21.8, KWD: 0.082, QAR: 0.97 },
-    AED: { SAR: 1.02, AED: 1, OMR: 0.10, BHD: 0.10 },
-    OMR: { SAR: 9.78, AED: 9.58, OMR: 1, BHD: 0.98 },
-    BHD: { SAR: 9.94, AED: 9.74, OMR: 1.02, BHD: 1 },
-  }
+  // Load currency config
+  useEffect(()=>{ let alive=true; getCurrencyConfig().then(cfg=>{ if(alive) setCcyCfg(cfg) }).catch(()=>{}); return ()=>{alive=false} },[])
+
   const COUNTRY_TO_CURRENCY = { AE: 'AED', OM: 'OMR', SA: 'SAR', BH: 'BHD', IN: 'INR', KW: 'KWD', QA: 'QAR' }
   const getDisplayCurrency = () => COUNTRY_TO_CURRENCY[selectedCountry] || 'SAR'
-  const convertPrice = (value, fromCurrency, toCurrency) => {
-    const v = Number(value || 0)
-    if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) return v
-    const rate = RATES[fromCurrency]?.[toCurrency]
-    return rate ? v * rate : v
-  }
+  const convertPrice = (value, fromCurrency, toCurrency) => fxConvert(value, fromCurrency||'SAR', toCurrency||getDisplayCurrency(), ccyCfg)
   const formatPrice = (price, currency = 'SAR') => new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2 }).format(Number(price||0))
 
   useEffect(() => {

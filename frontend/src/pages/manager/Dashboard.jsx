@@ -94,52 +94,85 @@ export default function ManagerDashboard(){
           <div className="page-title gradient heading-blue">Manager</div>
           <div className="page-subtitle">Quick actions and shortcuts based on your permissions</div>
         </div>
+
+      {/* Quick Links by Country (assigned only) */}
+      <div className="card" style={{marginTop:12}}>
+        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
+          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#16a34a,#065f46)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🔗</div>
+          <div>
+            <div style={{fontWeight:800,fontSize:16}}>Quick Links by Country</div>
+            <div className="helper">Actions limited to countries you can access</div>
+          </div>
+        </div>
+        <div className="section" style={{overflowX:'auto'}}>
+          <div style={{display:'flex', gap:12, minWidth:700}}>
+            {assignedList.map(ctry => {
+              const label = ctry==='KSA' ? 'Saudi Arabia' : ctry
+              const qs = encodeURIComponent(ctry)
+              return (
+                <div key={ctry} className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'10px 12px', background:'var(--panel)', minWidth:280}}>
+                  <div style={{fontWeight:800, marginBottom:6}}>{label}</div>
+                  <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                    <a className="chip" href={`/manager/orders?country=${qs}`}>Orders</a>
+                    <a className="chip" href={`/manager/orders?country=${qs}&onlyUnassigned=true`}>Unassigned</a>
+                    <a className="chip" href={`/manager/finances`}>Finances</a>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
-      <div className="card" style={{display:'grid', gap:12}}>
-        {(loading && !canCreateAgents && !canManageProducts && !canCreateOrders && !canCreateDrivers) ? (
-          <div className="empty-state" style={{padding:'16px 12px'}}>Loading permissions…</div>
-        ) : (!canCreateAgents && !canManageProducts && !canCreateOrders && !canCreateDrivers) ? (
-          <div className="empty-state" style={{padding:'16px 12px'}}>No features enabled for your role. Contact your administrator.</div>
-        ) : (
-          <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap:12}}>
-            {canCreateAgents && (
-              <NavLink to="/manager/agents" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
-                <div style={{fontSize:28}}>👥</div>
-                <div style={{fontWeight:800}}>Agents</div>
-                <div className="helper">Create and manage agents</div>
+      {/* Quick actions (mobile only, bottom) */}
+      {isMobile && (
+        <div className="card" style={{display:'grid', gap:12, marginTop:12}}>
+          {(loading && !canCreateAgents && !canManageProducts && !canCreateOrders && !canCreateDrivers) ? (
+            <div className="empty-state" style={{padding:'16px 12px'}}>Loading permissions…</div>
+          ) : (!canCreateAgents && !canManageProducts && !canCreateOrders && !canCreateDrivers) ? (
+            <div className="empty-state" style={{padding:'16px 12px'}}>No features enabled for your role. Contact your administrator.</div>
+          ) : (
+            <div style={{display:'grid', gridTemplateColumns: '1fr', gap:12}}>
+              {canCreateAgents && (
+                <NavLink to="/manager/agents" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
+                  <div style={{fontSize:28}}>👥</div>
+                  <div style={{fontWeight:800}}>Agents</div>
+                  <div className="helper">Create and manage agents</div>
+                </NavLink>
+              )}
+              {canManageProducts && (
+                <NavLink to="/manager/inhouse-products" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
+                  <div style={{fontSize:28}}>🏷️</div>
+                  <div style={{fontWeight:800}}>Inhouse Products</div>
+                  <div className="helper">Create or edit products</div>
+                </NavLink>
+              )}
+              {canCreateOrders && (
+                <NavLink to="/manager/orders" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
+                  <div style={{fontSize:28}}>🧾</div>
+                  <div style={{fontWeight:800}}>Orders</div>
+                  <div className="helper">Create orders</div>
+                </NavLink>
+              )}
+              {canCreateDrivers && (
+                <NavLink to="/manager/drivers/create" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
+                  <div style={{fontSize:28}}>🚚</div>
+                  <div style={{fontWeight:800}}>Create Driver</div>
+                  <div className="helper">Add drivers to your workspace</div>
+                </NavLink>
+              )}
+              <NavLink to="/manager/finances" className="btn secondary" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
+                <div style={{fontSize:28}}>💳</div>
+                <div style={{fontWeight:800}}>Finances</div>
+                <div className="helper">Payout proofs and history</div>
               </NavLink>
-            )}
-            {canManageProducts && (
-              <NavLink to="/manager/inhouse-products" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
-                <div style={{fontSize:28}}>🏷️</div>
-                <div style={{fontWeight:800}}>Inhouse Products</div>
-                <div className="helper">Create or edit products</div>
-              </NavLink>
-            )}
-            {canCreateOrders && (
-              <NavLink to="/manager/orders" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
-                <div style={{fontSize:28}}>🧾</div>
-                <div style={{fontWeight:800}}>Orders</div>
-                <div className="helper">Create orders</div>
-              </NavLink>
-            )}
-            {canCreateDrivers && (
-              <NavLink to="/manager/drivers/create" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
-                <div style={{fontSize:28}}>🚚</div>
-                <div style={{fontWeight:800}}>Create Driver</div>
-                <div className="helper">Add drivers to your workspace</div>
-              </NavLink>
-            )}
-            {/* Always-visible Finances quick tile for convenience */}
-            <NavLink to="/manager/finances" className="btn secondary" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
-              <div style={{fontSize:28}}>💳</div>
-              <div style={{fontWeight:800}}>Finances</div>
-              <div className="helper">Payout proofs and history</div>
-            </NavLink>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
+      )}
       </div>
+
+      {/* Quick actions moved to bottom on mobile */}
 
       {/* Country Summary (assigned only) */}
       <div className="card" style={{marginTop:12}}>

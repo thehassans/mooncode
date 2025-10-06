@@ -13,7 +13,7 @@ const StockByCountrySchema = new mongoose.Schema({
 const ProductSchema = new mongoose.Schema({
   name: { type: String, required: true },
   price: { type: Number, required: true, min: 0 },
-  baseCurrency: { type: String, enum: ['AED','OMR','SAR','BHD','INR','KWD','QAR'], default: 'SAR' },
+  baseCurrency: { type: String, enum: ['AED','OMR','SAR','BHD','INR','KWD','QAR','USD','CNY'], default: 'SAR' },
   availableCountries: [{ type: String }],
   inStock: { type: Boolean, default: true },
   stockQty: { type: Number, default: 0 },

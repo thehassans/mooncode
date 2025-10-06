@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { apiGet, apiPatch } from '../../api.js'
 import { useToast } from '../../ui/Toast.jsx'
+import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
 
 export default function EditOrder(){
   const { id } = useParams()
@@ -29,22 +30,10 @@ export default function EditOrder(){
     shippingFee: 0
   })
 
-  // Currency conversion
-  const RATES = {
-    SAR: { SAR: 1, AED: 0.98, OMR: 0.10, BHD: 0.10, KWD: 0.082, QAR: 0.97, INR: 22.0 },
-    AED: { SAR: 1.02, AED: 1, OMR: 0.10, BHD: 0.10, KWD: 0.084, QAR: 0.99, INR: 22.5 },
-    OMR: { SAR: 9.78, AED: 9.58, OMR: 1, BHD: 0.98, KWD: 0.81, QAR: 9.6, INR: 215 },
-    BHD: { SAR: 9.94, AED: 9.74, OMR: 1.02, BHD: 1, KWD: 0.83, QAR: 9.7, INR: 218 },
-    KWD: { SAR: 12.2, AED: 12.0, OMR: 1.23, BHD: 1.20, KWD: 1, QAR: 11.9, INR: 262 },
-    QAR: { SAR: 1.03, AED: 1.01, OMR: 0.104, BHD: 0.103, KWD: 0.084, QAR: 1, INR: 22.7 },
-    INR: { SAR: 0.045, AED: 0.044, OMR: 0.0047, BHD: 0.0046, KWD: 0.0038, QAR: 0.044, INR: 1 },
-  }
-  
+  const [ccyCfg, setCcyCfg] = useState(null)
+  useEffect(()=>{ let alive=true; getCurrencyConfig().then(cfg=>{ if(alive) setCcyCfg(cfg) }).catch(()=>{}); return ()=>{alive=false} },[])
   function convertPrice(value, from, to){
-    const v = Number(value||0)
-    if (!from || !to) return v
-    const r = RATES[from]?.[to]
-    return r ? v * r : v
+    return fxConvert(value, from||'SAR', to||'SAR', ccyCfg)
   }
   
   const PHONE_CODE_TO_CCY = { '+966':'SAR', '+971':'AED', '+968':'OMR', '+973':'BHD', '+965':'KWD', '+974':'QAR', '+91':'INR' }

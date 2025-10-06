@@ -23,6 +23,86 @@ const storage = multer.diskStorage({
   }
 })
 
+// Currency conversion settings
+function defaultCurrencyConfig(){
+  // Store SAR-per-unit for UI conversions, and PKR-per-unit for finance
+  return {
+    anchor: 'SAR',
+    sarPerUnit: {
+      SAR: 1,
+      AED: 1.02,
+      OMR: 9.78,
+      BHD: 9.94,
+      INR: 0.046,
+      KWD: 12.2,
+      QAR: 1.03,
+      USD: 3.75,
+      CNY: 0.52,
+    },
+    pkrPerUnit: {
+      AED: 76,
+      OMR: 726,
+      SAR: 72,
+      BHD: 830,
+      KWD: 880,
+      QAR: 79,
+      INR: 3.3,
+      USD: 278,
+      CNY: 39,
+    },
+    enabled: ['AED','OMR','SAR','BHD','INR','KWD','QAR','USD','CNY'],
+    updatedAt: new Date(),
+  }
+}
+
+// GET /api/settings/currency
+router.get('/currency', auth, allowRoles('admin','user'), async (_req, res) => {
+  try{
+    const doc = await Setting.findOne({ key: 'currency' }).lean()
+    const val = (doc && doc.value) || defaultCurrencyConfig()
+    // Ensure reasonable structure
+    const cfg = { ...defaultCurrencyConfig(), ...(val||{}) }
+    res.json({ success:true, ...cfg })
+  }catch(e){ res.status(500).json({ success:false, error: e?.message || 'failed' }) }
+})
+
+// POST /api/settings/currency
+router.post('/currency', auth, allowRoles('admin','user'), async (req, res) => {
+  try{
+    const body = req.body || {}
+    let doc = await Setting.findOne({ key: 'currency' })
+    if (!doc) doc = new Setting({ key: 'currency', value: defaultCurrencyConfig() })
+    const cur = (doc.value && typeof doc.value === 'object') ? doc.value : defaultCurrencyConfig()
+    const out = { ...defaultCurrencyConfig(), ...cur }
+
+    // Accept partial updates
+    if (typeof body.anchor === 'string' && body.anchor.trim()) out.anchor = body.anchor.trim().toUpperCase()
+    if (body.sarPerUnit && typeof body.sarPerUnit === 'object'){
+      out.sarPerUnit = { ...out.sarPerUnit }
+      for (const [k,v] of Object.entries(body.sarPerUnit)){
+        const key = String(k).toUpperCase()
+        const num = Number(v)
+        if (Number.isFinite(num) && num > 0) out.sarPerUnit[key] = num
+      }
+    }
+    if (body.pkrPerUnit && typeof body.pkrPerUnit === 'object'){
+      out.pkrPerUnit = { ...out.pkrPerUnit }
+      for (const [k,v] of Object.entries(body.pkrPerUnit)){
+        const key = String(k).toUpperCase()
+        const num = Number(v)
+        if (Number.isFinite(num) && num > 0) out.pkrPerUnit[key] = num
+      }
+    }
+    if (Array.isArray(body.enabled)){
+      out.enabled = Array.from(new Set(body.enabled.map(c=> String(c).toUpperCase()).filter(Boolean)))
+    }
+    out.updatedAt = new Date()
+    doc.value = out
+    await doc.save()
+    res.json({ success:true })
+  }catch(e){ res.status(500).json({ success:false, error: e?.message || 'failed' }) }
+})
+
 // POST /api/settings/ai/test (admin) — does not persist; validates credentials/connectivity
 router.post('/ai/test', auth, allowRoles('admin','user'), async (req, res) => {
   const tests = { gemini: { ok:false, message:'' }, googleMaps: { ok:false, message:'' } }
