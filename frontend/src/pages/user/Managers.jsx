@@ -5,7 +5,7 @@ import { io } from 'socket.io-client'
 import Modal from '../../components/Modal.jsx'
 
 export default function Managers(){
-  const [form, setForm] = useState({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', canCreateAgents:true, canManageProducts:false, canCreateOrders:false, canCreateDrivers:false })
+  const [form, setForm] = useState({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', assignedCountries:[], canCreateAgents:true, canManageProducts:false, canCreateOrders:false, canCreateDrivers:false })
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [q, setQ] = useState('')
@@ -14,10 +14,36 @@ export default function Managers(){
   const [phoneError, setPhoneError] = useState('')
   const [delModal, setDelModal] = useState({ open:false, busy:false, error:'', confirm:'', manager:null })
   const [permModal, setPermModal] = useState({ open:false, busy:false, error:'', manager:null, canCreateAgents:false, canManageProducts:false, canCreateOrders:false, canCreateDrivers:false })
+  const [countryModal, setCountryModal] = useState({ open:false, busy:false, error:'', manager:null, selected:[] })
+  const [assignErr, setAssignErr] = useState('')
 
   function onChange(e){
     const { name, type, value, checked } = e.target
     setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
+  }
+
+  function openCountries(u){
+    const arr = Array.isArray(u?.assignedCountries) && u.assignedCountries.length ? u.assignedCountries : (u?.assignedCountry ? [u.assignedCountry] : [])
+    setCountryModal({ open:true, busy:false, error:'', manager:u, selected: arr })
+  }
+  function closeCountries(){ setCountryModal(m=>({ ...m, open:false })) }
+  function toggleCountryChoice(ctry){
+    setCountryModal(m => {
+      const has = m.selected.includes(ctry)
+      if (has){ return { ...m, selected: m.selected.filter(x=> x!==ctry), error:'' } }
+      if (m.selected.length >= 2){ return { ...m, error:'Select up to 2 countries' } }
+      return { ...m, selected: [...m.selected, ctry], error:'' }
+    })
+  }
+  async function saveCountries(){
+    const u = countryModal.manager
+    if (!u) return
+    setCountryModal(m=>({ ...m, busy:true, error:'' }))
+    try{
+      await apiPatch(`/api/users/managers/${u.id || u._id}/countries`, { assignedCountries: countryModal.selected })
+      setCountryModal(m=>({ ...m, open:false, busy:false }))
+      loadManagers(q)
+    }catch(err){ setCountryModal(m=>({ ...m, busy:false, error: err?.message || 'Failed to update countries' })) }
   }
 
   function openPerms(u){
@@ -104,6 +130,7 @@ export default function Managers(){
         phone: form.phone,
         country: form.country,
         assignedCountry: form.assignedCountry,
+        assignedCountries: Array.isArray(form.assignedCountries) ? form.assignedCountries.slice(0,2) : [],
         canCreateAgents: !!form.canCreateAgents,
         canManageProducts: !!form.canManageProducts,
         canCreateOrders: !!form.canCreateOrders,
@@ -111,7 +138,7 @@ export default function Managers(){
       }
       await apiPost('/api/users/managers', payload)
       setMsg('Manager created successfully')
-      setForm({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', canCreateAgents:true, canManageProducts:false, canCreateOrders:false, canCreateDrivers:false })
+      setForm({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', assignedCountries:[], canCreateAgents:true, canManageProducts:false, canCreateOrders:false, canCreateDrivers:false })
       setPhoneError('')
       loadManagers(q)
     }catch(err){ setMsg(err?.message || 'Failed to create manager') }
@@ -171,6 +198,33 @@ export default function Managers(){
         {permModal.error && <div className="helper-text error">{permModal.error}</div>}
       </div>
     </Modal>
+    <Modal
+      title={`Edit Countries: ${countryModal.manager ? (countryModal.manager.firstName + ' ' + countryModal.manager.lastName) : ''}`}
+      open={countryModal.open}
+      onClose={closeCountries}
+      footer={
+        <>
+          <button className="btn secondary" type="button" onClick={closeCountries} disabled={countryModal.busy}>Cancel</button>
+          <button className="btn" type="button" onClick={saveCountries} disabled={countryModal.busy}>{countryModal.busy ? 'Saving…' : 'Save'}</button>
+        </>
+      }
+    >
+      <div style={{display:'grid', gap:12}}>
+        <div className="helper">Select up to 2 countries. Leave empty for All Countries.</div>
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:8}}>
+          {['UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait','Qatar'].map(c => (
+            <label key={c} className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
+              <input
+                type="checkbox"
+                checked={countryModal.selected.includes(c)}
+                onChange={()=> toggleCountryChoice(c)}
+              /> {c}
+            </label>
+          ))}
+        </div>
+        {countryModal.error && <div className="helper-text error">{countryModal.error}</div>}
+      </div>
+    </Modal>
       </div>
 
       {/* Create Manager */}
@@ -223,18 +277,27 @@ export default function Managers(){
               </select>
             </div>
             <div>
-              <div className="label">Assigned Country (Access Control)</div>
-              <select className="input" name="assignedCountry" value={form.assignedCountry} onChange={onChange}>
-                <option value="">-- All Countries --</option>
-                <option value="UAE">UAE</option>
-                <option value="Saudi Arabia">Saudi Arabia</option>
-                <option value="Oman">Oman</option>
-                <option value="Bahrain">Bahrain</option>
-                <option value="India">India</option>
-                <option value="Kuwait">Kuwait</option>
-                <option value="Qatar">Qatar</option>
-              </select>
-              <div className="helper-text">Manager will only see orders and drivers from this country</div>
+              <div className="label">Assigned Countries (Access Control, up to 2)</div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))', gap:8}}>
+                {['UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait','Qatar'].map(c => (
+                  <label key={c} className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
+                    <input
+                      type="checkbox"
+                      checked={form.assignedCountries.includes(c)}
+                      onChange={e=>{
+                        setAssignErr('')
+                        setForm(f=>{
+                          const has = f.assignedCountries.includes(c)
+                          if (has){ return { ...f, assignedCountries: f.assignedCountries.filter(x=> x!==c) } }
+                          if (f.assignedCountries.length >= 2){ setAssignErr('Select up to 2 countries'); return f }
+                          return { ...f, assignedCountries: [...f.assignedCountries, c] }
+                        })
+                      }}
+                    /> {c}
+                  </label>
+                ))}
+              </div>
+              <div className="helper-text">Leave empty for All Countries. {assignErr && <span className="error">{assignErr}</span>}</div>
             </div>
           </div>
           <div>
@@ -276,7 +339,7 @@ export default function Managers(){
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Email</th>
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Permissions</th>
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Country</th>
-                <th style={{textAlign:'left', padding:'10px 12px'}}>Assigned Country</th>
+                <th style={{textAlign:'left', padding:'10px 12px'}}>Assigned Countries</th>
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Created</th>
                 <th style={{textAlign:'right', padding:'10px 12px'}}>Actions</th>
               </tr>
@@ -304,11 +367,18 @@ export default function Managers(){
                       {u.country ? <span className="badge">{u.country}</span> : <span className="badge warn">N/A</span>}
                     </td>
                     <td style={{padding:'10px 12px'}}>
-                      {u.assignedCountry ? <span className="badge primary">{u.assignedCountry}</span> : <span className="badge">All Countries</span>}
+                      {Array.isArray(u.assignedCountries) && u.assignedCountries.length ? (
+                        <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+                          {u.assignedCountries.map(ct => <span key={ct} className="badge primary">{ct}</span>)}
+                        </div>
+                      ) : (
+                        u.assignedCountry ? <span className="badge primary">{u.assignedCountry}</span> : <span className="badge">All Countries</span>
+                      )}
                     </td>
                     <td style={{padding:'10px 12px'}}>{fmtDate(u.createdAt)}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', display:'flex', gap:8, justifyContent:'flex-end'}}>
                       <button className="btn secondary" onClick={()=>openPerms(u)}>Edit Permissions</button>
+                      <button className="btn" onClick={()=>openCountries(u)}>Edit Countries</button>
                       <button className="btn danger" onClick={()=>openDelete(u)}>Delete</button>
                     </td>
                   </tr>

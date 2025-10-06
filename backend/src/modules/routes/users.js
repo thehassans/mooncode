@@ -498,7 +498,7 @@ router.get('/my-managers', auth, allowRoles('driver','agent'), async (req, res) 
 
 // Create manager (admin, user)
 router.post('/managers', auth, allowRoles('admin','user'), async (req, res) => {
-  const { firstName, lastName, email, password, phone, country='', assignedCountry='', canCreateAgents=false, canManageProducts=false, canCreateOrders=false, canCreateDrivers=false } = req.body || {}
+  const { firstName, lastName, email, password, phone, country='', assignedCountry='', assignedCountries=[], canCreateAgents=false, canManageProducts=false, canCreateOrders=false, canCreateDrivers=false } = req.body || {}
   if (!firstName || !lastName || !email || !password) return res.status(400).json({ message: 'Missing required fields' })
   const exists = await User.findOne({ email })
   if (exists) return res.status(400).json({ message: 'Email already in use' })
@@ -506,7 +506,11 @@ router.post('/managers', auth, allowRoles('admin','user'), async (req, res) => {
   const ALLOWED = new Set(['UAE','Oman','KSA','Bahrain','India','Kuwait','Qatar'])
   const ctry = ALLOWED.has(String(country)) ? String(country) : ''
   const ALLOWED_ASSIGNED = new Set(['UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait','Qatar'])
-  const assignedCtry = ALLOWED_ASSIGNED.has(String(assignedCountry)) ? String(assignedCountry) : ''
+  const normalize = (c)=> c==='KSA' ? 'Saudi Arabia' : (c==='United Arab Emirates' ? 'UAE' : c)
+  const assignedCtry = ALLOWED_ASSIGNED.has(String(normalize(assignedCountry))) ? String(normalize(assignedCountry)) : ''
+  // Accept up to 2 assigned countries
+  const arrIn = Array.isArray(assignedCountries) ? assignedCountries.map(x=> normalize(String(x))).filter(Boolean) : []
+  const uniq = Array.from(new Set(arrIn.filter(x=> ALLOWED_ASSIGNED.has(x)).slice(0,2)))
   const manager = new User({ 
     firstName, 
     lastName, 
@@ -514,7 +518,8 @@ router.post('/managers', auth, allowRoles('admin','user'), async (req, res) => {
     password, 
     phone, 
     country: ctry, 
-    assignedCountry: assignedCtry,
+    assignedCountry: uniq.length ? uniq[0] : assignedCtry,
+    assignedCountries: uniq,
     role: 'manager', 
     createdBy, 
     managerPermissions: { canCreateAgents: !!canCreateAgents, canManageProducts: !!canManageProducts, canCreateOrders: !!canCreateOrders, canCreateDrivers: !!canCreateDrivers } 
@@ -554,6 +559,35 @@ router.post('/managers', auth, allowRoles('admin','user'), async (req, res) => {
     }
   })()
   res.status(201).json({ message: 'Manager created', user: { id: manager._id, firstName, lastName, email, role: 'manager', managerPermissions: manager.managerPermissions } })
+})
+
+// Update manager assigned countries (admin, user-owner)
+router.patch('/managers/:id/countries', auth, allowRoles('admin','user'), async (req, res) => {
+  try{
+    const { id } = req.params
+    const mgr = await User.findOne({ _id: id, role: 'manager' })
+    if (!mgr) return res.status(404).json({ message: 'Manager not found' })
+    if (req.user.role !== 'admin' && String(mgr.createdBy) !== String(req.user.id)){
+      return res.status(403).json({ message: 'Not allowed' })
+    }
+    const { assignedCountries = [], assignedCountry = undefined } = req.body || {}
+    const ALLOWED = new Set(['UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait','Qatar'])
+    const normalize = (c)=> c==='KSA' ? 'Saudi Arabia' : (c==='United Arab Emirates' ? 'UAE' : c)
+    const arr = Array.isArray(assignedCountries) ? assignedCountries.map(x=> normalize(String(x))).filter(Boolean) : []
+    const uniq = Array.from(new Set(arr.filter(x=> ALLOWED.has(x)).slice(0,2)))
+    // If a single assignedCountry string is provided, prefer it when array is empty
+    let single = assignedCountry !== undefined ? normalize(String(assignedCountry||'')) : undefined
+    if (single && !ALLOWED.has(single)) single = ''
+    const update = {
+      assignedCountries: uniq,
+      assignedCountry: uniq.length ? uniq[0] : (single ?? mgr.assignedCountry)
+    }
+    const updated = await User.findByIdAndUpdate(id, { $set: update }, { new: true, projection: '-password' })
+    try{ const io = getIO(); const ownerId = String(updated.createdBy || req.user.id); if (ownerId) io.to(`workspace:${ownerId}`).emit('manager.updated', { id: String(updated._id), assignedCountries: updated.assignedCountries, assignedCountry: updated.assignedCountry }) }catch{}
+    return res.json({ ok:true, user: updated })
+  }catch(err){
+    return res.status(500).json({ message: err?.message || 'Failed to update countries' })
+  }
 })
 
 // Delete manager (admin => any, user => own)

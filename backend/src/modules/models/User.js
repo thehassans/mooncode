@@ -23,6 +23,8 @@ const UserSchema = new mongoose.Schema({
   },
   // Manager-specific country assignment (limits visibility to orders/drivers from this country)
   assignedCountry: { type: String, enum: ['UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait','Qatar',''], default: '' },
+  // New: allow assigning MULTIPLE countries (up to 2) – this field takes precedence if non-empty
+  assignedCountries: { type: [String], enum: ['UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait','Qatar'], default: [] },
   // Auto welcome message status (set on agent creation best-effort)
   welcomeSent: { type: Boolean, default: false },
   welcomeSentAt: { type: Date },

@@ -426,10 +426,11 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
       const managerIds = managers.map(m => m._id)
       base = { createdBy: { $in: [req.user.id, ...agentIds, ...managerIds] } }
     } else if (req.user.role === 'manager') {
-      // Manager sees workspace orders for their owner (user), filtered by assigned country
-      const mgr = await User.findById(req.user.id).select('createdBy assignedCountry').lean()
+      // Manager sees workspace orders for their owner (user), filtered by assigned countries
+      const mgr = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
       const ownerId = mgr?.createdBy
       const assignedCountry = mgr?.assignedCountry
+      const assignedCountries = Array.isArray(mgr?.assignedCountries) ? mgr.assignedCountries : []
       
       if (ownerId){
         const agents = await User.find({ role: 'agent', createdBy: ownerId }, { _id: 1 }).lean()
@@ -437,22 +438,23 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
         const agentIds = agents.map(a => a._id)
         const managerIds = managers.map(m => m._id)
         base = { createdBy: { $in: [ownerId, ...agentIds, ...managerIds] } }
-        // Filter by assigned country if manager has one (support KSA/Saudi Arabia aliases)
-        if (assignedCountry) {
-          const aliases = {
-            'KSA': ['KSA','Saudi Arabia'],
-            'Saudi Arabia': ['KSA','Saudi Arabia'],
-          }
-          base.orderCountry = aliases[assignedCountry] ? { $in: aliases[assignedCountry] } : assignedCountry
+        // Filter by assigned countries if provided (support aliases)
+        const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
+        if (Array.isArray(assignedCountries) && assignedCountries.length){
+          const set = new Set()
+          for (const c of assignedCountries){ for (const x of expand(c)) set.add(x) }
+          base.orderCountry = { $in: Array.from(set) }
+        } else if (assignedCountry) {
+          base.orderCountry = { $in: expand(assignedCountry) }
         }
       } else {
         base = { createdBy: req.user.id }
-        if (assignedCountry) {
-          const aliases = {
-            'KSA': ['KSA','Saudi Arabia'],
-            'Saudi Arabia': ['KSA','Saudi Arabia'],
-          }
-          base.orderCountry = aliases[assignedCountry] ? { $in: aliases[assignedCountry] } : assignedCountry
+        const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
+        if (Array.isArray(assignedCountries) && assignedCountries.length){
+          const set = new Set(); for (const c of assignedCountries){ for (const x of expand(c)) set.add(x) }
+          base.orderCountry = { $in: Array.from(set) }
+        } else if (assignedCountry) {
+          base.orderCountry = { $in: expand(assignedCountry) }
         }
       }
     } else {
@@ -585,19 +587,28 @@ router.get('/export', auth, allowRoles('admin','user','agent','manager'), async 
       const managerIds = managers.map(m => m._id)
       base = { createdBy: { $in: [req.user.id, ...agentIds, ...managerIds] } }
     } else if (req.user.role === 'manager') {
-      const mgr = await User.findById(req.user.id).select('createdBy assignedCountry').lean()
+      const mgr = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
       const ownerId = mgr?.createdBy
       const assignedCountry = mgr?.assignedCountry
+      const assignedCountries = Array.isArray(mgr?.assignedCountries) ? mgr.assignedCountries : []
       if (ownerId){
         const agents = await User.find({ role: 'agent', createdBy: ownerId }, { _id: 1 }).lean()
         const managers = await User.find({ role: 'manager', createdBy: ownerId }, { _id: 1 }).lean()
         const agentIds = agents.map(a => a._id)
         const managerIds = managers.map(m => m._id)
         base = { createdBy: { $in: [ownerId, ...agentIds, ...managerIds] } }
-        if (assignedCountry) base.orderCountry = assignedCountry
+        const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
+        if (Array.isArray(assignedCountries) && assignedCountries.length){
+          const set = new Set(); for (const c of assignedCountries){ for (const x of expand(c)) set.add(x) }
+          base.orderCountry = { $in: Array.from(set) }
+        } else if (assignedCountry) base.orderCountry = { $in: expand(assignedCountry) }
       } else {
         base = { createdBy: req.user.id }
-        if (assignedCountry) base.orderCountry = assignedCountry
+        const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
+        if (Array.isArray(assignedCountries) && assignedCountries.length){
+          const set = new Set(); for (const c of assignedCountries){ for (const x of expand(c)) set.add(x) }
+          base.orderCountry = { $in: Array.from(set) }
+        } else if (assignedCountry) base.orderCountry = { $in: expand(assignedCountry) }
       }
     } else {
       base = { createdBy: req.user.id }
@@ -773,19 +784,27 @@ router.get('/options', auth, allowRoles('admin','user','agent','manager'), async
       const managerIds = managers.map(m => m._id)
       base = { createdBy: { $in: [req.user.id, ...agentIds, ...managerIds] } }
     } else if (req.user.role === 'manager') {
-      const mgr = await User.findById(req.user.id).select('createdBy assignedCountry').lean()
+      const mgr = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
       const ownerId = mgr?.createdBy
       const assignedCountry = mgr?.assignedCountry
+      const assignedCountries = Array.isArray(mgr?.assignedCountries) ? mgr.assignedCountries : []
+      const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
       if (ownerId){
         const agents = await User.find({ role: 'agent', createdBy: ownerId }, { _id: 1 }).lean()
         const managers = await User.find({ role: 'manager', createdBy: ownerId }, { _id: 1 }).lean()
         const agentIds = agents.map(a => a._id)
         const managerIds = managers.map(m => m._id)
         base = { createdBy: { $in: [ownerId, ...agentIds, ...managerIds] } }
-        if (assignedCountry) base.orderCountry = assignedCountry
+        if (Array.isArray(assignedCountries) && assignedCountries.length){
+          const set = new Set(); for (const c of assignedCountries){ for (const x of expand(c)) set.add(x) }
+          base.orderCountry = { $in: Array.from(set) }
+        } else if (assignedCountry) base.orderCountry = { $in: expand(assignedCountry) }
       } else {
         base = { createdBy: req.user.id }
-        if (assignedCountry) base.orderCountry = assignedCountry
+        if (Array.isArray(assignedCountries) && assignedCountries.length){
+          const set = new Set(); for (const c of assignedCountries){ for (const x of expand(c)) set.add(x) }
+          base.orderCountry = { $in: Array.from(set) }
+        } else if (assignedCountry) base.orderCountry = { $in: expand(assignedCountry) }
       }
     } else {
       base = { createdBy: req.user.id }
@@ -863,9 +882,10 @@ router.get('/unassigned', auth, allowRoles('admin','user','manager'), async (req
     const managerIds = managers.map(m => m._id)
     base.createdBy = { $in: [req.user.id, ...agentIds, ...managerIds] }
   } else {
-    // manager workspace scoping
-    const mgr = await User.findById(req.user.id).select('createdBy').lean()
+    // manager workspace scoping + country restriction
+    const mgr = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
     const ownerId = mgr?.createdBy
+    const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
     if (ownerId){
       const agents = await User.find({ role: 'agent', createdBy: ownerId }, { _id: 1 }).lean()
       const managers = await User.find({ role: 'manager', createdBy: ownerId }, { _id: 1 }).lean()
@@ -874,6 +894,11 @@ router.get('/unassigned', auth, allowRoles('admin','user','manager'), async (req
       base.createdBy = { $in: [ownerId, ...agentIds, ...managerIds] }
     } else {
       base.createdBy = req.user.id
+    }
+    const arr = (Array.isArray(mgr?.assignedCountries) && mgr.assignedCountries.length) ? mgr.assignedCountries : (mgr?.assignedCountry ? [mgr.assignedCountry] : [])
+    if (arr.length){
+      const set = new Set(); for (const c of arr){ for (const x of expand(c)) set.add(x) }
+      base.orderCountry = { $in: Array.from(set) }
     }
   }
   if (country) base.orderCountry = country
@@ -895,18 +920,17 @@ router.post('/:id/assign-driver', auth, allowRoles('admin','user','manager'), as
   if (req.user.role === 'user'){
     if (String(driver.createdBy) !== String(req.user.id)) return res.status(403).json({ message: 'Not allowed' })
   } else if (req.user.role === 'manager'){
-    const mgr = await User.findById(req.user.id).select('createdBy assignedCountry')
+    const mgr = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries')
     const ownerId = String(mgr?.createdBy || '')
     if (!ownerId || String(driver.createdBy) !== ownerId) return res.status(403).json({ message: 'Not allowed' })
     
-    // Country restriction: manager can only assign drivers from their assigned country
-    if (mgr?.assignedCountry) {
-      if (driver.country !== mgr.assignedCountry) {
-        return res.status(403).json({ message: `Manager can only assign drivers from ${mgr.assignedCountry}` })
-      }
-      if (ord.orderCountry !== mgr.assignedCountry) {
-        return res.status(403).json({ message: `Manager can only assign to orders from ${mgr.assignedCountry}` })
-      }
+    // Country restriction: manager can only assign within their assigned countries
+    const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
+    const arr = (Array.isArray(mgr?.assignedCountries) && mgr.assignedCountries.length) ? mgr.assignedCountries : (mgr?.assignedCountry ? [mgr.assignedCountry] : [])
+    if (arr.length){
+      const set = new Set(); for (const c of arr){ for (const x of expand(c)) set.add(x) }
+      if (!set.has(driver.country)) return res.status(403).json({ message: `Manager can only assign drivers from ${Array.from(set).join(', ')}` })
+      if (!set.has(ord.orderCountry)) return res.status(403).json({ message: `Manager can only assign to orders from ${Array.from(set).join(', ')}` })
     }
   }
   // City rule: enforce order city matches driver city if provided
