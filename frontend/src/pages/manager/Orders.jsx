@@ -23,6 +23,7 @@ export default function ManagerOrders(){
   const [city, setCity] = useState('')
   const [ship, setShip] = useState('')
   const [onlyUnassigned, setOnlyUnassigned] = useState(false)
+  const [onlyAssigned, setOnlyAssigned] = useState(false)
   const [agentFilter, setAgentFilter] = useState('')
   const [driverFilter, setDriverFilter] = useState('')
   const [agentOptions, setAgentOptions] = useState([])
@@ -37,6 +38,7 @@ export default function ManagerOrders(){
     if (city.trim()) params.set('city', city.trim())
     if (ship.trim()) params.set('ship', ship.trim())
     if (onlyUnassigned) params.set('onlyUnassigned','true')
+    else if (onlyAssigned) params.set('onlyAssigned','true')
     if (agentFilter.trim()) params.set('agent', agentFilter.trim())
     if (driverFilter.trim()) params.set('driver', driverFilter.trim())
     return params
@@ -102,6 +104,7 @@ export default function ManagerOrders(){
       const ci = p.get('city') || ''
       const s = (p.get('ship')||'').toLowerCase()
       const un = String(p.get('onlyUnassigned')||'').toLowerCase() === 'true'
+      const oa = String(p.get('onlyAssigned')||'').toLowerCase() === 'true'
       const qParam = p.get('q') || ''
       const ag = p.get('agent') || ''
       const dr = p.get('driver') || ''
@@ -110,6 +113,7 @@ export default function ManagerOrders(){
       setCity(ci)
       setShip(s)
       setOnlyUnassigned(un)
+      setOnlyAssigned(oa)
       setAgentFilter(ag)
       setDriverFilter(dr)
     }catch{}
@@ -136,7 +140,7 @@ export default function ManagerOrders(){
   // Keep URL in sync with current filters for shareable deep links
   useEffect(()=>{
     try{
-      const managed = ['q','country','city','onlyUnassigned','ship','agent','driver']
+      const managed = ['q','country','city','onlyUnassigned','onlyAssigned','ship','agent','driver']
       const canonical = (init)=>{
         const s = new URLSearchParams(init)
         const entries = managed

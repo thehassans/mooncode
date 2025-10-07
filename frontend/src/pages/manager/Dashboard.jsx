@@ -81,6 +81,29 @@ export default function ManagerDashboard(){
     return map
   }, [drivers])
 
+  // Aggregate driver metrics by assigned countries (assignedAllTime + amounts)
+  const driverAggByCountry = useMemo(()=>{
+    const init = {}
+    // Normalize list (support 'Saudi Arabia' alias)
+    const list = Array.isArray(COUNTRY_LIST) ? COUNTRY_LIST : []
+    for (const c of list){ init[c] = { assignedAllTime:0, collected:0, deliveredToCompany:0, pendingToCompany:0 } }
+    const asKey = (name)=>{
+      const canon = (name==='Saudi Arabia' ? 'KSA' : String(name||''))
+      // If assigned list uses 'Saudi Arabia', output under that key for display
+      if (canon==='KSA' && list.includes('Saudi Arabia')) return 'Saudi Arabia'
+      return canon
+    }
+    for (const d of (Array.isArray(drivers)? drivers: [])){
+      const key = asKey(d?.country)
+      if (!init[key]) continue
+      init[key].assignedAllTime += Number(d?.assigned||0)
+      init[key].collected += Number(d?.collected||0)
+      init[key].deliveredToCompany += Number(d?.deliveredToCompany||0)
+      init[key].pendingToCompany += Number(d?.pendingToCompany||0)
+    }
+    return init
+  }, [drivers, COUNTRY_LIST])
+
   useEffect(()=>{
     // Load drivers summary once (manager-scoped backend)
     (async()=>{
@@ -185,6 +208,81 @@ export default function ManagerDashboard(){
         })()}
       </div>
 
+      {/* Driver Report by Country (Access Countries) */}
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
+          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#06b6d4,#0891b2)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🚚</div>
+          <div>
+            <div style={{fontWeight:800,fontSize:16}}>Driver Report by Country (Your Access)</div>
+            <div className="helper">Counts from orders; amounts in local currency.</div>
+          </div>
+        </div>
+        <div className="section" style={{display:'grid', gap:12}}>
+          {(COUNTRY_LIST||[]).map(c=>{
+            const m = countryMetrics(c)
+            const d = driverAggByCountry[c] || { assignedAllTime:0, collected:0, deliveredToCompany:0, pendingToCompany:0 }
+            const qs = encodeURIComponent(c)
+            const name = (c==='KSA') ? 'Saudi Arabia (KSA)' : c
+            const cur = (c==='KSA') ? 'SAR' : (c==='UAE' ? 'AED' : (c==='Oman' ? 'OMR' : (c==='Bahrain' ? 'BHD' : (c==='India' ? 'INR' : (c==='Kuwait' ? 'KWD' : 'QAR')))))
+            return (
+              <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
+                <div style={{fontWeight:900, marginBottom:8}}>{name}</div>
+                <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Total Orders Assigned (All Time)</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&onlyAssigned=true`}>{fmtNum(d.assignedAllTime||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Currently Assigned</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=assigned`}>{fmtNum(m?.assigned||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Picked Up</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=picked_up`}>{fmtNum(m?.pickedUp||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">In Transit</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=in_transit`}>{fmtNum(m?.transit||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Out for Delivery</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=out_for_delivery`}>{fmtNum(m?.outForDelivery||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Delivered</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=delivered`}>{fmtNum(m?.delivered||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">No Response</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=no_response`}>{fmtNum(m?.noResponse||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Returned</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=returned`}>{fmtNum(m?.returned||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Cancelled</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=cancelled`}>{fmtNum(m?.cancelled||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Total Collected (Delivered)</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=delivered&collected=true`}>{cur} {fmtAmt(d.collected||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Delivered to Company</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/manager/finances?section=driver`}>{cur} {fmtAmt(d.deliveredToCompany||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Pending Delivery to Company</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/manager/finances?section=driver`}>{cur} {fmtAmt(d.pendingToCompany||0)}</a></div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
       {/* Status Summary (Access Countries) */}
       <div className="card" style={{marginBottom:12}}>
         {(function(){
@@ -222,14 +320,14 @@ export default function ManagerDashboard(){
               </div>
             )
           }
-          function Tile({ icon, title, value, getter, gradient }){
+          function Tile({ icon, title, value, getter, gradient, to }){
             return (
               <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
                 <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
                   <div style={{width:32,height:32,borderRadius:8,background:gradient||'linear-gradient(135deg,#3b82f6,#1d4ed8)',display:'grid',placeItems:'center',color:'#fff',fontSize:16}}>{icon}</div>
                   <div style={{fontWeight:800}}>{title}</div>
                 </div>
-                <div style={{fontSize:20, fontWeight:900, marginBottom:6}}>{fmtNum(value||0)}</div>
+                <div style={{fontSize:20, fontWeight:900, marginBottom:6}}>{to ? (<a className="link" href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
                 <Chips getter={getter} />
               </div>
             )
@@ -244,96 +342,22 @@ export default function ManagerDashboard(){
                 </div>
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile icon="📦" title="Total Orders" value={st.total} getter={(m)=> m.orders} gradient={'linear-gradient(135deg,#3b82f6,#1d4ed8)'} />
-                <Tile icon="⏳" title="Pending" value={st.pending} getter={(m)=> m.pending} gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
-                <Tile icon="📌" title="Assigned" value={st.assigned} getter={(m)=> m.assigned} gradient={'linear-gradient(135deg,#94a3b8,#64748b)'} />
-                <Tile icon="🚚" title="Picked Up" value={st.picked_up} getter={(m)=> m.pickedUp} gradient={'linear-gradient(135deg,#60a5fa,#3b82f6)'} />
-                <Tile icon="🚛" title="In Transit" value={st.in_transit} getter={(m)=> m.transit} gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
-                <Tile icon="🛵" title="Out for Delivery" value={st.out_for_delivery} getter={(m)=> m.outForDelivery} gradient={'linear-gradient(135deg,#f97316,#ea580c)'} />
-                <Tile icon="✅" title="Delivered" value={st.delivered} getter={(m)=> m.delivered} gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
-                <Tile icon="☎️🚫" title="No Response" value={st.no_response} getter={(m)=> m.noResponse} gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
-                <Tile icon="🔁" title="Returned" value={st.returned} getter={(m)=> m.returned} gradient={'linear-gradient(135deg,#a3a3a3,#737373)'} />
-                <Tile icon="❌" title="Cancelled" value={st.cancelled} getter={(m)=> m.cancelled} gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
+                <Tile icon="📦" title="Total Orders" value={st.total} getter={(m)=> m.orders} gradient={'linear-gradient(135deg,#3b82f6,#1d4ed8)'} to={'/manager/orders'} />
+                <Tile icon="⏳" title="Pending" value={st.pending} getter={(m)=> m.pending} gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} to={'/manager/orders?ship=pending'} />
+                <Tile icon="📌" title="Assigned" value={st.assigned} getter={(m)=> m.assigned} gradient={'linear-gradient(135deg,#94a3b8,#64748b)'} to={'/manager/orders?ship=assigned'} />
+                <Tile icon="🚚" title="Picked Up" value={st.picked_up} getter={(m)=> m.pickedUp} gradient={'linear-gradient(135deg,#60a5fa,#3b82f6)'} to={'/manager/orders?ship=picked_up'} />
+                <Tile icon="🚛" title="In Transit" value={st.in_transit} getter={(m)=> m.transit} gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} to={'/manager/orders?ship=in_transit'} />
+                <Tile icon="🛵" title="Out for Delivery" value={st.out_for_delivery} getter={(m)=> m.outForDelivery} gradient={'linear-gradient(135deg,#f97316,#ea580c)'} to={'/manager/orders?ship=out_for_delivery'} />
+                <Tile icon="✅" title="Delivered" value={st.delivered} getter={(m)=> m.delivered} gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} to={'/manager/orders?ship=delivered'} />
+                <Tile icon="☎️🚫" title="No Response" value={st.no_response} getter={(m)=> m.noResponse} gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} to={'/manager/orders?ship=no_response'} />
+                <Tile icon="🔁" title="Returned" value={st.returned} getter={(m)=> m.returned} gradient={'linear-gradient(135deg,#a3a3a3,#737373)'} to={'/manager/orders?ship=returned'} />
+                <Tile icon="❌" title="Cancelled" value={st.cancelled} getter={(m)=> m.cancelled} gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} to={'/manager/orders?ship=cancelled'} />
               </div>
             </div>
           )
         })()}
       </div>
-      {/* Quick Links by Country (assigned only) */}
-      <div className="card" style={{marginTop:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#16a34a,#065f46)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🔗</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Quick Links by Country</div>
-            <div className="helper">Actions limited to countries you can access</div>
-          </div>
-        </div>
-        <div className="section" style={{overflowX:'auto'}}>
-          <div style={{display:'flex', gap:12, minWidth:700}}>
-            {assignedList.map(ctry => {
-              const label = ctry==='KSA' ? 'Saudi Arabia' : ctry
-              const qs = encodeURIComponent(ctry)
-              return (
-                <div key={ctry} className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'10px 12px', background:'var(--panel)', minWidth:280}}>
-                  <div style={{fontWeight:800, marginBottom:6}}>{label}</div>
-                  <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-                    <a className="chip" href={`/manager/orders?country=${qs}`}>Orders</a>
-                    <a className="chip" href={`/manager/orders?country=${qs}&onlyUnassigned=true`}>Unassigned</a>
-                    <a className="chip" href={`/manager/finances`}>Finances</a>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Quick actions (mobile only, bottom) */}
-      {isMobile && (
-        <div className="card" style={{display:'grid', gap:12, marginTop:12}}>
-          {(loading && !canCreateAgents && !canManageProducts && !canCreateOrders && !canCreateDrivers) ? (
-            <div className="empty-state" style={{padding:'16px 12px'}}>Loading permissions…</div>
-          ) : (!canCreateAgents && !canManageProducts && !canCreateOrders && !canCreateDrivers) ? (
-            <div className="empty-state" style={{padding:'16px 12px'}}>No features enabled for your role. Contact your administrator.</div>
-          ) : (
-            <div style={{display:'grid', gridTemplateColumns: '1fr', gap:12}}>
-              {canCreateAgents && (
-                <NavLink to="/manager/agents" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
-                  <div style={{fontSize:28}}>👥</div>
-                  <div style={{fontWeight:800}}>Agents</div>
-                  <div className="helper">Create and manage agents</div>
-                </NavLink>
-              )}
-              {canManageProducts && (
-                <NavLink to="/manager/inhouse-products" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
-                  <div style={{fontSize:28}}>🏷️</div>
-                  <div style={{fontWeight:800}}>Inhouse Products</div>
-                  <div className="helper">Create or edit products</div>
-                </NavLink>
-              )}
-              {canCreateOrders && (
-                <NavLink to="/manager/orders" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
-                  <div style={{fontSize:28}}>🧾</div>
-                  <div style={{fontWeight:800}}>Orders</div>
-                  <div className="helper">Create orders</div>
-                </NavLink>
-              )}
-              {canCreateDrivers && (
-                <NavLink to="/manager/drivers/create" className="btn" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
-                  <div style={{fontSize:28}}>🚚</div>
-                  <div style={{fontWeight:800}}>Create Driver</div>
-                  <div className="helper">Add drivers to your workspace</div>
-                </NavLink>
-              )}
-              <NavLink to="/manager/finances" className="btn secondary" style={{display:'grid', placeItems:'center', padding:'16px 12px'}}>
-                <div style={{fontSize:28}}>💳</div>
-                <div style={{fontWeight:800}}>Finances</div>
-                <div className="helper">Payout proofs and history</div>
-              </NavLink>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Professional dashboard: removed quick links and mobile quick actions for a cleaner view */}
       </div>
 
       {/* Quick actions moved to bottom on mobile */}
@@ -354,6 +378,7 @@ export default function ManagerDashboard(){
               const qs = encodeURIComponent(ctry)
               const sums = summary?.[ctry] || { orders:0, delivered:0, cancelled:0 }
               const m = moneyByCountry[ctry] || { collected:0, deliveredToCompany:0, pendingToCompany:0 }
+              const cm = countryMetrics(ctry) || {}
               const currency = ctry==='KSA' ? 'SAR' : ctry==='UAE' ? 'AED' : ctry==='Oman' ? 'OMR' : ctry==='Bahrain' ? 'BHD' : ctry==='India' ? 'INR' : ctry==='Kuwait' ? 'KWD' : 'QAR'
               return (
                 <div key={ctry} className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'10px 12px', background:'var(--panel)', minWidth:280}}>
@@ -367,8 +392,36 @@ export default function ManagerDashboard(){
                       <a className="link" href={`/manager/orders?country=${qs}`}>{sums.orders.toLocaleString()}</a>
                     </div>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Pending</div>
+                      <a className="link" href={`/manager/orders?country=${qs}&ship=pending`}>{fmtNum(cm.pending||0)}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Assigned</div>
+                      <a className="link" href={`/manager/orders?country=${qs}&ship=assigned`}>{fmtNum(cm.assigned||0)}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Picked Up</div>
+                      <a className="link" href={`/manager/orders?country=${qs}&ship=picked_up`}>{fmtNum(cm.pickedUp||0)}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">In Transit</div>
+                      <a className="link" href={`/manager/orders?country=${qs}&ship=in_transit`}>{fmtNum(cm.transit||0)}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Out for Delivery</div>
+                      <a className="link" href={`/manager/orders?country=${qs}&ship=out_for_delivery`}>{fmtNum(cm.outForDelivery||0)}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                       <div className="helper">Delivered</div>
                       <a className="link" href={`/manager/orders?country=${qs}&ship=delivered`}>{sums.delivered.toLocaleString()}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">No Response</div>
+                      <a className="link" href={`/manager/orders?country=${qs}&ship=no_response`}>{fmtNum(cm.noResponse||0)}</a>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                      <div className="helper">Returned</div>
+                      <a className="link" href={`/manager/orders?country=${qs}&ship=returned`}>{fmtNum(cm.returned||0)}</a>
                     </div>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                       <div className="helper">Cancelled</div>

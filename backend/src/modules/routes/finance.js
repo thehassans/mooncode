@@ -670,10 +670,20 @@ export default router
 // GET /api/finance/drivers/summary — owner/manager overview per driver
 router.get('/drivers/summary', auth, allowRoles('admin','user','manager'), async (req, res) => {
   try{
-    // Scope drivers by workspace (owner)
+    // Scope drivers by workspace (owner) and, for managers, by assigned countries
     let driverCond = { role: 'driver' }
     if (req.user.role === 'user') driverCond.createdBy = req.user.id
-    if (req.user.role === 'manager') driverCond.createdBy = req.user.createdBy || req.user.id
+    if (req.user.role === 'manager'){
+      // Load manager record to get assigned countries
+      const me = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
+      driverCond.createdBy = me?.createdBy || req.user.id
+      const assigned = Array.isArray(me?.assignedCountries) && me.assignedCountries.length ? me.assignedCountries : (me?.assignedCountry ? [me.assignedCountry] : [])
+      if (assigned.length){
+        const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
+        const set = new Set(); for (const c of assigned){ for (const x of expand(c)) set.add(x) }
+        driverCond.country = { $in: Array.from(set) }
+      }
+    }
     const page = Math.max(1, Number(req.query.page||1))
     const limit = Math.min(100, Math.max(1, Number(req.query.limit||20)))
     const skip = (page-1) * limit
