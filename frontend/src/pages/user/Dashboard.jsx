@@ -4,12 +4,13 @@ import { API_BASE, apiGet } from '../../api.js'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
 
-const OrderStatusPie = ({ metrics }) => {
+const OrderStatusPie = ({ statusTotals }) => {
+  const st = statusTotals || { pending:0, picked_up:0, delivered:0, cancelled:0 }
   const data = [
-    { label: 'Pending', value: metrics.pendingOrders, color: '#F59E0B' },
-    { label: 'Picked Up', value: metrics.pickedUpOrders, color: '#3B82F6' },
-    { label: 'Delivered', value: metrics.deliveredOrders, color: '#10B981' },
-    { label: 'Cancelled', value: metrics.cancelledOrders, color: '#EF4444' },
+    { label: 'Open', value: st.pending, color: '#F59E0B' },
+    { label: 'Picked Up', value: st.picked_up, color: '#3B82F6' },
+    { label: 'Delivered', value: st.delivered, color: '#10B981' },
+    { label: 'Cancelled', value: st.cancelled, color: '#EF4444' },
   ];
   const total = data.reduce((sum, item) => sum + item.value, 0);
   if (total === 0) return <div>No orders</div>;
@@ -236,7 +237,7 @@ export default function UserDashboard(){
         {(function(){
           const totalOrdersCount = Number(metrics?.totalOrders||0)
           const deliveredCount = Number(metrics?.deliveredOrders||0)
-          const pendingCount = Number(metrics?.pendingOrders||0)
+          const pendingCount = Number((statusTotals?.pending)||0)
           const amountTotalOrdersAED = sumAmountAED('amountTotalOrders')
           const amountDeliveredAED = sumAmountAED('amountDelivered')
           const amountPendingAED = sumAmountAED('amountPending')
@@ -266,8 +267,8 @@ export default function UserDashboard(){
                 <Tile icon="💵" title="Amount of Total Orders (AED)" valueEl={<a className="link" href="/user/orders">{`AED ${fmtAmt(amountTotalOrdersAED)}`}</a>} gradient={'linear-gradient(135deg,#10b981,#059669)'} />
                 <Tile icon="✅" title="Orders Delivered" valueEl={<a className="link" href="/user/orders?ship=delivered">{fmtNum(deliveredCount)}</a>} gradient={'linear-gradient(135deg,#16a34a,#15803d)'} />
                 <Tile icon="🧾" title="Amount of Orders Delivered (AED)" valueEl={<a className="link" href="/user/orders?ship=delivered">{`AED ${fmtAmt(amountDeliveredAED)}`}</a>} gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
-                <Tile icon="⏳" title="Pending Orders" valueEl={<a className="link" href="/user/orders?status=pending">{fmtNum(pendingCount)}</a>} gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
-                <Tile icon="💰" title="Pending Amount (AED)" valueEl={<a className="link" href="/user/orders?status=pending">{`AED ${fmtAmt(amountPendingAED)}`}</a>} gradient={'linear-gradient(135deg,#fb923c,#f97316)'} />
+                <Tile icon="⏳" title="Open Orders" valueEl={<a className="link" href="/user/orders?ship=open">{fmtNum(pendingCount)}</a>} gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
+                <Tile icon="💰" title="Open Amount (AED)" valueEl={<a className="link" href="/user/orders?ship=open">{`AED ${fmtAmt(amountPendingAED)}`}</a>} gradient={'linear-gradient(135deg,#fb923c,#f97316)'} />
               </div>
             </div>
           )
@@ -301,8 +302,8 @@ export default function UserDashboard(){
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
                 <Tile icon="📦" title="Total Orders" value={st.total} to="/user/orders" gradient={'linear-gradient(135deg,#3b82f6,#1d4ed8)'} />
-                <Tile icon="⏳" title="Pending" value={st.pending} to="/user/orders?status=pending" gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
-                <Tile icon="📌" title="Assigned" value={st.assigned} to="/user/orders?status=assigned" gradient={'linear-gradient(135deg,#94a3b8,#64748b)'} />
+                <Tile icon="⏳" title="Open" value={st.pending} to="/user/orders?ship=open" gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
+                <Tile icon="📌" title="Assigned" value={st.assigned} to="/user/orders?ship=assigned" gradient={'linear-gradient(135deg,#94a3b8,#64748b)'} />
                 <Tile icon="🚚" title="Picked Up" value={st.picked_up} to="/user/orders?ship=picked_up" gradient={'linear-gradient(135deg,#60a5fa,#3b82f6)'} />
                 <Tile icon="🚛" title="In Transit" value={st.in_transit} to="/user/orders?ship=in_transit" gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
                 <Tile icon="🛵" title="Out for Delivery" value={st.out_for_delivery} to="/user/orders?ship=out_for_delivery" gradient={'linear-gradient(135deg,#f97316,#ea580c)'} />
@@ -434,7 +435,7 @@ export default function UserDashboard(){
           <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🌐</div>
           <div>
             <div style={{fontWeight:800,fontSize:16}}>Per-Country Orders & Status</div>
-            <div className="helper">Numbers only; amounts converted to AED</div>
+            <div className="helper">Numbers only; amounts in local currency</div>
           </div>
         </div>
         <div className="section" style={{display:'grid', gap:12}}>
@@ -466,12 +467,12 @@ export default function UserDashboard(){
                     <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}&ship=delivered`}>{amtDeliveredStr}</a></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Pending Orders</div>
-                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}&status=pending`}>{fmtNum(m?.pending||0)}</a></div>
+                    <div className="helper">Open Orders</div>
+                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}&ship=open`}>{fmtNum(m?.pending||0)}</a></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Pending Amount</div>
-                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}&status=pending`}>{amtPendingStr}</a></div>
+                    <div className="helper">Open Amount</div>
+                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}&ship=open`}>{amtPendingStr}</a></div>
                   </div>
                 </div>
                 <div style={{marginTop:10}}>
@@ -479,7 +480,7 @@ export default function UserDashboard(){
                   <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:10}}>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Assigned</div>
-                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&status=assigned`}>{fmtNum(m?.assigned||0)}</a></div>
+                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=assigned`}>{fmtNum(m?.assigned||0)}</a></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Picked Up</div>
@@ -538,7 +539,7 @@ export default function UserDashboard(){
             <div className="helper">Visual breakdown of order statuses</div>
           </div>
         </div>
-        <OrderStatusPie metrics={metrics} />
+        <OrderStatusPie statusTotals={statusTotals} />
       </div>
 
       {/* Recent Order History */}

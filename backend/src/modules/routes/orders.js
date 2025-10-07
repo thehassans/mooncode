@@ -492,7 +492,13 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
     if (city) match.city = city
     if (onlyUnassigned) match.deliveryBoy = { $in: [null, undefined] }
     if (statusFilter) match.status = statusFilter
-    if (shipFilter) match.shipmentStatus = shipFilter
+    if (shipFilter) {
+      if (shipFilter === 'open') {
+        match.shipmentStatus = { $in: ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response','attempted','contacted'] }
+      } else {
+        match.shipmentStatus = shipFilter
+      }
+    }
     if (payment === 'COD') match.paymentMethod = 'COD'
     else if (payment === 'PREPAID') match.paymentMethod = { $ne: 'COD' }
     if (collectedOnly) match.collectedAmount = { $gt: 0 }
@@ -640,7 +646,13 @@ router.get('/export', auth, allowRoles('admin','user','agent','manager'), async 
     if (city) match.city = city
     if (onlyUnassigned) match.deliveryBoy = { $in: [null, undefined] }
     if (statusFilter) match.status = statusFilter
-    if (shipFilter) match.shipmentStatus = shipFilter
+    if (shipFilter) {
+      if (shipFilter === 'open') {
+        match.shipmentStatus = { $in: ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response','attempted','contacted'] }
+      } else {
+        match.shipmentStatus = shipFilter
+      }
+    }
     if (payment === 'COD') match.paymentMethod = 'COD'
     else if (payment === 'PREPAID') match.paymentMethod = { $ne: 'COD' }
     if (collectedOnly) match.collectedAmount = { $gt: 0 }

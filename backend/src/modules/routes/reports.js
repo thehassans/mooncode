@@ -802,6 +802,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         totalPrepaid: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $ne: ['$paymentMethod', 'COD'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] }, 0 ] } },
         totalCollected: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $ifNull: ['$collectedAmount', 0] }, 0 ] } },
         pendingOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'pending'] }, 1, 0 ] } },
+        openOrders: { $sum: { $cond: [ { $in: ['$shipmentStatus', ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response','attempted','contacted']] }, 1, 0 ] } },
         pickedUpOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'picked_up'] }, 1, 0 ] } },
         deliveredOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
         cancelledOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'cancelled'] }, 1, 0 ] } },
@@ -847,16 +848,40 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     // Country-specific metrics
     const countryMetrics = await Order.aggregate([
       { $match: { createdBy: { $in: creatorIds } } },
+      // Canonicalize orderCountry to unify aliases
+      { $addFields: {
+        orderCountryCanon: {
+          $let: {
+            vars: { c: { $ifNull: ['$orderCountry', ''] } },
+            in: {
+              $switch: {
+                branches: [
+                  { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
+                ],
+                default: '$$c'
+              }
+            }
+          }
+        }
+      } },
       { $group: {
-        _id: '$orderCountry',
+        _id: '$orderCountryCanon',
         // amounts
         totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
         amountTotalOrders: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } },
         amountDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
         amountPending: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'pending'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        amountOpen: { $sum: { $cond: [ { $in: ['$shipmentStatus', ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response','attempted','contacted']] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
         // counts
         totalOrders: { $sum: 1 },
         pendingOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'pending'] }, 1, 0 ] } },
+        openOrders: { $sum: { $cond: [ { $in: ['$shipmentStatus', ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response','attempted','contacted']] }, 1, 0 ] } },
         assignedOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'assigned'] }, 1, 0 ] } },
         pickedUpOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'picked_up'] }, 1, 0 ] } },
         inTransitOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'in_transit'] }, 1, 0 ] } },
@@ -905,8 +930,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         countries[country].pickedUp = cm.pickedUpOrders || 0;
         countries[country].delivered = cm.deliveredOrders || 0;
         countries[country].transit = cm.inTransitOrders || 0;
-        // additional status counts
-        countries[country].pending = cm.pendingOrders || 0;
+        // additional status counts (use openOrders for "pending" tile semantics)
+        countries[country].pending = cm.openOrders || 0;
         countries[country].assigned = cm.assignedOrders || 0;
         countries[country].outForDelivery = cm.outForDeliveryOrders || 0;
         countries[country].noResponse = cm.noResponseOrders || 0;
@@ -915,7 +940,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         // amounts by status
         countries[country].amountTotalOrders = cm.amountTotalOrders || 0;
         countries[country].amountDelivered = cm.amountDelivered || 0;
-        countries[country].amountPending = cm.amountPending || 0;
+        countries[country].amountPending = (cm.amountOpen != null ? cm.amountOpen : cm.amountPending) || 0;
       }
     });
     
