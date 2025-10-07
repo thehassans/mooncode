@@ -801,10 +801,10 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         totalCOD: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $eq: ['$paymentMethod', 'COD'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] }, 0 ] } },
         totalPrepaid: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $ne: ['$paymentMethod', 'COD'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] }, 0 ] } },
         totalCollected: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $ifNull: ['$collectedAmount', 0] }, 0 ] } },
-        pendingOrders: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, 1, 0 ] } },
+        pendingOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'pending'] }, 1, 0 ] } },
         pickedUpOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'picked_up'] }, 1, 0 ] } },
         deliveredOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
-        cancelledOrders: { $sum: { $cond: [ { $eq: ['$status', 'cancelled'] }, 1, 0 ] } },
+        cancelledOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'cancelled'] }, 1, 0 ] } },
         totalProductsOrdered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, '$quantity', 0 ] } },
       } }
     ]);
@@ -853,18 +853,18 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
         amountTotalOrders: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } },
         amountDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
-        amountPending: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        amountPending: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'pending'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
         // counts
         totalOrders: { $sum: 1 },
-        pendingOrders: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, 1, 0 ] } },
-        assignedOrders: { $sum: { $cond: [ { $eq: ['$status', 'assigned'] }, 1, 0 ] } },
+        pendingOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'pending'] }, 1, 0 ] } },
+        assignedOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'assigned'] }, 1, 0 ] } },
         pickedUpOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'picked_up'] }, 1, 0 ] } },
         inTransitOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'in_transit'] }, 1, 0 ] } },
         outForDeliveryOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'out_for_delivery'] }, 1, 0 ] } },
         deliveredOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
         noResponseOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'no_response'] }, 1, 0 ] } },
         returnedOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'returned'] }, 1, 0 ] } },
-        cancelledOrders: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'cancelled'] }, { $eq: ['$status', 'cancelled'] } ] }, 1, 0 ] } },
+        cancelledOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'cancelled'] }, 1, 0 ] } },
       } }
     ]);
     
