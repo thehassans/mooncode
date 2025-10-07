@@ -143,6 +143,45 @@ router.get('/agents', auth, allowRoles('admin','user','manager'), async (req, re
   res.json({ users })
 })
 
+// List drivers (admin => all, user => own, manager => owner's drivers; supports ?country= with KSA/UAE aliasing)
+router.get('/drivers', auth, allowRoles('admin','user','manager'), async (req, res) => {
+  try{
+    const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
+    let cond = { role: 'driver' }
+    if (req.user.role === 'admin'){
+      // no scoping
+    } else if (req.user.role === 'user'){
+      cond.createdBy = req.user.id
+    } else if (req.user.role === 'manager'){
+      const mgr = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
+      const ownerId = String(mgr?.createdBy || '')
+      if (!ownerId) return res.json({ users: [] })
+      cond.createdBy = ownerId
+      const assigned = Array.isArray(mgr?.assignedCountries) && mgr.assignedCountries.length ? mgr.assignedCountries : (mgr?.assignedCountry ? [mgr.assignedCountry] : [])
+      if (assigned.length){
+        const set = new Set(); for (const c of assigned){ for (const x of expand(c)) set.add(x) }
+        cond.country = { $in: Array.from(set) }
+      }
+    }
+    const country = String(req.query.country||'').trim()
+    if (country){
+      const aliases = expand(country)
+      if (cond.country && Array.isArray(cond.country.$in)){
+        // intersect assigned-countries set with requested aliases
+        const allowed = new Set(cond.country.$in)
+        const inter = aliases.filter(x => allowed.has(x))
+        cond.country = { $in: inter }
+      } else {
+        cond.country = { $in: aliases }
+      }
+    }
+    const users = await User.find(cond, 'firstName lastName email phone country city role').sort({ firstName: 1, lastName: 1 }).lean()
+    return res.json({ users })
+  }catch(err){
+    return res.status(500).json({ message: 'Failed to load drivers' })
+  }
+})
+
 // Resend welcome WhatsApp message for an agent (admin/user/manager within scope)
 router.post('/agents/:id/resend-welcome', auth, allowRoles('admin','user','manager'), async (req, res) => {
   try{

@@ -67,19 +67,41 @@ export default function ManagerDashboard(){
   function fmtNum(n){ try{ return Number(n||0).toLocaleString() }catch{ return String(n||0) } }
   function fmtAmt(n){ try{ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }catch{ return String(n||0) } }
 
+  // Canonical helpers: unify keys and resolve currency for display
+  const currencyOf = (c)=>{
+    const k = String(c||'')
+    if (k==='KSA' || k==='Saudi Arabia') return 'SAR'
+    if (k==='UAE' || k==='United Arab Emirates') return 'AED'
+    if (k==='Oman' || k==='OM') return 'OMR'
+    if (k==='Bahrain' || k==='BH') return 'BHD'
+    if (k==='India' || k==='IN') return 'INR'
+    if (k==='Kuwait' || k==='KW') return 'KWD'
+    if (k==='Qatar' || k==='QA') return 'QAR'
+    return 'AED'
+  }
+  const keyOf = (name)=>{
+    const canon = (name==='Saudi Arabia' ? 'KSA' : (name==='United Arab Emirates' ? 'UAE' : String(name||'')))
+    if (canon==='KSA' && COUNTRY_LIST.includes('Saudi Arabia')) return 'Saudi Arabia'
+    if (canon==='UAE' && COUNTRY_LIST.includes('United Arab Emirates')) return 'United Arab Emirates'
+    return canon
+  }
+
   // Load drivers finance summary and compute amounts per country
   const moneyByCountry = useMemo(()=>{
     const map = {}
+    const list = Array.isArray(COUNTRY_LIST) ? COUNTRY_LIST : []
     for (const d of (Array.isArray(drivers)? drivers: [])){
-      const c = String(d?.country||'')
-      if (!c) continue
-      if (!map[c]) map[c] = { collected:0, deliveredToCompany:0, pendingToCompany:0 }
-      map[c].collected += Number(d?.collected||0)
-      map[c].deliveredToCompany += Number(d?.deliveredToCompany||0)
-      map[c].pendingToCompany += Number(d?.pendingToCompany||0)
+      const raw = String(d?.country||'')
+      if (!raw) continue
+      const k = keyOf(raw)
+      if (!list.includes(k)) continue
+      if (!map[k]) map[k] = { collected:0, deliveredToCompany:0, pendingToCompany:0 }
+      map[k].collected += Number(d?.collected||0)
+      map[k].deliveredToCompany += Number(d?.deliveredToCompany||0)
+      map[k].pendingToCompany += Number(d?.pendingToCompany||0)
     }
     return map
-  }, [drivers])
+  }, [drivers, COUNTRY_LIST])
 
   // Aggregate driver metrics by assigned countries (assignedAllTime + amounts)
   const driverAggByCountry = useMemo(()=>{
@@ -209,7 +231,7 @@ export default function ManagerDashboard(){
             const d = driverAggByCountry[c] || { assignedAllTime:0, collected:0, deliveredToCompany:0, pendingToCompany:0 }
             const qs = encodeURIComponent(c)
             const name = (c==='KSA') ? 'Saudi Arabia' : c
-            const cur = (c==='KSA') ? 'SAR' : (c==='UAE' ? 'AED' : (c==='Oman' ? 'OMR' : (c==='Bahrain' ? 'BHD' : (c==='India' ? 'INR' : (c==='Kuwait' ? 'KWD' : 'QAR')))))
+            const cur = currencyOf(c)
             return (
               <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
                 <div style={{fontWeight:900, marginBottom:8}}>{name}</div>
@@ -427,7 +449,7 @@ export default function ManagerDashboard(){
               const sums = summary?.[ctry] || { orders:0, delivered:0, cancelled:0 }
               const m = moneyByCountry[ctry] || { collected:0, deliveredToCompany:0, pendingToCompany:0 }
               const cm = countryMetrics(ctry) || {}
-              const currency = ctry==='KSA' ? 'SAR' : ctry==='UAE' ? 'AED' : ctry==='Oman' ? 'OMR' : ctry==='Bahrain' ? 'BHD' : ctry==='India' ? 'INR' : ctry==='Kuwait' ? 'KWD' : 'QAR'
+              const currency = currencyOf(ctry)
               return (
                 <div key={ctry} className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'10px 12px', background:'var(--panel)', minWidth:280}}>
                   <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6}}>
