@@ -497,7 +497,14 @@ export default function UserDashboard(){
           <div style={{display:'flex', gap:12, minWidth:700}}>
             {countrySummaryRows.map(row=>{
               const qsCountry = encodeURIComponent(row.country)
-              const currency = row.country==='KSA' ? 'SAR' : row.country==='UAE' ? 'AED' : row.country==='Oman' ? 'OMR' : row.country==='Bahrain' ? 'BHD' : row.country==='India' ? 'INR' : row.country==='Kuwait' ? 'KWD' : 'QAR'
+              const currency = row.country==='KSA' ? 'SAR'
+                : row.country==='UAE' ? 'AED'
+                : row.country==='Oman' ? 'OMR'
+                : row.country==='Bahrain' ? 'BHD'
+                : row.country==='India' ? 'INR'
+                : row.country==='Kuwait' ? 'KWD'
+                : row.country==='Qatar' ? 'QAR'
+                : 'AED'
               return (
                 <div key={row.country} className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'10px 12px', background:'var(--panel)', minWidth:280}}>
                   <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6}}>

@@ -922,11 +922,12 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       Qatar: { sales: 0, orders: 0, pickedUp: 0, delivered: 0, transit: 0, driverExpense: 0 },
       Other: { sales: 0, orders: 0, pickedUp: 0, delivered: 0, transit: 0, driverExpense: 0 },
     };
-    const known = new Set(['KSA','UAE','Oman','Bahrain','Saudi Arabia','India','Kuwait','Qatar']);
+    const canon = (name) => name === 'Saudi Arabia' ? 'KSA' : (name === 'United Arab Emirates' ? 'UAE' : name)
     
     countryMetrics.forEach(cm => {
       const code = cm._id || '';
-      const key = countries[code] ? code : 'Other';
+      const ccode = canon(String(code))
+      const key = countries[ccode] ? ccode : 'Other';
       countries[key].sales = (countries[key].sales || 0) + (cm.totalSales || 0);
       countries[key].orders = (countries[key].orders || 0) + (cm.totalOrders || 0);
       countries[key].pickedUp = (countries[key].pickedUp || 0) + (cm.pickedUpOrders || 0);
