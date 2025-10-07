@@ -1,14 +1,25 @@
 import React, { useEffect, useState } from 'react'
 import { apiGet, apiPost } from '../../api'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false, withFilters=false }){
   const nav = useNavigate()
+  const location = useLocation()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [q, setQ] = useState('')
   const [ship, setShip] = useState('')
+  // Initialize filters from URL on mount and when URL changes
+  useEffect(()=>{
+    try{
+      const sp = new URLSearchParams(location.search || '')
+      const q0 = sp.get('q') || ''
+      const s0 = sp.get('ship') || ''
+      setQ(q0)
+      setShip(s0)
+    }catch{}
+  }, [location.search])
   const totalCollected = React.useMemo(()=>{
     try{ return (rows||[]).reduce((sum,o)=> sum + (Number(o?.collectedAmount)||0), 0) }catch{ return 0 }
   }, [rows])

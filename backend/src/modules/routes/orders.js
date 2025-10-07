@@ -994,6 +994,38 @@ router.get('/driver/cancelled', auth, allowRoles('driver'), async (req, res) => 
   res.json({ orders })
 })
 
+// Driver: metrics across all time by shipmentStatus
+router.get('/driver/metrics', auth, allowRoles('driver'), async (req, res) => {
+  try{
+    const driverId = req.user.id
+    const totalAssignedAllTime = await Order.countDocuments({ deliveryBoy: driverId })
+    const rows = await Order.aggregate([
+      { $match: { deliveryBoy: new mongoose.Types.ObjectId(driverId) } },
+      { $group: { _id: '$shipmentStatus', c: { $sum: 1 } } }
+    ])
+    const status = {
+      assigned: 0,
+      picked_up: 0,
+      in_transit: 0,
+      out_for_delivery: 0,
+      delivered: 0,
+      no_response: 0,
+      returned: 0,
+      cancelled: 0,
+      // Optional: attempted/contacted for completeness
+      attempted: 0,
+      contacted: 0,
+    }
+    for (const r of rows){
+      const key = String(r._id||'').toLowerCase()
+      if (status.hasOwnProperty(key)) status[key] = Number(r.c||0)
+    }
+    res.json({ totalAssignedAllTime, status })
+  }catch(e){
+    res.status(500).json({ message: e?.message || 'Failed to load driver metrics' })
+  }
+})
+
 // Driver: history (archive) - default to delivered only, supports date, status and text search
 router.get('/driver/history', auth, allowRoles('driver'), async (req, res) => {
   try{

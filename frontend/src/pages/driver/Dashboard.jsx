@@ -5,27 +5,36 @@ import { useNavigate } from 'react-router-dom'
 
 export default function DriverDashboard(){
   const nav = useNavigate()
-  const [counts, setCounts] = useState({ assigned: 0, picked: 0, delivered: 0, cancelled: 0 })
+  const [metrics, setMetrics] = useState({ totalAssignedAllTime: 0, status: { assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 } })
   const [assigned, setAssigned] = useState([])
   const [payout, setPayout] = useState({ currency:'', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
   const [loading, setLoading] = useState(false)
 
-  async function loadCounts(){
+  async function loadData(){
     setLoading(true)
     try{
-      const [a,p,d,c,s] = await Promise.all([
+      const [a, m, s] = await Promise.all([
         apiGet('/api/orders/driver/assigned'),
-        apiGet('/api/orders/driver/picked'),
-        apiGet('/api/orders/driver/delivered'),
-        apiGet('/api/orders/driver/cancelled'),
+        apiGet('/api/orders/driver/metrics'),
         apiGet('/api/finance/remittances/summary').catch(()=>({}))
       ])
-      setCounts({
-        assigned: (a.orders||[]).length,
-        picked: (p.orders||[]).length,
-        delivered: (d.orders||[]).length,
-        cancelled: (c.orders||[]).length,
-      })
+      if (m && typeof m.totalAssignedAllTime === 'number' && m.status){
+        setMetrics({
+          totalAssignedAllTime: Number(m.totalAssignedAllTime||0),
+          status: {
+            assigned: Number(m.status.assigned||0),
+            picked_up: Number(m.status.picked_up||0),
+            in_transit: Number(m.status.in_transit||0),
+            out_for_delivery: Number(m.status.out_for_delivery||0),
+            delivered: Number(m.status.delivered||0),
+            no_response: Number(m.status.no_response||0),
+            returned: Number(m.status.returned||0),
+            cancelled: Number(m.status.cancelled||0),
+          }
+        })
+      } else {
+        setMetrics({ totalAssignedAllTime: 0, status: { assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 } })
+      }
       if (s){
         setPayout({
           currency: s.currency||'',
@@ -38,12 +47,12 @@ export default function DriverDashboard(){
         .filter(o => String(o?.shipmentStatus||'').toLowerCase() !== 'picked_up')
         .slice(0,5))
     }catch{
-      setCounts({ assigned:0, picked:0, delivered:0, cancelled:0 })
+      setMetrics({ totalAssignedAllTime: 0, status: { assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 } })
       setAssigned([])
       setPayout({ currency:'', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
     }finally{ setLoading(false) }
   }
-  useEffect(()=>{ loadCounts() },[])
+  useEffect(()=>{ loadData() },[])
 
   // Real-time: refresh counts on order events
   useEffect(()=>{
@@ -51,7 +60,7 @@ export default function DriverDashboard(){
     try{
       const token = localStorage.getItem('token') || ''
       socket = io(API_BASE || undefined, { path: '/socket.io', transports: ['polling'], upgrade:false, auth: { token }, withCredentials: true })
-      const refresh = ()=>{ try{ loadCounts() }catch{} }
+      const refresh = ()=>{ try{ loadData() }catch{} }
       socket.on('order.assigned', refresh)
       socket.on('order.updated', refresh)
       socket.on('order.shipped', refresh)
@@ -65,11 +74,18 @@ export default function DriverDashboard(){
   },[])
 
   const money = (v)=> `${payout.currency||''} ${Number(v||0).toFixed(2)}`
-  const cards = [
-    { key:'assigned', title:'Orders Assigned', value: counts.assigned, to:'/driver/orders/assigned', color:'#3b82f6' },
-    { key:'picked', title:'Total Picked Up', value: counts.picked, to:'/driver/orders/picked', color:'#f59e0b' },
-    { key:'delivered', title:'Total Delivered', value: counts.delivered, to:'/driver/orders/delivered', color:'#10b981' },
-    { key:'cancelled', title:'Total Cancelled', value: counts.cancelled, to:'/driver/orders/cancelled', color:'#ef4444' },
+  const metricCards = [
+    { key:'total_assigned_all', title:'Total Orders Assigned (All Time)', value: metrics.totalAssignedAllTime, to:null, color:'#0ea5e9' },
+    { key:'assigned', title:'Currently Assigned', value: metrics.status.assigned, to:'/driver/orders/assigned', color:'#3b82f6' },
+    { key:'picked_up', title:'Picked Up', value: metrics.status.picked_up, to:'/driver/orders/picked', color:'#f59e0b' },
+    { key:'in_transit', title:'In Transit', value: metrics.status.in_transit, to:'/driver/orders/history?ship=in_transit', color:'#0284c7' },
+    { key:'out_for_delivery', title:'Out for Delivery', value: metrics.status.out_for_delivery, to:'/driver/orders/history?ship=out_for_delivery', color:'#f97316' },
+    { key:'delivered', title:'Delivered', value: metrics.status.delivered, to:'/driver/orders/delivered', color:'#10b981' },
+    { key:'no_response', title:'No Response', value: metrics.status.no_response, to:'/driver/orders/history?ship=no_response', color:'#ef4444' },
+    { key:'returned', title:'Returned', value: metrics.status.returned, to:'/driver/orders/history?ship=returned', color:'#737373' },
+    { key:'cancelled', title:'Cancelled', value: metrics.status.cancelled, to:'/driver/orders/cancelled', color:'#b91c1c' },
+  ]
+  const payoutCards = [
     { key:'collected_amount', title:'Total Collected (Delivered)', value: money(payout.totalCollectedAmount), to:'/driver/orders/delivered', color:'#0ea5e9' },
     { key:'delivered_company', title:'Delivered to Company', value: money(payout.deliveredToCompany), to:'/driver/payout#remittances', color:'#22c55e' },
     { key:'pending_company', title:'Pending Delivery to Company', value: money(payout.pendingToCompany), to:'/driver/payout#pay', color:'#f59e0b' },
@@ -104,7 +120,20 @@ export default function DriverDashboard(){
 
       <div className="card" style={{padding:16}}>
         <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px,1fr))', gap:12}}>
-          {cards.map(c => (
+          {metricCards.map(c => (
+            <button key={c.key} className="tile" onClick={()=> c.to ? nav(c.to) : null} style={{
+              display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12
+            }}>
+              <div style={{fontSize:12, color:'var(--muted)'}}>{c.title}</div>
+              <div style={{fontSize:28, fontWeight:800, color:c.color}}>{loading? '…' : c.value}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="card" style={{padding:16}}>
+        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px,1fr))', gap:12}}>
+          {payoutCards.map(c => (
             <button key={c.key} className="tile" onClick={()=> nav(c.to)} style={{
               display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12
             }}>
