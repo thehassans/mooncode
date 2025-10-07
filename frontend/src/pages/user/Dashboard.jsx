@@ -149,6 +149,18 @@ export default function UserDashboard(){
   }
   function fmtNum(n){ try{ return Number(n||0).toLocaleString() }catch{ return String(n||0) } }
   function fmtAmt(n){ try{ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }catch{ return String(n||0) } }
+  // AED conversion helpers (static rates; adjust as needed)
+  const AED_RATE_BY_CUR = { SAR: 0.98, AED: 1, OMR: 9.55, BHD: 9.74, INR: 0.044, KWD: 11.9, QAR: 1.0 }
+  function toAED(amount, country){
+    try{
+      const cur = COUNTRY_INFO[country]?.cur || 'AED'
+      const rate = AED_RATE_BY_CUR[cur] || 1
+      return Number(amount||0) * rate
+    }catch{ return Number(amount||0) }
+  }
+  function sumAmountAED(key){
+    try{ return COUNTRY_LIST.reduce((s,c)=> s + toAED((countryMetrics(c)[key]||0), c), 0) }catch{ return 0 }
+  }
   const statusTotals = useMemo(()=>{
     if (metrics && metrics.statusTotals) return metrics.statusTotals
     // Fallback: aggregate from countries if backend older
@@ -226,27 +238,9 @@ export default function UserDashboard(){
           const totalOrdersCount = Number(metrics?.totalOrders||0)
           const deliveredCount = Number(metrics?.deliveredOrders||0)
           const pendingCount = Number(metrics?.pendingOrders||0)
-          const sumAmount = (key)=> COUNTRY_LIST.reduce((s,c)=> s + Number(countryMetrics(c)[key]||0), 0)
-          const amountTotalOrders = sumAmount('amountTotalOrders')
-          const amountDelivered = sumAmount('amountDelivered')
-          const amountPending = sumAmount('amountPending')
-          function Chips({ keyName, isAmount }){
-            return (
-              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
-                {COUNTRY_LIST.map(c=>{
-                  const m = countryMetrics(c)
-                  const { flag='', cur='' } = COUNTRY_INFO[c]||{}
-                  const val = isAmount ? Number(m[keyName]||0) : Number((keyName==='orders'?m.orders:m[keyName])||0)
-                  return (
-                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
-                      <span aria-hidden>{flag}</span>
-                      <strong style={{marginLeft:6}}>{isAmount ? `${cur} ${fmtAmt(val)}` : fmtNum(val)}</strong>
-                    </span>
-                  )
-                })}
-              </div>
-            )
-          }
+          const amountTotalOrdersAED = sumAmountAED('amountTotalOrders')
+          const amountDeliveredAED = sumAmountAED('amountDelivered')
+          const amountPendingAED = sumAmountAED('amountPending')
           function Tile({ icon, title, valueEl, chipsEl, gradient }){
             return (
               <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
@@ -255,7 +249,7 @@ export default function UserDashboard(){
                   <div style={{fontWeight:800}}>{title}</div>
                 </div>
                 <div style={{fontSize:20, fontWeight:900, marginBottom:6}}>{valueEl}</div>
-                {chipsEl}
+                {/* chips removed for All Countries */}
               </div>
             )
           }
@@ -265,16 +259,16 @@ export default function UserDashboard(){
                 <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🧮</div>
                 <div>
                   <div style={{fontWeight:800,fontSize:16}}>Orders Summary (All Countries)</div>
-                  <div className="helper">Totals and per-country flags</div>
+                  <div className="helper">Totals only (amounts in AED)</div>
                 </div>
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile icon="📦" title="Total Orders" valueEl={fmtNum(totalOrdersCount)} chipsEl={<Chips keyName="orders" />} gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
-                <Tile icon="💵" title="Amount of Total Orders" valueEl={fmtAmt(amountTotalOrders)} chipsEl={<Chips keyName="amountTotalOrders" isAmount />} gradient={'linear-gradient(135deg,#10b981,#059669)'} />
-                <Tile icon="✅" title="Orders Delivered" valueEl={fmtNum(deliveredCount)} chipsEl={<Chips keyName="delivered" />} gradient={'linear-gradient(135deg,#16a34a,#15803d)'} />
-                <Tile icon="🧾" title="Amount of Orders Delivered" valueEl={fmtAmt(amountDelivered)} chipsEl={<Chips keyName="amountDelivered" isAmount />} gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
-                <Tile icon="⏳" title="Pending Orders" valueEl={fmtNum(pendingCount)} chipsEl={<Chips keyName="pending" />} gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
-                <Tile icon="💰" title="Pending Amount" valueEl={fmtAmt(amountPending)} chipsEl={<Chips keyName="amountPending" isAmount />} gradient={'linear-gradient(135deg,#fb923c,#f97316)'} />
+                <Tile icon="📦" title="Total Orders" valueEl={fmtNum(totalOrdersCount)} gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
+                <Tile icon="💵" title="Amount of Total Orders (AED)" valueEl={`AED ${fmtAmt(amountTotalOrdersAED)}`} gradient={'linear-gradient(135deg,#10b981,#059669)'} />
+                <Tile icon="✅" title="Orders Delivered" valueEl={fmtNum(deliveredCount)} gradient={'linear-gradient(135deg,#16a34a,#15803d)'} />
+                <Tile icon="🧾" title="Amount of Orders Delivered (AED)" valueEl={`AED ${fmtAmt(amountDeliveredAED)}`} gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
+                <Tile icon="⏳" title="Pending Orders" valueEl={fmtNum(pendingCount)} gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
+                <Tile icon="💰" title="Pending Amount (AED)" valueEl={`AED ${fmtAmt(amountPendingAED)}`} gradient={'linear-gradient(135deg,#fb923c,#f97316)'} />
               </div>
             </div>
           )
@@ -285,24 +279,7 @@ export default function UserDashboard(){
       <div className="card" style={{marginBottom:12}}>
         {(function(){
           const st = statusTotals || {}
-          function Chips({ getter }){
-            return (
-              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
-                {COUNTRY_LIST.map(c=>{
-                  const m = countryMetrics(c)
-                  const { flag=''} = COUNTRY_INFO[c]||{}
-                  const val = Number(getter(m)||0)
-                  return (
-                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
-                      <span aria-hidden>{flag}</span>
-                      <strong style={{marginLeft:6}}>{fmtNum(val)}</strong>
-                    </span>
-                  )
-                })}
-              </div>
-            )
-          }
-          function Tile({ icon, title, value, getter, gradient }){
+          function Tile({ icon, title, value, gradient }){
             return (
               <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
                 <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
@@ -310,7 +287,7 @@ export default function UserDashboard(){
                   <div style={{fontWeight:800}}>{title}</div>
                 </div>
                 <div style={{fontSize:20, fontWeight:900, marginBottom:6}}>{fmtNum(value||0)}</div>
-                <Chips getter={getter} />
+                {/* chips removed for All Countries */}
               </div>
             )
           }
@@ -320,20 +297,20 @@ export default function UserDashboard(){
                 <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#3b82f6,#1d4ed8)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>📊</div>
                 <div>
                   <div style={{fontWeight:800,fontSize:16}}>Status Summary (All Countries)</div>
-                  <div className="helper">Global totals and per-country flags</div>
+                  <div className="helper">Global totals</div>
                 </div>
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile icon="📦" title="Total Orders" value={st.total} getter={(m)=> m.orders} gradient={'linear-gradient(135deg,#3b82f6,#1d4ed8)'} />
-                <Tile icon="⏳" title="Pending" value={st.pending} getter={(m)=> m.pending} gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
-                <Tile icon="📌" title="Assigned" value={st.assigned} getter={(m)=> m.assigned} gradient={'linear-gradient(135deg,#94a3b8,#64748b)'} />
-                <Tile icon="🚚" title="Picked Up" value={st.picked_up} getter={(m)=> m.pickedUp} gradient={'linear-gradient(135deg,#60a5fa,#3b82f6)'} />
-                <Tile icon="🚛" title="In Transit" value={st.in_transit} getter={(m)=> m.transit} gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
-                <Tile icon="🛵" title="Out for Delivery" value={st.out_for_delivery} getter={(m)=> m.outForDelivery} gradient={'linear-gradient(135deg,#f97316,#ea580c)'} />
-                <Tile icon="✅" title="Delivered" value={st.delivered} getter={(m)=> m.delivered} gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
-                <Tile icon="☎️🚫" title="No Response" value={st.no_response} getter={(m)=> m.noResponse} gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
-                <Tile icon="🔁" title="Returned" value={st.returned} getter={(m)=> m.returned} gradient={'linear-gradient(135deg,#a3a3a3,#737373)'} />
-                <Tile icon="❌" title="Cancelled" value={st.cancelled} getter={(m)=> m.cancelled} gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
+                <Tile icon="📦" title="Total Orders" value={st.total} gradient={'linear-gradient(135deg,#3b82f6,#1d4ed8)'} />
+                <Tile icon="⏳" title="Pending" value={st.pending} gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
+                <Tile icon="📌" title="Assigned" value={st.assigned} gradient={'linear-gradient(135deg,#94a3b8,#64748b)'} />
+                <Tile icon="🚚" title="Picked Up" value={st.picked_up} gradient={'linear-gradient(135deg,#60a5fa,#3b82f6)'} />
+                <Tile icon="🚛" title="In Transit" value={st.in_transit} gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
+                <Tile icon="🛵" title="Out for Delivery" value={st.out_for_delivery} gradient={'linear-gradient(135deg,#f97316,#ea580c)'} />
+                <Tile icon="✅" title="Delivered" value={st.delivered} gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
+                <Tile icon="☎️🚫" title="No Response" value={st.no_response} gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
+                <Tile icon="🔁" title="Returned" value={st.returned} gradient={'linear-gradient(135deg,#a3a3a3,#737373)'} />
+                <Tile icon="❌" title="Cancelled" value={st.cancelled} gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
               </div>
             </div>
           )
@@ -452,171 +429,87 @@ export default function UserDashboard(){
         </div>
       </div>
 
-      {/* Orders Overview */}
-      <div className="card" style={{marginBottom:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#3b82f6,#1d4ed8)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🧾</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Orders Overview</div>
-            <div className="helper">Current status of all orders</div>
-          </div>
-        </div>
-        <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Total Orders" value={metrics.totalOrders} icon="📦" to="/user/orders" />
-          <MetricCard title="Pending Orders" value={metrics.pendingOrders} icon="⏳" to="/user/orders?status=pending" />
-          <MetricCard title="Picked Up" value={metrics.pickedUpOrders} icon="🚚" to="/user/orders?ship=picked_up" />
-          <MetricCard title="Delivered" value={metrics.deliveredOrders} icon="✅" to="/user/orders?ship=delivered" />
-          <MetricCard title="Cancelled" value={metrics.cancelledOrders} icon="❌" to="/user/orders?status=cancelled" />
-        </div>
-      </div>
-
-      {/* Inventory & Expenses */}
-      <div className="card" style={{marginBottom:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#f59e0b,#d97706)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>📊</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Inventory & Operational Costs</div>
-            <div className="helper">Stock levels and order-related expenses</div>
-          </div>
-        </div>
-        <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Products In Stock" value={metrics.totalProductsInHouse} icon="📦" to="/user/inhouse-products" />
-          <MetricCard title="Products Sold" value={metrics.totalProductsOrdered} icon="✅" to="/user/orders?ship=delivered" />
-          <MetricCard title="Total Expenses" value={formatCurrency(metrics.totalExpense||0, 'UAE')} icon="💸" to="/user/finances?section=agent" />
-          <MetricCard title="Agent Expense (PKR)" value={formatCurrency(metrics.totalAgentExpense||0, 'PKR')} icon="👔" to="/user/finances?section=agent" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.totalDriverExpense||0, 'UAE')} icon="🚗" to="/user/finances?section=driver" />
-        </div>
-      </div>
-      {/* KSA Metrics */}
+      {/* Per-Country Orders & Status */}
       <div className="card" style={{marginTop:12}}>
         <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#059669,#047857)',display:'grid',placeItems:'center',color:'#fff',fontSize:20}}>🇸🇦</div>
+          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🌐</div>
           <div>
-            <div style={{fontWeight:800,fontSize:16}}>Saudi Arabia (KSA)</div>
-            <div className="helper">All metrics for Saudi Arabia operations</div>
+            <div style={{fontWeight:800,fontSize:16}}>Per-Country Orders & Status</div>
+            <div className="helper">Numbers only; amounts converted to AED</div>
           </div>
         </div>
-        <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Sales in KSA" value={formatCurrency(metrics.countries?.KSA?.sales || metrics.countries?.['Saudi Arabia']?.sales || 0, 'KSA')} icon="💵" to="/user/orders?country=KSA&ship=delivered" />
-          <MetricCard title="Orders in KSA" value={metrics.countries?.KSA?.orders || metrics.countries?.['Saudi Arabia']?.orders || 0} icon="📦" to="/user/orders?country=KSA" />
-          <MetricCard title="Picked Up" value={metrics.countries?.KSA?.pickedUp || metrics.countries?.['Saudi Arabia']?.pickedUp || 0} icon="🚚" to="/user/orders?country=KSA&ship=picked_up" />
-          <MetricCard title="Delivered" value={metrics.countries?.KSA?.delivered || metrics.countries?.['Saudi Arabia']?.delivered || 0} icon="✅" to="/user/orders?country=KSA&ship=delivered" />
-          <MetricCard title="In Transit" value={metrics.countries?.KSA?.transit || metrics.countries?.['Saudi Arabia']?.transit || 0} icon="🚛" to="/user/orders?country=KSA&ship=in_transit" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.KSA?.driverExpense || metrics.countries?.['Saudi Arabia']?.driverExpense || 0, 'KSA')} icon="🚗" to="/user/finances?section=driver" />
-        </div>
-      </div>
-
-      {/* Oman Metrics */}
-      <div className="card" style={{marginTop:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#dc2626,#991b1b)',display:'grid',placeItems:'center',color:'#fff',fontSize:20}}>🇴🇲</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Oman</div>
-            <div className="helper">All metrics for Oman operations</div>
-          </div>
-        </div>
-        <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Sales in Oman" value={formatCurrency(metrics.countries?.Oman?.sales || 0, 'Oman')} icon="💵" to="/user/orders?country=Oman&ship=delivered" />
-          <MetricCard title="Orders in Oman" value={metrics.countries?.Oman?.orders || 0} icon="📦" to="/user/orders?country=Oman" />
-          <MetricCard title="Picked Up" value={metrics.countries?.Oman?.pickedUp || 0} icon="🚚" to="/user/orders?country=Oman&ship=picked_up" />
-          <MetricCard title="Delivered" value={metrics.countries?.Oman?.delivered || 0} icon="✅" to="/user/orders?country=Oman&ship=delivered" />
-          <MetricCard title="In Transit" value={metrics.countries?.Oman?.transit || 0} icon="🚛" to="/user/orders?country=Oman&ship=in_transit" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.Oman?.driverExpense || 0, 'Oman')} icon="🚗" to="/user/finances?section=driver" />
-        </div>
-      </div>
-
-      {/* UAE Metrics */}
-      <div className="card" style={{marginTop:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0284c7,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:20}}>🇦🇪</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>United Arab Emirates (UAE)</div>
-            <div className="helper">All metrics for UAE operations</div>
-          </div>
-        </div>
-        <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Sales in UAE" value={formatCurrency(metrics.countries?.UAE?.sales || 0, 'UAE')} icon="💵" to="/user/orders?country=UAE&ship=delivered" />
-          <MetricCard title="Orders in UAE" value={metrics.countries?.UAE?.orders || 0} icon="📦" to="/user/orders?country=UAE" />
-          <MetricCard title="Picked Up" value={metrics.countries?.UAE?.pickedUp || 0} icon="🚚" to="/user/orders?country=UAE&ship=picked_up" />
-          <MetricCard title="Delivered" value={metrics.countries?.UAE?.delivered || 0} icon="✅" to="/user/orders?country=UAE&ship=delivered" />
-          <MetricCard title="In Transit" value={metrics.countries?.UAE?.transit || 0} icon="🚛" to="/user/orders?country=UAE&ship=in_transit" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.UAE?.driverExpense || 0, 'UAE')} icon="🚗" to="/user/finances?section=driver" />
-        </div>
-      </div>
-
-      {/* Bahrain Metrics */}
-      <div className="card" style={{marginTop:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#7c3aed,#5b21b6)',display:'grid',placeItems:'center',color:'#fff',fontSize:20}}>🇧🇭</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Bahrain</div>
-            <div className="helper">All metrics for Bahrain operations</div>
-          </div>
-        </div>
-        <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Sales in Bahrain" value={formatCurrency(metrics.countries?.Bahrain?.sales || 0, 'Bahrain')} icon="💵" to="/user/orders?country=Bahrain&ship=delivered" />
-          <MetricCard title="Orders in Bahrain" value={metrics.countries?.Bahrain?.orders || 0} icon="📦" to="/user/orders?country=Bahrain" />
-          <MetricCard title="Picked Up" value={metrics.countries?.Bahrain?.pickedUp || 0} icon="🚚" to="/user/orders?country=Bahrain&ship=picked_up" />
-          <MetricCard title="Delivered" value={metrics.countries?.Bahrain?.delivered || 0} icon="✅" to="/user/orders?country=Bahrain&ship=delivered" />
-          <MetricCard title="In Transit" value={metrics.countries?.Bahrain?.transit || 0} icon="🚛" to="/user/orders?country=Bahrain&ship=in_transit" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.Bahrain?.driverExpense || 0, 'Bahrain')} icon="🚗" to="/user/finances?section=driver" />
-        </div>
-      </div>
-      
-      {/* India Metrics */}
-      <div className="card" style={{marginTop:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#ef4444,#b91c1c)',display:'grid',placeItems:'center',color:'#fff',fontSize:20}}>🇮🇳</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>India</div>
-            <div className="helper">All metrics for India operations</div>
-          </div>
-        </div>
-        <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Sales in India" value={formatCurrency(metrics.countries?.India?.sales || 0, 'India')} icon="💵" to="/user/orders?country=India&ship=delivered" />
-          <MetricCard title="Orders in India" value={metrics.countries?.India?.orders || 0} icon="📦" to="/user/orders?country=India" />
-          <MetricCard title="Picked Up" value={metrics.countries?.India?.pickedUp || 0} icon="🚚" to="/user/orders?country=India&ship=picked_up" />
-          <MetricCard title="Delivered" value={metrics.countries?.India?.delivered || 0} icon="✅" to="/user/orders?country=India&ship=delivered" />
-          <MetricCard title="In Transit" value={metrics.countries?.India?.transit || 0} icon="🚛" to="/user/orders?country=India&ship=in_transit" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.India?.driverExpense || 0, 'India')} icon="🚗" to="/user/finances?section=driver" />
-        </div>
-      </div>
-
-      {/* Kuwait Metrics */}
-      <div className="card" style={{marginTop:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#14b8a6,#0d9488)',display:'grid',placeItems:'center',color:'#fff',fontSize:20}}>🇰🇼</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Kuwait</div>
-            <div className="helper">All metrics for Kuwait operations</div>
-          </div>
-        </div>
-        <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Sales in Kuwait" value={formatCurrency(metrics.countries?.Kuwait?.sales || 0, 'Kuwait')} icon="💵" to="/user/orders?country=Kuwait&ship=delivered" />
-          <MetricCard title="Orders in Kuwait" value={metrics.countries?.Kuwait?.orders || 0} icon="📦" to="/user/orders?country=Kuwait" />
-          <MetricCard title="Picked Up" value={metrics.countries?.Kuwait?.pickedUp || 0} icon="🚚" to="/user/orders?country=Kuwait&ship=picked_up" />
-          <MetricCard title="Delivered" value={metrics.countries?.Kuwait?.delivered || 0} icon="✅" to="/user/orders?country=Kuwait&ship=delivered" />
-          <MetricCard title="In Transit" value={metrics.countries?.Kuwait?.transit || 0} icon="🚛" to="/user/orders?country=Kuwait&ship=in_transit" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.Kuwait?.driverExpense || 0, 'Kuwait')} icon="🚗" to="/user/finances?section=driver" />
-        </div>
-      </div>
-
-      {/* Qatar Metrics */}
-      <div className="card" style={{marginTop:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#f97316,#c2410c)',display:'grid',placeItems:'center',color:'#fff',fontSize:20}}>🇶🇦</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Qatar</div>
-            <div className="helper">All metrics for Qatar operations</div>
-          </div>
-        </div>
-        <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Sales in Qatar" value={formatCurrency(metrics.countries?.Qatar?.sales || 0, 'Qatar')} icon="💵" to="/user/orders?country=Qatar&ship=delivered" />
-          <MetricCard title="Orders in Qatar" value={metrics.countries?.Qatar?.orders || 0} icon="📦" to="/user/orders?country=Qatar" />
-          <MetricCard title="Picked Up" value={metrics.countries?.Qatar?.pickedUp || 0} icon="🚚" to="/user/orders?country=Qatar&ship=picked_up" />
-          <MetricCard title="Delivered" value={metrics.countries?.Qatar?.delivered || 0} icon="✅" to="/user/orders?country=Qatar&ship=delivered" />
-          <MetricCard title="In Transit" value={metrics.countries?.Qatar?.transit || 0} icon="🚛" to="/user/orders?country=Qatar&ship=in_transit" />
-          <MetricCard title="Driver Expense" value={formatCurrency(metrics.countries?.Qatar?.driverExpense || 0, 'Qatar')} icon="🚗" to="/user/finances?section=driver" />
+        <div className="section" style={{display:'grid', gap:12}}>
+          {COUNTRY_LIST.map(c=>{
+            const m = countryMetrics(c)
+            const name = (c==='KSA') ? 'Saudi Arabia (KSA)' : c
+            const amtTotal = toAED(m?.amountTotalOrders||0, c)
+            const amtDelivered = toAED(m?.amountDelivered||0, c)
+            const amtPending = toAED(m?.amountPending||0, c)
+            return (
+              <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
+                <div style={{fontWeight:900, marginBottom:8}}>{name}</div>
+                <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Total Orders</div>
+                    <div style={{fontWeight:900, fontSize:18}}>{fmtNum(m?.orders||0)}</div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Amount of Total Orders (AED)</div>
+                    <div style={{fontWeight:900, fontSize:18}}>AED {fmtAmt(amtTotal)}</div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Delivered</div>
+                    <div style={{fontWeight:900, fontSize:18}}>{fmtNum(m?.delivered||0)}</div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Amount of Delivered (AED)</div>
+                    <div style={{fontWeight:900, fontSize:18}}>AED {fmtAmt(amtDelivered)}</div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Pending Orders</div>
+                    <div style={{fontWeight:900, fontSize:18}}>{fmtNum(m?.pending||0)}</div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Pending Amount (AED)</div>
+                    <div style={{fontWeight:900, fontSize:18}}>AED {fmtAmt(amtPending)}</div>
+                  </div>
+                </div>
+                <div style={{marginTop:10}}>
+                  <div className="helper" style={{marginBottom:6}}>Status Summary</div>
+                  <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:10}}>
+                    <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                      <div className="helper">Assigned</div>
+                      <div style={{fontWeight:900}}>{fmtNum(m?.assigned||0)}</div>
+                    </div>
+                    <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                      <div className="helper">Picked Up</div>
+                      <div style={{fontWeight:900}}>{fmtNum(m?.pickedUp||0)}</div>
+                    </div>
+                    <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                      <div className="helper">In Transit</div>
+                      <div style={{fontWeight:900}}>{fmtNum(m?.transit||0)}</div>
+                    </div>
+                    <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                      <div className="helper">Out for Delivery</div>
+                      <div style={{fontWeight:900}}>{fmtNum(m?.outForDelivery||0)}</div>
+                    </div>
+                    <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                      <div className="helper">No Response</div>
+                      <div style={{fontWeight:900}}>{fmtNum(m?.noResponse||0)}</div>
+                    </div>
+                    <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                      <div className="helper">Returned</div>
+                      <div style={{fontWeight:900}}>{fmtNum(m?.returned||0)}</div>
+                    </div>
+                    <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                      <div className="helper">Cancelled</div>
+                      <div style={{fontWeight:900}}>{fmtNum(m?.cancelled||0)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
 
