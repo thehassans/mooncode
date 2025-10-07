@@ -94,6 +94,11 @@ export default function UserOrders(){
   const endRef = useRef(null)
   const exportingRef = useRef(false)
   const toast = useToast()
+  // Preserve scroll helper to avoid jumping to top on state updates
+  const preserveScroll = async (fn)=>{
+    const y = window.scrollY
+    try{ return await fn() } finally { try{ requestAnimationFrame(()=> window.scrollTo(0, y)) }catch{ window.scrollTo(0, y) } }
+  }
   // Columns: Order | Customer | Product | Price | Country | Agent | Driver | Shipment | Actions
   // Made Driver column wider (from 1fr to 1.3fr)
   const colTemplate = '140px 1.2fr 1fr 110px 120px 1fr 1.3fr 140px 120px'
@@ -293,7 +298,7 @@ export default function UserOrders(){
     countries.forEach(country => fetchDriversByCountry(country))
   }, [orders])
 
-  // Live updates: patch single order in-place to preserve scroll
+  // Live updates: patch single order in-place and preserve scroll
   useEffect(()=>{
     let socket
     try{
@@ -306,10 +311,12 @@ export default function UserOrders(){
           const r = await apiGet(`/api/orders/view/${id}`)
           const ord = r?.order
           if (ord){
-            setOrders(prev => {
-              const idx = prev.findIndex(o => String(o._id) === String(id))
-              if (idx === -1) return prev
-              const copy = [...prev]; copy[idx] = ord; return copy
+            await preserveScroll(async ()=>{
+              setOrders(prev => {
+                const idx = prev.findIndex(o => String(o._id) === String(id))
+                if (idx === -1) return prev
+                const copy = [...prev]; copy[idx] = ord; return copy
+              })
             })
           }
         }catch{}
@@ -322,27 +329,29 @@ export default function UserOrders(){
     const key = `save-${orderId}`
     setUpdating(prev => ({ ...prev, [key]: true }))
     try{
-      // If only driver is provided and no explicit shipment status, use dedicated endpoint to preserve pending->assigned behavior
-      if (driverId !== undefined && (status == null || String(status).trim() === '')){
-        const r = await apiPost(`/api/orders/${orderId}/assign-driver`, { driverId })
-        const updated = r?.order
-        if (updated){
-          setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
+      await preserveScroll(async ()=>{
+        // If only driver is provided and no explicit shipment status, use dedicated endpoint to preserve pending->assigned behavior
+        if (driverId !== undefined && (status == null || String(status).trim() === '')){
+          const r = await apiPost(`/api/orders/${orderId}/assign-driver`, { driverId })
+          const updated = r?.order
+          if (updated){
+            setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
+          } else {
+            await loadOrders(false)
+          }
         } else {
-          await loadOrders(false)
+          const payload = {}
+          if (driverId !== undefined) payload.deliveryBoy = driverId || null
+          if (status) payload.shipmentStatus = status
+          const r = await apiPatch(`/api/orders/${orderId}`, payload)
+          const updated = r?.order
+          if (updated){
+            setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
+          } else {
+            await loadOrders(false)
+          }
         }
-      } else {
-        const payload = {}
-        if (driverId !== undefined) payload.deliveryBoy = driverId || null
-        if (status) payload.shipmentStatus = status
-        const r = await apiPatch(`/api/orders/${orderId}`, payload)
-        const updated = r?.order
-        if (updated){
-          setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
-        } else {
-          await loadOrders(false)
-        }
-      }
+      })
       toast.success('Order updated')
     }catch(e){
       toast.error(e?.message || 'Failed to update order')
