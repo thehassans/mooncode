@@ -138,11 +138,12 @@ export default function AgentOrdersHistory(){
 
   return (
     <div className="section" style={{display:'grid', gap:12}}>
-      <div className="page-header">
+      <div className="page-header" style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
         <div>
           <div className="page-title gradient heading-purple">Order History</div>
           <div className="page-subtitle">All orders you submitted</div>
         </div>
+        <button className="btn small" onClick={()=> navigate('/agent/orders')} title="Submit Order">Submit Order</button>
       </div>
 
       <div className="card" style={{display:'grid', gap:10}}>

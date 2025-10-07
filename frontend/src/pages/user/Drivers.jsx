@@ -278,6 +278,25 @@ export default function Drivers(){
             <div className="label">Password</div>
             <input className="input" type="password" name="password" value={form.password} onChange={onChange} placeholder="Minimum 6 characters" required autoComplete="new-password" />
           </div>
+          {/* Commission fields */}
+          <div className="form-grid">
+            <div>
+              <div className="label">Commission Per Order ({commissionCurrency})</div>
+              <input
+                className="input"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder={`0.00 ${commissionCurrency}`}
+                value={commissionPerOrder}
+                onChange={e=> setCommissionPerOrder(e.target.value)}
+              />
+            </div>
+            <div>
+              <div className="label">Currency</div>
+              <input className="input" value={commissionCurrency} readOnly />
+            </div>
+          </div>
           <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
             <button className="btn" type="submit" disabled={loading}>{loading? 'Creating...' : 'Create Driver'}</button>
           </div>
