@@ -202,7 +202,14 @@ export default function ManagerOrders(){
 
   async function assignDriver(orderId, driverId){
     setAssigning(orderId)
-    try{ await apiPost(`/api/orders/${orderId}/assign-driver`, { driverId }); await load() }catch(err){ alert(err?.message||'Failed to assign') }finally{ setAssigning('') }
+    try{
+      await apiPost(`/api/orders/${orderId}/assign-driver`, { driverId })
+      await loadOrders(true)
+    }catch(err){
+      alert(err?.message||'Failed to assign')
+    }finally{
+      setAssigning('')
+    }
   }
 
   // Save handler like user Orders page
@@ -213,11 +220,26 @@ export default function ManagerOrders(){
     const key = `save-${orderId}`
     setUpdating(prev => ({ ...prev, [key]: true }))
     try{
-      const payload = {}
-      if (editingDriver[orderId] !== undefined) payload.deliveryBoy = editingDriver[orderId] || null
-      if (editingStatus[orderId] !== undefined) payload.shipmentStatus = editingStatus[orderId]
-      await apiPatch(`/api/orders/${orderId}`, payload)
-      await load()
+      const driverEdited = Object.prototype.hasOwnProperty.call(editingDriver, orderId)
+      const statusEdited = Object.prototype.hasOwnProperty.call(editingStatus, orderId)
+
+      if (driverEdited && !statusEdited){
+        const drv = editingDriver[orderId]
+        if (drv && String(drv).trim()){
+          // Use dedicated endpoint which also flips pending -> assigned
+          await assignDriver(orderId, drv)
+        } else {
+          // Unassign driver
+          await apiPatch(`/api/orders/${orderId}`, { deliveryBoy: null })
+          await loadOrders(true)
+        }
+      } else {
+        const payload = {}
+        if (driverEdited) payload.deliveryBoy = editingDriver[orderId] || null
+        if (statusEdited) payload.shipmentStatus = editingStatus[orderId]
+        await apiPatch(`/api/orders/${orderId}`, payload)
+        await loadOrders(true)
+      }
       // clear local edits
       setEditingDriver(prev=>{ const n={...prev}; delete n[orderId]; return n })
       setEditingStatus(prev=>{ const n={...prev}; delete n[orderId]; return n })
