@@ -72,7 +72,6 @@ export default function UserOrders(){
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
-  const [productQuery, setProductQuery] = useState('')
   const [country, setCountry] = useState('')
   const [city, setCity] = useState('')
   const [onlyUnassigned, setOnlyUnassigned] = useState(false)
@@ -130,17 +129,7 @@ export default function UserOrders(){
     })()
   },[])
 
-  // Client-side product name filtering (applies to loaded items)
-  const productFiltered = useMemo(()=>{
-    const pq = productQuery.trim().toLowerCase()
-    if (!pq) return orders
-    return orders.filter(o=>{
-      if (Array.isArray(o.items) && o.items.length){
-        return o.items.some(it => String(it?.productId?.name||'').toLowerCase().includes(pq))
-      }
-      return String(o?.productId?.name||'').toLowerCase().includes(pq)
-    })
-  }, [orders, productQuery])
+  // Single unified search via backend 'q' covers invoice (with or without '#'), product names, agent/driver names, city, phone, and details
 
   // Build query params for backend filters
   const buildQuery = useMemo(()=>{
@@ -359,7 +348,6 @@ export default function UserOrders(){
         <div className="card-header"><div className="card-title">Filters</div></div>
         <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:8}}>
           <input className="input" placeholder="Search invoice, product, driver, agent, city, phone, details" value={query} onChange={e=> setQuery(e.target.value)} />
-          <input className="input" placeholder="Search product" value={productQuery} onChange={e=> setProductQuery(e.target.value)} />
           <select className="input" value={country} onChange={e=> setCountry(e.target.value)}>
             <option value=''>All Countries</option>
             {countryOptions.map(c => <option key={c} value={c}>{c}</option>)}
@@ -413,10 +401,10 @@ export default function UserOrders(){
           <div className="card"><div className="section">Loading…</div></div>
         ) : error ? (
           <div className="card"><div className="section error">{error}</div></div>
-        ) : productFiltered.length === 0 ? (
+        ) : orders.length === 0 ? (
           <div className="card"><div className="section">No orders found</div></div>
         ) : (
-          productFiltered.map((o) => {
+          orders.map((o) => {
                   const id = String(o._id||o.id)
                   const ordNo = o.invoiceNumber ? `#${o.invoiceNumber}` : shortId(id)
                   const fromWebsite = (o.websiteOrder === true) || (String(o.source||'').toLowerCase() === 'website')
