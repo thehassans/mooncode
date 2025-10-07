@@ -130,7 +130,21 @@ export default function ManagerOrders(){
     try{
       const token = localStorage.getItem('token')||''
       socket = io(API_BASE || undefined, { path:'/socket.io', transports:['polling'], upgrade:false, auth:{ token }, withCredentials:true })
-      socket.on('orders.changed', ()=> loadOrders(true))
+      socket.on('orders.changed', async (evt)=>{
+        try{
+          const id = evt?.orderId
+          if (!id) return
+          const r = await apiGet(`/api/orders/view/${id}`)
+          const ord = r?.order
+          if (ord){
+            setOrders(prev => {
+              const idx = prev.findIndex(o => String(o._id) === String(id))
+              if (idx === -1) return prev
+              const copy = [...prev]; copy[idx] = ord; return copy
+            })
+          }
+        }catch{}
+      })
     }catch{}
     return ()=>{ try{ socket && socket.off('orders.changed') }catch{}; try{ socket && socket.disconnect() }catch{} }
   },[])
@@ -207,8 +221,14 @@ export default function ManagerOrders(){
   async function assignDriver(orderId, driverId){
     setAssigning(orderId)
     try{
-      await apiPost(`/api/orders/${orderId}/assign-driver`, { driverId })
-      await loadOrders(true)
+      const r = await apiPost(`/api/orders/${orderId}/assign-driver`, { driverId })
+      const updated = r?.order
+      if (updated){
+        setOrders(prev => prev.map(o => String(o._id) === String(updated._id) ? updated : o))
+      } else {
+        await loadOrders(false)
+      }
+      setError('')
     }catch(err){
       alert(err?.message||'Failed to assign')
     }finally{
@@ -234,15 +254,25 @@ export default function ManagerOrders(){
           await assignDriver(orderId, drv)
         } else {
           // Unassign driver
-          await apiPatch(`/api/orders/${orderId}`, { deliveryBoy: null })
-          await loadOrders(true)
+          const r = await apiPatch(`/api/orders/${orderId}`, { deliveryBoy: null })
+          const updated = r?.order
+          if (updated){
+            setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
+          } else {
+            await loadOrders(false)
+          }
         }
       } else {
         const payload = {}
         if (driverEdited) payload.deliveryBoy = editingDriver[orderId] || null
         if (statusEdited) payload.shipmentStatus = editingStatus[orderId]
-        await apiPatch(`/api/orders/${orderId}`, payload)
-        await loadOrders(true)
+        const r = await apiPatch(`/api/orders/${orderId}`, payload)
+        const updated = r?.order
+        if (updated){
+          setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
+        } else {
+          await loadOrders(false)
+        }
       }
       // clear local edits
       setEditingDriver(prev=>{ const n={...prev}; delete n[orderId]; return n })

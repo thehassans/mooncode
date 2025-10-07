@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { API_BASE, apiGet, apiPatch, apiGetBlob } from '../../api.js'
+import { API_BASE, apiGet, apiPatch, apiGetBlob, apiPost } from '../../api.js'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
@@ -293,29 +293,57 @@ export default function UserOrders(){
     countries.forEach(country => fetchDriversByCountry(country))
   }, [orders])
 
-  // Live updates: refresh first page on order changes in workspace
+  // Live updates: patch single order in-place to preserve scroll
   useEffect(()=>{
     let socket
     try{
       const token = localStorage.getItem('token') || ''
       socket = io(API_BASE || undefined, { path:'/socket.io', transports:['polling'], upgrade:false, withCredentials:true, auth:{ token } })
-      const reload = async ()=>{ try{ await loadOrders(true) }catch{} }
-      socket.on('orders.changed', reload)
+      socket.on('orders.changed', async (evt)=>{
+        try{
+          const id = evt?.orderId
+          if (!id) return
+          const r = await apiGet(`/api/orders/view/${id}`)
+          const ord = r?.order
+          if (ord){
+            setOrders(prev => {
+              const idx = prev.findIndex(o => String(o._id) === String(id))
+              if (idx === -1) return prev
+              const copy = [...prev]; copy[idx] = ord; return copy
+            })
+          }
+        }catch{}
+      })
     }catch{}
     return ()=>{ try{ socket && socket.off('orders.changed') }catch{}; try{ socket && socket.disconnect() }catch{} }
-  }, [API_BASE, buildQuery])
+  }, [API_BASE])
 
   async function saveOrder(orderId, driverId, status){
     const key = `save-${orderId}`
     setUpdating(prev => ({ ...prev, [key]: true }))
     try{
-      const payload = {}
-      if (driverId !== undefined) payload.deliveryBoy = driverId || null
-      if (status) payload.shipmentStatus = status
-      
-      await apiPatch(`/api/orders/${orderId}`, payload)
-      await loadOrders(true)
-      toast.success('Order updated successfully')
+      // If only driver is provided and no explicit shipment status, use dedicated endpoint to preserve pending->assigned behavior
+      if (driverId !== undefined && (status == null || String(status).trim() === '')){
+        const r = await apiPost(`/api/orders/${orderId}/assign-driver`, { driverId })
+        const updated = r?.order
+        if (updated){
+          setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
+        } else {
+          await loadOrders(false)
+        }
+      } else {
+        const payload = {}
+        if (driverId !== undefined) payload.deliveryBoy = driverId || null
+        if (status) payload.shipmentStatus = status
+        const r = await apiPatch(`/api/orders/${orderId}`, payload)
+        const updated = r?.order
+        if (updated){
+          setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
+        } else {
+          await loadOrders(false)
+        }
+      }
+      toast.success('Order updated')
     }catch(e){
       toast.error(e?.message || 'Failed to update order')
     }finally{
