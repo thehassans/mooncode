@@ -470,6 +470,7 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
     const country = String(req.query.country||'').trim()
     const city = String(req.query.city||'').trim()
     const onlyUnassigned = String(req.query.onlyUnassigned||'').toLowerCase() === 'true'
+    const onlyAssigned = String(req.query.onlyAssigned||'').toLowerCase() === 'true'
     const statusFilter = String(req.query.status||'').trim().toLowerCase()
     const shipFilter = String(req.query.ship||'').trim().toLowerCase()
     const payment = String(req.query.payment||'').trim().toUpperCase()
@@ -491,6 +492,7 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
     }
     if (city) match.city = city
     if (onlyUnassigned) match.deliveryBoy = { $in: [null, undefined] }
+    else if (onlyAssigned) match.deliveryBoy = { $ne: null }
     if (statusFilter) match.status = statusFilter
     if (shipFilter) {
       if (shipFilter === 'open') {

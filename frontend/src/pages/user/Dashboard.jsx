@@ -158,9 +158,41 @@ export default function UserDashboard(){
       return Number(amount||0) * rate
     }catch{ return Number(amount||0) }
   }
+  // Convert using currency code directly (for driver aggregates)
+  function toAEDByCurrency(amount, currency){
+    try{
+      const code = String(currency||'AED')
+      const rate = AED_RATE_BY_CUR[code] || 1
+      return Number(amount||0) * rate
+    }catch{ return Number(amount||0) }
+  }
   function sumAmountAED(key){
     try{ return COUNTRY_LIST.reduce((s,c)=> s + toAED((countryMetrics(c)[key]||0), c), 0) }catch{ return 0 }
   }
+  // Driver aggregates: global and per-country
+  const driverAggGlobal = useMemo(()=>{
+    const list = Array.isArray(drivers)? drivers: []
+    const assignedAllTime = list.reduce((s,d)=> s + Number(d?.assigned||0), 0)
+    const collectedAED = list.reduce((s,d)=> s + toAEDByCurrency((d?.collected||0), d?.currency||'AED'), 0)
+    const deliveredToCompanyAED = list.reduce((s,d)=> s + toAEDByCurrency((d?.deliveredToCompany||0), d?.currency||'AED'), 0)
+    const pendingToCompanyAED = list.reduce((s,d)=> s + toAEDByCurrency((d?.pendingToCompany||0), d?.currency||'AED'), 0)
+    return { assignedAllTime, collectedAED, deliveredToCompanyAED, pendingToCompanyAED }
+  }, [drivers])
+  const driverAggByCountry = useMemo(()=>{
+    const init = {}
+    for (const c of COUNTRY_LIST){ init[c] = { assignedAllTime:0, collected:0, deliveredToCompany:0, pendingToCompany:0 } }
+    const canon = (c)=> (c==='Saudi Arabia'?'KSA': String(c||''))
+    const list = Array.isArray(drivers)? drivers: []
+    for (const d of list){
+      const c = canon(d?.country)
+      if (!init[c]) continue
+      init[c].assignedAllTime += Number(d?.assigned||0)
+      init[c].collected += Number(d?.collected||0)
+      init[c].deliveredToCompany += Number(d?.deliveredToCompany||0)
+      init[c].pendingToCompany += Number(d?.pendingToCompany||0)
+    }
+    return init
+  }, [drivers, COUNTRY_LIST])
   const statusTotals = useMemo(()=>{
     if (metrics && metrics.statusTotals) return metrics.statusTotals
     // Fallback: aggregate from countries if backend older
@@ -184,7 +216,19 @@ export default function UserDashboard(){
     try{ setMetrics(await apiGet('/api/reports/user-metrics')) }catch(_e){ console.error('Failed to fetch metrics') }
     try{ setSalesByCountry(await apiGet('/api/reports/user-metrics/sales-by-country')) }catch(_e){ setSalesByCountry({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 }) }
     try{ const res = await apiGet('/api/orders'); setOrders(Array.isArray(res?.orders) ? res.orders : []) }catch(_e){ setOrders([]) }
-    try{ const ds = await apiGet('/api/finance/drivers/summary?page=1&limit=12'); setDrivers(Array.isArray(ds?.drivers)? ds.drivers: []) }catch(_e){ setDrivers([]) }
+    try{
+      // Fetch all pages of driver summaries to build accurate aggregates
+      let page = 1, limit = 100, all = []
+      for(;;){
+        const ds = await apiGet(`/api/finance/drivers/summary?page=${page}&limit=${limit}`)
+        const arr = Array.isArray(ds?.drivers) ? ds.drivers : []
+        all = all.concat(arr)
+        if (!ds?.hasMore) break
+        page += 1
+        if (page > 100) break
+      }
+      setDrivers(all)
+    }catch(_e){ setDrivers([]) }
   }
   useEffect(()=>{ load() },[])
   // Live updates via socket
@@ -273,6 +317,127 @@ export default function UserDashboard(){
             </div>
           )
         })()}
+      </div>
+
+      {/* Driver Report (All Countries) */}
+      <div className="card" style={{marginBottom:12}}>
+        {(function(){
+          const st = statusTotals || {}
+          const dAgg = driverAggGlobal || { assignedAllTime:0, collectedAED:0, deliveredToCompanyAED:0, pendingToCompanyAED:0 }
+          function Tile({ icon, title, value, gradient, to }){
+            return (
+              <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
+                <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
+                  <div style={{width:32,height:32,borderRadius:8,background:gradient||'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:16}}>{icon}</div>
+                  <div style={{fontWeight:800}}>{title}</div>
+                </div>
+                <div style={{fontSize:20, fontWeight:900, marginBottom:6}}>{to ? (<a className="link" href={to}>{value}</a>) : value}</div>
+              </div>
+            )
+          }
+          return (
+            <div className="section" style={{display:'grid', gap:12}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#06b6d4,#0891b2)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🧑‍🦰</div>
+                <div>
+                  <div style={{fontWeight:800,fontSize:16}}>Driver Report (All Countries)</div>
+                  <div className="helper">Totals across all drivers. Amounts in AED.</div>
+                </div>
+              </div>
+              <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
+                <Tile icon="🧾" title="Total Orders Assigned (All Time)" value={fmtNum(dAgg.assignedAllTime)} to="/user/orders?onlyAssigned=true" gradient={'linear-gradient(135deg,#334155,#0f172a)'} />
+                <Tile icon="📌" title="Currently Assigned" value={fmtNum(st.assigned||0)} to="/user/orders?ship=assigned" gradient={'linear-gradient(135deg,#94a3b8,#64748b)'} />
+                <Tile icon="🚚" title="Picked Up" value={fmtNum(st.picked_up||0)} to="/user/orders?ship=picked_up" gradient={'linear-gradient(135deg,#60a5fa,#3b82f6)'} />
+                <Tile icon="🚛" title="In Transit" value={fmtNum(st.in_transit||0)} to="/user/orders?ship=in_transit" gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
+                <Tile icon="🛵" title="Out for Delivery" value={fmtNum(st.out_for_delivery||0)} to="/user/orders?ship=out_for_delivery" gradient={'linear-gradient(135deg,#f97316,#ea580c)'} />
+                <Tile icon="✅" title="Delivered" value={fmtNum(st.delivered||0)} to="/user/orders?ship=delivered" gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
+                <Tile icon="☎️🚫" title="No Response" value={fmtNum(st.no_response||0)} to="/user/orders?ship=no_response" gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
+                <Tile icon="🔁" title="Returned" value={fmtNum(st.returned||0)} to="/user/orders?ship=returned" gradient={'linear-gradient(135deg,#a3a3a3,#737373)'} />
+                <Tile icon="❌" title="Cancelled" value={fmtNum(st.cancelled||0)} to="/user/orders?ship=cancelled" gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
+                <Tile icon="💵" title="Total Collected (Delivered)" value={`AED ${fmtAmt(dAgg.collectedAED)}`} to="/user/orders?ship=delivered&collected=true" gradient={'linear-gradient(135deg,#10b981,#059669)'} />
+                <Tile icon="🏦" title="Delivered to Company" value={`AED ${fmtAmt(dAgg.deliveredToCompanyAED)}`} to="/user/finances?section=driver" gradient={'linear-gradient(135deg,#84cc16,#4d7c0f)'} />
+                <Tile icon="⏳" title="Pending Delivery to Company" value={`AED ${fmtAmt(dAgg.pendingToCompanyAED)}`} to="/user/finances?section=driver" gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Driver Report by Country */}
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
+          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#06b6d4,#0891b2)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🚚</div>
+          <div>
+            <div style={{fontWeight:800,fontSize:16}}>Driver Report by Country</div>
+            <div className="helper">Counts from orders; amounts in local currency.</div>
+          </div>
+        </div>
+        <div className="section" style={{display:'grid', gap:12}}>
+          {COUNTRY_LIST.map(c=>{
+            const m = countryMetrics(c)
+            const d = driverAggByCountry[c] || { assignedAllTime:0, collected:0, deliveredToCompany:0, pendingToCompany:0 }
+            const qs = encodeURIComponent(c)
+            const amtCollectedStr = formatCurrency(d.collected||0, c)
+            const amtDeliveredToCoStr = formatCurrency(d.deliveredToCompany||0, c)
+            const amtPendingToCoStr = formatCurrency(d.pendingToCompany||0, c)
+            const name = (c==='KSA') ? 'Saudi Arabia (KSA)' : c
+            return (
+              <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
+                <div style={{fontWeight:900, marginBottom:8}}>{name}</div>
+                <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Total Orders Assigned (All Time)</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&onlyAssigned=true`}>{fmtNum(d.assignedAllTime||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Currently Assigned</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=assigned`}>{fmtNum(m?.assigned||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Picked Up</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=picked_up`}>{fmtNum(m?.pickedUp||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">In Transit</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=in_transit`}>{fmtNum(m?.transit||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Out for Delivery</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=out_for_delivery`}>{fmtNum(m?.outForDelivery||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Delivered</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=delivered`}>{fmtNum(m?.delivered||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">No Response</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=no_response`}>{fmtNum(m?.noResponse||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Returned</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=returned`}>{fmtNum(m?.returned||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Cancelled</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=cancelled`}>{fmtNum(m?.cancelled||0)}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Total Collected (Delivered)</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=delivered&collected=true`}>{amtCollectedStr}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Delivered to Company</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/user/finances?section=driver`}>{amtDeliveredToCoStr}</a></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Pending Delivery to Company</div>
+                    <div style={{fontWeight:900}}><a className="link" href={`/user/finances?section=driver`}>{amtPendingToCoStr}</a></div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       {/* Status Summary (All Countries) */}

@@ -721,6 +721,7 @@ router.get('/drivers/summary', auth, allowRoles('admin','user','manager'), async
         id: String(d._id),
         name: `${d.firstName||''} ${d.lastName||''}`.trim(),
         phone: d.phone||'',
+        country: d.country || '',
         currency,
         assigned,
         canceled,

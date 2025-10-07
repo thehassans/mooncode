@@ -75,6 +75,7 @@ export default function UserOrders(){
   const [country, setCountry] = useState('')
   const [city, setCity] = useState('')
   const [onlyUnassigned, setOnlyUnassigned] = useState(false)
+  const [onlyAssigned, setOnlyAssigned] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [shipFilter, setShipFilter] = useState('')
   const [paymentFilter, setPaymentFilter] = useState('') // COD | PREPAID | ''
@@ -138,6 +139,7 @@ export default function UserOrders(){
     if (country.trim()) params.set('country', country.trim())
     if (city.trim()) params.set('city', city.trim())
     if (onlyUnassigned) params.set('onlyUnassigned', 'true')
+    if (onlyAssigned) params.set('onlyAssigned', 'true')
     if (statusFilter.trim()) params.set('status', statusFilter.trim())
     if (shipFilter.trim()) params.set('ship', shipFilter.trim())
     if (paymentFilter.trim()) params.set('payment', paymentFilter.trim())
@@ -200,6 +202,7 @@ export default function UserOrders(){
       const ctry = sp.get('country') || ''
       const cty = sp.get('city') || ''
       const un = (sp.get('onlyUnassigned')||'').toLowerCase() === 'true'
+      const oa = (sp.get('onlyAssigned')||'').toLowerCase() === 'true'
       const st = sp.get('status') || ''
       const ship = sp.get('ship') || ''
       const pay = (sp.get('payment')||'').toUpperCase()
@@ -216,6 +219,7 @@ export default function UserOrders(){
       setCollectedOnly(col)
       setAgentFilter(ag)
       setDriverFilter(dr)
+      setOnlyAssigned(oa)
     }catch{}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search])
@@ -223,7 +227,7 @@ export default function UserOrders(){
   // Keep URL in sync with current filters for shareable deep links
   useEffect(()=>{
     try{
-      const managed = ['q','country','city','onlyUnassigned','status','ship','payment','collected','agent','driver']
+      const managed = ['q','country','city','onlyUnassigned','onlyAssigned','status','ship','payment','collected','agent','driver']
       const canonical = (init)=>{
         const s = new URLSearchParams(init)
         const entries = managed
