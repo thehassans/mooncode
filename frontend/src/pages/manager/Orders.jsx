@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { apiGet, apiPost, apiPatch, API_BASE, apiGetBlob } from '../../api'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 
 export default function ManagerOrders(){
   const location = useLocation()
+  const navigate = useNavigate()
   const [me, setMe] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} } })
   const [orders, setOrders] = useState([])
   const [error, setError] = useState('')
@@ -101,10 +102,16 @@ export default function ManagerOrders(){
       const ci = p.get('city') || ''
       const s = (p.get('ship')||'').toLowerCase()
       const un = String(p.get('onlyUnassigned')||'').toLowerCase() === 'true'
-      if (c) setCountry(c)
-      if (ci) setCity(ci)
-      if (s) setShip(s)
+      const qParam = p.get('q') || ''
+      const ag = p.get('agent') || ''
+      const dr = p.get('driver') || ''
+      setQ(qParam)
+      setCountry(c)
+      setCity(ci)
+      setShip(s)
       setOnlyUnassigned(un)
+      setAgentFilter(ag)
+      setDriverFilter(dr)
     }catch{}
   }, [location.search])
   useEffect(()=>{
@@ -126,6 +133,28 @@ export default function ManagerOrders(){
   // reload when filters change
   useEffect(()=>{ loadOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [buildQuery])
 
+  // Keep URL in sync with current filters for shareable deep links
+  useEffect(()=>{
+    try{
+      const managed = ['q','country','city','onlyUnassigned','ship','agent','driver']
+      const canonical = (init)=>{
+        const s = new URLSearchParams(init)
+        const entries = managed
+          .map(k => [k, s.get(k)])
+          .filter(([k,v]) => v != null && String(v).trim() !== '')
+        entries.sort((a,b)=> a[0].localeCompare(b[0]))
+        return entries.map(([k,v])=> `${k}=${encodeURIComponent(String(v).trim())}`).join('&')
+      }
+      const nextQS = canonical(buildQuery.toString())
+      const currQS = canonical(location.search||'')
+      if (nextQS !== currQS){
+        const path = location.pathname || '/manager/orders'
+        navigate(`${path}${nextQS ? `?${nextQS}` : ''}`, { replace: true })
+      }
+    }catch{}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildQuery, location.pathname])
+
   // Infinite scroll observer
   useEffect(()=>{
     const el = endRef.current
@@ -145,7 +174,11 @@ export default function ManagerOrders(){
     return Array.from(set)
   }, [orders])
 
-  const countries = ['UAE','Oman','KSA','Bahrain','India','Kuwait','Qatar']
+  const countries = useMemo(()=>{
+    const assigned = Array.isArray(me?.assignedCountries) && me.assignedCountries.length ? me.assignedCountries : (me?.assignedCountry ? [me.assignedCountry] : [])
+    if (assigned.length) return Array.from(new Set(assigned))
+    return ['UAE','Oman','KSA','Bahrain','India','Kuwait','Qatar']
+  }, [me])
 
   async function exportCsv(){
     if (exportingRef.current) return
