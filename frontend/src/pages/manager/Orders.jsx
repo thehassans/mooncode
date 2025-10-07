@@ -7,9 +7,14 @@ export default function ManagerOrders(){
   const location = useLocation()
   const [me, setMe] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} } })
   const [orders, setOrders] = useState([])
+  const [error, setError] = useState('')
   const [drivers, setDrivers] = useState([])
   const [driversByCountry, setDriversByCountry] = useState({}) // Cache drivers by country
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const loadingMoreRef = useRef(false)
+  const endRef = useRef(null)
   const exportingRef = useRef(false)
   const [assigning, setAssigning] = useState('')
   const [q, setQ] = useState('')
@@ -24,10 +29,34 @@ export default function ManagerOrders(){
   const perms = me?.managerPermissions || {}
 
   async function fetchMe(){ try{ const { user } = await apiGet('/api/users/me'); setMe(user||{}) }catch{} }
-  async function load(){
-    setLoading(true)
-    try{ const res = await apiGet('/api/orders'); setOrders(Array.isArray(res?.orders)? res.orders:[]) }catch{ setOrders([]) }
-    finally{ setLoading(false) }
+  const buildQuery = useMemo(()=>{
+    const params = new URLSearchParams()
+    if (q.trim()) params.set('q', q.trim())
+    if (country.trim()) params.set('country', country.trim())
+    if (city.trim()) params.set('city', city.trim())
+    if (ship.trim()) params.set('ship', ship.trim())
+    if (onlyUnassigned) params.set('onlyUnassigned','true')
+    if (agentFilter.trim()) params.set('agent', agentFilter.trim())
+    if (driverFilter.trim()) params.set('driver', driverFilter.trim())
+    return params
+  }, [q, country, city, ship, onlyUnassigned, agentFilter, driverFilter])
+  async function loadOrders(reset=false){
+    if (loadingMoreRef.current) return
+    loadingMoreRef.current = true
+    try{
+      if (reset){ setLoading(true); setOrders([]); setPage(1); setHasMore(true) }
+      const nextPage = reset ? 1 : (page + 1)
+      const params = new URLSearchParams(buildQuery.toString())
+      params.set('page', String(nextPage))
+      params.set('limit', '20')
+      const res = await apiGet(`/api/orders?${params.toString()}`)
+      const list = Array.isArray(res?.orders) ? res.orders : []
+      setOrders(prev => reset ? list : [...prev, ...list])
+      setHasMore(!!res?.hasMore)
+      setPage(nextPage)
+      setError('')
+    }catch(e){ setError(e?.message||'Failed to load orders'); setHasMore(false) }
+    finally{ setLoading(false); loadingMoreRef.current = false }
   }
 
   // Fetch drivers by country (with caching)
@@ -55,7 +84,7 @@ export default function ManagerOrders(){
     countries.forEach(country => fetchDriversByCountry(country))
   }, [orders])
 
-  useEffect(()=>{ fetchMe(); load() },[])
+  useEffect(()=>{ fetchMe(); loadOrders(true) },[])
   // Load agents for workspace (owner scope handled server-side)
   useEffect(()=>{
     (async()=>{
@@ -90,49 +119,25 @@ export default function ManagerOrders(){
     try{
       const token = localStorage.getItem('token')||''
       socket = io(API_BASE || undefined, { path:'/socket.io', transports:['polling'], upgrade:false, auth:{ token }, withCredentials:true })
-      socket.on('orders.changed', ()=> load())
+      socket.on('orders.changed', ()=> loadOrders(true))
     }catch{}
     return ()=>{ try{ socket && socket.off('orders.changed') }catch{}; try{ socket && socket.disconnect() }catch{} }
   },[])
+  // reload when filters change
+  useEffect(()=>{ loadOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [buildQuery])
 
-  const filtered = useMemo(()=>{
-    let rows = Array.isArray(orders)? orders:[]
-    if (country) rows = rows.filter(o => String(o.orderCountry||'') === country)
-    if (city) rows = rows.filter(o => String(o.city||'').toLowerCase() === city.toLowerCase())
-    if (ship) rows = rows.filter(o => String(o.shipmentStatus||'').toLowerCase() === ship)
-    if (agentFilter) rows = rows.filter(o => String(o?.createdBy?._id||'') === agentFilter)
-    if (driverFilter) rows = rows.filter(o => String(o?.deliveryBoy?._id || o?.deliveryBoy || '') === driverFilter)
-    const t = q.trim().toLowerCase()
-    const tNorm = t.startsWith('#') ? t.slice(1) : t
-    if (t){
-      rows = rows.filter(o => {
-        const invoice = String(o.invoiceNumber||'').toLowerCase()
-        const custName = String(o.customerName||'').toLowerCase()
-        const custPhone = String(o.customerPhone||'').toLowerCase()
-        const details = String(o.details||'').toLowerCase()
-        const cityName = String(o.city||'').toLowerCase()
-        const productNameTop = String(o?.productId?.name||'').toLowerCase()
-        const productNamesMulti = Array.isArray(o?.items) ? o.items.map(it => String(it?.productId?.name||'').toLowerCase()).filter(Boolean) : []
-        const driverName = `${o?.deliveryBoy?.firstName||''} ${o?.deliveryBoy?.lastName||''}`.trim().toLowerCase()
-        const agentName = `${o?.createdBy?.firstName||''} ${o?.createdBy?.lastName||''}`.trim().toLowerCase()
-        const agentEmail = String(o?.createdBy?.email||'').toLowerCase()
-        const productsHit = productNameTop.includes(t) || productNamesMulti.some(n => n.includes(t))
-        const driverHit = driverName.includes(t)
-        const agentHit = agentName.includes(t) || agentEmail.includes(t)
-        return (
-          invoice.includes(t) || invoice.includes(tNorm) ||
-          custName.includes(t) ||
-          custPhone.includes(t) ||
-          details.includes(t) ||
-          cityName.includes(t) ||
-          productsHit ||
-          driverHit ||
-          agentHit
-        )
-      })
-    }
-    return rows
-  }, [orders, country, city, ship, agentFilter, driverFilter, q])
+  // Infinite scroll observer
+  useEffect(()=>{
+    const el = endRef.current
+    if (!el) return
+    const obs = new IntersectionObserver((entries)=>{
+      const [e] = entries
+      if (e.isIntersecting && hasMore && !loadingMoreRef.current){ loadOrders(false) }
+    }, { rootMargin: '200px' })
+    obs.observe(el)
+    return ()=>{ try{ obs.disconnect() }catch{} }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endRef.current, hasMore, page, buildQuery])
 
   const cities = useMemo(()=>{
     const set = new Set()
@@ -146,14 +151,7 @@ export default function ManagerOrders(){
     if (exportingRef.current) return
     exportingRef.current = true
     try{
-      const params = new URLSearchParams()
-      if (q.trim()) params.set('q', q.trim())
-      if (country.trim()) params.set('country', country.trim())
-      if (city.trim()) params.set('city', city.trim())
-      if (ship.trim()) params.set('ship', ship.trim())
-      if (agentFilter.trim()) params.set('agent', agentFilter.trim())
-      if (driverFilter.trim()) params.set('driver', driverFilter.trim())
-      if (onlyUnassigned) params.set('onlyUnassigned','true')
+      const params = new URLSearchParams(buildQuery.toString())
       params.set('max','10000')
       const blob = await apiGetBlob(`/api/orders/export?${params.toString()}`)
       const url = URL.createObjectURL(blob)
@@ -336,11 +334,15 @@ export default function ManagerOrders(){
       <div style={{display:'grid', gap:12, marginTop:12}}>
         {loading ? (
           <div className="card"><div className="section">Loading…</div></div>
-        ) : filtered.length === 0 ? (
+        ) : error ? (
+          <div className="card"><div className="section error">{error}</div></div>
+        ) : orders.length === 0 ? (
           <div className="card"><div className="section">No orders found</div></div>
         ) : (
-          filtered.map(o => <Card key={String(o._id)} o={o} />)
+          orders.map(o => <Card key={String(o._id)} o={o} />)
         )}
+        {/* Infinite Scroll Sentinel */}
+        <div ref={endRef} />
       </div>
     </div>
   )
