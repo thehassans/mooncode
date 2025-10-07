@@ -998,4 +998,124 @@ router.get('/user-metrics/sales-by-country', auth, allowRoles('user'), async (re
   }
 })
 
+// Manager metrics for dashboard (assigned countries scoped)
+router.get('/manager-metrics', auth, allowRoles('manager'), async (req, res) => {
+  try {
+    const mgr = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
+    const ownerId = mgr?.createdBy ? new mongoose.Types.ObjectId(mgr.createdBy) : new mongoose.Types.ObjectId(req.user.id)
+    const agents = await User.find({ role: 'agent', createdBy: ownerId }, { _id: 1 }).lean()
+    const managers = await User.find({ role: 'manager', createdBy: ownerId }, { _id: 1 }).lean()
+    const creatorIds = [ownerId, ...agents.map(a => a._id), ...managers.map(m => m._id)]
+
+    const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
+    const assignedCountries = Array.isArray(mgr?.assignedCountries) && mgr.assignedCountries.length ? mgr.assignedCountries : (mgr?.assignedCountry ? [mgr.assignedCountry] : [])
+    let allowedCountries = null
+    if (assignedCountries.length){
+      const set = new Set(); for (const c of assignedCountries){ for (const x of expand(c)) set.add(x) }
+      allowedCountries = Array.from(set)
+    }
+
+    const baseMatch = { createdBy: { $in: creatorIds } }
+    if (allowedCountries) baseMatch.orderCountry = { $in: allowedCountries }
+
+    const orderStats = await Order.aggregate([
+      { $match: baseMatch },
+      { $group: { _id: null,
+        totalOrders: { $sum: 1 },
+        totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        totalCOD: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $eq: ['$paymentMethod', 'COD'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] }, 0 ] } },
+        totalPrepaid: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $ne: ['$paymentMethod', 'COD'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] }, 0 ] } },
+        totalCollected: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $ifNull: ['$collectedAmount', 0] }, 0 ] } },
+        pendingOrders: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, 1, 0 ] } },
+        pickedUpOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'picked_up'] }, 1, 0 ] } },
+        deliveredOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
+        cancelledOrders: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'cancelled'] }, { $eq: ['$status', 'cancelled'] } ] }, 1, 0 ] } },
+        totalProductsOrdered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, '$quantity', 0 ] } },
+      } }
+    ])
+    const orders = orderStats[0] || { totalOrders:0, totalSales:0, totalCOD:0, totalPrepaid:0, totalCollected:0, pendingOrders:0, pickedUpOrders:0, deliveredOrders:0, cancelledOrders:0, totalProductsOrdered:0 }
+
+    const countryMetrics = await Order.aggregate([
+      { $match: baseMatch },
+      { $group: {
+        _id: '$orderCountry',
+        // amounts
+        totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        amountTotalOrders: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } },
+        amountDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        amountPending: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        // counts
+        totalOrders: { $sum: 1 },
+        pendingOrders: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, 1, 0 ] } },
+        assignedOrders: { $sum: { $cond: [ { $eq: ['$status', 'assigned'] }, 1, 0 ] } },
+        pickedUpOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'picked_up'] }, 1, 0 ] } },
+        inTransitOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'in_transit'] }, 1, 0 ] } },
+        outForDeliveryOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'out_for_delivery'] }, 1, 0 ] } },
+        deliveredOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
+        noResponseOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'no_response'] }, 1, 0 ] } },
+        returnedOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'returned'] }, 1, 0 ] } },
+        cancelledOrders: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'cancelled'] }, { $eq: ['$status', 'cancelled'] } ] }, 1, 0 ] } },
+      } }
+    ])
+
+    // Format country metrics (restrict to known set; aliases supported via expand above)
+    const countries = {
+      KSA: { }, Oman: { }, UAE: { }, Bahrain: { }, 'Saudi Arabia': { }, India: { }, Kuwait: { }, Qatar: { },
+    }
+    countryMetrics.forEach(cm => {
+      const country = cm._id || 'Other'
+      if (countries[country]){
+        countries[country].sales = cm.totalSales || 0
+        countries[country].orders = cm.totalOrders || 0
+        countries[country].pickedUp = cm.pickedUpOrders || 0
+        countries[country].delivered = cm.deliveredOrders || 0
+        countries[country].transit = cm.inTransitOrders || 0
+        countries[country].pending = cm.pendingOrders || 0
+        countries[country].assigned = cm.assignedOrders || 0
+        countries[country].outForDelivery = cm.outForDeliveryOrders || 0
+        countries[country].noResponse = cm.noResponseOrders || 0
+        countries[country].returned = cm.returnedOrders || 0
+        countries[country].cancelled = cm.cancelledOrders || 0
+        countries[country].amountTotalOrders = cm.amountTotalOrders || 0
+        countries[country].amountDelivered = cm.amountDelivered || 0
+        countries[country].amountPending = cm.amountPending || 0
+      }
+    })
+
+    // Aggregate status totals across countries (counts)
+    const statusTotals = Object.keys(countries).reduce((acc, k) => {
+      const c = countries[k] || {}
+      acc.total += Number(c.orders || 0)
+      acc.pending += Number(c.pending || 0)
+      acc.assigned += Number(c.assigned || 0)
+      acc.picked_up += Number(c.pickedUp || 0)
+      acc.in_transit += Number(c.transit || 0)
+      acc.out_for_delivery += Number(c.outForDelivery || 0)
+      acc.delivered += Number(c.delivered || 0)
+      acc.no_response += Number(c.noResponse || 0)
+      acc.returned += Number(c.returned || 0)
+      acc.cancelled += Number(c.cancelled || 0)
+      return acc
+    }, { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 })
+
+    res.json({
+      totalSales: orders.totalSales,
+      totalCOD: orders.totalCOD,
+      totalPrepaid: orders.totalPrepaid,
+      totalCollected: orders.totalCollected,
+      totalOrders: orders.totalOrders,
+      pendingOrders: orders.pendingOrders,
+      pickedUpOrders: orders.pickedUpOrders,
+      deliveredOrders: orders.deliveredOrders,
+      cancelledOrders: orders.cancelledOrders,
+      totalProductsOrdered: orders.totalProductsOrdered,
+      countries,
+      statusTotals
+    })
+  } catch (error) {
+    console.error('Error fetching manager metrics:', error)
+    res.status(500).json({ message: 'Server error', error: error.message })
+  }
+})
+
 export default router;
