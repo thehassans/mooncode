@@ -979,8 +979,8 @@ router.post('/:id/assign-driver', auth, allowRoles('admin','user','manager'), as
     for (const v of ds){ if (os.has(v)) { ok = true; break } }
     if (!ok){ return res.status(400).json({ message: 'Driver and order country must match' }) }
   }
-  // City rule: enforce order city matches driver city if provided
-  if (driver.city && ord.city && String(driver.city).toLowerCase() !== String(ord.city).toLowerCase()){
+  // City rule: enforce only for 'user' assignments; managers/admins can assign across any city
+  if (req.user.role === 'user' && driver.city && ord.city && String(driver.city).toLowerCase() !== String(ord.city).toLowerCase()){
     return res.status(400).json({ message: 'Driver city does not match order city' })
   }
   ord.deliveryBoy = driver._id
