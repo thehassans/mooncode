@@ -910,7 +910,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       driverExpensesByCountry[country] = expStats[0]?.total || 0;
     }
     
-    // Format country metrics
+    // Format country metrics (include an 'Other' bucket)
     const countries = {
       KSA: { sales: 0, orders: 0, pickedUp: 0, delivered: 0, transit: 0, driverExpense: 0 },
       Oman: { sales: 0, orders: 0, pickedUp: 0, delivered: 0, transit: 0, driverExpense: 0 },
@@ -920,28 +920,30 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       India: { sales: 0, orders: 0, pickedUp: 0, delivered: 0, transit: 0, driverExpense: 0 },
       Kuwait: { sales: 0, orders: 0, pickedUp: 0, delivered: 0, transit: 0, driverExpense: 0 },
       Qatar: { sales: 0, orders: 0, pickedUp: 0, delivered: 0, transit: 0, driverExpense: 0 },
+      Other: { sales: 0, orders: 0, pickedUp: 0, delivered: 0, transit: 0, driverExpense: 0 },
     };
+    const known = new Set(['KSA','UAE','Oman','Bahrain','Saudi Arabia','India','Kuwait','Qatar']);
     
     countryMetrics.forEach(cm => {
-      const country = cm._id || 'Other';
-      if (countries[country]) {
-        countries[country].sales = cm.totalSales || 0;
-        countries[country].orders = cm.totalOrders || 0;
-        countries[country].pickedUp = cm.pickedUpOrders || 0;
-        countries[country].delivered = cm.deliveredOrders || 0;
-        countries[country].transit = cm.inTransitOrders || 0;
-        // additional status counts (use openOrders for "pending" tile semantics)
-        countries[country].pending = cm.openOrders || 0;
-        countries[country].assigned = cm.assignedOrders || 0;
-        countries[country].outForDelivery = cm.outForDeliveryOrders || 0;
-        countries[country].noResponse = cm.noResponseOrders || 0;
-        countries[country].returned = cm.returnedOrders || 0;
-        countries[country].cancelled = cm.cancelledOrders || 0;
-        // amounts by status
-        countries[country].amountTotalOrders = cm.amountTotalOrders || 0;
-        countries[country].amountDelivered = cm.amountDelivered || 0;
-        countries[country].amountPending = (cm.amountOpen != null ? cm.amountOpen : cm.amountPending) || 0;
-      }
+      const code = cm._id || '';
+      const key = countries[code] ? code : 'Other';
+      countries[key].sales = (countries[key].sales || 0) + (cm.totalSales || 0);
+      countries[key].orders = (countries[key].orders || 0) + (cm.totalOrders || 0);
+      countries[key].pickedUp = (countries[key].pickedUp || 0) + (cm.pickedUpOrders || 0);
+      countries[key].delivered = (countries[key].delivered || 0) + (cm.deliveredOrders || 0);
+      countries[key].transit = (countries[key].transit || 0) + (cm.inTransitOrders || 0);
+      // additional status counts (use openOrders for "pending" tile semantics)
+      countries[key].pending = (countries[key].pending || 0) + (cm.openOrders || 0);
+      countries[key].assigned = (countries[key].assigned || 0) + (cm.assignedOrders || 0);
+      countries[key].outForDelivery = (countries[key].outForDelivery || 0) + (cm.outForDeliveryOrders || 0);
+      countries[key].noResponse = (countries[key].noResponse || 0) + (cm.noResponseOrders || 0);
+      countries[key].returned = (countries[key].returned || 0) + (cm.returnedOrders || 0);
+      countries[key].cancelled = (countries[key].cancelled || 0) + (cm.cancelledOrders || 0);
+      // amounts by status
+      countries[key].amountTotalOrders = (countries[key].amountTotalOrders || 0) + (cm.amountTotalOrders || 0);
+      const amtPending = (cm.amountOpen != null ? cm.amountOpen : cm.amountPending) || 0
+      countries[key].amountDelivered = (countries[key].amountDelivered || 0) + (cm.amountDelivered || 0);
+      countries[key].amountPending = (countries[key].amountPending || 0) + amtPending;
     });
     
     // Add driver expenses

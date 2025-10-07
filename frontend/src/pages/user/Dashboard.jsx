@@ -91,13 +91,14 @@ export default function UserDashboard(){
   const [drivers, setDrivers] = useState([])
   const driverCountrySummary = useMemo(()=>{
     const canonical = (c)=> (c === 'Saudi Arabia' ? 'KSA' : String(c||''))
-    const currencyByCountry = { KSA:'SAR', UAE:'AED', Oman:'OMR', Bahrain:'BHD', India:'INR', Kuwait:'KWD', Qatar:'QAR' }
-    const countries = ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar']
+    const currencyByCountry = { KSA:'SAR', UAE:'AED', Oman:'OMR', Bahrain:'BHD', India:'INR', Kuwait:'KWD', Qatar:'QAR', Other:'AED' }
+    const countries = ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar','Other']
     const init = {}
     for (const c of countries){ init[c] = { country:c, currency: currencyByCountry[c], assigned:0, delivered:0, cancelled:0, collected:0, deliveredToCompany:0, pendingToCompany:0 } }
     const list = Array.isArray(drivers)? drivers: []
     for (const d of list){
-      const c = canonical(d?.country)
+      const c0 = canonical(d?.country)
+      const c = countries.includes(c0) ? c0 : 'Other'
       if (!init[c]) continue
       init[c].assigned += Number(d?.assigned||0)
       init[c].delivered += Number(d?.deliveredCount||0)
@@ -112,7 +113,7 @@ export default function UserDashboard(){
     const rows = []
     const mapByCountry = Object.fromEntries(driverCountrySummary.map(r=>[r.country, r]))
     const aliasMetrics = (c)=> (metrics?.countries?.[c] || (c==='KSA' ? (metrics?.countries?.['Saudi Arabia']||{}) : {}))
-    const list = ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar']
+    const list = ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar','Other']
     for (const c of list){
       const m = aliasMetrics(c)
       const d = mapByCountry[c] || { collected:0, deliveredToCompany:0, pendingToCompany:0, cancelled:0 }
@@ -138,8 +139,9 @@ export default function UserDashboard(){
     India: { flag: '🇮🇳', cur: 'INR' },
     Kuwait: { flag: '🇰🇼', cur: 'KWD' },
     Qatar: { flag: '🇶🇦', cur: 'QAR' },
+    Other: { cur: 'AED' },
   }), [])
-  const COUNTRY_LIST = useMemo(() => ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar'], [])
+  const COUNTRY_LIST = useMemo(() => ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar','Other'], [])
   function countryMetrics(c){
     const base = metrics?.countries || {}
     if (base[c]) return base[c]
@@ -467,6 +469,7 @@ export default function UserDashboard(){
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
                 <Tile icon="📦" title="Total Orders" value={st.total} to="/user/orders" gradient={'linear-gradient(135deg,#3b82f6,#1d4ed8)'} />
+                <Tile icon="⏳" title="Open" value={st.pending} to="/user/orders?ship=open" gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
                 <Tile icon="📌" title="Assigned" value={st.assigned} to="/user/orders?ship=assigned" gradient={'linear-gradient(135deg,#94a3b8,#64748b)'} />
                 <Tile icon="🚚" title="Picked Up" value={st.picked_up} to="/user/orders?ship=picked_up" gradient={'linear-gradient(135deg,#60a5fa,#3b82f6)'} />
                 <Tile icon="🚛" title="In Transit" value={st.in_transit} to="/user/orders?ship=in_transit" gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />

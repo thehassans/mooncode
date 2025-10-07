@@ -487,7 +487,14 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
         'UAE': ['UAE','United Arab Emirates'],
         'United Arab Emirates': ['UAE','United Arab Emirates'],
       }
-      if (aliases[country]) match.orderCountry = { $in: aliases[country] }
+      if (country === 'Other'){
+        const known = ['KSA','Saudi Arabia','UAE','United Arab Emirates','Oman','Bahrain','India','Kuwait','Qatar']
+        const orList = match.$or ? [...match.$or] : []
+        orList.push({ orderCountry: { $nin: known } })
+        orList.push({ orderCountry: { $exists: false } })
+        orList.push({ orderCountry: '' })
+        match.$or = orList
+      } else if (aliases[country]) match.orderCountry = { $in: aliases[country] }
       else match.orderCountry = country
     }
     if (city) match.city = city
@@ -643,7 +650,16 @@ router.get('/export', auth, allowRoles('admin','user','agent','manager'), async 
         'UAE': ['UAE','United Arab Emirates'],
         'United Arab Emirates': ['UAE','United Arab Emirates'],
       }
-      match.orderCountry = aliases[country] ? { $in: aliases[country] } : country
+      if (country === 'Other'){
+        const known = ['KSA','Saudi Arabia','UAE','United Arab Emirates','Oman','Bahrain','India','Kuwait','Qatar']
+        const orList = match.$or ? [...match.$or] : []
+        orList.push({ orderCountry: { $nin: known } })
+        orList.push({ orderCountry: { $exists: false } })
+        orList.push({ orderCountry: '' })
+        match.$or = orList
+      } else {
+        match.orderCountry = aliases[country] ? { $in: aliases[country] } : country
+      }
     }
     if (city) match.city = city
     if (onlyUnassigned) match.deliveryBoy = { $in: [null, undefined] }
