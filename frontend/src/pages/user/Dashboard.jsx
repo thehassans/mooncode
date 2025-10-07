@@ -220,209 +220,465 @@ export default function UserDashboard(){
         </div>
       </div>
 
-      {/* Orders & Amounts Summary (All Countries) */}
-      <div className="card" style={{marginBottom:12, display:'grid', gap:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🧮</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Orders & Amounts Summary (All Countries)</div>
-            <div className="helper">Totals first, then country-wise with flags and native currencies</div>
-          </div>
-        </div>
+      {/* Total Orders */}
+      <div className="card" style={{marginBottom:12}}>
         {(function(){
-          const sumAmount = (key)=> COUNTRY_LIST.reduce((s,c)=> s + Number(countryMetrics(c)[key]||0), 0)
           const totalOrdersCount = Number(metrics?.totalOrders||0)
-          const deliveredCount = Number(metrics?.deliveredOrders||0)
-          const pendingCount = Number(metrics?.pendingOrders||0)
-          const amountTotalOrders = sumAmount('amountTotalOrders')
-          const amountDelivered = sumAmount('amountDelivered')
-          const amountPending = sumAmount('amountPending')
-          function ChipsCounts(){
-            return (
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>📦</div>
+                <div style={{fontWeight:800,fontSize:16}}>Total Orders</div>
+              </div>
+              <div style={{fontSize:22, fontWeight:900}}>{fmtNum(totalOrdersCount)}</div>
               <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
                 {COUNTRY_LIST.map(c=>{
                   const m = countryMetrics(c)
                   const { flag=''} = COUNTRY_INFO[c]||{}
                   return (
                     <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
-                      <span style={{marginRight:6}} aria-hidden>{flag}</span>
-                      <span style={{opacity:.85}}>{c==='KSA' ? 'Saudi Arabia' : c}:</span>
+                      <span aria-hidden>{flag}</span>
                       <strong style={{marginLeft:6}}>{fmtNum(m.orders||0)}</strong>
                     </span>
                   )
                 })}
-              </div>
-            )
-          }
-          function ChipsDeliveredCounts(){
-            return (
-              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
-                {COUNTRY_LIST.map(c=>{
-                  const m = countryMetrics(c)
-                  const { flag=''} = COUNTRY_INFO[c]||{}
-                  return (
-                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
-                      <span style={{marginRight:6}} aria-hidden>{flag}</span>
-                      <span style={{opacity:.85}}>{c==='KSA' ? 'Saudi Arabia' : c}:</span>
-                      <strong style={{marginLeft:6}}>{fmtNum(m.delivered||0)}</strong>
-                    </span>
-                  )
-                })}
-              </div>
-            )
-          }
-          function ChipsPendingCounts(){
-            return (
-              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
-                {COUNTRY_LIST.map(c=>{
-                  const m = countryMetrics(c)
-                  const { flag=''} = COUNTRY_INFO[c]||{}
-                  return (
-                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
-                      <span style={{marginRight:6}} aria-hidden>{flag}</span>
-                      <span style={{opacity:.85}}>{c==='KSA' ? 'Saudi Arabia' : c}:</span>
-                      <strong style={{marginLeft:6}}>{fmtNum(m.pending||0)}</strong>
-                    </span>
-                  )
-                })}
-              </div>
-            )
-          }
-          function ChipsAmounts({keyName}){
-            return (
-              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
-                {COUNTRY_LIST.map(c=>{
-                  const m = countryMetrics(c)
-                  const { flag='', cur=''} = COUNTRY_INFO[c]||{}
-                  const val = Number(m[keyName]||0)
-                  return (
-                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
-                      <span style={{marginRight:6}} aria-hidden>{flag}</span>
-                      <span style={{opacity:.85}}>{c==='KSA' ? 'Saudi Arabia' : c}:</span>
-                      <strong style={{marginLeft:6}}>{cur} {fmtAmt(val)}</strong>
-                    </span>
-                  )
-                })}
-              </div>
-            )
-          }
-          return (
-            <div className="section" style={{display:'grid', gap:12}}>
-              <div>
-                <div style={{fontWeight:800}}>Total Orders</div>
-                <div style={{display:'grid', gap:6}}>
-                  <div style={{fontSize:20, fontWeight:900}}>{fmtNum(totalOrdersCount)}</div>
-                  <ChipsCounts />
-                </div>
-              </div>
-              <div>
-                <div style={{fontWeight:800}}>Amount of Total Orders</div>
-                <div style={{display:'grid', gap:6}}>
-                  <div style={{fontSize:16, fontWeight:800}}>{fmtAmt(amountTotalOrders)} (sum of native currencies)</div>
-                  <ChipsAmounts keyName="amountTotalOrders" />
-                </div>
-              </div>
-              <div>
-                <div style={{fontWeight:800}}>Orders Delivered</div>
-                <div style={{display:'grid', gap:6}}>
-                  <div style={{fontSize:20, fontWeight:900}}>{fmtNum(deliveredCount)}</div>
-                  <ChipsDeliveredCounts />
-                </div>
-              </div>
-              <div>
-                <div style={{fontWeight:800}}>Amount of Orders Delivered</div>
-                <div style={{display:'grid', gap:6}}>
-                  <div style={{fontSize:16, fontWeight:800}}>{fmtAmt(amountDelivered)} (sum of native currencies)</div>
-                  <ChipsAmounts keyName="amountDelivered" />
-                </div>
-              </div>
-              <div>
-                <div style={{fontWeight:800}}>Pending Orders</div>
-                <div style={{display:'grid', gap:6}}>
-                  <div style={{fontSize:20, fontWeight:900}}>{fmtNum(pendingCount)}</div>
-                  <ChipsPendingCounts />
-                </div>
-              </div>
-              <div>
-                <div style={{fontWeight:800}}>Pending Amount</div>
-                <div style={{display:'grid', gap:6}}>
-                  <div style={{fontSize:16, fontWeight:800}}>{fmtAmt(amountPending)} (sum of native currencies)</div>
-                  <ChipsAmounts keyName="amountPending" />
-                </div>
               </div>
             </div>
           )
         })()}
       </div>
 
-      {/* Status Breakdown by Country */}
-      <div className="card" style={{marginBottom:12, display:'grid', gap:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#3b82f6,#1d4ed8)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>📦</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Status Breakdown (All Countries)</div>
-            <div className="helper">Global totals followed by per-country flags</div>
-          </div>
-        </div>
+      {/* Amount of Total Orders */}
+      <div className="card" style={{marginBottom:12}}>
         {(function(){
-          function Row({label, total, keyName}){
-            return (
-              <div style={{display:'grid', gap:6}}>
-                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-                  <div style={{fontWeight:700}}>{label}</div>
-                  <div style={{fontWeight:900}}>{fmtNum(total)}</div>
-                </div>
-                <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
-                  {COUNTRY_LIST.map(c=>{
-                    const m = countryMetrics(c)
-                    const { flag=''} = COUNTRY_INFO[c]||{}
-                    const val = keyName==='total' ? (m.orders||0) : (m[keyName]||0)
-                    return (
-                      <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
-                        <span style={{marginRight:6}} aria-hidden>{flag}</span>
-                        <span style={{opacity:.85}}>{c==='KSA' ? 'Saudi Arabia' : c}:</span>
-                        <strong style={{marginLeft:6}}>{fmtNum(val)}</strong>
-                      </span>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          }
-          const st = statusTotals || {}
+          const amountTotalOrders = COUNTRY_LIST.reduce((s,c)=> s + Number(countryMetrics(c).amountTotalOrders||0), 0)
           return (
-            <div className="section" style={{display:'grid', gap:12}}>
-              <Row label="Total Orders" total={st.total||0} keyName="total" />
-              <Row label="Pending" total={st.pending||0} keyName="pending" />
-              <Row label="Assigned" total={st.assigned||0} keyName="assigned" />
-              <Row label="Picked Up" total={st.picked_up||0} keyName="pickedUp" />
-              <Row label="In Transit" total={st.in_transit||0} keyName="transit" />
-              <Row label="Out for Delivery" total={st.out_for_delivery||0} keyName="outForDelivery" />
-              <Row label="Delivered" total={st.delivered||0} keyName="delivered" />
-              <Row label="No Response" total={st.no_response||0} keyName="noResponse" />
-              <Row label="Returned" total={st.returned||0} keyName="returned" />
-              <Row label="Cancelled" total={st.cancelled||0} keyName="cancelled" />
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#10b981,#059669)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>💵</div>
+                <div style={{fontWeight:800,fontSize:16}}>Amount of Total Orders</div>
+              </div>
+              <div style={{fontSize:18, fontWeight:800}}>{fmtAmt(amountTotalOrders)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag='', cur='' } = COUNTRY_INFO[c]||{}
+                  const val = Number(m.amountTotalOrders||0)
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{cur} {fmtAmt(val)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
             </div>
           )
         })()}
       </div>
-      
-      {/* Sales & Revenue */}
+
+      {/* Orders Delivered */}
       <div className="card" style={{marginBottom:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#10b981,#059669)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>💰</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Sales & Revenue (from Orders)</div>
-            <div className="helper">All financial metrics from delivered orders (Default: AED)</div>
-          </div>
-        </div>
-        <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:12}}>
-          <MetricCard title="Total Sales" value={formatCurrency(metrics.totalSales||0, 'UAE')} icon="💵" to="/user/orders?ship=delivered" />
-          <MetricCard title="COD Sales" value={formatCurrency(metrics.totalCOD||0, 'UAE')} icon="💰" to="/user/orders?ship=delivered&payment=COD" />
-          <MetricCard title="Prepaid Sales" value={formatCurrency(metrics.totalPrepaid||0, 'UAE')} icon="💳" to="/user/orders?ship=delivered&payment=PREPAID" />
-          <MetricCard title="Total Collected" value={formatCurrency(metrics.totalCollected||0, 'UAE')} icon="🧾" to="/user/orders?ship=delivered&collected=true" />
-          <MetricCard title="Net Revenue" value={formatCurrency(metrics.totalRevenue||0, 'UAE')} icon="📈" to="/user/transactions" />
-        </div>
+        {(function(){
+          const deliveredCount = Number(metrics?.deliveredOrders||0)
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#16a34a,#15803d)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>✅</div>
+                <div style={{fontWeight:800,fontSize:16}}>Orders Delivered</div>
+              </div>
+              <div style={{fontSize:22, fontWeight:900}}>{fmtNum(deliveredCount)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(m.delivered||0)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Amount of Orders Delivered */}
+      <div className="card" style={{marginBottom:12}}>
+        {(function(){
+          const amountDelivered = COUNTRY_LIST.reduce((s,c)=> s + Number(countryMetrics(c).amountDelivered||0), 0)
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#22c55e,#16a34a)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🧾</div>
+                <div style={{fontWeight:800,fontSize:16}}>Amount of Orders Delivered</div>
+              </div>
+              <div style={{fontSize:18, fontWeight:800}}>{fmtAmt(amountDelivered)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag='', cur='' } = COUNTRY_INFO[c]||{}
+                  const val = Number(m.amountDelivered||0)
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{cur} {fmtAmt(val)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Pending Orders */}
+      <div className="card" style={{marginBottom:12}}>
+        {(function(){
+          const pendingCount = Number(metrics?.pendingOrders||0)
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#f59e0b,#d97706)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>⏳</div>
+                <div style={{fontWeight:800,fontSize:16}}>Pending Orders</div>
+              </div>
+              <div style={{fontSize:22, fontWeight:900}}>{fmtNum(pendingCount)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(m.pending||0)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Pending Amount */}
+      <div className="card" style={{marginBottom:12}}>
+        {(function(){
+          const amountPending = COUNTRY_LIST.reduce((s,c)=> s + Number(countryMetrics(c).amountPending||0), 0)
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#fb923c,#f97316)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>💰</div>
+                <div style={{fontWeight:800,fontSize:16}}>Pending Amount</div>
+              </div>
+              <div style={{fontSize:18, fontWeight:800}}>{fmtAmt(amountPending)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag='', cur='' } = COUNTRY_INFO[c]||{}
+                  const val = Number(m.amountPending||0)
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{cur} {fmtAmt(val)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Status: Total Orders */}
+      <div className="card" style={{marginBottom:12}}>
+        {(function(){
+          const st = statusTotals || {}
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#3b82f6,#1d4ed8)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>📦</div>
+                <div style={{fontWeight:800,fontSize:16}}>Total Orders</div>
+              </div>
+              <div style={{fontSize:22, fontWeight:900}}>{fmtNum(st.total||0)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  const val = Number(m.orders||0)
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(val)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Status: Pending */}
+      <div className="card" style={{marginBottom:12}}>
+        {(function(){
+          const st = statusTotals || {}
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#f59e0b,#d97706)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>⏳</div>
+                <div style={{fontWeight:800,fontSize:16}}>Pending</div>
+              </div>
+              <div style={{fontSize:22, fontWeight:900}}>{fmtNum(st.pending||0)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  const val = Number(m.pending||0)
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(val)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Status: Assigned */}
+      <div className="card" style={{marginBottom:12}}>
+        {(function(){
+          const st = statusTotals || {}
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#94a3b8,#64748b)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>📌</div>
+                <div style={{fontWeight:800,fontSize:16}}>Assigned</div>
+              </div>
+              <div style={{fontSize:22, fontWeight:900}}>{fmtNum(st.assigned||0)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  const val = Number(m.assigned||0)
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(val)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Status: Picked Up */}
+      <div className="card" style={{marginBottom:12}}>
+        {(function(){
+          const st = statusTotals || {}
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#60a5fa,#3b82f6)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🚚</div>
+                <div style={{fontWeight:800,fontSize:16}}>Picked Up</div>
+              </div>
+              <div style={{fontSize:22, fontWeight:900}}>{fmtNum(st.picked_up||0)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  const val = Number(m.pickedUp||0)
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(val)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Status: In Transit */}
+      <div className="card" style={{marginBottom:12}}>
+        {(function(){
+          const st = statusTotals || {}
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🚛</div>
+                <div style={{fontWeight:800,fontSize:16}}>In Transit</div>
+              </div>
+              <div style={{fontSize:22, fontWeight:900}}>{fmtNum(st.in_transit||0)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  const val = Number(m.transit||0)
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(val)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Status: Out for Delivery */}
+      <div className="card" style={{marginBottom:12}}>
+        {(function(){
+          const st = statusTotals || {}
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#f97316,#ea580c)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🛵</div>
+                <div style={{fontWeight:800,fontSize:16}}>Out for Delivery</div>
+              </div>
+              <div style={{fontSize:22, fontWeight:900}}>{fmtNum(st.out_for_delivery||0)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  const val = Number(m.outForDelivery||0)
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(val)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Status: Delivered */}
+      <div className="card" style={{marginBottom:12}}>
+        {(function(){
+          const st = statusTotals || {}
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#22c55e,#16a34a)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>✅</div>
+                <div style={{fontWeight:800,fontSize:16}}>Delivered</div>
+              </div>
+              <div style={{fontSize:22, fontWeight:900}}>{fmtNum(st.delivered||0)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  const val = Number(m.delivered||0)
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(val)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Status: No Response */}
+      <div className="card" style={{marginBottom:12}}>
+        {(function(){
+          const st = statusTotals || {}
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#ef4444,#b91c1c)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>☎️🚫</div>
+                <div style={{fontWeight:800,fontSize:16}}>No Response</div>
+              </div>
+              <div style={{fontSize:22, fontWeight:900}}>{fmtNum(st.no_response||0)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  const val = Number(m.noResponse||0)
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(val)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Status: Returned */}
+      <div className="card" style={{marginBottom:12}}>
+        {(function(){
+          const st = statusTotals || {}
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#a3a3a3,#737373)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🔁</div>
+                <div style={{fontWeight:800,fontSize:16}}>Returned</div>
+              </div>
+              <div style={{fontSize:22, fontWeight:900}}>{fmtNum(st.returned||0)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  const val = Number(m.returned||0)
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(val)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Status: Cancelled */}
+      <div className="card" style={{marginBottom:12}}>
+        {(function(){
+          const st = statusTotals || {}
+          return (
+            <div className="section" style={{display:'grid', gap:8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#ef4444,#b91c1c)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>❌</div>
+                <div style={{fontWeight:800,fontSize:16}}>Cancelled</div>
+              </div>
+              <div style={{fontSize:22, fontWeight:900}}>{fmtNum(st.cancelled||0)}</div>
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  const val = Number(m.cancelled||0)
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span aria-hidden>{flag}</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(val)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* Country Summary */}
