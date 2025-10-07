@@ -144,7 +144,7 @@ export default function ManagerDashboard(){
       <div className="page-header">
         <div>
           <div className="page-title gradient heading-blue">Manager</div>
-          <div className="page-subtitle">Quick actions and shortcuts based on your permissions</div>
+          <div className="page-subtitle">Dashboard overview for your assigned countries</div>
         </div>
 
       {/* Orders Summary (Access Countries) */}
@@ -166,21 +166,18 @@ export default function ManagerDashboard(){
                   const val = isAmount ? Number(m[keyName]||0) : Number((keyName==='orders'?m.orders:m[keyName])||0)
                   return (
                     <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
-                      <span aria-hidden>{flag}</span>
-                      <strong style={{marginLeft:6}}>{isAmount ? `${cur} ${fmtAmt(val)}` : fmtNum(val)}</strong>
+                      <strong>{c}</strong>
+                      <span style={{marginLeft:6}}>{isAmount ? `${cur} ${fmtAmt(val)}` : fmtNum(val)}</span>
                     </span>
                   )
                 })}
               </div>
             )
           }
-          function Tile({ icon, title, valueEl, chipsEl, gradient }){
+          function Tile({ title, valueEl, chipsEl }){
             return (
               <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
-                <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
-                  <div style={{width:32,height:32,borderRadius:8,background:gradient||'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:16}}>{icon}</div>
-                  <div style={{fontWeight:800}}>{title}</div>
-                </div>
+                <div style={{fontWeight:800, marginBottom:6}}>{title}</div>
                 <div style={{fontSize:20, fontWeight:900, marginBottom:6}}>{valueEl}</div>
                 {chipsEl}
               </div>
@@ -188,20 +185,14 @@ export default function ManagerDashboard(){
           }
           return (
             <div className="section" style={{display:'grid', gap:12}}>
-              <div style={{display:'flex', alignItems:'center', gap:10}}>
-                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🧮</div>
-                <div>
-                  <div style={{fontWeight:800,fontSize:16}}>Orders Summary (Access Countries)</div>
-                  <div className="helper">Totals and per-country flags</div>
-                </div>
-              </div>
+              <div style={{fontWeight:800,fontSize:16}}>Orders Summary (Access Countries)</div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile icon="📦" title="Total Orders" valueEl={fmtNum(totalOrdersCount)} chipsEl={<Chips keyName="orders" />} gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
-                <Tile icon="💵" title="Amount of Total Orders" valueEl={fmtAmt(amountTotalOrders)} chipsEl={<Chips keyName="amountTotalOrders" isAmount />} gradient={'linear-gradient(135deg,#10b981,#059669)'} />
-                <Tile icon="✅" title="Orders Delivered" valueEl={fmtNum(deliveredCount)} chipsEl={<Chips keyName="delivered" />} gradient={'linear-gradient(135deg,#16a34a,#15803d)'} />
-                <Tile icon="🧾" title="Amount of Orders Delivered" valueEl={fmtAmt(amountDelivered)} chipsEl={<Chips keyName="amountDelivered" isAmount />} gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
-                <Tile icon="⏳" title="Pending Orders" valueEl={fmtNum(pendingCount)} chipsEl={<Chips keyName="pending" />} gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
-                <Tile icon="💰" title="Pending Amount" valueEl={fmtAmt(amountPending)} chipsEl={<Chips keyName="amountPending" isAmount />} gradient={'linear-gradient(135deg,#fb923c,#f97316)'} />
+                <Tile title="Total Orders" valueEl={fmtNum(totalOrdersCount)} chipsEl={<Chips keyName="orders" />} />
+                <Tile title="Amount of Total Orders" valueEl={fmtAmt(amountTotalOrders)} chipsEl={<Chips keyName="amountTotalOrders" isAmount />} />
+                <Tile title="Orders Delivered" valueEl={fmtNum(deliveredCount)} chipsEl={<Chips keyName="delivered" />} />
+                <Tile title="Amount of Orders Delivered" valueEl={fmtAmt(amountDelivered)} chipsEl={<Chips keyName="amountDelivered" isAmount />} />
+                <Tile title="Pending Orders" valueEl={fmtNum(pendingCount)} chipsEl={<Chips keyName="pending" />} />
+                <Tile title="Pending Amount" valueEl={fmtAmt(amountPending)} chipsEl={<Chips keyName="amountPending" isAmount />} />
               </div>
             </div>
           )
@@ -210,19 +201,14 @@ export default function ManagerDashboard(){
 
       {/* Driver Report by Country (Access Countries) */}
       <div className="card" style={{marginBottom:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#06b6d4,#0891b2)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🚚</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Driver Report by Country (Your Access)</div>
-            <div className="helper">Counts from orders; amounts in local currency.</div>
-          </div>
-        </div>
+        <div style={{fontWeight:800,fontSize:16, marginBottom:6}}>Driver Report by Country (Your Access)</div>
+        <div className="helper" style={{marginBottom:12}}>Counts from orders; amounts in local currency.</div>
         <div className="section" style={{display:'grid', gap:12}}>
           {(COUNTRY_LIST||[]).map(c=>{
             const m = countryMetrics(c)
             const d = driverAggByCountry[c] || { assignedAllTime:0, collected:0, deliveredToCompany:0, pendingToCompany:0 }
             const qs = encodeURIComponent(c)
-            const name = (c==='KSA') ? 'Saudi Arabia (KSA)' : c
+            const name = (c==='KSA') ? 'Saudi Arabia' : c
             const cur = (c==='KSA') ? 'SAR' : (c==='UAE' ? 'AED' : (c==='Oman' ? 'OMR' : (c==='Bahrain' ? 'BHD' : (c==='India' ? 'INR' : (c==='Kuwait' ? 'KWD' : 'QAR')))))
             return (
               <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
@@ -308,25 +294,21 @@ export default function ManagerDashboard(){
               <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
                 {(COUNTRY_LIST||[]).map(c=>{
                   const m = countryMetrics(c)
-                  const { flag=''} = COUNTRY_INFO[c]||{}
                   const val = Number(getter(m)||0)
                   return (
                     <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
-                      <span aria-hidden>{flag}</span>
-                      <strong style={{marginLeft:6}}>{fmtNum(val)}</strong>
+                      <strong>{c}</strong>
+                      <span style={{marginLeft:6}}>{fmtNum(val)}</span>
                     </span>
                   )
                 })}
               </div>
             )
           }
-          function Tile({ icon, title, value, getter, gradient, to }){
+          function Tile({ title, value, getter, to }){
             return (
               <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
-                <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
-                  <div style={{width:32,height:32,borderRadius:8,background:gradient||'linear-gradient(135deg,#3b82f6,#1d4ed8)',display:'grid',placeItems:'center',color:'#fff',fontSize:16}}>{icon}</div>
-                  <div style={{fontWeight:800}}>{title}</div>
-                </div>
+                <div style={{fontWeight:800, marginBottom:6}}>{title}</div>
                 <div style={{fontSize:20, fontWeight:900, marginBottom:6}}>{to ? (<a className="link" href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
                 <Chips getter={getter} />
               </div>
@@ -334,24 +316,18 @@ export default function ManagerDashboard(){
           }
           return (
             <div className="section" style={{display:'grid', gap:12}}>
-              <div style={{display:'flex', alignItems:'center', gap:10}}>
-                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#3b82f6,#1d4ed8)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>📊</div>
-                <div>
-                  <div style={{fontWeight:800,fontSize:16}}>Status Summary (Access Countries)</div>
-                  <div className="helper">Global totals and per-country flags</div>
-                </div>
-              </div>
+              <div style={{fontWeight:800,fontSize:16}}>Status Summary (Access Countries)</div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile icon="📦" title="Total Orders" value={st.total} getter={(m)=> m.orders} gradient={'linear-gradient(135deg,#3b82f6,#1d4ed8)'} to={'/manager/orders'} />
-                <Tile icon="⏳" title="Pending" value={st.pending} getter={(m)=> m.pending} gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} to={'/manager/orders?ship=pending'} />
-                <Tile icon="📌" title="Assigned" value={st.assigned} getter={(m)=> m.assigned} gradient={'linear-gradient(135deg,#94a3b8,#64748b)'} to={'/manager/orders?ship=assigned'} />
-                <Tile icon="🚚" title="Picked Up" value={st.picked_up} getter={(m)=> m.pickedUp} gradient={'linear-gradient(135deg,#60a5fa,#3b82f6)'} to={'/manager/orders?ship=picked_up'} />
-                <Tile icon="🚛" title="In Transit" value={st.in_transit} getter={(m)=> m.transit} gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} to={'/manager/orders?ship=in_transit'} />
-                <Tile icon="🛵" title="Out for Delivery" value={st.out_for_delivery} getter={(m)=> m.outForDelivery} gradient={'linear-gradient(135deg,#f97316,#ea580c)'} to={'/manager/orders?ship=out_for_delivery'} />
-                <Tile icon="✅" title="Delivered" value={st.delivered} getter={(m)=> m.delivered} gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} to={'/manager/orders?ship=delivered'} />
-                <Tile icon="☎️🚫" title="No Response" value={st.no_response} getter={(m)=> m.noResponse} gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} to={'/manager/orders?ship=no_response'} />
-                <Tile icon="🔁" title="Returned" value={st.returned} getter={(m)=> m.returned} gradient={'linear-gradient(135deg,#a3a3a3,#737373)'} to={'/manager/orders?ship=returned'} />
-                <Tile icon="❌" title="Cancelled" value={st.cancelled} getter={(m)=> m.cancelled} gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} to={'/manager/orders?ship=cancelled'} />
+                <Tile title="Total Orders" value={st.total} getter={(m)=> m.orders} to={'/manager/orders'} />
+                <Tile title="Pending" value={st.pending} getter={(m)=> m.pending} to={'/manager/orders?ship=open'} />
+                <Tile title="Assigned" value={st.assigned} getter={(m)=> m.assigned} to={'/manager/orders?ship=assigned'} />
+                <Tile title="Picked Up" value={st.picked_up} getter={(m)=> m.pickedUp} to={'/manager/orders?ship=picked_up'} />
+                <Tile title="In Transit" value={st.in_transit} getter={(m)=> m.transit} to={'/manager/orders?ship=in_transit'} />
+                <Tile title="Out for Delivery" value={st.out_for_delivery} getter={(m)=> m.outForDelivery} to={'/manager/orders?ship=out_for_delivery'} />
+                <Tile title="Delivered" value={st.delivered} getter={(m)=> m.delivered} to={'/manager/orders?ship=delivered'} />
+                <Tile title="No Response" value={st.no_response} getter={(m)=> m.noResponse} to={'/manager/orders?ship=no_response'} />
+                <Tile title="Returned" value={st.returned} getter={(m)=> m.returned} to={'/manager/orders?ship=returned'} />
+                <Tile title="Cancelled" value={st.cancelled} getter={(m)=> m.cancelled} to={'/manager/orders?ship=cancelled'} />
               </div>
             </div>
           )
@@ -362,15 +338,87 @@ export default function ManagerDashboard(){
 
       {/* Quick actions moved to bottom on mobile */}
 
+      {/* Drivers & Orders (Your Access) */}
+      <div className="card" style={{marginTop:12}}>
+        {(function(){
+          const byCountry = (COUNTRY_LIST||[]).reduce((acc,c)=>{ acc[c] = []; return acc }, {})
+          const canon = (v)=> (v==='KSA' ? 'KSA' : (v==='Saudi Arabia' ? (COUNTRY_LIST.includes('KSA') ? 'KSA' : 'Saudi Arabia') : v))
+          for (const d of (Array.isArray(drivers)? drivers: [])){
+            const k = canon(String(d?.country||''))
+            if (byCountry[k]) byCountry[k].push(d)
+          }
+          Object.keys(byCountry).forEach(k=> byCountry[k].sort((a,b)=> (Number(b?.assigned||0) - Number(a?.assigned||0))))
+          function Row({ c, d }){
+            const qsC = encodeURIComponent(c)
+            const id = String(d.id)
+            const cur = d.currency || (c==='KSA'?'SAR': c==='UAE'?'AED': c==='Oman'?'OMR': c==='Bahrain'?'BHD': c==='India'?'INR': c==='Kuwait'?'KWD':'QAR')
+            return (
+              <tr>
+                <td style={{fontWeight:700}}>{d.name||'-'}</td>
+                <td className="helper">{d.phone||'-'}</td>
+                <td>{fmtNum(d.assigned||0)}</td>
+                <td>{fmtNum(d.deliveredCount||0)}</td>
+                <td>{fmtNum(d.canceled||0)}</td>
+                <td>{cur} {fmtAmt(d.collected||0)}</td>
+                <td>{cur} {fmtAmt(d.deliveredToCompany||0)}</td>
+                <td>{cur} {fmtAmt(d.pendingToCompany||0)}</td>
+                <td>
+                  <a className="link" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=open`}>Open</a>
+                  <span className="helper"> | </span>
+                  <a className="link" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}`}>All</a>
+                  <span className="helper"> | </span>
+                  <a className="link" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=assigned`}>Assigned</a>
+                  <span className="helper"> | </span>
+                  <a className="link" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=delivered`}>Delivered</a>
+                </td>
+              </tr>
+            )
+          }
+          return (
+            <div className="section" style={{display:'grid', gap:12}}>
+              <div style={{fontWeight:800,fontSize:16}}>Drivers & Orders (Your Access)</div>
+              {(COUNTRY_LIST||[]).map(c=>{
+                const name = (c==='KSA') ? 'Saudi Arabia' : c
+                const arr = byCountry[c] || []
+                return (
+                  <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
+                    <div style={{fontWeight:900, marginBottom:8}}>{name}</div>
+                    {arr.length === 0 ? (
+                      <div className="helper">No drivers</div>
+                    ) : (
+                      <div style={{overflowX:'auto'}}>
+                        <table className="table" style={{width:'100%', borderCollapse:'collapse'}}>
+                          <thead>
+                            <tr>
+                              <th align="left">Driver</th>
+                              <th align="left">Phone</th>
+                              <th align="right">Assigned</th>
+                              <th align="right">Delivered</th>
+                              <th align="right">Cancelled</th>
+                              <th align="right">Collected</th>
+                              <th align="right">Delivered to Company</th>
+                              <th align="right">Pending to Company</th>
+                              <th align="left">Orders</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {arr.map(d=> <Row key={String(d.id)} c={c} d={d} />)}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
+      </div>
+
       {/* Country Summary (assigned only) */}
       <div className="card" style={{marginTop:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🌍</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Country Summary</div>
-            <div className="helper">Orders, Delivered, Cancelled, and Collections for your assigned countries</div>
-          </div>
-        </div>
+        <div style={{fontWeight:800,fontSize:16, marginBottom:6}}>Country Summary</div>
+        <div className="helper" style={{marginBottom:12}}>Orders, Delivered, Cancelled, and Collections for your assigned countries</div>
         <div className="section" style={{overflowX:'auto'}}>
           <div style={{display:'flex', gap:12, minWidth:700}}>
             {assignedList.map(ctry=>{
