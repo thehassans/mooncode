@@ -128,6 +128,45 @@ export default function UserDashboard(){
     }
     return rows
   }, [metrics, driverCountrySummary])
+
+  // Country helpers for flags/currencies and unified metrics
+  const COUNTRY_INFO = useMemo(() => ({
+    KSA: { flag: '🇸🇦', cur: 'SAR', alias: ['Saudi Arabia'] },
+    UAE: { flag: '🇦🇪', cur: 'AED' },
+    Oman: { flag: '🇴🇲', cur: 'OMR' },
+    Bahrain: { flag: '🇧🇭', cur: 'BHD' },
+    India: { flag: '🇮🇳', cur: 'INR' },
+    Kuwait: { flag: '🇰🇼', cur: 'KWD' },
+    Qatar: { flag: '🇶🇦', cur: 'QAR' },
+  }), [])
+  const COUNTRY_LIST = useMemo(() => ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar'], [])
+  function countryMetrics(c){
+    const base = metrics?.countries || {}
+    if (base[c]) return base[c]
+    const alias = COUNTRY_INFO[c]?.alias || []
+    for (const a of alias){ if (base[a]) return base[a] }
+    return {}
+  }
+  function fmtNum(n){ try{ return Number(n||0).toLocaleString() }catch{ return String(n||0) } }
+  function fmtAmt(n){ try{ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }catch{ return String(n||0) } }
+  const statusTotals = useMemo(()=>{
+    if (metrics && metrics.statusTotals) return metrics.statusTotals
+    // Fallback: aggregate from countries if backend older
+    return COUNTRY_LIST.reduce((acc, c)=>{
+      const m = countryMetrics(c)
+      acc.total += Number(m.orders||0)
+      acc.pending += Number(m.pending||0)
+      acc.assigned += Number(m.assigned||0)
+      acc.picked_up += Number(m.pickedUp||0)
+      acc.in_transit += Number(m.transit||0)
+      acc.out_for_delivery += Number(m.outForDelivery||0)
+      acc.delivered += Number(m.delivered||0)
+      acc.no_response += Number(m.noResponse||0)
+      acc.returned += Number(m.returned||0)
+      acc.cancelled += Number(m.cancelled||0)
+      return acc
+    }, { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 })
+  }, [metrics])
   async function load(){
     try{ setAnalytics(await apiGet('/api/orders/analytics/last7days')) }catch(_e){ setAnalytics({ days: [], totals:{} }) }
     try{ setMetrics(await apiGet('/api/reports/user-metrics')) }catch(_e){ console.error('Failed to fetch metrics') }
@@ -179,6 +218,193 @@ export default function UserDashboard(){
           <div className="page-title gradient heading-purple">Dashboard</div>
           <div className="page-subtitle">Your business at a glance</div>
         </div>
+      </div>
+
+      {/* Orders & Amounts Summary (All Countries) */}
+      <div className="card" style={{marginBottom:12, display:'grid', gap:12}}>
+        <div style={{display:'flex', alignItems:'center', gap:10}}>
+          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🧮</div>
+          <div>
+            <div style={{fontWeight:800,fontSize:16}}>Orders & Amounts Summary (All Countries)</div>
+            <div className="helper">Totals first, then country-wise with flags and native currencies</div>
+          </div>
+        </div>
+        {(function(){
+          const sumAmount = (key)=> COUNTRY_LIST.reduce((s,c)=> s + Number(countryMetrics(c)[key]||0), 0)
+          const totalOrdersCount = Number(metrics?.totalOrders||0)
+          const deliveredCount = Number(metrics?.deliveredOrders||0)
+          const pendingCount = Number(metrics?.pendingOrders||0)
+          const amountTotalOrders = sumAmount('amountTotalOrders')
+          const amountDelivered = sumAmount('amountDelivered')
+          const amountPending = sumAmount('amountPending')
+          function ChipsCounts(){
+            return (
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span style={{marginRight:6}} aria-hidden>{flag}</span>
+                      <span style={{opacity:.85}}>{c==='KSA' ? 'Saudi Arabia' : c}:</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(m.orders||0)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            )
+          }
+          function ChipsDeliveredCounts(){
+            return (
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span style={{marginRight:6}} aria-hidden>{flag}</span>
+                      <span style={{opacity:.85}}>{c==='KSA' ? 'Saudi Arabia' : c}:</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(m.delivered||0)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            )
+          }
+          function ChipsPendingCounts(){
+            return (
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag=''} = COUNTRY_INFO[c]||{}
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span style={{marginRight:6}} aria-hidden>{flag}</span>
+                      <span style={{opacity:.85}}>{c==='KSA' ? 'Saudi Arabia' : c}:</span>
+                      <strong style={{marginLeft:6}}>{fmtNum(m.pending||0)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            )
+          }
+          function ChipsAmounts({keyName}){
+            return (
+              <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                {COUNTRY_LIST.map(c=>{
+                  const m = countryMetrics(c)
+                  const { flag='', cur=''} = COUNTRY_INFO[c]||{}
+                  const val = Number(m[keyName]||0)
+                  return (
+                    <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                      <span style={{marginRight:6}} aria-hidden>{flag}</span>
+                      <span style={{opacity:.85}}>{c==='KSA' ? 'Saudi Arabia' : c}:</span>
+                      <strong style={{marginLeft:6}}>{cur} {fmtAmt(val)}</strong>
+                    </span>
+                  )
+                })}
+              </div>
+            )
+          }
+          return (
+            <div className="section" style={{display:'grid', gap:12}}>
+              <div>
+                <div style={{fontWeight:800}}>Total Orders</div>
+                <div style={{display:'grid', gap:6}}>
+                  <div style={{fontSize:20, fontWeight:900}}>{fmtNum(totalOrdersCount)}</div>
+                  <ChipsCounts />
+                </div>
+              </div>
+              <div>
+                <div style={{fontWeight:800}}>Amount of Total Orders</div>
+                <div style={{display:'grid', gap:6}}>
+                  <div style={{fontSize:16, fontWeight:800}}>{fmtAmt(amountTotalOrders)} (sum of native currencies)</div>
+                  <ChipsAmounts keyName="amountTotalOrders" />
+                </div>
+              </div>
+              <div>
+                <div style={{fontWeight:800}}>Orders Delivered</div>
+                <div style={{display:'grid', gap:6}}>
+                  <div style={{fontSize:20, fontWeight:900}}>{fmtNum(deliveredCount)}</div>
+                  <ChipsDeliveredCounts />
+                </div>
+              </div>
+              <div>
+                <div style={{fontWeight:800}}>Amount of Orders Delivered</div>
+                <div style={{display:'grid', gap:6}}>
+                  <div style={{fontSize:16, fontWeight:800}}>{fmtAmt(amountDelivered)} (sum of native currencies)</div>
+                  <ChipsAmounts keyName="amountDelivered" />
+                </div>
+              </div>
+              <div>
+                <div style={{fontWeight:800}}>Pending Orders</div>
+                <div style={{display:'grid', gap:6}}>
+                  <div style={{fontSize:20, fontWeight:900}}>{fmtNum(pendingCount)}</div>
+                  <ChipsPendingCounts />
+                </div>
+              </div>
+              <div>
+                <div style={{fontWeight:800}}>Pending Amount</div>
+                <div style={{display:'grid', gap:6}}>
+                  <div style={{fontSize:16, fontWeight:800}}>{fmtAmt(amountPending)} (sum of native currencies)</div>
+                  <ChipsAmounts keyName="amountPending" />
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Status Breakdown by Country */}
+      <div className="card" style={{marginBottom:12, display:'grid', gap:12}}>
+        <div style={{display:'flex', alignItems:'center', gap:10}}>
+          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#3b82f6,#1d4ed8)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>📦</div>
+          <div>
+            <div style={{fontWeight:800,fontSize:16}}>Status Breakdown (All Countries)</div>
+            <div className="helper">Global totals followed by per-country flags</div>
+          </div>
+        </div>
+        {(function(){
+          function Row({label, total, keyName}){
+            return (
+              <div style={{display:'grid', gap:6}}>
+                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                  <div style={{fontWeight:700}}>{label}</div>
+                  <div style={{fontWeight:900}}>{fmtNum(total)}</div>
+                </div>
+                <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                  {COUNTRY_LIST.map(c=>{
+                    const m = countryMetrics(c)
+                    const { flag=''} = COUNTRY_INFO[c]||{}
+                    const val = keyName==='total' ? (m.orders||0) : (m[keyName]||0)
+                    return (
+                      <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
+                        <span style={{marginRight:6}} aria-hidden>{flag}</span>
+                        <span style={{opacity:.85}}>{c==='KSA' ? 'Saudi Arabia' : c}:</span>
+                        <strong style={{marginLeft:6}}>{fmtNum(val)}</strong>
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          }
+          const st = statusTotals || {}
+          return (
+            <div className="section" style={{display:'grid', gap:12}}>
+              <Row label="Total Orders" total={st.total||0} keyName="total" />
+              <Row label="Pending" total={st.pending||0} keyName="pending" />
+              <Row label="Assigned" total={st.assigned||0} keyName="assigned" />
+              <Row label="Picked Up" total={st.picked_up||0} keyName="pickedUp" />
+              <Row label="In Transit" total={st.in_transit||0} keyName="transit" />
+              <Row label="Out for Delivery" total={st.out_for_delivery||0} keyName="outForDelivery" />
+              <Row label="Delivered" total={st.delivered||0} keyName="delivered" />
+              <Row label="No Response" total={st.no_response||0} keyName="noResponse" />
+              <Row label="Returned" total={st.returned||0} keyName="returned" />
+              <Row label="Cancelled" total={st.cancelled||0} keyName="cancelled" />
+            </div>
+          )
+        })()}
       </div>
       
       {/* Sales & Revenue */}

@@ -849,11 +849,22 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       { $match: { createdBy: { $in: creatorIds } } },
       { $group: {
         _id: '$orderCountry',
+        // amounts
         totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        amountTotalOrders: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } },
+        amountDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        amountPending: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        // counts
         totalOrders: { $sum: 1 },
+        pendingOrders: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, 1, 0 ] } },
+        assignedOrders: { $sum: { $cond: [ { $eq: ['$status', 'assigned'] }, 1, 0 ] } },
         pickedUpOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'picked_up'] }, 1, 0 ] } },
-        deliveredOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
         inTransitOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'in_transit'] }, 1, 0 ] } },
+        outForDeliveryOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'out_for_delivery'] }, 1, 0 ] } },
+        deliveredOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
+        noResponseOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'no_response'] }, 1, 0 ] } },
+        returnedOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'returned'] }, 1, 0 ] } },
+        cancelledOrders: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'cancelled'] }, { $eq: ['$status', 'cancelled'] } ] }, 1, 0 ] } },
       } }
     ]);
     
@@ -894,6 +905,17 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         countries[country].pickedUp = cm.pickedUpOrders || 0;
         countries[country].delivered = cm.deliveredOrders || 0;
         countries[country].transit = cm.inTransitOrders || 0;
+        // additional status counts
+        countries[country].pending = cm.pendingOrders || 0;
+        countries[country].assigned = cm.assignedOrders || 0;
+        countries[country].outForDelivery = cm.outForDeliveryOrders || 0;
+        countries[country].noResponse = cm.noResponseOrders || 0;
+        countries[country].returned = cm.returnedOrders || 0;
+        countries[country].cancelled = cm.cancelledOrders || 0;
+        // amounts by status
+        countries[country].amountTotalOrders = cm.amountTotalOrders || 0;
+        countries[country].amountDelivered = cm.amountDelivered || 0;
+        countries[country].amountPending = cm.amountPending || 0;
       }
     });
     
@@ -904,6 +926,22 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       }
     });
     
+    // Aggregate status totals across countries (counts)
+    const statusTotals = Object.keys(countries).reduce((acc, k) => {
+      const c = countries[k] || {};
+      acc.total += Number(c.orders || 0);
+      acc.pending += Number(c.pending || 0);
+      acc.assigned += Number(c.assigned || 0);
+      acc.picked_up += Number(c.pickedUp || 0);
+      acc.in_transit += Number(c.transit || 0);
+      acc.out_for_delivery += Number(c.outForDelivery || 0);
+      acc.delivered += Number(c.delivered || 0);
+      acc.no_response += Number(c.noResponse || 0);
+      acc.returned += Number(c.returned || 0);
+      acc.cancelled += Number(c.cancelled || 0);
+      return acc;
+    }, { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 })
+
     const totalDeposit = orders.totalSales;
     const totalWithdraw = totalExpense;
     const totalRevenue = orders.totalSales - totalExpense; // Net profit
@@ -926,7 +964,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       totalAgentExpense,
       totalDriverExpense,
       totalRevenue,
-      countries
+      countries,
+      statusTotals
     });
   } catch (error) {
     console.error('Error fetching user metrics:', error);
