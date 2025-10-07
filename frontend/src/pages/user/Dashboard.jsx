@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import MetricCard from '../../components/MetricCard.jsx'
 import Chart from '../../components/Chart.jsx'
 import { API_BASE, apiGet } from '../../api.js'
 import { io } from 'socket.io-client'
@@ -263,12 +262,12 @@ export default function UserDashboard(){
                 </div>
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile icon="📦" title="Total Orders" valueEl={fmtNum(totalOrdersCount)} gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
-                <Tile icon="💵" title="Amount of Total Orders (AED)" valueEl={`AED ${fmtAmt(amountTotalOrdersAED)}`} gradient={'linear-gradient(135deg,#10b981,#059669)'} />
-                <Tile icon="✅" title="Orders Delivered" valueEl={fmtNum(deliveredCount)} gradient={'linear-gradient(135deg,#16a34a,#15803d)'} />
-                <Tile icon="🧾" title="Amount of Orders Delivered (AED)" valueEl={`AED ${fmtAmt(amountDeliveredAED)}`} gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
-                <Tile icon="⏳" title="Pending Orders" valueEl={fmtNum(pendingCount)} gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
-                <Tile icon="💰" title="Pending Amount (AED)" valueEl={`AED ${fmtAmt(amountPendingAED)}`} gradient={'linear-gradient(135deg,#fb923c,#f97316)'} />
+                <Tile icon="📦" title="Total Orders" valueEl={<a className="link" href="/user/orders">{fmtNum(totalOrdersCount)}</a>} gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
+                <Tile icon="💵" title="Amount of Total Orders (AED)" valueEl={<a className="link" href="/user/orders">{`AED ${fmtAmt(amountTotalOrdersAED)}`}</a>} gradient={'linear-gradient(135deg,#10b981,#059669)'} />
+                <Tile icon="✅" title="Orders Delivered" valueEl={<a className="link" href="/user/orders?ship=delivered">{fmtNum(deliveredCount)}</a>} gradient={'linear-gradient(135deg,#16a34a,#15803d)'} />
+                <Tile icon="🧾" title="Amount of Orders Delivered (AED)" valueEl={<a className="link" href="/user/orders?ship=delivered">{`AED ${fmtAmt(amountDeliveredAED)}`}</a>} gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
+                <Tile icon="⏳" title="Pending Orders" valueEl={<a className="link" href="/user/orders?status=pending">{fmtNum(pendingCount)}</a>} gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
+                <Tile icon="💰" title="Pending Amount (AED)" valueEl={<a className="link" href="/user/orders?status=pending">{`AED ${fmtAmt(amountPendingAED)}`}</a>} gradient={'linear-gradient(135deg,#fb923c,#f97316)'} />
               </div>
             </div>
           )
@@ -279,14 +278,14 @@ export default function UserDashboard(){
       <div className="card" style={{marginBottom:12}}>
         {(function(){
           const st = statusTotals || {}
-          function Tile({ icon, title, value, gradient }){
+          function Tile({ icon, title, value, gradient, to }){
             return (
               <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
                 <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
                   <div style={{width:32,height:32,borderRadius:8,background:gradient||'linear-gradient(135deg,#3b82f6,#1d4ed8)',display:'grid',placeItems:'center',color:'#fff',fontSize:16}}>{icon}</div>
                   <div style={{fontWeight:800}}>{title}</div>
                 </div>
-                <div style={{fontSize:20, fontWeight:900, marginBottom:6}}>{fmtNum(value||0)}</div>
+                <div style={{fontSize:20, fontWeight:900, marginBottom:6}}>{to ? (<a className="link" href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
                 {/* chips removed for All Countries */}
               </div>
             )
@@ -301,16 +300,16 @@ export default function UserDashboard(){
                 </div>
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile icon="📦" title="Total Orders" value={st.total} gradient={'linear-gradient(135deg,#3b82f6,#1d4ed8)'} />
-                <Tile icon="⏳" title="Pending" value={st.pending} gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
-                <Tile icon="📌" title="Assigned" value={st.assigned} gradient={'linear-gradient(135deg,#94a3b8,#64748b)'} />
-                <Tile icon="🚚" title="Picked Up" value={st.picked_up} gradient={'linear-gradient(135deg,#60a5fa,#3b82f6)'} />
-                <Tile icon="🚛" title="In Transit" value={st.in_transit} gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
-                <Tile icon="🛵" title="Out for Delivery" value={st.out_for_delivery} gradient={'linear-gradient(135deg,#f97316,#ea580c)'} />
-                <Tile icon="✅" title="Delivered" value={st.delivered} gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
-                <Tile icon="☎️🚫" title="No Response" value={st.no_response} gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
-                <Tile icon="🔁" title="Returned" value={st.returned} gradient={'linear-gradient(135deg,#a3a3a3,#737373)'} />
-                <Tile icon="❌" title="Cancelled" value={st.cancelled} gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
+                <Tile icon="📦" title="Total Orders" value={st.total} to="/user/orders" gradient={'linear-gradient(135deg,#3b82f6,#1d4ed8)'} />
+                <Tile icon="⏳" title="Pending" value={st.pending} to="/user/orders?status=pending" gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
+                <Tile icon="📌" title="Assigned" value={st.assigned} to="/user/orders?status=assigned" gradient={'linear-gradient(135deg,#94a3b8,#64748b)'} />
+                <Tile icon="🚚" title="Picked Up" value={st.picked_up} to="/user/orders?ship=picked_up" gradient={'linear-gradient(135deg,#60a5fa,#3b82f6)'} />
+                <Tile icon="🚛" title="In Transit" value={st.in_transit} to="/user/orders?ship=in_transit" gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
+                <Tile icon="🛵" title="Out for Delivery" value={st.out_for_delivery} to="/user/orders?ship=out_for_delivery" gradient={'linear-gradient(135deg,#f97316,#ea580c)'} />
+                <Tile icon="✅" title="Delivered" value={st.delivered} to="/user/orders?ship=delivered" gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
+                <Tile icon="☎️🚫" title="No Response" value={st.no_response} to="/user/orders?ship=no_response" gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
+                <Tile icon="🔁" title="Returned" value={st.returned} to="/user/orders?ship=returned" gradient={'linear-gradient(135deg,#a3a3a3,#737373)'} />
+                <Tile icon="❌" title="Cancelled" value={st.cancelled} to="/user/orders?ship=cancelled" gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
               </div>
             </div>
           )
@@ -442,36 +441,37 @@ export default function UserDashboard(){
           {COUNTRY_LIST.map(c=>{
             const m = countryMetrics(c)
             const name = (c==='KSA') ? 'Saudi Arabia (KSA)' : c
-            const amtTotal = toAED(m?.amountTotalOrders||0, c)
-            const amtDelivered = toAED(m?.amountDelivered||0, c)
-            const amtPending = toAED(m?.amountPending||0, c)
+            const qs = encodeURIComponent(c)
+            const amtTotalStr = formatCurrency(m?.amountTotalOrders||0, c)
+            const amtDeliveredStr = formatCurrency(m?.amountDelivered||0, c)
+            const amtPendingStr = formatCurrency(m?.amountPending||0, c)
             return (
               <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
                 <div style={{fontWeight:900, marginBottom:8}}>{name}</div>
                 <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Total Orders</div>
-                    <div style={{fontWeight:900, fontSize:18}}>{fmtNum(m?.orders||0)}</div>
+                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}`}>{fmtNum(m?.orders||0)}</a></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Amount of Total Orders (AED)</div>
-                    <div style={{fontWeight:900, fontSize:18}}>AED {fmtAmt(amtTotal)}</div>
+                    <div className="helper">Amount of Total Orders</div>
+                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}`}>{amtTotalStr}</a></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Delivered</div>
-                    <div style={{fontWeight:900, fontSize:18}}>{fmtNum(m?.delivered||0)}</div>
+                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}&ship=delivered`}>{fmtNum(m?.delivered||0)}</a></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Amount of Delivered (AED)</div>
-                    <div style={{fontWeight:900, fontSize:18}}>AED {fmtAmt(amtDelivered)}</div>
+                    <div className="helper">Amount of Delivered</div>
+                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}&ship=delivered`}>{amtDeliveredStr}</a></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Pending Orders</div>
-                    <div style={{fontWeight:900, fontSize:18}}>{fmtNum(m?.pending||0)}</div>
+                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}&status=pending`}>{fmtNum(m?.pending||0)}</a></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Pending Amount (AED)</div>
-                    <div style={{fontWeight:900, fontSize:18}}>AED {fmtAmt(amtPending)}</div>
+                    <div className="helper">Pending Amount</div>
+                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}&status=pending`}>{amtPendingStr}</a></div>
                   </div>
                 </div>
                 <div style={{marginTop:10}}>
@@ -479,31 +479,35 @@ export default function UserDashboard(){
                   <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:10}}>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Assigned</div>
-                      <div style={{fontWeight:900}}>{fmtNum(m?.assigned||0)}</div>
+                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&status=assigned`}>{fmtNum(m?.assigned||0)}</a></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Picked Up</div>
-                      <div style={{fontWeight:900}}>{fmtNum(m?.pickedUp||0)}</div>
+                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=picked_up`}>{fmtNum(m?.pickedUp||0)}</a></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">In Transit</div>
-                      <div style={{fontWeight:900}}>{fmtNum(m?.transit||0)}</div>
+                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=in_transit`}>{fmtNum(m?.transit||0)}</a></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Out for Delivery</div>
-                      <div style={{fontWeight:900}}>{fmtNum(m?.outForDelivery||0)}</div>
+                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=out_for_delivery`}>{fmtNum(m?.outForDelivery||0)}</a></div>
+                    </div>
+                    <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                      <div className="helper">Delivered</div>
+                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=delivered`}>{fmtNum(m?.delivered||0)}</a></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">No Response</div>
-                      <div style={{fontWeight:900}}>{fmtNum(m?.noResponse||0)}</div>
+                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=no_response`}>{fmtNum(m?.noResponse||0)}</a></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Returned</div>
-                      <div style={{fontWeight:900}}>{fmtNum(m?.returned||0)}</div>
+                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=returned`}>{fmtNum(m?.returned||0)}</a></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Cancelled</div>
-                      <div style={{fontWeight:900}}>{fmtNum(m?.cancelled||0)}</div>
+                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=cancelled`}>{fmtNum(m?.cancelled||0)}</a></div>
                     </div>
                   </div>
                 </div>
