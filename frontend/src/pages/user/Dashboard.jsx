@@ -301,12 +301,12 @@ export default function UserDashboard(){
                 <div className="helper">Totals only (amounts in AED)</div>
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile title="Total Orders" valueEl={<a className="link" href="/user/orders">{fmtNum(totalOrdersCount)}</a>} />
-                <Tile title="Amount of Total Orders (AED)" valueEl={<a className="link" href="/user/orders">{`AED ${fmtAmt(amountTotalOrdersAED)}`}</a>} />
-                <Tile title="Orders Delivered" valueEl={<a className="link" href="/user/orders?ship=delivered">{fmtNum(deliveredCount)}</a>} />
-                <Tile title="Amount of Orders Delivered (AED)" valueEl={<a className="link" href="/user/orders?ship=delivered">{`AED ${fmtAmt(amountDeliveredAED)}`}</a>} />
-                <Tile title="Open Orders" valueEl={<a className="link" href="/user/orders?ship=open">{fmtNum(pendingCount)}</a>} />
-                <Tile title="Open Amount (AED)" valueEl={<a className="link" href="/user/orders?ship=open">{`AED ${fmtAmt(amountPendingAED)}`}</a>} />
+                <Tile title="Total Orders" valueEl={<a className="link" style={{color:'#0ea5e9'}} href="/user/orders">{fmtNum(totalOrdersCount)}</a>} />
+                <Tile title="Amount of Total Orders (AED)" valueEl={<a className="link" style={{color:'#10b981'}} href="/user/orders">{`AED ${fmtAmt(amountTotalOrdersAED)}`}</a>} />
+                <Tile title="Orders Delivered" valueEl={<a className="link" style={{color:'#10b981'}} href="/user/orders?ship=delivered">{fmtNum(deliveredCount)}</a>} />
+                <Tile title="Amount of Orders Delivered (AED)" valueEl={<a className="link" style={{color:'#10b981'}} href="/user/orders?ship=delivered">{`AED ${fmtAmt(amountDeliveredAED)}`}</a>} />
+                <Tile title="Open Orders" valueEl={<a className="link" style={{color:'#f59e0b'}} href="/user/orders?ship=open">{fmtNum(pendingCount)}</a>} />
+                <Tile title="Open Amount (AED)" valueEl={<a className="link" style={{color:'#f97316'}} href="/user/orders?ship=open">{`AED ${fmtAmt(amountPendingAED)}`}</a>} />
               </div>
             </div>
           )
@@ -320,11 +320,11 @@ export default function UserDashboard(){
       <div className="card" style={{marginBottom:12}}>
         {(function(){
           const st = statusTotals || {}
-          function Tile({ title, value, to }){
+          function Tile({ title, value, to, color }){
             return (
               <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
                 <div className="helper">{title}</div>
-                <div style={{fontSize:24, fontWeight:900}}>{to ? (<a className="link" href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
+                <div style={{fontSize:24, fontWeight:900, color:color||'inherit'}}>{to ? (<a className="link" style={{color:color||'inherit'}} href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
               </div>
             )
           }
@@ -335,16 +335,16 @@ export default function UserDashboard(){
                 <div className="helper">Global totals</div>
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile title="Total Orders" value={st.total} to="/user/orders" />
-                <Tile title="Open" value={st.pending} to="/user/orders?ship=open" />
-                <Tile title="Assigned" value={st.assigned} to="/user/orders?ship=assigned" />
-                <Tile title="Picked Up" value={st.picked_up} to="/user/orders?ship=picked_up" />
-                <Tile title="In Transit" value={st.in_transit} to="/user/orders?ship=in_transit" />
-                <Tile title="Out for Delivery" value={st.out_for_delivery} to="/user/orders?ship=out_for_delivery" />
-                <Tile title="Delivered" value={st.delivered} to="/user/orders?ship=delivered" />
-                <Tile title="No Response" value={st.no_response} to="/user/orders?ship=no_response" />
-                <Tile title="Returned" value={st.returned} to="/user/orders?ship=returned" />
-                <Tile title="Cancelled" value={st.cancelled} to="/user/orders?ship=cancelled" />
+                <Tile title="Total Orders" value={st.total} to="/user/orders" color="#0ea5e9" />
+                <Tile title="Open" value={st.pending} to="/user/orders?ship=open" color="#f59e0b" />
+                <Tile title="Assigned" value={st.assigned} to="/user/orders?ship=assigned" color="#3b82f6" />
+                <Tile title="Picked Up" value={st.picked_up} to="/user/orders?ship=picked_up" color="#f59e0b" />
+                <Tile title="In Transit" value={st.in_transit} to="/user/orders?ship=in_transit" color="#0284c7" />
+                <Tile title="Out for Delivery" value={st.out_for_delivery} to="/user/orders?ship=out_for_delivery" color="#f97316" />
+                <Tile title="Delivered" value={st.delivered} to="/user/orders?ship=delivered" color="#10b981" />
+                <Tile title="No Response" value={st.no_response} to="/user/orders?ship=no_response" color="#ef4444" />
+                <Tile title="Returned" value={st.returned} to="/user/orders?ship=returned" color="#737373" />
+                <Tile title="Cancelled" value={st.cancelled} to="/user/orders?ship=cancelled" color="#b91c1c" />
               </div>
             </div>
           )
@@ -376,27 +376,27 @@ export default function UserDashboard(){
                 <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Total Orders</div>
-                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}`}>{fmtNum(m?.orders||0)}</a></div>
+                    <div style={{fontWeight:900, fontSize:18}}><a className="link" style={{color:'#0ea5e9'}} href={`/user/orders?country=${qs}`}>{fmtNum(m?.orders||0)}</a></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Amount of Total Orders</div>
-                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}`}>{amtTotalStr}</a></div>
+                    <div style={{fontWeight:900, fontSize:18}}><a className="link" style={{color:'#10b981'}} href={`/user/orders?country=${qs}`}>{amtTotalStr}</a></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Delivered</div>
-                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}&ship=delivered`}>{fmtNum(m?.delivered||0)}</a></div>
+                    <div style={{fontWeight:900, fontSize:18}}><a className="link" style={{color:'#10b981'}} href={`/user/orders?country=${qs}&ship=delivered`}>{fmtNum(m?.delivered||0)}</a></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Amount of Delivered</div>
-                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}&ship=delivered`}>{amtDeliveredStr}</a></div>
+                    <div style={{fontWeight:900, fontSize:18}}><a className="link" style={{color:'#10b981'}} href={`/user/orders?country=${qs}&ship=delivered`}>{amtDeliveredStr}</a></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Open Orders</div>
-                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}&ship=open`}>{fmtNum(m?.pending||0)}</a></div>
+                    <div style={{fontWeight:900, fontSize:18}}><a className="link" style={{color:'#f59e0b'}} href={`/user/orders?country=${qs}&ship=open`}>{fmtNum(m?.pending||0)}</a></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Open Amount</div>
-                    <div style={{fontWeight:900, fontSize:18}}><a className="link" href={`/user/orders?country=${qs}&ship=open`}>{amtPendingStr}</a></div>
+                    <div style={{fontWeight:900, fontSize:18}}><a className="link" style={{color:'#f97316'}} href={`/user/orders?country=${qs}&ship=open`}>{amtPendingStr}</a></div>
                   </div>
                 </div>
                 <div style={{marginTop:10}}>
@@ -404,35 +404,35 @@ export default function UserDashboard(){
                   <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:10}}>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Assigned</div>
-                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=assigned`}>{fmtNum(m?.assigned||0)}</a></div>
+                      <div style={{fontWeight:900}}><a className="link" style={{color:'#3b82f6'}} href={`/user/orders?country=${qs}&ship=assigned`}>{fmtNum(m?.assigned||0)}</a></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Picked Up</div>
-                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=picked_up`}>{fmtNum(m?.pickedUp||0)}</a></div>
+                      <div style={{fontWeight:900}}><a className="link" style={{color:'#f59e0b'}} href={`/user/orders?country=${qs}&ship=picked_up`}>{fmtNum(m?.pickedUp||0)}</a></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">In Transit</div>
-                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=in_transit`}>{fmtNum(m?.transit||0)}</a></div>
+                      <div style={{fontWeight:900}}><a className="link" style={{color:'#0284c7'}} href={`/user/orders?country=${qs}&ship=in_transit`}>{fmtNum(m?.transit||0)}</a></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Out for Delivery</div>
-                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=out_for_delivery`}>{fmtNum(m?.outForDelivery||0)}</a></div>
+                      <div style={{fontWeight:900}}><a className="link" style={{color:'#f97316'}} href={`/user/orders?country=${qs}&ship=out_for_delivery`}>{fmtNum(m?.outForDelivery||0)}</a></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Delivered</div>
-                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=delivered`}>{fmtNum(m?.delivered||0)}</a></div>
+                      <div style={{fontWeight:900}}><a className="link" style={{color:'#10b981'}} href={`/user/orders?country=${qs}&ship=delivered`}>{fmtNum(m?.delivered||0)}</a></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">No Response</div>
-                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=no_response`}>{fmtNum(m?.noResponse||0)}</a></div>
+                      <div style={{fontWeight:900}}><a className="link" style={{color:'#ef4444'}} href={`/user/orders?country=${qs}&ship=no_response`}>{fmtNum(m?.noResponse||0)}</a></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Returned</div>
-                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=returned`}>{fmtNum(m?.returned||0)}</a></div>
+                      <div style={{fontWeight:900}}><a className="link" style={{color:'#737373'}} href={`/user/orders?country=${qs}&ship=returned`}>{fmtNum(m?.returned||0)}</a></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Cancelled</div>
-                      <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=cancelled`}>{fmtNum(m?.cancelled||0)}</a></div>
+                      <div style={{fontWeight:900}}><a className="link" style={{color:'#b91c1c'}} href={`/user/orders?country=${qs}&ship=cancelled`}>{fmtNum(m?.cancelled||0)}</a></div>
                     </div>
                   </div>
                 </div>
