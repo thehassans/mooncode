@@ -73,15 +73,19 @@ export default function AgentDashboard(){
           if (Array.isArray(o?.items) && o.items.length){ return o.items[0]?.productId?.baseCurrency || 'SAR' }
           return (o?.productId?.baseCurrency) || 'SAR'
         }
-        let sumAED = 0
+        // Wallet: 12% commission on DELIVERED orders only
+        let deliveredAED = 0
         for (const o of mine){
+          const st = String(o?.shipmentStatus||'').toLowerCase()
+          if (st !== 'delivered') continue
           const amt = orderTotal(o)
           const curCode = String(baseCur(o) || 'SAR').toUpperCase()
           const amtAED = toAEDByCode(amt, curCode, cfg)
-          sumAED += amtAED
+          deliveredAED += amtAED
         }
-        setWalletAED(sumAED)
-        setWalletPKR(aedToPKR(sumAED, cfg))
+        const commissionAED = deliveredAED * 0.12
+        setWalletAED(commissionAED)
+        setWalletPKR(aedToPKR(commissionAED, cfg))
       }catch{}
     }finally{ setLoading(false) }
   }
@@ -132,7 +136,7 @@ export default function AgentDashboard(){
 
   // Build driver-like tiles for status counts (agent submitted)
   const statusTiles = [
-    { key:'total', title:'Total Orders (Submitted)', value: statusCounts.total, color:'#0ea5e9', to:'/agent/orders' },
+    { key:'total', title:'Total Orders (Submitted)', value: ordersSubmitted, color:'#0ea5e9', to:'/agent/orders' },
     { key:'pending', title:'Pending', value: statusCounts.pending, color:'#64748b', to:'/agent/orders?ship=pending' },
     { key:'assigned', title:'Assigned', value: statusCounts.assigned, color:'#3b82f6', to:'/agent/orders?ship=assigned' },
     { key:'picked_up', title:'Picked Up', value: statusCounts.picked_up, color:'#f59e0b', to:'/agent/orders?ship=picked_up' },
@@ -190,7 +194,7 @@ export default function AgentDashboard(){
             <div style={{fontSize:28, fontWeight:800, color:'#0ea5e9'}}>{Math.round(walletPKR).toLocaleString()}</div>
           </div>
         </div>
-        <div className="helper" style={{marginTop:8}}>Calculated by converting each order amount to AED using user panel rates, summing, then converting total to PKR. Order History shows amounts in original currencies.</div>
+        <div className="helper" style={{marginTop:8}}>12% commission on delivered orders only. We convert each delivered order to AED using User Panel rates, sum, take 12%, then convert that commission to PKR. Order History shows amounts in original currencies.</div>
       </div>
 
       {/* Order status metrics for agent-submitted orders */}

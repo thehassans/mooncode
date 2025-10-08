@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { API_BASE, apiGet, apiPatch, apiPost } from '../../api.js'
 import { io } from 'socket.io-client'
 import { useNavigate } from 'react-router-dom'
+import { getCurrencyConfig, toAEDByCode, aedToPKR } from '../../util/currency'
 
 export default function AgentMe() {
   const navigate = useNavigate()
@@ -72,6 +73,7 @@ export default function AgentMe() {
   const [remBusy, setRemBusy] = useState(false)
   const [myRemits, setMyRemits] = useState([])
   const [wallet, setWallet] = useState({ byCurrency: {}, totalPKR: 0 })
+  const [currencyCfg, setCurrencyCfg] = useState(null)
   // Payout profile
   const [payout, setPayout] = useState(()=>({
     method: (me?.payoutProfile?.method)||'jazzcash',
@@ -95,7 +97,7 @@ export default function AgentMe() {
     }catch{}
   }, [me?.payoutProfile])
 
-  // Calculate total earnings in PKR (same logic as Dashboard)
+  // Calculate total earnings in PKR using AED-anchored rates (same as Dashboard)
   const earnings = useMemo(() => {
     const list = orders || []
     const commissionPct = 0.12
@@ -105,29 +107,29 @@ export default function AgentMe() {
       const qty = Math.max(1, Number(o?.quantity || 1))
       return price * qty
     }
-    const baseOf = (o) => (['AED','OMR','SAR','BHD'].includes(String(o?.productId?.baseCurrency))) ? o.productId.baseCurrency : 'SAR'
-
-    const defaultFx = { AED: 76, OMR: 726, SAR: 72, BHD: 830 }
-    let fx = defaultFx
-    try{ const saved = JSON.parse(localStorage.getItem('fx_pkr') || 'null'); if (saved && typeof saved === 'object') fx = { ...defaultFx, ...saved } }catch{}
-
+    const baseOf = (o) => {
+      try{
+        if (Array.isArray(o?.items) && o.items.length) return String(o.items[0]?.productId?.baseCurrency||'SAR').toUpperCase()
+        return String(o?.productId?.baseCurrency||'SAR').toUpperCase()
+      }catch{ return 'SAR' }
+    }
     const isDelivered = (o) => String(o?.shipmentStatus||'').toLowerCase() === 'delivered'
     const isCancelled = (o) => ['cancelled','returned'].includes(String(o?.shipmentStatus||'').toLowerCase())
 
-    let deliveredCommissionPKR = 0
-    let upcomingCommissionPKR = 0
+    let deliveredAED = 0
+    let upcomingAED = 0
     for (const o of list){
       if (isCancelled(o)) continue
-      const val = valueOf(o) * commissionPct
-      const rate = fx[baseOf(o)] || 0
-      const pkr = val * rate
-      if (isDelivered(o)) deliveredCommissionPKR += pkr
-      else upcomingCommissionPKR += pkr
+      const amt = valueOf(o)
+      const code = baseOf(o)
+      const aed = toAEDByCode(amt, code, currencyCfg)
+      if (isDelivered(o)) deliveredAED += aed
+      else upcomingAED += aed
     }
-    deliveredCommissionPKR = Math.round(deliveredCommissionPKR)
-    upcomingCommissionPKR = Math.round(upcomingCommissionPKR)
+    const deliveredCommissionPKR = Math.round(aedToPKR(deliveredAED * commissionPct, currencyCfg))
+    const upcomingCommissionPKR = Math.round(aedToPKR(upcomingAED * commissionPct, currencyCfg))
     return { deliveredCommissionPKR, upcomingCommissionPKR }
-  }, [orders])
+  }, [orders, currencyCfg])
 
   useEffect(() => {
     let alive = true
@@ -151,6 +153,11 @@ export default function AgentMe() {
         if (!alive) return
         setOrders(ordersRes?.orders || [])
       } catch {}
+      try{
+        const cfg = await getCurrencyConfig()
+        if (!alive) return
+        setCurrencyCfg(cfg)
+      }catch{}
       setLoading(false)
     })()
     return () => {
