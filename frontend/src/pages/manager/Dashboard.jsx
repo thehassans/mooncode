@@ -70,6 +70,38 @@ export default function ManagerDashboard(){
   function fmtNum(n){ try{ return Number(n||0).toLocaleString() }catch{ return String(n||0) } }
   function fmtAmt(n){ try{ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }catch{ return String(n||0) } }
 
+  // Responsive sizing and shared colors (match Agent/Driver)
+  const minTile = isMobile ? 200 : 240
+  const tileGap = isMobile ? 8 : 12
+  const valueFontSize = isMobile ? 24 : 28
+  const COLORS = {
+    primary: '#3b82f6', // blue
+    primaryLight: '#0ea5e9',
+    success: '#10b981',
+    successDeep: '#16a34a',
+    warning: '#f59e0b',
+    secondary: '#64748b',
+    transit: '#0284c7',
+    ofd: '#f97316',
+    danger: '#ef4444',
+    dangerDeep: '#b91c1c',
+    neutral: '#737373',
+  }
+  const STATUS_COLORS = {
+    assigned_all: COLORS.primaryLight,
+    assigned: COLORS.primary,
+    picked: COLORS.warning,
+    transit: COLORS.transit,
+    ofd: COLORS.ofd,
+    delivered: COLORS.success,
+    no_resp: COLORS.danger,
+    returned: COLORS.neutral,
+    cancelled: COLORS.dangerDeep,
+    collected: COLORS.success,
+    deliv_co: COLORS.successDeep,
+    pending_co: COLORS.warning,
+  }
+
   // Canonical helpers: unify keys and resolve currency for display
   const currencyOf = (c)=>{
     const k = String(c||'')
@@ -177,7 +209,7 @@ export default function ManagerDashboard(){
         </div>
       </div>
 
-      <div className="grid" style={{gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap:12, alignItems:'start'}}>
+      <div className="grid" style={{gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap:tileGap, alignItems:'start'}}>
 
       {/* Orders Summary (Access Countries) */}
       <div className="card" style={{padding:16, marginBottom:12}}>
@@ -207,11 +239,11 @@ export default function ManagerDashboard(){
               </div>
             )
           }
-          function Tile({ title, valueEl, chipsEl }){
+          function Tile({ title, valueEl, chipsEl, color }){
             return (
               <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12, minHeight:100}}>
-                <div className="helper" style={{fontWeight:800}}>{title}</div>
-                <div style={{fontSize:28, fontWeight:800}}>{valueEl}</div>
+                <div className="helper">{title}</div>
+                <div style={{fontSize:valueFontSize, fontWeight:800, color: color || 'inherit'}}>{valueEl}</div>
                 <div>{chipsEl}</div>
               </div>
             )
@@ -219,13 +251,13 @@ export default function ManagerDashboard(){
           return (
             <div className="section" style={{display:'grid', gap:12}}>
               <div style={{fontWeight:800,fontSize:16}}>Orders Summary (Access Countries)</div>
-              <div className="grid" style={{gridTemplateColumns:`repeat(auto-fit, minmax(${isMobile?200:240}px, 1fr))`, gap: isMobile?8:12}}>
-                <Tile title="Total Orders" valueEl={fmtNum(totalOrdersCount)} chipsEl={<Chips keyName="orders" />} />
-                <Tile title="Amount of Total Orders" valueEl={fmtAmt(amountTotalOrders)} chipsEl={<Chips keyName="amountTotalOrders" isAmount />} />
-                <Tile title="Orders Delivered" valueEl={fmtNum(deliveredCount)} chipsEl={<Chips keyName="delivered" />} />
-                <Tile title="Amount of Orders Delivered" valueEl={fmtAmt(amountDelivered)} chipsEl={<Chips keyName="amountDelivered" isAmount />} />
-                <Tile title="Pending Orders" valueEl={fmtNum(pendingCount)} chipsEl={<Chips keyName="pending" />} />
-                <Tile title="Pending Amount" valueEl={fmtAmt(amountPending)} chipsEl={<Chips keyName="amountPending" isAmount />} />
+              <div className="grid" style={{gridTemplateColumns:`repeat(auto-fit, minmax(${minTile}px, 1fr))`, gap: tileGap}}>
+                <Tile title="Total Orders" valueEl={fmtNum(totalOrdersCount)} color={COLORS.primaryLight} chipsEl={<Chips keyName="orders" />} />
+                <Tile title="Amount of Total Orders" valueEl={fmtAmt(amountTotalOrders)} color={COLORS.success} chipsEl={<Chips keyName="amountTotalOrders" isAmount />} />
+                <Tile title="Orders Delivered" valueEl={fmtNum(deliveredCount)} color={COLORS.successDeep} chipsEl={<Chips keyName="delivered" />} />
+                <Tile title="Amount of Orders Delivered" valueEl={fmtAmt(amountDelivered)} color={COLORS.success} chipsEl={<Chips keyName="amountDelivered" isAmount />} />
+                <Tile title="Pending Orders" valueEl={fmtNum(pendingCount)} color={COLORS.warning} chipsEl={<Chips keyName="pending" />} />
+                <Tile title="Pending Amount" valueEl={fmtAmt(amountPending)} color={COLORS.warning} chipsEl={<Chips keyName="amountPending" isAmount />} />
               </div>
             </div>
           )
@@ -264,14 +296,14 @@ export default function ManagerDashboard(){
                 {visibleTiles.length === 0 ? (
                   <div className="helper">No activity yet</div>
                 ) : (
-                  <div className="grid" style={{gridTemplateColumns:`repeat(auto-fit, minmax(${isMobile?200:240}px, 1fr))`, gap: isMobile?8:12}}>
+                  <div className="grid" style={{gridTemplateColumns:`repeat(auto-fit, minmax(${minTile}px, 1fr))`, gap: tileGap}}>
                     {visibleTiles.map(t => {
                       const valNum = Number(t.val||0)
                       const displayVal = t.isAmount ? `${cur} ${fmtAmt(valNum)}` : fmtNum(valNum)
                       return (
                         <a key={t.key} className="tile" href={t.to} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12, minHeight:100, textDecoration:'none', color:'inherit', cursor:'pointer'}}>
-                          <div className="helper" style={{fontWeight:800}}>{t.title}</div>
-                          <div style={{fontSize:28, fontWeight:800}}>{displayVal}</div>
+                          <div className="helper">{t.title}</div>
+                          <div style={{fontSize:valueFontSize, fontWeight:800, color: STATUS_COLORS[t.key] || 'inherit'}}>{displayVal}</div>
                         </a>
                       )
                     })}
@@ -320,11 +352,11 @@ export default function ManagerDashboard(){
               </div>
             )
           }
-          function Tile({ title, value, getter, to }){
+          function Tile({ title, value, getter, to, color }){
             return (
               <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12, minHeight:100}}>
-                <div className="helper" style={{fontWeight:800}}>{title}</div>
-                <div style={{fontSize:28, fontWeight:800}}>{to ? (<a className="link" href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
+                <div className="helper">{title}</div>
+                <div style={{fontSize:valueFontSize, fontWeight:800, color: color || 'inherit'}}>{to ? (<a className="link" href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
                 <Chips getter={getter} />
               </div>
             )
@@ -332,17 +364,17 @@ export default function ManagerDashboard(){
           return (
             <div className="section" style={{display:'grid', gap:12}}>
               <div style={{fontWeight:800,fontSize:16}}>Status Summary (Access Countries)</div>
-              <div className="grid" style={{gridTemplateColumns:`repeat(auto-fit, minmax(${isMobile?200:240}px, 1fr))`, gap: isMobile?8:12}}>
-                <Tile title="Total Orders" value={st.total} getter={(m)=> m.orders} to={'/manager/orders'} />
-                <Tile title="Pending" value={st.pending} getter={(m)=> m.pending} to={'/manager/orders?ship=open'} />
-                <Tile title="Assigned" value={st.assigned} getter={(m)=> m.assigned} to={'/manager/orders?ship=assigned'} />
-                <Tile title="Picked Up" value={st.picked_up} getter={(m)=> m.pickedUp} to={'/manager/orders?ship=picked_up'} />
-                <Tile title="In Transit" value={st.in_transit} getter={(m)=> m.transit} to={'/manager/orders?ship=in_transit'} />
-                <Tile title="Out for Delivery" value={st.out_for_delivery} getter={(m)=> m.outForDelivery} to={'/manager/orders?ship=out_for_delivery'} />
-                <Tile title="Delivered" value={st.delivered} getter={(m)=> m.delivered} to={'/manager/orders?ship=delivered'} />
-                <Tile title="No Response" value={st.no_response} getter={(m)=> m.noResponse} to={'/manager/orders?ship=no_response'} />
-                <Tile title="Returned" value={st.returned} getter={(m)=> m.returned} to={'/manager/orders?ship=returned'} />
-                <Tile title="Cancelled" value={st.cancelled} getter={(m)=> m.cancelled} to={'/manager/orders?ship=cancelled'} />
+              <div className="grid" style={{gridTemplateColumns:`repeat(auto-fit, minmax(${minTile}px, 1fr))`, gap: tileGap}}>
+                <Tile title="Total Orders" value={st.total} getter={(m)=> m.orders} to={'/manager/orders'} color={COLORS.primaryLight} />
+                <Tile title="Pending" value={st.pending} getter={(m)=> m.pending} to={'/manager/orders?ship=open'} color={COLORS.warning} />
+                <Tile title="Assigned" value={st.assigned} getter={(m)=> m.assigned} to={'/manager/orders?ship=assigned'} color={COLORS.primary} />
+                <Tile title="Picked Up" value={st.picked_up} getter={(m)=> m.pickedUp} to={'/manager/orders?ship=picked_up'} color={COLORS.warning} />
+                <Tile title="In Transit" value={st.in_transit} getter={(m)=> m.transit} to={'/manager/orders?ship=in_transit'} color={COLORS.transit} />
+                <Tile title="Out for Delivery" value={st.out_for_delivery} getter={(m)=> m.outForDelivery} to={'/manager/orders?ship=out_for_delivery'} color={COLORS.ofd} />
+                <Tile title="Delivered" value={st.delivered} getter={(m)=> m.delivered} to={'/manager/orders?ship=delivered'} color={COLORS.success} />
+                <Tile title="No Response" value={st.no_response} getter={(m)=> m.noResponse} to={'/manager/orders?ship=no_response'} color={COLORS.danger} />
+                <Tile title="Returned" value={st.returned} getter={(m)=> m.returned} to={'/manager/orders?ship=returned'} color={COLORS.neutral} />
+                <Tile title="Cancelled" value={st.cancelled} getter={(m)=> m.cancelled} to={'/manager/orders?ship=cancelled'} color={COLORS.dangerDeep} />
               </div>
             </div>
           )
