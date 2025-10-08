@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { apiGet } from '../../api'
+import { getCurrencyConfig, toAEDByCode } from '../../util/currency'
 
 export default function ManagerDashboard(){
   const [isMobile, setIsMobile] = useState(()=> (typeof window!=='undefined' ? window.innerWidth <= 768 : false))
@@ -11,6 +12,8 @@ export default function ManagerDashboard(){
   const [drivers, setDrivers] = useState([])
   const [summary, setSummary] = useState({}) // { KSA:{orders,delivered,cancelled}, ... }
   const [metrics, setMetrics] = useState(null) // manager-scoped metrics from backend
+  const [currencyCfg, setCurrencyCfg] = useState(null)
+  const [amountFallback, setAmountFallback] = useState({ totalAED:0, deliveredAED:0, pendingAED:0 })
 
   useEffect(()=>{
     function onResize(){ setIsMobile(window.innerWidth <= 768) }
@@ -179,6 +182,67 @@ export default function ManagerDashboard(){
     })()
   },[])
 
+  // Load currency config for AED conversion
+  useEffect(()=>{
+    (async()=>{
+      try{ setCurrencyCfg(await getCurrencyConfig()) }catch{ setCurrencyCfg(null) }
+    })()
+  },[])
+
+  // Fallback: if backend amounts are zero but counts exist, compute AED amounts from orders
+  useEffect(()=>{
+    (async()=>{
+      try{
+        const totalOrdersCount = Number(metrics?.totalOrders||0)
+        const sumAmount = (key)=> (COUNTRY_LIST||[]).reduce((s,c)=> s + Number(countryMetrics(c)[key]||0), 0)
+        const backendTotalAmt = sumAmount('amountTotalOrders')
+        if (!totalOrdersCount || backendTotalAmt > 0 || !Array.isArray(COUNTRY_LIST) || COUNTRY_LIST.length===0){
+          setAmountFallback({ totalAED:0, deliveredAED:0, pendingAED:0 })
+          return
+        }
+        let totalAED=0, deliveredAED=0, pendingAED=0
+        const cfg = currencyCfg || (await getCurrencyConfig().catch(()=>null))
+        for (const c of COUNTRY_LIST){
+          const qs = encodeURIComponent(c)
+          let page=1, limit=200
+          for(;;){
+            const r = await apiGet(`/api/orders?country=${qs}&page=${page}&limit=${limit}`).catch(()=>({orders:[], hasMore:false}))
+            const list = Array.isArray(r?.orders) ? r.orders : []
+            for (const o of list){
+              const amt = (()=>{
+                try{
+                  if (o && o.total != null) return Number(o.total||0)
+                  if (Array.isArray(o?.items) && o.items.length){
+                    return o.items.reduce((s,it)=> s + (Number(it?.productId?.price||0) * Math.max(1, Number(it?.quantity||1))), 0)
+                  }
+                  const unit = Number(o?.productId?.price||0)
+                  return unit * Math.max(1, Number(o?.quantity||1))
+                }catch{ return 0 }
+              })()
+              const curCode = (()=>{
+                try{
+                  if (Array.isArray(o?.items) && o.items.length){ return o.items[0]?.productId?.baseCurrency || currencyOf(c) }
+                  return (o?.productId?.baseCurrency) || currencyOf(c)
+                }catch{ return currencyOf(c) }
+              })()
+              const aed = toAEDByCode(amt, String(curCode||'AED').toUpperCase(), cfg)
+              totalAED += aed
+              const s = String(o?.shipmentStatus||'').toLowerCase()
+              if (s==='delivered') deliveredAED += aed
+              if (s==='pending' || s==='open') pendingAED += aed
+            }
+            if (!r?.hasMore) break
+            page += 1
+            if (page > 100) break
+          }
+        }
+        setAmountFallback({ totalAED, deliveredAED, pendingAED })
+      }catch{
+        setAmountFallback({ totalAED:0, deliveredAED:0, pendingAED:0 })
+      }
+    })()
+  }, [metrics, COUNTRY_LIST.join('|'), currencyCfg])
+
   useEffect(()=>{
     // Compute per-country counts via lightweight total queries
     (async()=>{
@@ -221,6 +285,8 @@ export default function ManagerDashboard(){
           const amountTotalOrders = sumAmount('amountTotalOrders')
           const amountDelivered = sumAmount('amountDelivered')
           const amountPending = sumAmount('amountPending')
+          const distinctCur = Array.from(new Set((COUNTRY_LIST||[]).map(currencyOf).filter(Boolean)))
+          const curLabel = distinctCur.length === 1 ? distinctCur[0] : ''
           function Chips({ keyName, isAmount }){
             return (
               <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
@@ -253,11 +319,11 @@ export default function ManagerDashboard(){
               <div style={{fontWeight:800,fontSize:16}}>Orders Summary (Access Countries)</div>
               <div className="grid" style={{gridTemplateColumns:`repeat(auto-fit, minmax(${minTile}px, 1fr))`, gap: tileGap}}>
                 <Tile title="Total Orders" valueEl={fmtNum(totalOrdersCount)} color={COLORS.primaryLight} chipsEl={<Chips keyName="orders" />} />
-                <Tile title="Amount of Total Orders" valueEl={fmtAmt(amountTotalOrders)} color={COLORS.success} chipsEl={<Chips keyName="amountTotalOrders" isAmount />} />
+                <Tile title="Amount of Total Orders" valueEl={curLabel ? `${curLabel} ${fmtAmt(amountTotalOrders)}` : '—'} color={COLORS.success} chipsEl={<Chips keyName="amountTotalOrders" isAmount />} />
                 <Tile title="Orders Delivered" valueEl={fmtNum(deliveredCount)} color={COLORS.successDeep} chipsEl={<Chips keyName="delivered" />} />
-                <Tile title="Amount of Orders Delivered" valueEl={fmtAmt(amountDelivered)} color={COLORS.success} chipsEl={<Chips keyName="amountDelivered" isAmount />} />
+                <Tile title="Amount of Orders Delivered" valueEl={curLabel ? `${curLabel} ${fmtAmt(amountDelivered)}` : '—'} color={COLORS.success} chipsEl={<Chips keyName="amountDelivered" isAmount />} />
                 <Tile title="Pending Orders" valueEl={fmtNum(pendingCount)} color={COLORS.warning} chipsEl={<Chips keyName="pending" />} />
-                <Tile title="Pending Amount" valueEl={fmtAmt(amountPending)} color={COLORS.warning} chipsEl={<Chips keyName="amountPending" isAmount />} />
+                <Tile title="Pending Amount" valueEl={curLabel ? `${curLabel} ${fmtAmt(amountPending)}` : '—'} color={COLORS.warning} chipsEl={<Chips keyName="amountPending" isAmount />} />
               </div>
             </div>
           )

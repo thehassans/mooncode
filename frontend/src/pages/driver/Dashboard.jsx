@@ -91,14 +91,23 @@ export default function DriverDashboard(){
     { key:'pending_company', title:'Pending Delivery to Company', value: money(payout.pendingToCompany), to:'/driver/payout#pay', color:'#f59e0b' },
   ]
 
+  function orderCountryCurrency(c){
+    const k = String(c||'')
+    if (k==='KSA' || k==='Saudi Arabia') return 'SAR'
+    if (k==='UAE' || k==='United Arab Emirates') return 'AED'
+    if (k==='Oman' || k==='OM') return 'OMR'
+    if (k==='Bahrain' || k==='BH') return 'BHD'
+    if (k==='India' || k==='IN') return 'INR'
+    if (k==='Kuwait' || k==='KW') return 'KWD'
+    if (k==='Qatar' || k==='QA') return 'QAR'
+    return 'SAR'
+  }
   function fmtPrice(o){
     try{
-      if (o && o.total != null) return `SAR ${Number(o.total||0).toFixed(2)}`
       const qty = Math.max(1, Number(o?.quantity||1))
-      const price = Number(o?.productId?.price||0)
-      const cur = o?.productId?.baseCurrency || 'SAR'
-      const total = price * qty
-      return `${cur} ${total.toFixed(2)}`
+      const price = (o && o.total != null) ? Number(o.total||0) : Number(o?.productId?.price||0) * qty
+      const cur = orderCountryCurrency(o?.orderCountry) || o?.productId?.baseCurrency || 'SAR'
+      return `${cur} ${price.toFixed(2)}`
     }catch{ return 'SAR 0.00' }
   }
 

@@ -286,13 +286,32 @@ export default function UserDashboard(){
           const amountTotalOrdersAED = sumAmountAED('amountTotalOrders')
           const amountDeliveredAED = sumAmountAED('amountDelivered')
           const amountPendingAED = sumAmountAED('amountPending')
-          function Tile({ title, valueEl }){
+          function Tile({ title, valueEl, chipsEl }){
             return (
               <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
                 <div className="helper">{title}</div>
                 <div style={{fontSize:24, fontWeight:900}}>{valueEl}</div>
+                {chipsEl ? (
+                  <div style={{marginTop:8, display:'flex', flexWrap:'wrap', gap:6}}>
+                    {chipsEl}
+                  </div>
+                ) : null}
               </div>
             )
+          }
+          function currencyChipsFor(key){
+            try{
+              const byCur = {}
+              for (const c of COUNTRY_LIST){
+                const m = countryMetrics(c)
+                const code = (COUNTRY_INFO[c] && COUNTRY_INFO[c].cur) ? COUNTRY_INFO[c].cur : 'AED'
+                const v = Number(m?.[key]||0)
+                if (v>0){ byCur[code] = (byCur[code]||0) + v }
+              }
+              return Object.entries(byCur).filter(([,v])=> v>0).map(([cur,v])=> (
+                <span key={cur} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>{cur} {fmtAmt(v)}</span>
+              ))
+            }catch{ return null }
           }
           return (
             <div className="section" style={{display:'grid', gap:12}}>
@@ -302,11 +321,11 @@ export default function UserDashboard(){
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
                 <Tile title="Total Orders" valueEl={<a className="link" style={{color:'#0ea5e9'}} href="/user/orders">{fmtNum(totalOrdersCount)}</a>} />
-                <Tile title="Amount of Total Orders (AED)" valueEl={<a className="link" style={{color:'#10b981'}} href="/user/orders">{`AED ${fmtAmt(amountTotalOrdersAED)}`}</a>} />
+                <Tile title="Amount of Total Orders (AED)" valueEl={<a className="link" style={{color:'#10b981'}} href="/user/orders">{`AED ${fmtAmt(amountTotalOrdersAED)}`}</a>} chipsEl={currencyChipsFor('amountTotalOrders')} />
                 <Tile title="Orders Delivered" valueEl={<a className="link" style={{color:'#10b981'}} href="/user/orders?ship=delivered">{fmtNum(deliveredCount)}</a>} />
-                <Tile title="Amount of Orders Delivered (AED)" valueEl={<a className="link" style={{color:'#10b981'}} href="/user/orders?ship=delivered">{`AED ${fmtAmt(amountDeliveredAED)}`}</a>} />
+                <Tile title="Amount of Orders Delivered (AED)" valueEl={<a className="link" style={{color:'#10b981'}} href="/user/orders?ship=delivered">{`AED ${fmtAmt(amountDeliveredAED)}`}</a>} chipsEl={currencyChipsFor('amountDelivered')} />
                 <Tile title="Open Orders" valueEl={<a className="link" style={{color:'#f59e0b'}} href="/user/orders?ship=open">{fmtNum(pendingCount)}</a>} />
-                <Tile title="Open Amount (AED)" valueEl={<a className="link" style={{color:'#f97316'}} href="/user/orders?ship=open">{`AED ${fmtAmt(amountPendingAED)}`}</a>} />
+                <Tile title="Open Amount (AED)" valueEl={<a className="link" style={{color:'#f97316'}} href="/user/orders?ship=open">{`AED ${fmtAmt(amountPendingAED)}`}</a>} chipsEl={currencyChipsFor('amountPending')} />
               </div>
             </div>
           )
