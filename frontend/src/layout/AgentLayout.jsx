@@ -584,7 +584,7 @@ export default function AgentLayout() {
             const count = isInbox ? unreadCount : isOrders ? ordersSubmitted : 0
             const showCount = isInbox && count > 0
             // Show level badge only when levelIdx > 0
-            const meBadge = isMe && levelIdx > 0 ? `Lv ${levelIdx}` : ''
+            const meBadge = isMe && levelIdx > 1 ? `Lv ${levelIdx}` : ''
             return (
               <NavLink
                 key={tab.to}

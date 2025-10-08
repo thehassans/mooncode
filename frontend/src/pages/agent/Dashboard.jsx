@@ -18,16 +18,20 @@ export default function AgentDashboard(){
   const [ordersSubmittedOverride, setOrdersSubmittedOverride] = useState(null)
   // Agent-submitted status counts
   const [statusCounts, setStatusCounts] = useState({ total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 })
+  const [currencyCfg, setCurrencyCfg] = useState(null) // { sarPerUnit, pkrPerUnit, anchor, enabled }
+  const [walletAED, setWalletAED] = useState(0)
+  const [walletPKR, setWalletPKR] = useState(0)
 
   // Load metrics for the signed-in agent
   async function load(){
     setLoading(true)
     try{
-      const [meRes, chats, ordRes, perf] = await Promise.all([
+      const [meRes, chats, ordRes, perf, cur] = await Promise.all([
         apiGet('/api/users/me').catch(()=>({})),
         apiGet('/api/wa/chats').catch(()=>[]),
         apiGet('/api/orders').catch(()=>({ orders: [] })),
         apiGet('/api/users/agents/me/performance').catch(()=>({})),
+        apiGet('/api/settings/currency').catch(()=>null),
       ])
       // meRes.user available for id checks below
       const chatList = Array.isArray(chats) ? chats : []
@@ -36,6 +40,7 @@ export default function AgentDashboard(){
       setOrders(allOrders)
       if (typeof perf?.avgResponseSeconds === 'number') setAvgResponseSeconds(perf.avgResponseSeconds)
       if (typeof perf?.ordersSubmitted === 'number') setOrdersSubmittedOverride(perf.ordersSubmitted)
+      if (cur) setCurrencyCfg(cur)
       // compute status counts for orders submitted by this agent
       try{
         const meId = String((meRes?.user?._id) || (me?._id) || '')
@@ -52,6 +57,37 @@ export default function AgentDashboard(){
           return acc
         }, init)
         setStatusCounts(next)
+        // compute wallet from agent-submitted orders -> convert each to AED then sum, then convert total to PKR
+        const sarPerUnit = cur?.sarPerUnit || {}
+        const pkrPerUnit = cur?.pkrPerUnit || {}
+        const aedSar = Number(sarPerUnit?.AED) || 1 // SAR per 1 AED
+        function orderTotal(o){
+          try{
+            if (o && o.total != null) return Number(o.total||0)
+            if (Array.isArray(o?.items) && o.items.length){
+              return o.items.reduce((s,it)=> s + (Number(it?.productId?.price||0) * Math.max(1, Number(it?.quantity||1))), 0)
+            }
+            const unit = Number(o?.productId?.price||0)
+            return unit * Math.max(1, Number(o?.quantity||1))
+          }catch{ return 0 }
+        }
+        function baseCur(o){
+          if (Array.isArray(o?.items) && o.items.length){ return o.items[0]?.productId?.baseCurrency || 'SAR' }
+          return (o?.productId?.baseCurrency) || 'SAR'
+        }
+        let sumAED = 0
+        for (const o of mine){
+          const amt = orderTotal(o)
+          const curCode = String(baseCur(o) || 'SAR').toUpperCase()
+          const sarRate = Number(sarPerUnit?.[curCode]) || (curCode==='SAR'?1:0)
+          if (!sarRate || !aedSar){ continue }
+          const amtSAR = amt * sarRate
+          const amtAED = amtSAR / aedSar
+          sumAED += amtAED
+        }
+        const pkrRateAED = Number(pkrPerUnit?.AED) || 0
+        setWalletAED(sumAED)
+        setWalletPKR(sumAED * pkrRateAED)
       }catch{}
     }finally{ setLoading(false) }
   }
@@ -125,20 +161,42 @@ export default function AgentDashboard(){
 
       {/* Top metrics (like driver tiles) */}
       <div className="card" style={{padding:16}}>
-        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px,1fr))', gap:12}}>
-          <button className="tile" onClick={()=> navigate('/agent/inbox/whatsapp')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
-            <div style={{fontSize:12, color:'var(--muted)'}}>Assigned Chats</div>
-            <div style={{fontSize:28, fontWeight:800, color:'#3b82f6'}}>{loading? '…' : assignedCount}</div>
-          </button>
-          <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
-            <div style={{fontSize:12, color:'var(--muted)'}}>Orders Submitted</div>
-            <div style={{fontSize:28, fontWeight:800, color:'#10b981'}}>{loading? '…' : ordersSubmitted}</div>
+        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px,1fr))', gap:12}}>
+          <div className="tile" style={{display:'grid', gridTemplateColumns:'1fr auto', alignItems:'center', gap:8, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div>
+              <div style={{fontSize:12, color:'var(--muted)'}}>Assigned Chats</div>
+              <div style={{fontSize:28, fontWeight:800, color:'#3b82f6'}}>{loading? '…' : assignedCount}</div>
+            </div>
+            <button className="btn" onClick={()=> navigate('/agent/inbox/whatsapp')}>Go to Chats</button>
+          </div>
+          <div className="tile" style={{display:'grid', gridTemplateColumns:'1fr auto', alignItems:'center', gap:8, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div>
+              <div style={{fontSize:12, color:'var(--muted)'}}>Orders Submitted</div>
+              <div style={{fontSize:28, fontWeight:800, color:'#10b981'}}>{loading? '…' : ordersSubmitted}</div>
+            </div>
+            <button className="btn secondary" onClick={()=> navigate('/agent/orders/history')}>Order History</button>
           </div>
           <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
             <div style={{fontSize:12, color:'var(--muted)'}}>Avg. Response Time</div>
             <div style={{fontSize:28, fontWeight:800, color:'#f59e0b'}}>{avgResponseSeconds!=null? formatDuration(avgResponseSeconds) : '—'}</div>
           </div>
         </div>
+      </div>
+
+      {/* Wallet amount */}
+      <div className="card" style={{padding:16}}>
+        <div className="card-title" style={{marginBottom:8}}>Wallet Amount</div>
+        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:12}}>
+          <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div className="helper">Total (AED)</div>
+            <div style={{fontSize:28, fontWeight:800, color:'#2563eb'}}>{Math.round(walletAED).toLocaleString()}</div>
+          </div>
+          <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div className="helper">Total (PKR)</div>
+            <div style={{fontSize:28, fontWeight:800, color:'#0ea5e9'}}>{Math.round(walletPKR).toLocaleString()}</div>
+          </div>
+        </div>
+        <div className="helper" style={{marginTop:8}}>Calculated by converting each order amount to AED using user panel rates, summing, then converting total to PKR. Order History shows amounts in original currencies.</div>
       </div>
 
       {/* Order status metrics for agent-submitted orders */}

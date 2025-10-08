@@ -191,6 +191,7 @@ export default function AgentOrdersHistory(){
             // Product summary (supports multi-items)
             let productName = '-'
             let qty = 1
+            let baseCur = 'SAR'
             if (o.items && Array.isArray(o.items) && o.items.length > 0) {
               const productNames = o.items.map(item => {
                 if (item.productId && typeof item.productId === 'object' && item.productId.name) {
@@ -200,6 +201,7 @@ export default function AgentOrdersHistory(){
               }).filter(Boolean)
               productName = productNames.join(', ') || 'Multiple Products'
               qty = o.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
+              baseCur = (o.items[0]?.productId?.baseCurrency) || baseCur
             } else if (o.productId) {
               if (typeof o.productId === 'object' && o.productId.name) {
                 productName = o.productId.name
@@ -207,6 +209,7 @@ export default function AgentOrdersHistory(){
                 productName = 'Product ID: ' + o.productId.slice(-6)
               }
               qty = Math.max(1, Number(o?.quantity||1))
+              baseCur = (o?.productId?.baseCurrency) || baseCur
             }
             const price = (o?.total!=null ? Number(o.total) : (o?.productId?.price ? Number(o.productId.price) * qty : 0))
             const fullAddress = [o.customerAddress, o.customerArea, o.city, o.orderCountry, o.customerLocation].filter(Boolean).filter((v,i,a)=> a.indexOf(v)===i).join(', ')
@@ -236,7 +239,7 @@ export default function AgentOrdersHistory(){
                     <div className="label">Product</div>
                     <div style={{fontWeight:700}}>{productName}</div>
                     <div className="helper">Qty: {qty}</div>
-                    <div className="helper">Total: {price.toFixed(2)}</div>
+                    <div className="helper">Total: {String(baseCur||'SAR').toUpperCase()} {price.toFixed(2)}</div>
                   </div>
                   <div>
                     <div className="label">Agent</div>
