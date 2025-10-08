@@ -207,25 +207,7 @@ export default function AgentDashboard(){
         />
       </div>
 
-      {/* Revenue chart */}
-      <div className="card" style={{display:'grid', gap:12}}>
-        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-          <div style={{display:'flex', alignItems:'center', gap:10}}>
-            <div style={{width:32,height:32,borderRadius:8,background:'linear-gradient(135deg,#3b82f6,#8b5cf6)',display:'grid',placeItems:'center',color:'#fff',fontWeight:800, fontSize:18}}>📈</div>
-            <div>
-              <div style={{fontWeight:800}}>Earnings Overview</div>
-              <div className="helper">Commission at 12% of order value</div>
-            </div>
-          </div>
-          <button className="btn secondary" onClick={()=>{ load(); loadTableOrders(true) }} disabled={loading}>{loading? 'Refreshing…' : 'Refresh'}</button>
-        </div>
-        <MiniBarChart
-          items={[
-            { label:'Upcoming (PKR)', value: upcomingPKR, color:'#f59e0b' },
-            { label:'Total (PKR)', value: totalPKR, color:'#10b981' },
-          ]}
-        />
-      </div>
+      {/* Earnings Overview removed as requested */}
 
       {/* Recent Orders table */}
       {(()=>{
@@ -308,7 +290,6 @@ export default function AgentDashboard(){
                 </div>
               </div>
               <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
-                <div className="helper">Total: {fmtCurrency(Math.round(totalsRecent.delivered))} • Upcoming Income: {fmtCurrency(Math.round(totalsRecent.upcoming))}</div>
                 <button className="btn" onClick={() => navigate('/agent/orders/history')}>Open full history</button>
               </div>
             </div>

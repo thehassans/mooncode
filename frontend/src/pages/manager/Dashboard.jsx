@@ -168,6 +168,9 @@ export default function ManagerDashboard(){
           <div className="page-title gradient heading-blue">Manager</div>
           <div className="page-subtitle">Dashboard overview for your assigned countries</div>
         </div>
+      </div>
+
+      <div className="grid" style={{gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap:12, alignItems:'start'}}>
 
       {/* Orders Summary (Access Countries) */}
       <div className="card" style={{marginTop:12, marginBottom:12}}>
@@ -355,8 +358,7 @@ export default function ManagerDashboard(){
           )
         })()}
       </div>
-      {/* Professional dashboard: removed quick links and mobile quick actions for a cleaner view */}
-      </div>
+    </div>
 
       {/* Quick actions moved to bottom on mobile */}
 
