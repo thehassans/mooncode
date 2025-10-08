@@ -180,7 +180,7 @@ export default function ManagerDashboard(){
       <div className="grid" style={{gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap:12, alignItems:'start'}}>
 
       {/* Orders Summary (Access Countries) */}
-      <div className="card" style={{marginTop:12, marginBottom:12}}>
+      <div className="card" style={{padding:16, marginBottom:12}}>
         {(function(){
           const totalOrdersCount = Number(metrics?.totalOrders||0)
           const deliveredCount = Number(metrics?.deliveredOrders||0)
@@ -209,7 +209,7 @@ export default function ManagerDashboard(){
           }
           function Tile({ title, valueEl, chipsEl }){
             return (
-              <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+              <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12, minHeight:100}}>
                 <div style={{fontSize:12, color:'var(--muted)'}}>{title}</div>
                 <div style={{fontSize:28, fontWeight:800}}>{valueEl}</div>
                 <div>{chipsEl}</div>
@@ -233,7 +233,7 @@ export default function ManagerDashboard(){
       </div>
 
       {/* Driver Report by Country (Access Countries) */}
-      <div className="card" style={{marginBottom:12}}>
+      <div className="card" style={{padding:16, marginBottom:12}}>
         <div style={{fontWeight:800,fontSize:16, marginBottom:6}}>Driver Report by Country (Your Access)</div>
         <div className="helper" style={{marginBottom:12}}>Counts from orders; amounts in local currency.</div>
         <div className="section" style={{display:'grid', gap:12}}>
@@ -274,9 +274,9 @@ export default function ManagerDashboard(){
                       const valNum = Number(t.val||0)
                       const displayVal = t.isAmount ? `${cur} ${fmtAmt(valNum)}` : fmtNum(valNum)
                       return (
-                        <a key={t.key} className="tile" href={t.to} style={{display:'grid', gap:6, padding:12, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:10, textDecoration:'none', color:'inherit', cursor:'pointer'}}>
+                        <a key={t.key} className="tile" href={t.to} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12, minHeight:100, textDecoration:'none', color:'inherit', cursor:'pointer'}}>
                           <div className="helper">{t.title}</div>
-                          <div style={{fontSize:22, fontWeight:800}}>{displayVal}</div>
+                          <div style={{fontSize:28, fontWeight:800}}>{displayVal}</div>
                         </a>
                       )
                     })}
@@ -289,7 +289,7 @@ export default function ManagerDashboard(){
       </div>
 
       {/* Status Summary (Access Countries) */}
-      <div className="card" style={{marginBottom:12}}>
+      <div className="card" style={{padding:16, marginBottom:12}}>
         {(function(){
           const st = (metrics && metrics.statusTotals) ? metrics.statusTotals : (function(){
             // Fallback: aggregate from countries if backend older
@@ -327,7 +327,7 @@ export default function ManagerDashboard(){
           }
           function Tile({ title, value, getter, to }){
             return (
-              <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+              <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12, minHeight:100}}>
                 <div style={{fontSize:12, color:'var(--muted)'}}>{title}</div>
                 <div style={{fontSize:28, fontWeight:800}}>{to ? (<a className="link" href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
                 <Chips getter={getter} />
@@ -358,7 +358,7 @@ export default function ManagerDashboard(){
       {/* Quick actions moved to bottom on mobile */}
 
       {/* Drivers & Orders (Your Access) */}
-      <div className="card" style={{marginTop:12}}>
+      <div className="card" style={{padding:16, marginTop:12}}>
         {(function(){
           const byCountry = (COUNTRY_LIST||[]).reduce((acc,c)=>{ acc[c] = []; return acc }, {})
           const canon = (v)=>{
@@ -440,7 +440,7 @@ export default function ManagerDashboard(){
       </div>
 
       {/* Country Summary (assigned only) */}
-      <div className="card" style={{marginTop:12}}>
+      <div className="card" style={{padding:16, marginTop:12}}>
         <div style={{fontWeight:800,fontSize:16, marginBottom:6}}>Country Summary</div>
         <div className="helper" style={{marginBottom:12}}>Orders, Delivered, Cancelled, and Collections for your assigned countries</div>
         <div className="section" style={{overflowX:'auto'}}>
