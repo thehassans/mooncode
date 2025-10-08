@@ -217,11 +217,7 @@ export default function PrintLabel(){
           {moreCount>0 && (
             <div className="muted" style={{fontSize:10}}>{`+ ${moreCount} more item(s)`}</div>
           )}
-          {discount > 0 && (
-            <div className="row" style={{justifyContent:'flex-end'}}>
-              <div><strong>Discount:</strong> {fmt2(discount)}</div>
-            </div>
-          )}
+          {/* Discount intentionally hidden on labels */}
         </div>
 
         {/* Footer grid: driver + note (two columns), order no + total, barcode */}

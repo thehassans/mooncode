@@ -286,335 +286,86 @@ export default function UserDashboard(){
           const amountTotalOrdersAED = sumAmountAED('amountTotalOrders')
           const amountDeliveredAED = sumAmountAED('amountDelivered')
           const amountPendingAED = sumAmountAED('amountPending')
-          function Tile({ icon, title, valueEl, chipsEl, gradient }){
+          function Tile({ title, valueEl }){
             return (
               <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
-                <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
-                  <div style={{width:32,height:32,borderRadius:8,background:gradient||'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:16}}>{icon}</div>
-                  <div style={{fontWeight:800}}>{title}</div>
-                </div>
-                <div style={{fontSize:20, fontWeight:900, marginBottom:6}}>{valueEl}</div>
-                {/* chips removed for All Countries */}
+                <div className="helper">{title}</div>
+                <div style={{fontSize:24, fontWeight:900}}>{valueEl}</div>
               </div>
             )
           }
           return (
             <div className="section" style={{display:'grid', gap:12}}>
-              <div style={{display:'flex', alignItems:'center', gap:10}}>
-                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🧮</div>
-                <div>
-                  <div style={{fontWeight:800,fontSize:16}}>Orders Summary (All Countries)</div>
-                  <div className="helper">Totals only (amounts in AED)</div>
-                </div>
+              <div>
+                <div style={{fontWeight:800,fontSize:16}}>Orders Summary (All Countries)</div>
+                <div className="helper">Totals only (amounts in AED)</div>
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile icon="📦" title="Total Orders" valueEl={<a className="link" href="/user/orders">{fmtNum(totalOrdersCount)}</a>} gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
-                <Tile icon="💵" title="Amount of Total Orders (AED)" valueEl={<a className="link" href="/user/orders">{`AED ${fmtAmt(amountTotalOrdersAED)}`}</a>} gradient={'linear-gradient(135deg,#10b981,#059669)'} />
-                <Tile icon="✅" title="Orders Delivered" valueEl={<a className="link" href="/user/orders?ship=delivered">{fmtNum(deliveredCount)}</a>} gradient={'linear-gradient(135deg,#16a34a,#15803d)'} />
-                <Tile icon="🧾" title="Amount of Orders Delivered (AED)" valueEl={<a className="link" href="/user/orders?ship=delivered">{`AED ${fmtAmt(amountDeliveredAED)}`}</a>} gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
-                <Tile icon="⏳" title="Open Orders" valueEl={<a className="link" href="/user/orders?ship=open">{fmtNum(pendingCount)}</a>} gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
-                <Tile icon="💰" title="Open Amount (AED)" valueEl={<a className="link" href="/user/orders?ship=open">{`AED ${fmtAmt(amountPendingAED)}`}</a>} gradient={'linear-gradient(135deg,#fb923c,#f97316)'} />
+                <Tile title="Total Orders" valueEl={<a className="link" href="/user/orders">{fmtNum(totalOrdersCount)}</a>} />
+                <Tile title="Amount of Total Orders (AED)" valueEl={<a className="link" href="/user/orders">{`AED ${fmtAmt(amountTotalOrdersAED)}`}</a>} />
+                <Tile title="Orders Delivered" valueEl={<a className="link" href="/user/orders?ship=delivered">{fmtNum(deliveredCount)}</a>} />
+                <Tile title="Amount of Orders Delivered (AED)" valueEl={<a className="link" href="/user/orders?ship=delivered">{`AED ${fmtAmt(amountDeliveredAED)}`}</a>} />
+                <Tile title="Open Orders" valueEl={<a className="link" href="/user/orders?ship=open">{fmtNum(pendingCount)}</a>} />
+                <Tile title="Open Amount (AED)" valueEl={<a className="link" href="/user/orders?ship=open">{`AED ${fmtAmt(amountPendingAED)}`}</a>} />
               </div>
             </div>
           )
         })()}
       </div>
 
-      {/* Driver Report (All Countries) */}
-      <div className="card" style={{marginBottom:12}}>
-        {(function(){
-          const st = statusTotals || {}
-          const dAgg = driverAggGlobal || { assignedAllTime:0, collectedAED:0, deliveredToCompanyAED:0, pendingToCompanyAED:0 }
-          function Tile({ icon, title, value, gradient, to }){
-            return (
-              <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
-                <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
-                  <div style={{width:32,height:32,borderRadius:8,background:gradient||'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:16}}>{icon}</div>
-                  <div style={{fontWeight:800}}>{title}</div>
-                </div>
-                <div style={{fontSize:20, fontWeight:900, marginBottom:6}}>{to ? (<a className="link" href={to}>{value}</a>) : value}</div>
-              </div>
-            )
-          }
-          return (
-            <div className="section" style={{display:'grid', gap:12}}>
-              <div style={{display:'flex', alignItems:'center', gap:10}}>
-                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#06b6d4,#0891b2)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🧑‍🦰</div>
-                <div>
-                  <div style={{fontWeight:800,fontSize:16}}>Driver Report (All Countries)</div>
-                  <div className="helper">Totals across all drivers. Amounts in AED.</div>
-                </div>
-              </div>
-              <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile icon="🧾" title="Total Orders Assigned (All Time)" value={fmtNum(dAgg.assignedAllTime)} to="/user/orders?onlyAssigned=true" gradient={'linear-gradient(135deg,#334155,#0f172a)'} />
-                <Tile icon="📌" title="Currently Assigned" value={fmtNum(st.assigned||0)} to="/user/orders?ship=assigned" gradient={'linear-gradient(135deg,#94a3b8,#64748b)'} />
-                <Tile icon="🚚" title="Picked Up" value={fmtNum(st.picked_up||0)} to="/user/orders?ship=picked_up" gradient={'linear-gradient(135deg,#60a5fa,#3b82f6)'} />
-                <Tile icon="🚛" title="In Transit" value={fmtNum(st.in_transit||0)} to="/user/orders?ship=in_transit" gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
-                <Tile icon="🛵" title="Out for Delivery" value={fmtNum(st.out_for_delivery||0)} to="/user/orders?ship=out_for_delivery" gradient={'linear-gradient(135deg,#f97316,#ea580c)'} />
-                <Tile icon="✅" title="Delivered" value={fmtNum(st.delivered||0)} to="/user/orders?ship=delivered" gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
-                <Tile icon="☎️🚫" title="No Response" value={fmtNum(st.no_response||0)} to="/user/orders?ship=no_response" gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
-                <Tile icon="🔁" title="Returned" value={fmtNum(st.returned||0)} to="/user/orders?ship=returned" gradient={'linear-gradient(135deg,#a3a3a3,#737373)'} />
-                <Tile icon="❌" title="Cancelled" value={fmtNum(st.cancelled||0)} to="/user/orders?ship=cancelled" gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
-                <Tile icon="💵" title="Total Collected (Delivered)" value={`AED ${fmtAmt(dAgg.collectedAED)}`} to="/user/orders?ship=delivered&collected=true" gradient={'linear-gradient(135deg,#10b981,#059669)'} />
-                <Tile icon="🏦" title="Delivered to Company" value={`AED ${fmtAmt(dAgg.deliveredToCompanyAED)}`} to="/user/finances?section=driver" gradient={'linear-gradient(135deg,#84cc16,#4d7c0f)'} />
-                <Tile icon="⏳" title="Pending Delivery to Company" value={`AED ${fmtAmt(dAgg.pendingToCompanyAED)}`} to="/user/finances?section=driver" gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
-              </div>
-            </div>
-          )
-        })()}
-      </div>
-
-      {/* Driver Report by Country */}
-      <div className="card" style={{marginBottom:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#06b6d4,#0891b2)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🚚</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Driver Report by Country</div>
-            <div className="helper">Counts from orders; amounts in local currency.</div>
-          </div>
-        </div>
-        <div className="section" style={{display:'grid', gap:12}}>
-          {COUNTRY_LIST.map(c=>{
-            const m = countryMetrics(c)
-            const d = driverAggByCountry[c] || { assignedAllTime:0, collected:0, deliveredToCompany:0, pendingToCompany:0 }
-            const qs = encodeURIComponent(c)
-            const amtCollectedStr = formatCurrency(d.collected||0, c)
-            const amtDeliveredToCoStr = formatCurrency(d.deliveredToCompany||0, c)
-            const amtPendingToCoStr = formatCurrency(d.pendingToCompany||0, c)
-            const name = (c==='KSA') ? 'Saudi Arabia (KSA)' : c
-            return (
-              <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
-                <div style={{fontWeight:900, marginBottom:8}}>{name}</div>
-                <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Total Orders Assigned (All Time)</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&onlyAssigned=true`}>{fmtNum(d.assignedAllTime||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Currently Assigned</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=assigned`}>{fmtNum(m?.assigned||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Picked Up</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=picked_up`}>{fmtNum(m?.pickedUp||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">In Transit</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=in_transit`}>{fmtNum(m?.transit||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Out for Delivery</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=out_for_delivery`}>{fmtNum(m?.outForDelivery||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Delivered</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=delivered`}>{fmtNum(m?.delivered||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">No Response</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=no_response`}>{fmtNum(m?.noResponse||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Returned</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=returned`}>{fmtNum(m?.returned||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Cancelled</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=cancelled`}>{fmtNum(m?.cancelled||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Total Collected (Delivered)</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/user/orders?country=${qs}&ship=delivered&collected=true`}>{amtCollectedStr}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Delivered to Company</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/user/finances?section=driver`}>{amtDeliveredToCoStr}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Pending Delivery to Company</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/user/finances?section=driver`}>{amtPendingToCoStr}</a></div>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      {/* Driver Report (All Countries) removed as requested */}
+      {/* Driver Report by Country removed as requested */}
 
       {/* Status Summary (All Countries) */}
       <div className="card" style={{marginBottom:12}}>
         {(function(){
           const st = statusTotals || {}
-          function Tile({ icon, title, value, gradient, to }){
+          function Tile({ title, value, to }){
             return (
               <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
-                <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
-                  <div style={{width:32,height:32,borderRadius:8,background:gradient||'linear-gradient(135deg,#3b82f6,#1d4ed8)',display:'grid',placeItems:'center',color:'#fff',fontSize:16}}>{icon}</div>
-                  <div style={{fontWeight:800}}>{title}</div>
-                </div>
-                <div style={{fontSize:20, fontWeight:900, marginBottom:6}}>{to ? (<a className="link" href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
-                {/* chips removed for All Countries */}
+                <div className="helper">{title}</div>
+                <div style={{fontSize:24, fontWeight:900}}>{to ? (<a className="link" href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
               </div>
             )
           }
           return (
             <div className="section" style={{display:'grid', gap:12}}>
-              <div style={{display:'flex', alignItems:'center', gap:10}}>
-                <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#3b82f6,#1d4ed8)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>📊</div>
-                <div>
-                  <div style={{fontWeight:800,fontSize:16}}>Status Summary (All Countries)</div>
-                  <div className="helper">Global totals</div>
-                </div>
+              <div>
+                <div style={{fontWeight:800,fontSize:16}}>Status Summary (All Countries)</div>
+                <div className="helper">Global totals</div>
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile icon="📦" title="Total Orders" value={st.total} to="/user/orders" gradient={'linear-gradient(135deg,#3b82f6,#1d4ed8)'} />
-                <Tile icon="⏳" title="Open" value={st.pending} to="/user/orders?ship=open" gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} />
-                <Tile icon="📌" title="Assigned" value={st.assigned} to="/user/orders?ship=assigned" gradient={'linear-gradient(135deg,#94a3b8,#64748b)'} />
-                <Tile icon="🚚" title="Picked Up" value={st.picked_up} to="/user/orders?ship=picked_up" gradient={'linear-gradient(135deg,#60a5fa,#3b82f6)'} />
-                <Tile icon="🚛" title="In Transit" value={st.in_transit} to="/user/orders?ship=in_transit" gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} />
-                <Tile icon="🛵" title="Out for Delivery" value={st.out_for_delivery} to="/user/orders?ship=out_for_delivery" gradient={'linear-gradient(135deg,#f97316,#ea580c)'} />
-                <Tile icon="✅" title="Delivered" value={st.delivered} to="/user/orders?ship=delivered" gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} />
-                <Tile icon="☎️🚫" title="No Response" value={st.no_response} to="/user/orders?ship=no_response" gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
-                <Tile icon="🔁" title="Returned" value={st.returned} to="/user/orders?ship=returned" gradient={'linear-gradient(135deg,#a3a3a3,#737373)'} />
-                <Tile icon="❌" title="Cancelled" value={st.cancelled} to="/user/orders?ship=cancelled" gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} />
+                <Tile title="Total Orders" value={st.total} to="/user/orders" />
+                <Tile title="Open" value={st.pending} to="/user/orders?ship=open" />
+                <Tile title="Assigned" value={st.assigned} to="/user/orders?ship=assigned" />
+                <Tile title="Picked Up" value={st.picked_up} to="/user/orders?ship=picked_up" />
+                <Tile title="In Transit" value={st.in_transit} to="/user/orders?ship=in_transit" />
+                <Tile title="Out for Delivery" value={st.out_for_delivery} to="/user/orders?ship=out_for_delivery" />
+                <Tile title="Delivered" value={st.delivered} to="/user/orders?ship=delivered" />
+                <Tile title="No Response" value={st.no_response} to="/user/orders?ship=no_response" />
+                <Tile title="Returned" value={st.returned} to="/user/orders?ship=returned" />
+                <Tile title="Cancelled" value={st.cancelled} to="/user/orders?ship=cancelled" />
               </div>
             </div>
           )
         })()}
       </div>
 
-      {/* Country Summary */}
-      <div className="card" style={{marginBottom:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🌍</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Country Summary</div>
-            <div className="helper">Orders, Delivered, Cancelled, and Collections per country</div>
-          </div>
-        </div>
-        <div className="section" style={{overflowX:'auto'}}>
-          <div style={{display:'flex', gap:12, minWidth:700}}>
-            {countrySummaryRows.map(row=>{
-              const qsCountry = encodeURIComponent(row.country)
-              const currency = row.country==='KSA' ? 'SAR'
-                : row.country==='UAE' ? 'AED'
-                : row.country==='Oman' ? 'OMR'
-                : row.country==='Bahrain' ? 'BHD'
-                : row.country==='India' ? 'INR'
-                : row.country==='Kuwait' ? 'KWD'
-                : row.country==='Qatar' ? 'QAR'
-                : 'AED'
-              return (
-                <div key={row.country} className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'10px 12px', background:'var(--panel)', minWidth:280}}>
-                  <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6}}>
-                    <div style={{fontWeight:800}}>{row.country==='KSA' ? 'Saudi Arabia' : row.country}</div>
-                    <a className="chip" style={{background:'transparent'}} href={`/user/orders?country=${qsCountry}`}>View</a>
-                  </div>
-                  <div style={{display:'grid', gap:6}}>
-                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-                      <div className="helper">Orders</div>
-                      <a className="link" href={`/user/orders?country=${qsCountry}`}>{row.orders.toLocaleString()}</a>
-                    </div>
-                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-                      <div className="helper">Delivered</div>
-                      <a className="link" href={`/user/orders?country=${qsCountry}&ship=delivered`}>{row.delivered.toLocaleString()}</a>
-                    </div>
-                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-                      <div className="helper">Cancelled</div>
-                      <a className="link" href={`/user/orders?country=${qsCountry}&ship=cancelled`}>{row.cancelled.toLocaleString()}</a>
-                    </div>
-                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-                      <div className="helper">Collected</div>
-                      <a className="link" href={`/user/orders?country=${qsCountry}&ship=delivered&collected=true`}>{currency} {row.collected.toLocaleString()}</a>
-                    </div>
-                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-                      <div className="helper">Delivered to Company</div>
-                      <a className="link" href={`/user/finances?section=driver`}>{currency} {row.deliveredToCompany.toLocaleString()}</a>
-                    </div>
-                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-                      <div className="helper">Pending to Company</div>
-                      <a className="link" href={`/user/finances?section=driver`}>{currency} {row.pendingToCompany.toLocaleString()}</a>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
+      {/* Country Summary removed as requested */}
 
-      {/* Drivers Summary */}
-      <div className="card" style={{marginBottom:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#06b6d4,#0891b2)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🚚</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Drivers Summary</div>
-            <div className="helper">Per-country totals with quick links</div>
-          </div>
-        </div>
-        <div className="section" style={{ overflowX:'auto' }}>
-          {(!Array.isArray(drivers) || drivers.length===0) ? (
-            <div className="empty-state">No driver data</div>
-          ) : (
-            <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:0 }}>
-              <thead>
-                <tr>
-                  <th style={{textAlign:'left', padding:'8px 10px'}}>Country</th>
-                  <th style={{textAlign:'left', padding:'8px 10px'}}>Orders</th>
-                  <th style={{textAlign:'left', padding:'8px 10px'}}>Delivered</th>
-                  <th style={{textAlign:'left', padding:'8px 10px'}}>Cancelled</th>
-                  <th style={{textAlign:'left', padding:'8px 10px'}}>Collected</th>
-                  <th style={{textAlign:'left', padding:'8px 10px'}}>Delivered to Company</th>
-                  <th style={{textAlign:'left', padding:'8px 10px'}}>Pending to Company</th>
-                </tr>
-              </thead>
-              <tbody>
-                {driverCountrySummary.map(row => {
-                  const label = row.country === 'KSA' ? 'Saudi Arabia' : row.country
-                  const qsCountry = encodeURIComponent(row.country)
-                  return (
-                    <tr key={row.country} style={{ borderTop:'1px solid var(--border)' }}>
-                      <td style={{ padding:'8px 10px', fontWeight:700 }}>{label}</td>
-                      <td style={{ padding:'8px 10px' }}>
-                        <a className="link" href={`/user/orders?country=${qsCountry}`}>{Number(row.assigned||0).toLocaleString()}</a>
-                      </td>
-                      <td style={{ padding:'8px 10px' }}>
-                        <a className="link" href={`/user/orders?country=${qsCountry}&ship=delivered`}>{Number(row.delivered||0).toLocaleString()}</a>
-                      </td>
-                      <td style={{ padding:'8px 10px' }}>
-                        <a className="link" href={`/user/orders?country=${qsCountry}&ship=cancelled`}>{Number(row.cancelled||0).toLocaleString()}</a>
-                      </td>
-                      <td style={{ padding:'8px 10px', whiteSpace:'nowrap' }}>
-                        <a className="link" href={`/user/orders?country=${qsCountry}&ship=delivered&collected=true`}>{row.currency} {Math.round(row.collected||0).toLocaleString()}</a>
-                      </td>
-                      <td style={{ padding:'8px 10px', whiteSpace:'nowrap' }}>
-                        <a className="link" href="/user/finances?section=driver">{row.currency} {Math.round(row.deliveredToCompany||0).toLocaleString()}</a>
-                      </td>
-                      <td style={{ padding:'8px 10px', whiteSpace:'nowrap', fontWeight:700, color:'var(--warning)' }}>
-                        <a className="link" href="/user/finances?section=driver">{row.currency} {Math.round(row.pendingToCompany||0).toLocaleString()}</a>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
+      {/* Drivers Summary removed as requested */}
 
       {/* Per-Country Orders & Status */}
       <div className="card" style={{marginTop:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🌐</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Per-Country Orders & Status</div>
-            <div className="helper">Numbers only; amounts in local currency</div>
-          </div>
+        <div style={{marginBottom:12}}>
+          <div style={{fontWeight:800,fontSize:16}}>Per-Country Orders & Status</div>
+          <div className="helper">Numbers only; amounts in local currency</div>
         </div>
         <div className="section" style={{display:'grid', gap:12}}>
           {COUNTRY_LIST.map(c=>{
             const m = countryMetrics(c)
-            const name = (c==='KSA') ? 'Saudi Arabia (KSA)' : c
+            const flag = (COUNTRY_INFO[c] && COUNTRY_INFO[c].flag) ? COUNTRY_INFO[c].flag + ' ' : ''
+            const name = flag + ((c==='KSA') ? 'Saudi Arabia (KSA)' : c)
             const qs = encodeURIComponent(c)
             const amtTotalStr = formatCurrency(m?.amountTotalOrders||0, c)
             const amtDeliveredStr = formatCurrency(m?.amountDelivered||0, c)
@@ -693,38 +444,27 @@ export default function UserDashboard(){
 
       {/* Analytics Chart */}
       <div className="card" style={{marginTop:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#8b5cf6,#6d28d9)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>📈</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Sales Trend</div>
-            <div className="helper">Last 7 days performance</div>
-          </div>
+        <div style={{marginBottom:12}}>
+          <div style={{fontWeight:800,fontSize:16}}>Sales Trend</div>
+          <div className="helper">Last 7 days performance</div>
         </div>
         <Chart analytics={analytics} />
       </div>
       
       {/* Order Status Distribution */}
       <div className="card" style={{marginTop:12}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:16}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'linear-gradient(135deg,#ec4899,#be185d)',display:'grid',placeItems:'center',color:'#fff',fontSize:18}}>🥧</div>
-          <div>
-            <div style={{fontWeight:800,fontSize:16}}>Order Status Distribution</div>
-            <div className="helper">Visual breakdown of order statuses</div>
-          </div>
+        <div style={{marginBottom:16}}>
+          <div style={{fontWeight:800,fontSize:16}}>Order Status Distribution</div>
+          <div className="helper">Visual breakdown of order statuses</div>
         </div>
         <OrderStatusPie statusTotals={statusTotals} />
       </div>
 
       {/* Recent Order History */}
       <div className="card" style={{marginTop:12, display:'grid', gap:12}}>
-        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-          <div style={{display:'flex', alignItems:'center', gap:10}}>
-            <div style={{width:32,height:32,borderRadius:8,background:'linear-gradient(135deg,#10b981,#059669)',display:'grid',placeItems:'center',color:'#fff',fontWeight:800}}>📜</div>
-            <div>
-              <div style={{fontWeight:800}}>Recent Order History</div>
-              <div className="helper">Delivered or Cancelled</div>
-            </div>
-          </div>
+        <div>
+          <div style={{fontWeight:800}}>Recent Order History</div>
+          <div className="helper">Delivered or Cancelled</div>
         </div>
         {orderHistory.length === 0 ? (
           <div className="empty-state">No delivered or cancelled orders yet</div>

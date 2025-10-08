@@ -27,17 +27,29 @@ export default function AgentDashboard(){
   async function load(){
     setLoading(true)
     try{
-      const [meRes, chats, ordRes, perf, cfg] = await Promise.all([
+      const [meRes, chats, perf, cfg] = await Promise.all([
         apiGet('/api/users/me').catch(()=>({})),
         apiGet('/api/wa/chats').catch(()=>[]),
-        apiGet('/api/orders').catch(()=>({ orders: [] })),
         apiGet('/api/users/agents/me/performance').catch(()=>({})),
         getCurrencyConfig().catch(()=>null),
       ])
       // meRes.user available for id checks below
       const chatList = Array.isArray(chats) ? chats : []
       setAssignedCount(chatList.length)
-      const allOrders = Array.isArray(ordRes?.orders) ? ordRes.orders : []
+      // Fetch ALL orders (paged) so status totals match the submitted total
+      async function fetchAllOrders(){
+        let page = 1, limit = 200, out = []
+        for(;;){
+          const r = await apiGet(`/api/orders?page=${page}&limit=${limit}`).catch(()=>({ orders: [], hasMore:false }))
+          const list = Array.isArray(r?.orders) ? r.orders : []
+          out = out.concat(list)
+          if (!r?.hasMore) break
+          page += 1
+          if (page > 100) break
+        }
+        return out
+      }
+      const allOrders = await fetchAllOrders()
       setOrders(allOrders)
       if (typeof perf?.avgResponseSeconds === 'number') setAvgResponseSeconds(perf.avgResponseSeconds)
       if (typeof perf?.ordersSubmitted === 'number') setOrdersSubmittedOverride(perf.ordersSubmitted)

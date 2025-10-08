@@ -79,12 +79,7 @@ export default function AgentLayout() {
       clearInterval(id)
     }
   }, [])
-  const me = JSON.parse(localStorage.getItem('me') || '{}')
-  const [showWelcome, setShowWelcome] = useState(true)
-  useEffect(() => {
-    const t = setTimeout(() => setShowWelcome(false), 10000)
-    return () => clearTimeout(t)
-  }, [])
+  // Remove welcome overlay and header greeting per request
   const links = [
     { to: '/agent', label: 'Dashboard' },
     { to: '/agent/inbox/whatsapp', label: 'WhatsApp Inbox' },
@@ -487,43 +482,7 @@ export default function AgentLayout() {
                   />
                 )
               })()}
-              {/* After overlay hides, keep a compact welcome chip in the header */}
-              {!showWelcome && !isMobile && (
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '8px 12px',
-                    borderRadius: 999,
-                    background: 'var(--panel)',
-                    border: '1px solid var(--border)',
-                    boxShadow: '0 1px 0 rgba(0,0,0,0.15) inset',
-                  }}
-                >
-                  <span
-                    aria-hidden
-                    style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--muted)' }}
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
-                      <circle cx="10" cy="7" r="3" />
-                    </svg>
-                  </span>
-                  <span style={{ fontWeight: 800, letterSpacing: 0.3 }}>
-                    {`Welcome ${me.firstName || ''} ${me.lastName || ''}`.trim()}
-                  </span>
-                </div>
-              )}
+              {/* Welcome chip removed */}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {/* Swatches left of theme toggle */}
@@ -620,39 +579,9 @@ export default function AgentLayout() {
           })}
         </nav>
       )}
-      {showWelcome && (
-        <div className="agent-welcome-overlay" role="status" aria-live="polite">
-          <AgentWelcome name={`${me.firstName || ''} ${me.lastName || ''}`.trim()} />
-        </div>
-      )}
+      {/* Welcome overlay removed */}
     </div>
   )
 }
 
-function AgentWelcome({ name }) {
-  return (
-    <div className="agent-welcome" aria-live="polite">
-      <div className="night" aria-hidden>
-        <div className="flowers">
-          <div className="flower flower--1">
-            <div className="flower__leafs flower__leafs--1">
-              <div className="flower__leaf flower__leaf--1"></div>
-              <div className="flower__leaf flower__leaf--2"></div>
-              <div className="flower__leaf flower__leaf--3"></div>
-              <div className="flower__leaf flower__leaf--4"></div>
-              <div className="flower__white-circle"></div>
-              <div className="flower__light flower__light--1"></div>
-              <div className="flower__light flower__light--2"></div>
-              <div className="flower__light flower__light--3"></div>
-              <div className="flower__light flower__light--4"></div>
-              <div className="flower__light flower__light--5"></div>
-              <div className="flower__light flower__light--6"></div>
-              <div className="flower__light flower__light--7"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="agent-welcome__text">Welcome {name || 'Agent'} ✨</div>
-    </div>
-  )
-}
+// AgentWelcome component removed
