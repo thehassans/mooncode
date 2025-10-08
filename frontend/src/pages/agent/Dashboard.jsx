@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { API_BASE, apiGet } from '../../api'
 import { io } from 'socket.io-client'
@@ -10,26 +10,19 @@ export default function AgentDashboard(){
   const me = useMemo(()=>{
     try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} }
   },[])
-  const [meUser, setMeUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [assignedCount, setAssignedCount] = useState(0)
   // Orders for metrics
   const [orders, setOrders] = useState([])
-  // Separate state for recent orders table (infinite scroll)
-  const [tableOrders, setTableOrders] = useState([])
-  const [tablePage, setTablePage] = useState(1)
-  const [tableHasMore, setTableHasMore] = useState(true)
-  const tableLoadingRef = useRef(false)
-  const tableEndRef = useRef(null)
   const [avgResponseSeconds, setAvgResponseSeconds] = useState(null)
   const [ordersSubmittedOverride, setOrdersSubmittedOverride] = useState(null)
   const [isDesktop, setIsDesktop] = useState(() => {
     try{ return window.innerWidth >= 1024 }catch{ return false }
   })
+  // Agent-submitted status counts
+  const [statusCounts, setStatusCounts] = useState({ total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 })
   useEffect(()=>{
-    function onResize(){ try{ setIsDesktop(window.innerWidth >= 1024) }catch{} }
-    window.addEventListener('resize', onResize)
-    return ()=> window.removeEventListener('resize', onResize)
+    // no-op: kept for symmetry if future responsive hooks are needed
   }, [])
 
   // Load metrics for the signed-in agent
@@ -42,51 +35,35 @@ export default function AgentDashboard(){
         apiGet('/api/orders').catch(()=>({ orders: [] })),
         apiGet('/api/users/agents/me/performance').catch(()=>({})),
       ])
-      if (meRes && meRes.user) setMeUser(meRes.user)
+      // meRes.user available for id checks below
       const chatList = Array.isArray(chats) ? chats : []
       setAssignedCount(chatList.length)
       const allOrders = Array.isArray(ordRes?.orders) ? ordRes.orders : []
       setOrders(allOrders)
       if (typeof perf?.avgResponseSeconds === 'number') setAvgResponseSeconds(perf.avgResponseSeconds)
       if (typeof perf?.ordersSubmitted === 'number') setOrdersSubmittedOverride(perf.ordersSubmitted)
+      // compute status counts for orders submitted by this agent
+      try{
+        const meId = String((meRes?.user?._id) || (me?._id) || '')
+        const mine = (Array.isArray(allOrders)? allOrders: []).filter(o => {
+          const createdBy = String(o?.createdBy?._id || o?.createdBy || '')
+          return createdBy && createdBy === meId
+        })
+        const init = { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 }
+        const next = mine.reduce((acc, o)=>{
+          acc.total += 1
+          const s = String(o?.shipmentStatus||'').toLowerCase()
+          if (acc[s] != null){ acc[s] += 1 }
+          else { acc.pending += 1 }
+          return acc
+        }, init)
+        setStatusCounts(next)
+      }catch{}
     }finally{ setLoading(false) }
   }
 
   useEffect(()=>{ load() },[])
-  // Initial recent orders load (paginated)
-  useEffect(()=>{ loadTableOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ },[])
-
-  // Infinite scroll observer for Recent Orders table
-  useEffect(()=>{
-    const el = tableEndRef.current
-    if (!el) return
-    const obs = new IntersectionObserver((entries)=>{
-      const [e] = entries
-      if (e.isIntersecting && tableHasMore && !tableLoadingRef.current){ loadTableOrders(false) }
-    }, { rootMargin: '200px' })
-    obs.observe(el)
-    return ()=> { try{ obs.disconnect() }catch{} }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tableEndRef.current, tableHasMore, tablePage])
-
-  // Paginated loader
-  async function loadTableOrders(reset=false){
-    if (tableLoadingRef.current) return
-    tableLoadingRef.current = true
-    try{
-      if (reset){ setTableOrders([]); setTablePage(1); setTableHasMore(true) }
-      const nextPage = reset ? 1 : (tablePage + 1)
-      const r = await apiGet(`/api/orders?page=${nextPage}&limit=20`)
-      const list = Array.isArray(r?.orders) ? r.orders : []
-      setTableOrders(prev => reset ? list : [...prev, ...list])
-      setTableHasMore(!!r?.hasMore)
-      setTablePage(nextPage)
-    }catch{
-      setTableHasMore(false)
-    }finally{
-      tableLoadingRef.current = false
-    }
-  }
+  // Removed recent orders infinite scroll and related fetches from dashboard
 
   // Fallback: periodic polling to keep table fresh even if socket misses an event
   useEffect(()=>{
@@ -104,7 +81,7 @@ export default function AgentDashboard(){
       const token = localStorage.getItem('token') || ''
       socket = io(API_BASE || undefined, { path: '/socket.io', transports: ['polling'], upgrade: false, auth: { token }, withCredentials: true })
       socket.on('orders.changed', (payload={})=>{
-        load(); loadTableOrders(true)
+        load()
         try{
           const { orderId, invoiceNumber, action, status } = payload
           let msg = null
@@ -128,289 +105,62 @@ export default function AgentDashboard(){
 
   // Derived metrics
   const ordersSubmitted = ordersSubmittedOverride != null ? ordersSubmittedOverride : orders.length
-  // Use shipment status only
-  const deliveredOrders = orders.filter(o => (o?.shipmentStatus||'').toLowerCase()==='delivered')
-  const upcomingOrders = orders.filter(o => {
-    const s = String(o?.shipmentStatus||'').toLowerCase()
-    return !['delivered','returned','cancelled'].includes(s)
-  })
-  const valueOf = (o)=> (o?.productId?.price || 0) * Math.max(1, Number(o?.quantity||1))
-  const baseOf = (o)=> (o?.productId?.baseCurrency || 'SAR')
-  const commissionPct = 0.12
-  function commissionByCurrency(list){
-    const sums = { AED:0, OMR:0, SAR:0, BHD:0 }
-    for (const o of list){
-      const cur = ['AED','OMR','SAR','BHD'].includes(baseOf(o)) ? baseOf(o) : 'SAR'
-      sums[cur] += valueOf(o) * commissionPct
-    }
-    return sums
-  }
-  const totalByCur = commissionByCurrency(deliveredOrders)
-  // Upcoming = all not-delivered shipments (assigned/in_transit/pending/etc.)
-  const upcomingByCur = commissionByCurrency(upcomingOrders)
-  const totalIncome = Object.values(totalByCur).reduce((a,b)=>a+b,0)
-  const upcomingIncome = Object.values(upcomingByCur).reduce((a,b)=>a+b,0)
 
-  // FX: PKR conversion (configurable via localStorage key 'fx_pkr')
-  const defaultFx = { AED: 76, OMR: 726, SAR: 72, BHD: 830 } // approx; can be updated in settings
-  let fx = defaultFx
-  try{
-    const saved = JSON.parse(localStorage.getItem('fx_pkr')||'null')
-    if (saved && typeof saved==='object') fx = { ...defaultFx, ...saved }
-  }catch{}
-  const toPKR = (sums)=> Math.round(
-    (sums.AED||0)*fx.AED + (sums.OMR||0)*fx.OMR + (sums.SAR||0)*fx.SAR + (sums.BHD||0)*fx.BHD
-  )
-  const totalPKR = toPKR(totalByCur)
-  const upcomingPKR = toPKR(upcomingByCur)
+  // Build driver-like tiles for status counts (agent submitted)
+  const statusTiles = [
+    { key:'total', title:'Total Orders (Submitted)', value: statusCounts.total, color:'#0ea5e9', to:'/agent/orders' },
+    { key:'pending', title:'Pending', value: statusCounts.pending, color:'#64748b', to:'/agent/orders?ship=pending' },
+    { key:'assigned', title:'Assigned', value: statusCounts.assigned, color:'#3b82f6', to:'/agent/orders?ship=assigned' },
+    { key:'picked_up', title:'Picked Up', value: statusCounts.picked_up, color:'#f59e0b', to:'/agent/orders?ship=picked_up' },
+    { key:'in_transit', title:'In Transit', value: statusCounts.in_transit, color:'#0284c7', to:'/agent/orders?ship=in_transit' },
+    { key:'out_for_delivery', title:'Out for Delivery', value: statusCounts.out_for_delivery, color:'#f97316', to:'/agent/orders?ship=out_for_delivery' },
+    { key:'delivered', title:'Delivered', value: statusCounts.delivered, color:'#10b981', to:'/agent/orders?ship=delivered' },
+    { key:'no_response', title:'No Response', value: statusCounts.no_response, color:'#ef4444', to:'/agent/orders?ship=no_response' },
+    { key:'returned', title:'Returned', value: statusCounts.returned, color:'#737373', to:'/agent/orders?ship=returned' },
+    { key:'cancelled', title:'Cancelled', value: statusCounts.cancelled, color:'#b91c1c', to:'/agent/orders?ship=cancelled' },
+  ]
 
   return (
-    <div className="grid responsive-grid" style={{gap:12}}>
+    <div className="section" style={{display:'grid', gap:12}}>
       <div className="page-header">
         <div>
           <div className="page-title gradient heading-green">Agent Dashboard</div>
-          <div className="page-subtitle">Your performance and earnings overview</div>
+          <div className="page-subtitle">Overview of your chats and orders you submitted</div>
         </div>
       </div>
 
-      {/* Top summary cards - desktop grid */}
-      <div className="card-grid" style={isDesktop ? { display:'grid', gridTemplateColumns:'repeat(5, minmax(220px, 1fr))', gap:12 } : undefined}>
-        <MetricCard
-          title="Assigned Chats"
-          value={assignedCount}
-          hint="Chats currently assigned to you"
-          icon="💬"
-          actionLabel="Go to chats"
-          onAction={()=> navigate('/agent/inbox/whatsapp')}
-        />
-        <MetricCard title="Orders Submitted" value={ordersSubmitted} hint="Orders you created" icon="🧾" />
-        <MetricCard title="Avg. Response Time" value={avgResponseSeconds!=null? formatDuration(avgResponseSeconds) : '—'} hint="Time to first reply on new chats" icon="⏱️" />
-        <MetricCard
-          title="Total Income"
-          value={<CurrencyBreakdown rows={[
-            { code:'AED', amount: totalByCur.AED },
-            { code:'OMR', amount: totalByCur.OMR },
-            { code:'SAR', amount: totalByCur.SAR },
-            { code:'BHD', amount: totalByCur.BHD },
-          ]} />}
-          icon="💰"
-        />
-        <MetricCard
-          title="Upcoming Income"
-          value={<CurrencyBreakdown rows={[
-            { code:'AED', amount: upcomingByCur.AED },
-            { code:'OMR', amount: upcomingByCur.OMR },
-            { code:'SAR', amount: upcomingByCur.SAR },
-            { code:'BHD', amount: upcomingByCur.BHD },
-          ]} />}
-          icon="📦"
-        />
-      </div>
-
-      {/* Earnings Overview removed as requested */}
-
-      {/* Recent Orders table */}
-      {(()=>{
-        const meId = String(meUser?._id || me?._id || '')
-        const myOrders = meId
-          ? tableOrders.filter(o => String(o?.createdBy?._id || o?.createdBy || '') === meId)
-          : tableOrders.filter(o => String(o?.createdByRole||'').toLowerCase()==='agent')
-        function createdMs(o){
-          if (o?.createdAt) return new Date(o.createdAt).getTime()
-          try{
-            const hex = String(o?._id||'').slice(0,8)
-            const seconds = parseInt(hex, 16)
-            if (!isNaN(seconds)) return seconds*1000
-          }catch{}
-          return 0
-        }
-        const recent = myOrders
-
-        function orderQty(o){
-          if (Array.isArray(o?.items) && o.items.length){
-            return o.items.reduce((s,it)=> s + Math.max(1, Number(it?.quantity||1)), 0)
-          }
-          return Math.max(1, Number(o?.quantity||1))
-        }
-        function orderTotal(o){
-          if (o?.total != null) return Number(o.total)
-          if (Array.isArray(o?.items) && o.items.length){
-            return o.items.reduce((s,it)=> s + (Number(it?.productId?.price||0) * Math.max(1, Number(it?.quantity||1))), 0)
-          }
-          const unit = Number(o?.productId?.price||0)
-          return unit * Math.max(1, Number(o?.quantity||1))
-        }
-        function baseCur(o){
-          if (Array.isArray(o?.items) && o.items.length){
-            return o.items[0]?.productId?.baseCurrency || 'SAR'
-          }
-          return (o?.productId?.baseCurrency)||'SAR'
-        }
-        function fmt2(n){ try{ return Number(n||0).toFixed(2) }catch{ return '0.00' } }
-        function shipBadge(status){
-          const s = String(status||'').toLowerCase()
-          if (s==='picked_up') return <span className="badge" style={{borderColor:'#f59e0b', color:'#b45309'}}>picked_up</span>
-          if (s==='delivered') return <span className="badge" style={{borderColor:'#10b981', color:'#065f46'}}>delivered</span>
-          if (s==='cancelled') return <span className="badge" style={{borderColor:'#ef4444', color:'#7f1d1d'}}>cancelled</span>
-          return <span className="badge" style={{borderColor:'var(--border)', color:'var(--fg)'}}>{s||'-'}</span>
-        }
-        // Upcoming is based solely on shipment status (no order.status)
-        function qualifiesUpcoming(o){
-          const ship = String(o?.shipmentStatus||'').toLowerCase()
-          return ship !== 'delivered' && ship !== 'returned' && ship !== 'cancelled'
-        }
-        function upcomingCommissionPKR(o){
-          if (!qualifiesUpcoming(o)) return 0
-          const commission = orderTotal(o) * commissionPct // in base currency
-          const rate = fx[baseCur(o)] || 0
-          return commission * rate
-        }
-        function deliveredCommissionPKR(o){
-          const ship = String(o?.shipmentStatus||'').toLowerCase()
-          if (ship !== 'delivered') return 0
-          const commission = orderTotal(o) * commissionPct
-          const rate = fx[baseCur(o)] || 0
-          return commission * rate
-        }
-        const totalsRecent = recent.reduce((acc,o)=>{
-          acc.total += orderTotal(o) // unused in header
-          acc.delivered += deliveredCommissionPKR(o)
-          acc.upcoming += upcomingCommissionPKR(o)
-          return acc
-        }, { total:0, delivered:0, upcoming:0 })
-
-        return (
-          <div className="card" style={{display:'grid', gap:12}}>
-            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-              <div style={{display:'flex', alignItems:'center', gap:10}}>
-                <div style={{width:32,height:32,borderRadius:8,background:'linear-gradient(135deg,#10b981,#22c55e)',display:'grid',placeItems:'center',color:'#fff',fontWeight:800, fontSize:18}}>📄</div>
-                <div>
-                  <div style={{fontWeight:800}}>Order History</div>
-                  <div className="helper">Latest 50 orders you submitted</div>
-                </div>
-              </div>
-              <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
-                <button className="btn" onClick={() => navigate('/agent/orders/history')}>Open full history</button>
-              </div>
-            </div>
-            <div style={{overflowX:'auto'}}>
-              <table style={{width:'100%', borderCollapse:'separate', borderSpacing:0}}>
-                <thead>
-                  <tr style={isDesktop ? { position:'sticky', top:0, zIndex:1, background:'var(--panel)' } : undefined}>
-                    <th style={{textAlign:'left', padding:'10px 12px', minWidth: isDesktop? 160: undefined}}>Date</th>
-                    <th style={{textAlign:'left', padding:'10px 12px', minWidth: isDesktop? 180: undefined}}>Customer</th>
-                    <th style={{textAlign:'left', padding:'10px 12px', minWidth: isDesktop? 220: undefined}}>Product</th>
-                    <th style={{textAlign:'right', padding:'10px 12px', minWidth: isDesktop? 80: undefined}}>Qty</th>
-                    <th style={{textAlign:'right', padding:'10px 12px', minWidth: isDesktop? 160: undefined}}>Total Price</th>
-                    <th style={{textAlign:'right', padding:'10px 12px', minWidth: isDesktop? 180: undefined}}>Upcoming Income (PKR)</th>
-                    <th style={{textAlign:'left', padding:'10px 12px', minWidth: isDesktop? 140: undefined}}>Shipment</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recent.length===0 ? (
-                    <tr><td colSpan={7} style={{padding:'10px 12px', opacity:.8}}>No recent orders.</td></tr>
-                  ) : recent.map((o,idx)=>{
-                    const tot = orderTotal(o)
-                    const commPKR = Math.round(upcomingCommissionPKR(o))
-                    let prod = '-'
-                    if (Array.isArray(o?.items) && o.items.length){
-                      const names = o.items.map(it => it?.productId?.name ? `${it.productId.name} (${Math.max(1, Number(it?.quantity||1))})` : null).filter(Boolean)
-                      prod = names.length ? names.join(', ') : (o?.productId?.name || '-')
-                    } else {
-                      prod = o?.productId?.name || '-'
-                    }
-                    const date = o?.createdAt ? new Date(o.createdAt).toLocaleString() : ''
-                    return (
-                      <tr key={o._id||idx} style={{borderTop:'1px solid var(--border)'}}>
-                        <td style={{padding:'10px 12px'}}>{date}</td>
-                        <td style={{padding:'10px 12px', maxWidth:isDesktop?220:undefined, whiteSpace:isDesktop?'nowrap':undefined, overflow:isDesktop?'hidden':undefined, textOverflow:isDesktop?'ellipsis':undefined}}>{o.customerName||'-'}</td>
-                        <td style={{padding:'10px 12px', maxWidth:isDesktop?260:undefined, whiteSpace:isDesktop?'nowrap':undefined, overflow:isDesktop?'hidden':undefined, textOverflow:isDesktop?'ellipsis':undefined}}>{prod}</td>
-                        <td style={{padding:'10px 12px', textAlign:'right'}}>{orderQty(o)}</td>
-                        <td style={{padding:'10px 12px', textAlign:'right'}}>{baseCur(o)} {fmt2(orderTotal(o))}</td>
-                        <td style={{padding:'10px 12px', textAlign:'right'}}>{fmtCurrency(commPKR)}</td>
-                        <td style={{padding:'10px 12px'}}>{shipBadge(o.shipmentStatus)}</td>
-                      </tr>
-                    )
-                  })}
-                  {recent.length>0 && (
-                    <tr style={{borderTop:'2px solid var(--border)', background:'rgba(59,130,246,0.08)'}}>
-                      <td style={{padding:'10px 12px', fontWeight:800}}>Totals</td>
-                      <td colSpan={3}></td>
-                      <td style={{padding:'10px 12px', textAlign:'right', fontWeight:800}}>—</td>
-                      <td style={{padding:'10px 12px', textAlign:'right', fontWeight:800}}>{fmtCurrency(totalsRecent.upcoming)}</td>
-                      <td></td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            {/* Infinite Scroll Sentinel */}
-            <div ref={tableEndRef} />
+      {/* Top metrics (like driver tiles) */}
+      <div className="card" style={{padding:16}}>
+        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px,1fr))', gap:12}}>
+          <button className="tile" onClick={()=> navigate('/agent/inbox/whatsapp')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div style={{fontSize:12, color:'var(--muted)'}}>Assigned Chats</div>
+            <div style={{fontSize:28, fontWeight:800, color:'#3b82f6'}}>{loading? '…' : assignedCount}</div>
+          </button>
+          <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div style={{fontSize:12, color:'var(--muted)'}}>Orders Submitted</div>
+            <div style={{fontSize:28, fontWeight:800, color:'#10b981'}}>{loading? '…' : ordersSubmitted}</div>
           </div>
-        )
-      })()}
-    </div>
-  )
-}
-
-function MetricCard({ title, value, hint, icon, actionLabel, onAction }){
-  return (
-    <div className="card" style={{display:'flex', alignItems:'center', gap:14}}>
-      <div style={{width:42, height:42, borderRadius:999, background:'var(--panel-2)', display:'grid', placeItems:'center', fontSize:20, flexShrink:0}}>
-        {icon}
-      </div>
-      <div style={{display:'grid', gap:2}}>
-        <div className="label" style={{fontSize:13}}>{title}</div>
-        <div style={{fontSize:20, fontWeight:800}}>{value}</div>
-        {hint && <div className="helper" style={{fontSize:11}}>{hint}</div>}
-      </div>
-      {actionLabel && onAction && (
-        <div style={{marginLeft:'auto'}}>
-          <button className="btn secondary small" onClick={onAction}>{actionLabel}</button>
+          <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div style={{fontSize:12, color:'var(--muted)'}}>Avg. Response Time</div>
+            <div style={{fontSize:28, fontWeight:800, color:'#f59e0b'}}>{avgResponseSeconds!=null? formatDuration(avgResponseSeconds) : '—'}</div>
+          </div>
         </div>
-      )}
-    </div>
-  )
-}
-
-function MiniBarChart({ items }){
-  const max = Math.max(1, ...items.map(i=>i.value||0))
-  return (
-    <div style={{display:'grid', gap:12}}>
-      <div style={{display:'grid', gridTemplateColumns:`repeat(${items.length}, 1fr)`, gap:16, alignItems:'end', height:180, background:'var(--panel-2)', padding:'12px', borderRadius:8}}>
-        {items.map((it,idx)=>{
-          const h = Math.max(6, Math.round((it.value||0)/max*160))
-          return (
-            <div key={idx} style={{display:'grid', alignContent:'end', justifyItems:'center', gap:8}}>
-              <div style={{width:'80%', height:h, background:it.color, borderRadius:6, transition:'transform 150ms ease', cursor:'pointer'}} title={`${it.label}: ${formatCurrency(it.value||0)}`}
-                onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-              ></div>
-            </div>
-          )
-        })}
       </div>
-      <div style={{display:'flex', justifyContent:'center', gap:16, flexWrap:'wrap'}}>
-        {items.map((it,idx)=>(<div key={idx} style={{display:'flex', alignItems:'center', gap:8, fontSize:12}}>
-            <div style={{width:12, height:12, borderRadius:4, background:it.color}}></div>
-            <div>{it.label}: <strong style={{color:'var(--fg)'}}>{formatCurrency(it.value||0)}</strong></div>
-          </div>))}
+
+      {/* Order status metrics for agent-submitted orders */}
+      <div className="card" style={{padding:16}}>
+        <div className="card-title" style={{marginBottom:8}}>Your Orders by Status</div>
+        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px,1fr))', gap:12}}>
+          {statusTiles.map(c => (
+            <button key={c.key} className="tile" onClick={()=> c.to ? navigate(c.to) : null} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+              <div style={{fontSize:12, color:'var(--muted)'}}>{c.title}</div>
+              <div style={{fontSize:28, fontWeight:800, color:c.color}}>{loading? '…' : c.value}</div>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
-}
-
-function formatCurrency(v){
-  try{
-    return new Intl.NumberFormat('en-US', { style:'currency', currency:'PKR', maximumFractionDigits:0 }).format(v||0)
-  }catch{
-    return `PKR ${Math.round(v||0).toLocaleString()}`
-  }
-}
-
-// Alias used by Recent Orders table
-function fmtCurrency(v){
-  return formatCurrency(v)
 }
 
 function formatDuration(seconds){
@@ -420,20 +170,4 @@ function formatDuration(seconds){
   return `${r}s`
 }
 
-function fmt(n){
-  const v = Math.round(n||0)
-  return v.toLocaleString()
-}
-
-function CurrencyBreakdown({ rows }){
-  return (
-    <div style={{display:'grid', gap:4, fontSize:18}}>
-      {rows.map(r => (
-        <div key={r.code} style={{display:'flex', justifyContent:'space-between'}}>
-          <span style={{opacity:.9}}>{r.code}</span>
-          <strong>{fmt(r.amount)}</strong>
-        </div>
-      ))}
-    </div>
-  )
-}
+// removed currency breakdown and formatting helpers (no longer used)
