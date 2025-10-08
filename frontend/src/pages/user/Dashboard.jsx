@@ -3,6 +3,7 @@ import Chart from '../../components/Chart.jsx'
 import { API_BASE, apiGet } from '../../api.js'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
+import { getCurrencyConfig, toAEDByCode } from '../../util/currency'
 
 const OrderStatusPie = ({ statusTotals }) => {
   const st = statusTotals || { pending:0, picked_up:0, delivered:0, cancelled:0 }
@@ -39,6 +40,7 @@ const OrderStatusPie = ({ statusTotals }) => {
 
 export default function UserDashboard(){
   const toast = useToast()
+  const [currencyCfg, setCurrencyCfg] = useState(null)
   const [metrics, setMetrics] = useState({
     totalSales: 0,
     totalCOD: 0,
@@ -151,21 +153,17 @@ export default function UserDashboard(){
   }
   function fmtNum(n){ try{ return Number(n||0).toLocaleString() }catch{ return String(n||0) } }
   function fmtAmt(n){ try{ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }catch{ return String(n||0) } }
-  // AED conversion helpers (static rates; adjust as needed)
-  const AED_RATE_BY_CUR = { SAR: 0.98, AED: 1, OMR: 9.55, BHD: 9.74, INR: 0.044, KWD: 11.9, QAR: 1.0 }
+  // AED conversion helpers using dynamic config
   function toAED(amount, country){
     try{
-      const cur = COUNTRY_INFO[country]?.cur || 'AED'
-      const rate = AED_RATE_BY_CUR[cur] || 1
-      return Number(amount||0) * rate
+      const code = COUNTRY_INFO[country]?.cur || 'AED'
+      return toAEDByCode(Number(amount||0), code, currencyCfg)
     }catch{ return Number(amount||0) }
   }
-  // Convert using currency code directly (for driver aggregates)
   function toAEDByCurrency(amount, currency){
     try{
       const code = String(currency||'AED')
-      const rate = AED_RATE_BY_CUR[code] || 1
-      return Number(amount||0) * rate
+      return toAEDByCode(Number(amount||0), code, currencyCfg)
     }catch{ return Number(amount||0) }
   }
   function sumAmountAED(key){
@@ -214,6 +212,7 @@ export default function UserDashboard(){
     }, { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 })
   }, [metrics])
   async function load(){
+    try{ const cfg = await getCurrencyConfig(); setCurrencyCfg(cfg) }catch(_e){ setCurrencyCfg(null) }
     try{ setAnalytics(await apiGet('/api/orders/analytics/last7days')) }catch(_e){ setAnalytics({ days: [], totals:{} }) }
     try{ setMetrics(await apiGet('/api/reports/user-metrics')) }catch(_e){ console.error('Failed to fetch metrics') }
     try{ setSalesByCountry(await apiGet('/api/reports/user-metrics/sales-by-country')) }catch(_e){ setSalesByCountry({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 }) }

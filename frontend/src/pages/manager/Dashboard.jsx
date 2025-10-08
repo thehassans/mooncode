@@ -60,6 +60,9 @@ export default function ManagerDashboard(){
   function countryMetrics(c){
     const base = metrics?.countries || {}
     if (base[c]) return base[c]
+    // Handle common alias pairs explicitly
+    if (c==='Saudi Arabia' && base['KSA']) return base['KSA']
+    if (c==='KSA' && base['Saudi Arabia']) return base['Saudi Arabia']
     const alias = COUNTRY_INFO[c]?.alias || []
     for (const a of alias){ if (base[a]) return base[a] }
     return {}
@@ -84,6 +87,10 @@ export default function ManagerDashboard(){
     if (canon==='KSA' && COUNTRY_LIST.includes('Saudi Arabia')) return 'Saudi Arabia'
     if (canon==='UAE' && COUNTRY_LIST.includes('United Arab Emirates')) return 'United Arab Emirates'
     return canon
+  }
+  // Canonicalize display country name to a URL param value expected by backend
+  const toParam = (name)=>{
+    return (name==='Saudi Arabia' ? 'KSA' : (name==='United Arab Emirates' ? 'UAE' : String(name||'')))
   }
 
   // Load drivers finance summary and compute amounts per country
@@ -189,6 +196,7 @@ export default function ManagerDashboard(){
                   const m = countryMetrics(c)
                   const { flag='', cur='' } = COUNTRY_INFO[c]||{}
                   const val = isAmount ? Number(m[keyName]||0) : Number((keyName==='orders'?m.orders:m[keyName])||0)
+                  if (!(val>0)) return null
                   return (
                     <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
                       <strong>{c}</strong>
@@ -201,10 +209,10 @@ export default function ManagerDashboard(){
           }
           function Tile({ title, valueEl, chipsEl }){
             return (
-              <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
-                <div style={{fontWeight:800, marginBottom:6}}>{title}</div>
-                <div style={{fontSize:20, fontWeight:900, marginBottom:6}}>{valueEl}</div>
-                {chipsEl}
+              <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+                <div style={{fontSize:12, color:'var(--muted)'}}>{title}</div>
+                <div style={{fontSize:28, fontWeight:800}}>{valueEl}</div>
+                <div>{chipsEl}</div>
               </div>
             )
           }
@@ -232,62 +240,48 @@ export default function ManagerDashboard(){
           {(COUNTRY_LIST||[]).map(c=>{
             const m = countryMetrics(c)
             const d = driverAggByCountry[c] || { assignedAllTime:0, collected:0, deliveredToCompany:0, pendingToCompany:0 }
-            const qs = encodeURIComponent(c)
+            const qs = encodeURIComponent(toParam(c))
             const name = (c==='KSA') ? 'Saudi Arabia' : c
             const cur = currencyOf(c)
+            const infoKey = COUNTRY_INFO[c] ? c : toParam(c)
+            const { flag='' } = COUNTRY_INFO[infoKey]||{}
+            const tiles = [
+              { key:'assigned_all', title:'Total Orders Assigned (All Time)', val: Number(d.assignedAllTime||0), to:`/manager/orders?country=${qs}&onlyAssigned=true` },
+              { key:'assigned', title:'Currently Assigned', val: Number(m?.assigned||0), to:`/manager/orders?country=${qs}&ship=assigned` },
+              { key:'picked', title:'Picked Up', val: Number(m?.pickedUp||0), to:`/manager/orders?country=${qs}&ship=picked_up` },
+              { key:'transit', title:'In Transit', val: Number(m?.transit||0), to:`/manager/orders?country=${qs}&ship=in_transit` },
+              { key:'ofd', title:'Out for Delivery', val: Number(m?.outForDelivery||0), to:`/manager/orders?country=${qs}&ship=out_for_delivery` },
+              { key:'delivered', title:'Delivered', val: Number(m?.delivered||0), to:`/manager/orders?country=${qs}&ship=delivered` },
+              { key:'no_resp', title:'No Response', val: Number(m?.noResponse||0), to:`/manager/orders?country=${qs}&ship=no_response` },
+              { key:'returned', title:'Returned', val: Number(m?.returned||0), to:`/manager/orders?country=${qs}&ship=returned` },
+              { key:'cancelled', title:'Cancelled', val: Number(m?.cancelled||0), to:`/manager/orders?country=${qs}&ship=cancelled` },
+              { key:'collected', title:'Total Collected (Delivered)', val: Number(d.collected||0), isAmount: true, to:`/manager/orders?country=${qs}&ship=delivered&collected=true` },
+              { key:'deliv_co', title:'Delivered to Company', val: Number(d.deliveredToCompany||0), isAmount: true, to:`/manager/finances?section=driver` },
+              { key:'pending_co', title:'Pending Delivery to Company', val: Number(d.pendingToCompany||0), isAmount: true, to:`/manager/finances?section=driver` },
+            ]
+            const visibleTiles = tiles.filter(t=> Number(t.val||0) > 0)
             return (
               <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
-                <div style={{fontWeight:900, marginBottom:8}}>{name}</div>
-                <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Total Orders Assigned (All Time)</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&onlyAssigned=true`}>{fmtNum(d.assignedAllTime||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Currently Assigned</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=assigned`}>{fmtNum(m?.assigned||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Picked Up</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=picked_up`}>{fmtNum(m?.pickedUp||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">In Transit</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=in_transit`}>{fmtNum(m?.transit||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Out for Delivery</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=out_for_delivery`}>{fmtNum(m?.outForDelivery||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Delivered</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=delivered`}>{fmtNum(m?.delivered||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">No Response</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=no_response`}>{fmtNum(m?.noResponse||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Returned</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=returned`}>{fmtNum(m?.returned||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Cancelled</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=cancelled`}>{fmtNum(m?.cancelled||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Total Collected (Delivered)</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/manager/orders?country=${qs}&ship=delivered&collected=true`}>{cur} {fmtAmt(d.collected||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Delivered to Company</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/manager/finances?section=driver`}>{cur} {fmtAmt(d.deliveredToCompany||0)}</a></div>
-                  </div>
-                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Pending Delivery to Company</div>
-                    <div style={{fontWeight:900}}><a className="link" href={`/manager/finances?section=driver`}>{cur} {fmtAmt(d.pendingToCompany||0)}</a></div>
-                  </div>
+                <div style={{fontWeight:900, marginBottom:8, display:'flex', alignItems:'center', gap:8}}>
+                  <span style={{fontSize:18}}>{flag}</span>
+                  <span>{name}</span>
                 </div>
+                {visibleTiles.length === 0 ? (
+                  <div className="helper">No activity yet</div>
+                ) : (
+                  <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
+                    {visibleTiles.map(t => {
+                      const valNum = Number(t.val||0)
+                      const displayVal = t.isAmount ? `${cur} ${fmtAmt(valNum)}` : fmtNum(valNum)
+                      return (
+                        <a key={t.key} className="tile" href={t.to} style={{display:'grid', gap:6, padding:12, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:10, textDecoration:'none', color:'inherit', cursor:'pointer'}}>
+                          <div className="helper">{t.title}</div>
+                          <div style={{fontSize:22, fontWeight:800}}>{displayVal}</div>
+                        </a>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )
           })}
@@ -320,6 +314,7 @@ export default function ManagerDashboard(){
                 {(COUNTRY_LIST||[]).map(c=>{
                   const m = countryMetrics(c)
                   const val = Number(getter(m)||0)
+                  if (!(val>0)) return null
                   return (
                     <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
                       <strong>{c}</strong>
@@ -332,9 +327,9 @@ export default function ManagerDashboard(){
           }
           function Tile({ title, value, getter, to }){
             return (
-              <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
-                <div style={{fontWeight:800, marginBottom:6}}>{title}</div>
-                <div style={{fontSize:20, fontWeight:900, marginBottom:6}}>{to ? (<a className="link" href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
+              <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+                <div style={{fontSize:12, color:'var(--muted)'}}>{title}</div>
+                <div style={{fontSize:28, fontWeight:800}}>{to ? (<a className="link" href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
                 <Chips getter={getter} />
               </div>
             )
@@ -366,16 +361,21 @@ export default function ManagerDashboard(){
       <div className="card" style={{marginTop:12}}>
         {(function(){
           const byCountry = (COUNTRY_LIST||[]).reduce((acc,c)=>{ acc[c] = []; return acc }, {})
-          const canon = (v)=> (v==='KSA' ? 'KSA' : (v==='Saudi Arabia' ? (COUNTRY_LIST.includes('KSA') ? 'KSA' : 'Saudi Arabia') : v))
+          const canon = (v)=>{
+            const name = String(v||'')
+            if (name === 'KSA') return COUNTRY_LIST.includes('Saudi Arabia') ? 'Saudi Arabia' : 'KSA'
+            if (name === 'Saudi Arabia') return COUNTRY_LIST.includes('KSA') ? 'KSA' : 'Saudi Arabia'
+            return name
+          }
           for (const d of (Array.isArray(drivers)? drivers: [])){
             const k = canon(String(d?.country||''))
             if (byCountry[k]) byCountry[k].push(d)
           }
           Object.keys(byCountry).forEach(k=> byCountry[k].sort((a,b)=> (Number(b?.assigned||0) - Number(a?.assigned||0))))
           function Row({ c, d }){
-            const qsC = encodeURIComponent(c)
+            const qsC = encodeURIComponent(toParam(c))
             const id = String(d.id)
-            const cur = d.currency || (c==='KSA'?'SAR': c==='UAE'?'AED': c==='Oman'?'OMR': c==='Bahrain'?'BHD': c==='India'?'INR': c==='Kuwait'?'KWD':'QAR')
+            const cur = d.currency || currencyOf(c)
             return (
               <tr>
                 <td style={{fontWeight:700}}>{d.name||'-'}</td>
@@ -447,7 +447,7 @@ export default function ManagerDashboard(){
           <div style={{display:'flex', gap:12, minWidth:700}}>
             {assignedList.map(ctry=>{
               const label = ctry==='KSA' ? 'Saudi Arabia' : ctry
-              const qs = encodeURIComponent(ctry)
+              const qs = encodeURIComponent(toParam(ctry))
               const sums = summary?.[ctry] || { orders:0, delivered:0, cancelled:0 }
               const m = moneyByCountry[ctry] || { collected:0, deliveredToCompany:0, pendingToCompany:0 }
               const cm = countryMetrics(ctry) || {}

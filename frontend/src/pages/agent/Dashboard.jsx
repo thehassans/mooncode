@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { API_BASE, apiGet } from '../../api'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
+import { getCurrencyConfig, toAEDByCode, aedToPKR } from '../../util/currency'
 
 export default function AgentDashboard(){
   const navigate = useNavigate()
@@ -18,7 +19,7 @@ export default function AgentDashboard(){
   const [ordersSubmittedOverride, setOrdersSubmittedOverride] = useState(null)
   // Agent-submitted status counts
   const [statusCounts, setStatusCounts] = useState({ total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 })
-  const [currencyCfg, setCurrencyCfg] = useState(null) // { sarPerUnit, pkrPerUnit, anchor, enabled }
+  const [currencyCfg, setCurrencyCfg] = useState(null) // normalized { anchor:'AED', perAED, enabled }
   const [walletAED, setWalletAED] = useState(0)
   const [walletPKR, setWalletPKR] = useState(0)
 
@@ -26,12 +27,12 @@ export default function AgentDashboard(){
   async function load(){
     setLoading(true)
     try{
-      const [meRes, chats, ordRes, perf, cur] = await Promise.all([
+      const [meRes, chats, ordRes, perf, cfg] = await Promise.all([
         apiGet('/api/users/me').catch(()=>({})),
         apiGet('/api/wa/chats').catch(()=>[]),
         apiGet('/api/orders').catch(()=>({ orders: [] })),
         apiGet('/api/users/agents/me/performance').catch(()=>({})),
-        apiGet('/api/settings/currency').catch(()=>null),
+        getCurrencyConfig().catch(()=>null),
       ])
       // meRes.user available for id checks below
       const chatList = Array.isArray(chats) ? chats : []
@@ -40,7 +41,7 @@ export default function AgentDashboard(){
       setOrders(allOrders)
       if (typeof perf?.avgResponseSeconds === 'number') setAvgResponseSeconds(perf.avgResponseSeconds)
       if (typeof perf?.ordersSubmitted === 'number') setOrdersSubmittedOverride(perf.ordersSubmitted)
-      if (cur) setCurrencyCfg(cur)
+      if (cfg) setCurrencyCfg(cfg)
       // compute status counts for orders submitted by this agent
       try{
         const meId = String((meRes?.user?._id) || (me?._id) || '')
@@ -58,9 +59,6 @@ export default function AgentDashboard(){
         }, init)
         setStatusCounts(next)
         // compute wallet from agent-submitted orders -> convert each to AED then sum, then convert total to PKR
-        const sarPerUnit = cur?.sarPerUnit || {}
-        const pkrPerUnit = cur?.pkrPerUnit || {}
-        const aedSar = Number(sarPerUnit?.AED) || 1 // SAR per 1 AED
         function orderTotal(o){
           try{
             if (o && o.total != null) return Number(o.total||0)
@@ -79,15 +77,11 @@ export default function AgentDashboard(){
         for (const o of mine){
           const amt = orderTotal(o)
           const curCode = String(baseCur(o) || 'SAR').toUpperCase()
-          const sarRate = Number(sarPerUnit?.[curCode]) || (curCode==='SAR'?1:0)
-          if (!sarRate || !aedSar){ continue }
-          const amtSAR = amt * sarRate
-          const amtAED = amtSAR / aedSar
+          const amtAED = toAEDByCode(amt, curCode, cfg)
           sumAED += amtAED
         }
-        const pkrRateAED = Number(pkrPerUnit?.AED) || 0
         setWalletAED(sumAED)
-        setWalletPKR(sumAED * pkrRateAED)
+        setWalletPKR(aedToPKR(sumAED, cfg))
       }catch{}
     }finally{ setLoading(false) }
   }
