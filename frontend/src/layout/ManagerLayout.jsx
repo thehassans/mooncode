@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Outlet, useLocation, NavLink, useNavigate } from 'react-router-dom'
 import { API_BASE, apiGet } from '../api.js'
+import Sidebar from '../components/Sidebar.jsx'
 
 export default function ManagerLayout(){
   const [closed, setClosed] = useState(()=> (typeof window!=='undefined' ? window.innerWidth <= 768 : false))
@@ -28,6 +29,15 @@ export default function ManagerLayout(){
   useEffect(()=>{ (async()=>{ try{ const { user } = await apiGet('/api/users/me'); setMe(user||{}) }catch{} })() },[])
 
   const perms = me?.managerPermissions || {}
+  // Desktop sidebar links (mirror user layout but scoped to manager permissions)
+  const links = [
+    { to: '/manager', label: 'Dashboard' },
+    ...(perms.canCreateAgents ? [ { to: '/manager/agents', label: 'Agents' } ] : []),
+    ...(perms.canCreateOrders ? [ { to: '/manager/orders', label: 'Orders' } ] : []),
+    ...(perms.canCreateDrivers ? [ { to: '/manager/drivers/create', label: 'Create Driver' } ] : []),
+    { to: '/manager/finances', label: 'Finances' },
+    ...(perms.canManageProducts ? [ { to: '/manager/inhouse-products', label: 'Products' } ] : []),
+  ]
   const mobileTabs = [
     { to: '/manager', label: 'Dashboard', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
     ...(perms.canCreateAgents ? [ { to: '/manager/agents', label: 'Agents', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><circle cx="12" cy="7" r="4"/></svg> } ] : []),
@@ -52,10 +62,14 @@ export default function ManagerLayout(){
 
   return (
     <div>
-      <div className={`main ${hideSidebar ? 'full-mobile' : (closed ? 'full' : '')} ${tabsVisible ? 'with-mobile-tabs' : ''}`}>
-        {!isMobile && (
+      {/* Desktop: left sidebar like user layout */}
+      {!isMobile && (
+        <Sidebar closed={closed} links={links} onToggle={()=> setClosed(c=>!c)} />
+      )}
+      <div className={`main ${!isMobile && closed ? 'full' : ''} ${tabsVisible ? 'with-mobile-tabs' : ''}`}>
         <div className="topbar" style={{background:'var(--sidebar-bg)', borderBottom:'1px solid var(--sidebar-border)'}}>
           <div style={{display:'flex', alignItems:'center', gap:12, minHeight:48}}>
+            {/* Hamburger controls sidebar on desktop; on mobile it can be present but hidden by CSS */}
             <button
               className="btn secondary"
               onClick={()=> setClosed(c=>!c)}
@@ -86,30 +100,24 @@ export default function ManagerLayout(){
             <button className="btn secondary" onClick={()=> setTheme(t=> t==='light' ? 'dark' : 'light')} title="Toggle theme">
               {theme==='light' ? '🌙 Dark' : '🌞 Light'}
             </button>
-            {perms.canCreateAgents && (<NavLink to="/manager/agents" className="btn secondary">Agents</NavLink>)}
-            {perms.canCreateOrders && (<NavLink to="/manager/orders" className="btn secondary">Orders</NavLink>)}
-            {perms.canCreateDrivers && (<NavLink to="/manager/drivers/create" className="btn secondary">Create Driver</NavLink>)}
-            <NavLink to="/manager/finances" className="btn secondary">Finances</NavLink>
-            {/* Transactions link removed */}
-            {perms.canManageProducts && (<NavLink to="/manager/inhouse-products" className="btn secondary">Products</NavLink>)}
             <button type="button" className="btn danger" onClick={doLogout}>Logout</button>
           </div>
         </div>
-        )}
-        <div className={`container`}>
+        <div className={`container ${isMobile ? '' : ''}`} style={{ maxWidth: 1280, margin: '0 auto' }}>
           <Outlet />
         </div>
+        {/* Mobile bottom tabs (unchanged) */}
+        {tabsVisible && (
+          <nav className="mobile-tabs" role="navigation" aria-label="Primary">
+            {mobileTabs.map(tab => (
+              <NavLink key={tab.to} to={tab.to} end={tab.to === '/manager'} className={({isActive})=>`tab ${isActive?'active':''}`}>
+                <span className="icon">{tab.icon}</span>
+                <span style={{fontSize:11}}>{tab.label}</span>
+              </NavLink>
+            ))}
+          </nav>
+        )}
       </div>
-      {tabsVisible && (
-        <nav className="mobile-tabs" role="navigation" aria-label="Primary">
-          {mobileTabs.map(tab => (
-            <NavLink key={tab.to} to={tab.to} end={tab.to === '/manager'} className={({isActive})=>`tab ${isActive?'active':''}`}>
-              <span className="icon">{tab.icon}</span>
-              <span style={{fontSize:11}}>{tab.label}</span>
-            </NavLink>
-          ))}
-        </nav>
-      )}
     </div>
   )
 }
