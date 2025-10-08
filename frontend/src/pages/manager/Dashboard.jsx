@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { apiGet } from '../../api'
-import { getCurrencyConfig, toAEDByCode } from '../../util/currency'
+import { getCurrencyConfig, toAEDByCode, fromAED } from '../../util/currency'
 
 export default function ManagerDashboard(){
   const [isMobile, setIsMobile] = useState(()=> (typeof window!=='undefined' ? window.innerWidth <= 768 : false))
@@ -14,6 +14,7 @@ export default function ManagerDashboard(){
   const [metrics, setMetrics] = useState(null) // manager-scoped metrics from backend
   const [currencyCfg, setCurrencyCfg] = useState(null)
   const [amountFallback, setAmountFallback] = useState({ totalAED:0, deliveredAED:0, pendingAED:0 })
+  const [statusExact, setStatusExact] = useState({ total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0, byCountry:{} })
 
   useEffect(()=>{
     function onResize(){ setIsMobile(window.innerWidth <= 768) }
@@ -198,12 +199,16 @@ export default function ManagerDashboard(){
         const backendTotalAmt = sumAmount('amountTotalOrders')
         if (!totalOrdersCount || backendTotalAmt > 0 || !Array.isArray(COUNTRY_LIST) || COUNTRY_LIST.length===0){
           setAmountFallback({ totalAED:0, deliveredAED:0, pendingAED:0 })
+          // Also reset exact when not needed
+          setStatusExact(se=>({ ...se, total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0, byCountry:{} }))
           return
         }
         let totalAED=0, deliveredAED=0, pendingAED=0
+        const counts = { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0, byCountry:{} }
         const cfg = currencyCfg || (await getCurrencyConfig().catch(()=>null))
         for (const c of COUNTRY_LIST){
-          const qs = encodeURIComponent(c)
+          const qs = encodeURIComponent(toParam(c))
+          counts.byCountry[c] = { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 }
           let page=1, limit=200
           for(;;){
             const r = await apiGet(`/api/orders?country=${qs}&page=${page}&limit=${limit}`).catch(()=>({orders:[], hasMore:false}))
@@ -228,8 +233,13 @@ export default function ManagerDashboard(){
               const aed = toAEDByCode(amt, String(curCode||'AED').toUpperCase(), cfg)
               totalAED += aed
               const s = String(o?.shipmentStatus||'').toLowerCase()
-              if (s==='delivered') deliveredAED += aed
-              if (s==='pending' || s==='open') pendingAED += aed
+              const key = (s==='open') ? 'pending' : (s==='shipped' ? 'in_transit' : s)
+              // amounts
+              if (key==='delivered') deliveredAED += aed
+              if (['pending','assigned','picked_up','in_transit','out_for_delivery','no_response'].includes(key)) pendingAED += aed
+              // counts
+              counts.total += 1; counts.byCountry[c].total += 1
+              if (counts[key] != null){ counts[key] += 1; counts.byCountry[c][key] += 1 }
             }
             if (!r?.hasMore) break
             page += 1
@@ -237,8 +247,10 @@ export default function ManagerDashboard(){
           }
         }
         setAmountFallback({ totalAED, deliveredAED, pendingAED })
+        setStatusExact(counts)
       }catch{
         setAmountFallback({ totalAED:0, deliveredAED:0, pendingAED:0 })
+        setStatusExact({ total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0, byCountry:{} })
       }
     })()
   }, [metrics, COUNTRY_LIST.join('|'), currencyCfg])
@@ -249,18 +261,57 @@ export default function ManagerDashboard(){
       try{
         const rows = {}
         await Promise.all(assignedList.map(async (ctry)=>{
-          const qs = encodeURIComponent(ctry)
+          const qs = encodeURIComponent(toParam(ctry))
           const all = await apiGet(`/api/orders?country=${qs}&limit=1`)
           const del = await apiGet(`/api/orders?country=${qs}&ship=delivered&limit=1`)
           const can = await apiGet(`/api/orders?country=${qs}&ship=cancelled&limit=1`)
+          const pen = await apiGet(`/api/orders?country=${qs}&ship=open&limit=1`)
           rows[ctry] = {
             orders: Number(all?.total||0),
             delivered: Number(del?.total||0),
             cancelled: Number(can?.total||0),
+            pending: Number(pen?.total||0),
           }
         }))
         setSummary(rows)
       }catch{ setSummary({}) }
+    })()
+  }, [assignedList.join('|')])
+
+  // Exact status totals (per-country and overall) via orders API totals
+  useEffect(()=>{
+    (async()=>{
+      try{
+        const STATUS = [
+          { key:'pending', ship:'open' },
+          { key:'assigned', ship:'assigned' },
+          { key:'picked_up', ship:'picked_up' },
+          { key:'in_transit', ship:'in_transit' },
+          { key:'out_for_delivery', ship:'out_for_delivery' },
+          { key:'delivered', ship:'delivered' },
+          { key:'no_response', ship:'no_response' },
+          { key:'returned', ship:'returned' },
+          { key:'cancelled', ship:'cancelled' },
+        ]
+        const acc = { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0, byCountry:{} }
+        await Promise.all((assignedList||[]).map(async (ctry)=>{
+          const qs = encodeURIComponent(toParam(ctry))
+          const by = { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 }
+          const all = await apiGet(`/api/orders?country=${qs}&limit=1`).catch(()=>({ total:0 }))
+          by.total = Number(all?.total||0)
+          acc.total += by.total
+          await Promise.all(STATUS.map(async s=>{
+            const r = await apiGet(`/api/orders?country=${qs}&ship=${encodeURIComponent(s.ship)}&limit=1`).catch(()=>({ total:0 }))
+            const v = Number(r?.total||0)
+            by[s.key] = v
+            acc[s.key] += v
+          }))
+          acc.byCountry[ctry] = by
+        }))
+        setStatusExact(acc)
+      }catch{
+        setStatusExact({ total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0, byCountry:{} })
+      }
     })()
   }, [assignedList.join('|')])
 
@@ -278,15 +329,20 @@ export default function ManagerDashboard(){
       {/* Orders Summary (Access Countries) */}
       <div className="card" style={{padding:16, marginBottom:12}}>
         {(function(){
-          const totalOrdersCount = Number(metrics?.totalOrders||0)
-          const deliveredCount = Number(metrics?.deliveredOrders||0)
-          const pendingCount = Number(metrics?.pendingOrders||0)
+          // Counts from API totals (summary/state)
+          const totalOrdersCount = Object.values(summary||{}).reduce((s,r)=> s + Number(r?.orders||0), 0)
+          const deliveredCount = Object.values(summary||{}).reduce((s,r)=> s + Number(r?.delivered||0), 0)
+          const pendingCount = Object.values(summary||{}).reduce((s,r)=> s + Number(r?.pending||0), 0)
+          // Amounts from backend metrics, with local-currency fallback if single currency
           const sumAmount = (key)=> (COUNTRY_LIST||[]).reduce((s,c)=> s + Number(countryMetrics(c)[key]||0), 0)
-          const amountTotalOrders = sumAmount('amountTotalOrders')
-          const amountDelivered = sumAmount('amountDelivered')
-          const amountPending = sumAmount('amountPending')
+          const amountTotalOrdersRaw = sumAmount('amountTotalOrders')
+          const amountDeliveredRaw = sumAmount('amountDelivered')
+          const amountPendingRaw = sumAmount('amountPending')
           const distinctCur = Array.from(new Set((COUNTRY_LIST||[]).map(currencyOf).filter(Boolean)))
           const curLabel = distinctCur.length === 1 ? distinctCur[0] : ''
+          const amountTotalOrders = amountTotalOrdersRaw>0 ? amountTotalOrdersRaw : (curLabel ? Math.round(fromAED(Number(amountFallback?.totalAED||0), curLabel, currencyCfg)) : 0)
+          const amountDelivered = amountDeliveredRaw>0 ? amountDeliveredRaw : (curLabel ? Math.round(fromAED(Number(amountFallback?.deliveredAED||0), curLabel, currencyCfg)) : 0)
+          const amountPending = amountPendingRaw>0 ? amountPendingRaw : (curLabel ? Math.round(fromAED(Number(amountFallback?.pendingAED||0), curLabel, currencyCfg)) : 0)
           function Chips({ keyName, isAmount }){
             return (
               <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
@@ -322,7 +378,7 @@ export default function ManagerDashboard(){
                 <Tile title="Amount of Total Orders" valueEl={curLabel ? `${curLabel} ${fmtAmt(amountTotalOrders)}` : '—'} color={COLORS.success} chipsEl={<Chips keyName="amountTotalOrders" isAmount />} />
                 <Tile title="Orders Delivered" valueEl={fmtNum(deliveredCount)} color={COLORS.successDeep} chipsEl={<Chips keyName="delivered" />} />
                 <Tile title="Amount of Orders Delivered" valueEl={curLabel ? `${curLabel} ${fmtAmt(amountDelivered)}` : '—'} color={COLORS.success} chipsEl={<Chips keyName="amountDelivered" isAmount />} />
-                <Tile title="Pending Orders" valueEl={fmtNum(pendingCount)} color={COLORS.warning} chipsEl={<Chips keyName="pending" />} />
+                <Tile title="Open Orders" valueEl={fmtNum(pendingCount)} color={COLORS.warning} chipsEl={<Chips keyName="pending" />} />
                 <Tile title="Pending Amount" valueEl={curLabel ? `${curLabel} ${fmtAmt(amountPending)}` : '—'} color={COLORS.warning} chipsEl={<Chips keyName="amountPending" isAmount />} />
               </div>
             </div>
@@ -384,29 +440,13 @@ export default function ManagerDashboard(){
       {/* Status Summary (Access Countries) */}
       <div className="card" style={{padding:16, marginBottom:12}}>
         {(function(){
-          const st = (metrics && metrics.statusTotals) ? metrics.statusTotals : (function(){
-            // Fallback: aggregate from countries if backend older
-            return (COUNTRY_LIST||[]).reduce((acc, c)=>{
-              const m = countryMetrics(c)
-              acc.total += Number(m.orders||0)
-              acc.pending += Number(m.pending||0)
-              acc.assigned += Number(m.assigned||0)
-              acc.picked_up += Number(m.pickedUp||0)
-              acc.in_transit += Number(m.transit||0)
-              acc.out_for_delivery += Number(m.outForDelivery||0)
-              acc.delivered += Number(m.delivered||0)
-              acc.no_response += Number(m.noResponse||0)
-              acc.returned += Number(m.returned||0)
-              acc.cancelled += Number(m.cancelled||0)
-              return acc
-            }, { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 })
-          })()
-          function Chips({ getter }){
+          const st = statusExact
+          function Chips({ keyName }){
             return (
               <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
                 {(COUNTRY_LIST||[]).map(c=>{
-                  const m = countryMetrics(c)
-                  const val = Number(getter(m)||0)
+                  const m = statusExact?.byCountry?.[c] || {}
+                  const val = Number(m?.[keyName]||0)
                   if (!(val>0)) return null
                   return (
                     <span key={c} className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}}>
@@ -418,12 +458,12 @@ export default function ManagerDashboard(){
               </div>
             )
           }
-          function Tile({ title, value, getter, to, color }){
+          function Tile({ title, value, keyName, to, color }){
             return (
               <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12, minHeight:100}}>
                 <div className="helper">{title}</div>
                 <div style={{fontSize:valueFontSize, fontWeight:800, color: color || 'inherit'}}>{to ? (<a className="link" href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
-                <Chips getter={getter} />
+                <Chips keyName={keyName} />
               </div>
             )
           }
@@ -431,16 +471,16 @@ export default function ManagerDashboard(){
             <div className="section" style={{display:'grid', gap:12}}>
               <div style={{fontWeight:800,fontSize:16}}>Status Summary (Access Countries)</div>
               <div className="grid" style={{gridTemplateColumns:`repeat(auto-fit, minmax(${minTile}px, 1fr))`, gap: tileGap}}>
-                <Tile title="Total Orders" value={st.total} getter={(m)=> m.orders} to={'/manager/orders'} color={COLORS.primaryLight} />
-                <Tile title="Pending" value={st.pending} getter={(m)=> m.pending} to={'/manager/orders?ship=open'} color={COLORS.warning} />
-                <Tile title="Assigned" value={st.assigned} getter={(m)=> m.assigned} to={'/manager/orders?ship=assigned'} color={COLORS.primary} />
-                <Tile title="Picked Up" value={st.picked_up} getter={(m)=> m.pickedUp} to={'/manager/orders?ship=picked_up'} color={COLORS.warning} />
-                <Tile title="In Transit" value={st.in_transit} getter={(m)=> m.transit} to={'/manager/orders?ship=in_transit'} color={COLORS.transit} />
-                <Tile title="Out for Delivery" value={st.out_for_delivery} getter={(m)=> m.outForDelivery} to={'/manager/orders?ship=out_for_delivery'} color={COLORS.ofd} />
-                <Tile title="Delivered" value={st.delivered} getter={(m)=> m.delivered} to={'/manager/orders?ship=delivered'} color={COLORS.success} />
-                <Tile title="No Response" value={st.no_response} getter={(m)=> m.noResponse} to={'/manager/orders?ship=no_response'} color={COLORS.danger} />
-                <Tile title="Returned" value={st.returned} getter={(m)=> m.returned} to={'/manager/orders?ship=returned'} color={COLORS.neutral} />
-                <Tile title="Cancelled" value={st.cancelled} getter={(m)=> m.cancelled} to={'/manager/orders?ship=cancelled'} color={COLORS.dangerDeep} />
+                <Tile title="Total Orders" value={st.total} keyName={'total'} to={'/manager/orders'} color={COLORS.primaryLight} />
+                <Tile title="Pending" value={st.pending} keyName={'pending'} to={'/manager/orders?ship=open'} color={COLORS.warning} />
+                <Tile title="Assigned" value={st.assigned} keyName={'assigned'} to={'/manager/orders?ship=assigned'} color={COLORS.primary} />
+                <Tile title="Picked Up" value={st.picked_up} keyName={'picked_up'} to={'/manager/orders?ship=picked_up'} color={COLORS.warning} />
+                <Tile title="In Transit" value={st.in_transit} keyName={'in_transit'} to={'/manager/orders?ship=in_transit'} color={COLORS.transit} />
+                <Tile title="Out for Delivery" value={st.out_for_delivery} keyName={'out_for_delivery'} to={'/manager/orders?ship=out_for_delivery'} color={COLORS.ofd} />
+                <Tile title="Delivered" value={st.delivered} keyName={'delivered'} to={'/manager/orders?ship=delivered'} color={COLORS.success} />
+                <Tile title="No Response" value={st.no_response} keyName={'no_response'} to={'/manager/orders?ship=no_response'} color={COLORS.danger} />
+                <Tile title="Returned" value={st.returned} keyName={'returned'} to={'/manager/orders?ship=returned'} color={COLORS.neutral} />
+                <Tile title="Cancelled" value={st.cancelled} keyName={'cancelled'} to={'/manager/orders?ship=cancelled'} color={COLORS.dangerDeep} />
               </div>
             </div>
           )
