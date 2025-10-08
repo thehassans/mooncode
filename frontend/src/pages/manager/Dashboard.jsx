@@ -207,13 +207,10 @@ export default function ManagerDashboard(){
               </div>
             )
           }
-          function Tile({ icon, gradient, title, valueEl, chipsEl }){
+          function Tile({ title, valueEl, chipsEl }){
             return (
               <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12, minHeight:100}}>
-                <div style={{display:'flex', alignItems:'center', gap:10}}>
-                  <div style={{width:32,height:32,borderRadius:8,background:gradient||'linear-gradient(135deg,#0ea5e9,#0369a1)',display:'grid',placeItems:'center',color:'#fff',fontSize:16}}>{icon||'📊'}</div>
-                  <div style={{fontWeight:800}}>{title}</div>
-                </div>
+                <div className="helper" style={{fontWeight:800}}>{title}</div>
                 <div style={{fontSize:28, fontWeight:800}}>{valueEl}</div>
                 <div>{chipsEl}</div>
               </div>
@@ -222,13 +219,13 @@ export default function ManagerDashboard(){
           return (
             <div className="section" style={{display:'grid', gap:12}}>
               <div style={{fontWeight:800,fontSize:16}}>Orders Summary (Access Countries)</div>
-              <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile icon="📦" gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} title="Total Orders" valueEl={fmtNum(totalOrdersCount)} chipsEl={<Chips keyName="orders" />} />
-                <Tile icon="💵" gradient={'linear-gradient(135deg,#10b981,#059669)'} title="Amount of Total Orders" valueEl={fmtAmt(amountTotalOrders)} chipsEl={<Chips keyName="amountTotalOrders" isAmount />} />
-                <Tile icon="✅" gradient={'linear-gradient(135deg,#16a34a,#15803d)'} title="Orders Delivered" valueEl={fmtNum(deliveredCount)} chipsEl={<Chips keyName="delivered" />} />
-                <Tile icon="🧾" gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} title="Amount of Orders Delivered" valueEl={fmtAmt(amountDelivered)} chipsEl={<Chips keyName="amountDelivered" isAmount />} />
-                <Tile icon="⏳" gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} title="Pending Orders" valueEl={fmtNum(pendingCount)} chipsEl={<Chips keyName="pending" />} />
-                <Tile icon="💰" gradient={'linear-gradient(135deg,#fb923c,#f97316)'} title="Pending Amount" valueEl={fmtAmt(amountPending)} chipsEl={<Chips keyName="amountPending" isAmount />} />
+              <div className="grid" style={{gridTemplateColumns:`repeat(auto-fit, minmax(${isMobile?200:240}px, 1fr))`, gap: isMobile?8:12}}>
+                <Tile title="Total Orders" valueEl={fmtNum(totalOrdersCount)} chipsEl={<Chips keyName="orders" />} />
+                <Tile title="Amount of Total Orders" valueEl={fmtAmt(amountTotalOrders)} chipsEl={<Chips keyName="amountTotalOrders" isAmount />} />
+                <Tile title="Orders Delivered" valueEl={fmtNum(deliveredCount)} chipsEl={<Chips keyName="delivered" />} />
+                <Tile title="Amount of Orders Delivered" valueEl={fmtAmt(amountDelivered)} chipsEl={<Chips keyName="amountDelivered" isAmount />} />
+                <Tile title="Pending Orders" valueEl={fmtNum(pendingCount)} chipsEl={<Chips keyName="pending" />} />
+                <Tile title="Pending Amount" valueEl={fmtAmt(amountPending)} chipsEl={<Chips keyName="amountPending" isAmount />} />
               </div>
             </div>
           )
@@ -246,8 +243,6 @@ export default function ManagerDashboard(){
             const qs = encodeURIComponent(toParam(c))
             const name = (c==='KSA') ? 'Saudi Arabia' : c
             const cur = currencyOf(c)
-            const infoKey = COUNTRY_INFO[c] ? c : toParam(c)
-            const { flag='' } = COUNTRY_INFO[infoKey]||{}
             const tiles = [
               { key:'assigned_all', title:'Total Orders Assigned (All Time)', val: Number(d.assignedAllTime||0), to:`/manager/orders?country=${qs}&onlyAssigned=true` },
               { key:'assigned', title:'Currently Assigned', val: Number(m?.assigned||0), to:`/manager/orders?country=${qs}&ship=assigned` },
@@ -265,42 +260,17 @@ export default function ManagerDashboard(){
             const visibleTiles = tiles.filter(t=> Number(t.val||0) > 0)
             return (
               <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
-                <div style={{fontWeight:900, marginBottom:8, display:'flex', alignItems:'center', gap:8}}>
-                  <span style={{fontSize:18}}>{flag}</span>
-                  <span>{name}</span>
-                </div>
+                <div style={{fontWeight:900, marginBottom:8}}>{name}</div>
                 {visibleTiles.length === 0 ? (
                   <div className="helper">No activity yet</div>
                 ) : (
-                  <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
+                  <div className="grid" style={{gridTemplateColumns:`repeat(auto-fit, minmax(${isMobile?200:240}px, 1fr))`, gap: isMobile?8:12}}>
                     {visibleTiles.map(t => {
                       const valNum = Number(t.val||0)
                       const displayVal = t.isAmount ? `${cur} ${fmtAmt(valNum)}` : fmtNum(valNum)
-                      const iconMap = {
-                        assigned_all:'🧾', assigned:'📌', picked:'🚚', transit:'🚛', ofd:'🛵', delivered:'✅', no_resp:'☎️🚫', returned:'🔁', cancelled:'❌', collected:'💵', deliv_co:'🏦', pending_co:'⏳'
-                      }
-                      const gradMap = {
-                        assigned_all:'linear-gradient(135deg,#334155,#0f172a)',
-                        assigned:'linear-gradient(135deg,#94a3b8,#64748b)',
-                        picked:'linear-gradient(135deg,#60a5fa,#3b82f6)',
-                        transit:'linear-gradient(135deg,#0ea5e9,#0369a1)',
-                        ofd:'linear-gradient(135deg,#f97316,#ea580c)',
-                        delivered:'linear-gradient(135deg,#22c55e,#16a34a)',
-                        no_resp:'linear-gradient(135deg,#ef4444,#b91c1c)',
-                        returned:'linear-gradient(135deg,#a3a3a3,#737373)',
-                        cancelled:'linear-gradient(135deg,#ef4444,#b91c1c)',
-                        collected:'linear-gradient(135deg,#10b981,#059669)',
-                        deliv_co:'linear-gradient(135deg,#84cc16,#4d7c0f)',
-                        pending_co:'linear-gradient(135deg,#f59e0b,#d97706)'
-                      }
-                      const icon = iconMap[t.key] || '📊'
-                      const gradient = gradMap[t.key] || 'linear-gradient(135deg,#0ea5e9,#0369a1)'
                       return (
                         <a key={t.key} className="tile" href={t.to} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12, minHeight:100, textDecoration:'none', color:'inherit', cursor:'pointer'}}>
-                          <div style={{display:'flex', alignItems:'center', gap:10}}>
-                            <div style={{width:32,height:32,borderRadius:8,background:gradient,display:'grid',placeItems:'center',color:'#fff',fontSize:16}}>{icon}</div>
-                            <div className="helper" style={{fontWeight:800, color:'inherit'}}>{t.title}</div>
-                          </div>
+                          <div className="helper" style={{fontWeight:800}}>{t.title}</div>
                           <div style={{fontSize:28, fontWeight:800}}>{displayVal}</div>
                         </a>
                       )
@@ -350,13 +320,10 @@ export default function ManagerDashboard(){
               </div>
             )
           }
-          function Tile({ icon, gradient, title, value, getter, to }){
+          function Tile({ title, value, getter, to }){
             return (
               <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12, minHeight:100}}>
-                <div style={{display:'flex', alignItems:'center', gap:10}}>
-                  <div style={{width:32,height:32,borderRadius:8,background:gradient||'linear-gradient(135deg,#3b82f6,#1d4ed8)',display:'grid',placeItems:'center',color:'#fff',fontSize:16}}>{icon||'📊'}</div>
-                  <div style={{fontWeight:800}}>{title}</div>
-                </div>
+                <div className="helper" style={{fontWeight:800}}>{title}</div>
                 <div style={{fontSize:28, fontWeight:800}}>{to ? (<a className="link" href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
                 <Chips getter={getter} />
               </div>
@@ -365,17 +332,17 @@ export default function ManagerDashboard(){
           return (
             <div className="section" style={{display:'grid', gap:12}}>
               <div style={{fontWeight:800,fontSize:16}}>Status Summary (Access Countries)</div>
-              <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile icon="📦" gradient={'linear-gradient(135deg,#3b82f6,#1d4ed8)'} title="Total Orders" value={st.total} getter={(m)=> m.orders} to={'/manager/orders'} />
-                <Tile icon="⏳" gradient={'linear-gradient(135deg,#f59e0b,#d97706)'} title="Pending" value={st.pending} getter={(m)=> m.pending} to={'/manager/orders?ship=open'} />
-                <Tile icon="📌" gradient={'linear-gradient(135deg,#94a3b8,#64748b)'} title="Assigned" value={st.assigned} getter={(m)=> m.assigned} to={'/manager/orders?ship=assigned'} />
-                <Tile icon="🚚" gradient={'linear-gradient(135deg,#60a5fa,#3b82f6)'} title="Picked Up" value={st.picked_up} getter={(m)=> m.pickedUp} to={'/manager/orders?ship=picked_up'} />
-                <Tile icon="🚛" gradient={'linear-gradient(135deg,#0ea5e9,#0369a1)'} title="In Transit" value={st.in_transit} getter={(m)=> m.transit} to={'/manager/orders?ship=in_transit'} />
-                <Tile icon="🛵" gradient={'linear-gradient(135deg,#f97316,#ea580c)'} title="Out for Delivery" value={st.out_for_delivery} getter={(m)=> m.outForDelivery} to={'/manager/orders?ship=out_for_delivery'} />
-                <Tile icon="✅" gradient={'linear-gradient(135deg,#22c55e,#16a34a)'} title="Delivered" value={st.delivered} getter={(m)=> m.delivered} to={'/manager/orders?ship=delivered'} />
-                <Tile icon="☎️🚫" gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} title="No Response" value={st.no_response} getter={(m)=> m.noResponse} to={'/manager/orders?ship=no_response'} />
-                <Tile icon="🔁" gradient={'linear-gradient(135deg,#a3a3a3,#737373)'} title="Returned" value={st.returned} getter={(m)=> m.returned} to={'/manager/orders?ship=returned'} />
-                <Tile icon="❌" gradient={'linear-gradient(135deg,#ef4444,#b91c1c)'} title="Cancelled" value={st.cancelled} getter={(m)=> m.cancelled} to={'/manager/orders?ship=cancelled'} />
+              <div className="grid" style={{gridTemplateColumns:`repeat(auto-fit, minmax(${isMobile?200:240}px, 1fr))`, gap: isMobile?8:12}}>
+                <Tile title="Total Orders" value={st.total} getter={(m)=> m.orders} to={'/manager/orders'} />
+                <Tile title="Pending" value={st.pending} getter={(m)=> m.pending} to={'/manager/orders?ship=open'} />
+                <Tile title="Assigned" value={st.assigned} getter={(m)=> m.assigned} to={'/manager/orders?ship=assigned'} />
+                <Tile title="Picked Up" value={st.picked_up} getter={(m)=> m.pickedUp} to={'/manager/orders?ship=picked_up'} />
+                <Tile title="In Transit" value={st.in_transit} getter={(m)=> m.transit} to={'/manager/orders?ship=in_transit'} />
+                <Tile title="Out for Delivery" value={st.out_for_delivery} getter={(m)=> m.outForDelivery} to={'/manager/orders?ship=out_for_delivery'} />
+                <Tile title="Delivered" value={st.delivered} getter={(m)=> m.delivered} to={'/manager/orders?ship=delivered'} />
+                <Tile title="No Response" value={st.no_response} getter={(m)=> m.noResponse} to={'/manager/orders?ship=no_response'} />
+                <Tile title="Returned" value={st.returned} getter={(m)=> m.returned} to={'/manager/orders?ship=returned'} />
+                <Tile title="Cancelled" value={st.cancelled} getter={(m)=> m.cancelled} to={'/manager/orders?ship=cancelled'} />
               </div>
             </div>
           )
