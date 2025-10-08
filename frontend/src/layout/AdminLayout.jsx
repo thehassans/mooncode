@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar.jsx'
 import Tabs from '../ui/Tabs.jsx'
-import { API_BASE } from '../api.js'
+import { API_BASE, apiGet } from '../api.js'
 
 export default function AdminLayout(){
   const navigate = useNavigate()
@@ -74,9 +74,7 @@ export default function AdminLayout(){
     let cancelled=false
     ;(async()=>{
       try{
-        const r = await fetch(`${API_BASE}/api/settings/branding`)
-        if (!r.ok) return
-        const j = await r.json()
+        const j = await apiGet('/api/settings/branding')
         if (!cancelled) setBranding({ headerLogo: j.headerLogo || null })
       }catch{}
     })()

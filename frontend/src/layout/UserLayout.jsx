@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { API_BASE } from '../api.js'
+import { API_BASE, apiGet } from '../api.js'
 import Sidebar from '../components/Sidebar.jsx'
 import Modal from '../components/Modal.jsx'
 import Tabs from '../ui/Tabs.jsx'
@@ -67,9 +67,7 @@ export default function UserLayout(){
     let cancelled = false
     ;(async()=>{
       try{
-        const r = await fetch(`${API_BASE}/api/settings/branding`)
-        if (!r.ok) return
-        const j = await r.json()
+        const j = await apiGet('/api/settings/branding')
         if (!cancelled) setBranding({ headerLogo: j.headerLogo || null })
       }catch{}
     })()

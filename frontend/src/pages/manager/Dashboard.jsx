@@ -407,12 +407,12 @@ export default function ManagerDashboard(){
               <tr>
                 <td style={{fontWeight:700}}>{d.name||'-'}</td>
                 <td className="helper">{d.phone||'-'}</td>
-                <td>{fmtNum(d.assigned||0)}</td>
-                <td>{fmtNum(d.deliveredCount||0)}</td>
-                <td>{fmtNum(d.canceled||0)}</td>
-                <td>{cur} {fmtAmt(d.collected||0)}</td>
-                <td>{cur} {fmtAmt(d.deliveredToCompany||0)}</td>
-                <td>{cur} {fmtAmt(d.pendingToCompany||0)}</td>
+                <td style={{fontWeight:800, color: COLORS.primary}}>{fmtNum(d.assigned||0)}</td>
+                <td style={{fontWeight:800, color: COLORS.success}}>{fmtNum(d.deliveredCount||0)}</td>
+                <td style={{fontWeight:800, color: COLORS.danger}}>{fmtNum(d.canceled||0)}</td>
+                <td style={{fontWeight:800, color: COLORS.success}}>{cur} {fmtAmt(d.collected||0)}</td>
+                <td style={{fontWeight:800, color: COLORS.successDeep}}>{cur} {fmtAmt(d.deliveredToCompany||0)}</td>
+                <td style={{fontWeight:800, color: COLORS.warning}}>{cur} {fmtAmt(d.pendingToCompany||0)}</td>
                 <td>
                   <a className="link" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=open`}>Open</a>
                   <span className="helper"> | </span>
@@ -423,6 +423,49 @@ export default function ManagerDashboard(){
                   <a className="link" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=delivered`}>Delivered</a>
                 </td>
               </tr>
+            )
+          }
+          function RowCard({ c, d }){
+            const qsC = encodeURIComponent(toParam(c))
+            const id = String(d.id)
+            const cur = d.currency || currencyOf(c)
+            return (
+              <div className="tile" style={{display:'grid', gap:8, padding:12, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+                <div style={{fontWeight:800}}>{d.name||'-'}</div>
+                <div className="helper">{d.phone||'-'}</div>
+                <div className="grid" style={{gridTemplateColumns:'repeat(2, minmax(0,1fr))', gap:8}}>
+                  <div>
+                    <div className="helper">Assigned</div>
+                    <div style={{fontWeight:800, color: COLORS.primary}}>{fmtNum(d.assigned||0)}</div>
+                  </div>
+                  <div>
+                    <div className="helper">Delivered</div>
+                    <div style={{fontWeight:800, color: COLORS.success}}>{fmtNum(d.deliveredCount||0)}</div>
+                  </div>
+                  <div>
+                    <div className="helper">Cancelled</div>
+                    <div style={{fontWeight:800, color: COLORS.danger}}>{fmtNum(d.canceled||0)}</div>
+                  </div>
+                  <div>
+                    <div className="helper">Collected</div>
+                    <div style={{fontWeight:800, color: COLORS.success}}>{cur} {fmtAmt(d.collected||0)}</div>
+                  </div>
+                  <div>
+                    <div className="helper">Delivered to Company</div>
+                    <div style={{fontWeight:800, color: COLORS.successDeep}}>{cur} {fmtAmt(d.deliveredToCompany||0)}</div>
+                  </div>
+                  <div>
+                    <div className="helper">Pending to Company</div>
+                    <div style={{fontWeight:800, color: COLORS.warning}}>{cur} {fmtAmt(d.pendingToCompany||0)}</div>
+                  </div>
+                </div>
+                <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                  <a className="chip" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=open`}>Open</a>
+                  <a className="chip" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}`}>All</a>
+                  <a className="chip" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=assigned`}>Assigned</a>
+                  <a className="chip" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=delivered`}>Delivered</a>
+                </div>
+              </div>
             )
           }
           return (
@@ -437,26 +480,32 @@ export default function ManagerDashboard(){
                     {arr.length === 0 ? (
                       <div className="helper">No drivers</div>
                     ) : (
-                      <div style={{overflowX:'auto'}}>
-                        <table className="table" style={{width:'100%', borderCollapse:'collapse'}}>
-                          <thead>
-                            <tr>
-                              <th align="left">Driver</th>
-                              <th align="left">Phone</th>
-                              <th align="right">Assigned</th>
-                              <th align="right">Delivered</th>
-                              <th align="right">Cancelled</th>
-                              <th align="right">Collected</th>
-                              <th align="right">Delivered to Company</th>
-                              <th align="right">Pending to Company</th>
-                              <th align="left">Orders</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {arr.map(d=> <Row key={String(d.id)} c={c} d={d} />)}
-                          </tbody>
-                        </table>
-                      </div>
+                      isMobile ? (
+                        <div className="grid" style={{gridTemplateColumns:`repeat(auto-fit, minmax(${minTile}px, 1fr))`, gap: tileGap}}>
+                          {arr.map(d=> <RowCard key={String(d.id)} c={c} d={d} />)}
+                        </div>
+                      ) : (
+                        <div style={{overflowX:'auto'}}>
+                          <table className="table" style={{width:'100%', borderCollapse:'collapse'}}>
+                            <thead>
+                              <tr>
+                                <th align="left">Driver</th>
+                                <th align="left">Phone</th>
+                                <th align="right">Assigned</th>
+                                <th align="right">Delivered</th>
+                                <th align="right">Cancelled</th>
+                                <th align="right">Collected</th>
+                                <th align="right">Delivered to Company</th>
+                                <th align="right">Pending to Company</th>
+                                <th align="left">Orders</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {arr.map(d=> <Row key={String(d.id)} c={c} d={d} />)}
+                            </tbody>
+                          </table>
+                        </div>
+                      )
                     )}
                   </div>
                 )

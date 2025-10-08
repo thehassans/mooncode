@@ -1,6 +1,6 @@
 // Runtime helpers to apply branding (favicon, title, app name, manifest) to <head>
 // Works both when the app is served by the backend and during Vite dev.
-import { API_BASE } from '../api.js'
+import { API_BASE, apiGet } from '../api.js'
 
 function setOrCreateLink(rel, attrs = {}){
   let el = document.querySelector(`head link[rel="${rel}"]`)
@@ -45,9 +45,7 @@ export function applyBrandingToHead({ title, appName, favicon } = {}){
 
 export async function bootstrapBranding(){
   try{
-    const res = await fetch(`${API_BASE}/api/settings/branding`)
-    if (!res.ok) return
-    const j = await res.json()
+    const j = await apiGet('/api/settings/branding')
     applyBrandingToHead({ title: j.title || null, appName: j.appName || null, favicon: j.favicon || null })
   }catch{}
 }

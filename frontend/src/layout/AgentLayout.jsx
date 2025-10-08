@@ -100,9 +100,7 @@ export default function AgentLayout() {
     let cancelled = false
     ;(async () => {
       try {
-        const r = await fetch(`${API_BASE}/api/settings/branding`)
-        if (!r.ok) return
-        const j = await r.json()
+        const j = await apiGet('/api/settings/branding')
         if (!cancelled) setBranding({ headerLogo: j.headerLogo || null })
       } catch {}
     })()

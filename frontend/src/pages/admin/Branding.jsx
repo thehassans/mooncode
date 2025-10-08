@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { API_BASE, apiUpload } from '../../api.js'
+import { API_BASE, apiUpload, apiGet } from '../../api.js'
 import { applyBrandingToHead } from '../../util/branding.js'
 
 export default function Branding(){
@@ -43,9 +43,7 @@ export default function Branding(){
     let cancelled = false
     ;(async()=>{
       try{
-        const r = await fetch(`${API_BASE}/api/settings/branding`)
-        if (!r.ok) return
-        const j = await r.json()
+        const j = await apiGet('/api/settings/branding')
         if (!cancelled) setBranding({
           headerLogo: j.headerLogo||null,
           loginLogo: j.loginLogo||null,

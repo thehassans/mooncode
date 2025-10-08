@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { API_BASE } from '../api.js'
+import { API_BASE, apiGet } from '../api.js'
 
 // Sidebar supports flat links: { to, label, icon? }
 // and grouped links: { label, icon?, children: [{ to, label, icon? }, ...] }
@@ -142,9 +142,7 @@ export default function Sidebar({ links = [], closed, onToggle }){
     let cancelled = false
     ;(async()=>{
       try{
-        const r = await fetch(`${API_BASE}/api/settings/branding`)
-        if (!r.ok) return
-        const j = await r.json()
+        const j = await apiGet('/api/settings/branding')
         if (!cancelled) setBranding({ headerLogo: j.headerLogo || null })
       }catch{ /* ignore */ }
     })()
