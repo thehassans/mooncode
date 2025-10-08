@@ -16,14 +16,8 @@ export default function AgentDashboard(){
   const [orders, setOrders] = useState([])
   const [avgResponseSeconds, setAvgResponseSeconds] = useState(null)
   const [ordersSubmittedOverride, setOrdersSubmittedOverride] = useState(null)
-  const [isDesktop, setIsDesktop] = useState(() => {
-    try{ return window.innerWidth >= 1024 }catch{ return false }
-  })
   // Agent-submitted status counts
   const [statusCounts, setStatusCounts] = useState({ total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 })
-  useEffect(()=>{
-    // no-op: kept for symmetry if future responsive hooks are needed
-  }, [])
 
   // Load metrics for the signed-in agent
   async function load(){
@@ -65,7 +59,7 @@ export default function AgentDashboard(){
   useEffect(()=>{ load() },[])
   // Removed recent orders infinite scroll and related fetches from dashboard
 
-  // Fallback: periodic polling to keep table fresh even if socket misses an event
+  // Fallback: periodic polling to keep data fresh even if socket misses an event
   useEffect(()=>{
     const id = setInterval(()=>{ load() }, 20000) // 20s
     function onVis(){ if (document.visibilityState === 'visible') load() }
@@ -104,7 +98,7 @@ export default function AgentDashboard(){
   },[toast])
 
   // Derived metrics
-  const ordersSubmitted = ordersSubmittedOverride != null ? ordersSubmittedOverride : orders.length
+  const ordersSubmitted = ordersSubmittedOverride != null ? ordersSubmittedOverride : statusCounts.total
 
   // Build driver-like tiles for status counts (agent submitted)
   const statusTiles = [
