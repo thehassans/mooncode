@@ -189,27 +189,67 @@ export default function UserFinances() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drReqEndRef.current, drReqHasMore, drReqPage])
 
+  // Helper: format seconds to "Xm Ys"
+  function formatDuration(seconds){
+    try{
+      const s = Math.max(0, Math.round(seconds||0))
+      const m = Math.floor(s/60), r = s%60
+      return m>0 ? `${m}m ${r}s` : `${r}s`
+    }catch{ return '-' }
+  }
+
+  // Latest request per agent (prefer pending; else latest approved)
+  const latestRequestByAgent = useMemo(()=>{
+    try{
+      const map = new Map()
+      for (const r of (Array.isArray(requests)? requests: [])){
+        const agentId = String(r?.agent?._id || r?.agent?.id || r?.agent || '')
+        if (!agentId) continue
+        const curr = {
+          amount: Number(r?.amount||0),
+          status: String(r?.status||'').toLowerCase(),
+          created: r?.createdAt ? new Date(r.createdAt).getTime() : 0,
+        }
+        const prev = map.get(agentId)
+        if (!prev) { map.set(agentId, curr); continue }
+        const pref = (x)=> x.status==='pending' ? 2 : (x.status==='approved'? 1 : 0)
+        if (pref(curr) > pref(prev) || (pref(curr)===pref(prev) && curr.created > prev.created)){
+          map.set(agentId, curr)
+        }
+      }
+      return map
+    }catch{ return new Map() }
+  }, [requests])
+
   const joined = useMemo(() => {
-    const map = new Map(comm.map((a) => [String(a.id), a]))
+    const byId = new Map(comm.map((a) => [String(a.id), a]))
     return metrics.map((m) => {
       const k = String(m.id)
-      const c = map.get(k) || {}
+      const c = byId.get(k) || {}
+      const availablePKR = Math.max(0, (c.deliveredCommissionPKR || 0) - (c.withdrawnPKR || 0))
+      const req = latestRequestByAgent.get(k)
+      const requestedPKR = Number(req?.amount || 0)
+      const remainingAfterRequest = Math.max(0, availablePKR - requestedPKR)
       return {
         id: k,
         name: `${m.firstName || ''} ${m.lastName || ''}`.trim(),
         phone: m.phone || '',
         payoutProfile: c.payoutProfile || {},
-        assigned: m.assigned || 0,
-        done: m.done || 0,
+        submitted: Number(m?.submitted ?? m?.ordersSubmitted ?? 0),
+        delivered: Number(m?.done || 0),
+        chatsAssigned: Number(m?.assigned || 0),
         avgResponseSeconds: m.avgResponseSeconds,
+        paymentMethod: String(c?.payoutProfile?.method||'').toUpperCase()||'—',
         deliveredCommissionPKR: c.deliveredCommissionPKR || 0,
         upcomingCommissionPKR: c.upcomingCommissionPKR || 0,
         withdrawnPKR: c.withdrawnPKR || 0,
         pendingPKR: c.pendingPKR || 0,
-        availablePKR: Math.max(0, (c.deliveredCommissionPKR || 0) - (c.withdrawnPKR || 0)),
+        availablePKR,
+        requestedPKR,
+        remainingAfterRequest,
       }
     })
-  }, [metrics, comm])
+  }, [metrics, comm, latestRequestByAgent])
 
   // Driver payout send
   async function onSendDriver(remit) {
@@ -330,33 +370,32 @@ export default function UserFinances() {
         <div className="helper">Review agent, driver, and company finance details and requests.</div>
       </div>
 
-      {/* Horizontal options */}
+      {/* Horizontal options (professional segmented control) */}
       <div className="card" style={{ position:'sticky', top:0, zIndex:5, backdropFilter:'blur(6px)' }}>
-        <div className="section" style={{ display:'flex', gap:8, overflowX:'auto' }}>
-          <button
-            className="chip"
-            onClick={()=> setActiveSection('agent')}
-            style={{ border:'1px solid var(--border)', background: active==='agent' ? 'var(--panel-2)' : 'var(--panel)', fontWeight: active==='agent'? 800:600 }}
-            aria-pressed={active==='agent'}
-          >Agent</button>
-          <button
-            className="chip"
-            onClick={()=> setActiveSection('driver')}
-            style={{ border:'1px solid var(--border)', background: active==='driver' ? 'var(--panel-2)' : 'var(--panel)', fontWeight: active==='driver'? 800:600 }}
-            aria-pressed={active==='driver'}
-          >Driver</button>
-          <button
-            className="chip"
-            onClick={()=> setActiveSection('company')}
-            style={{ border:'1px solid var(--border)', background: active==='company' ? 'var(--panel-2)' : 'var(--panel)', fontWeight: active==='company'? 800:600 }}
-            aria-pressed={active==='company'}
-          >Company</button>
+        <div className="section" style={{ display:'flex', gap:10, overflowX:'auto' }}>
+          {(['agent','driver','company']).map(k => (
+            <button
+              key={k}
+              className="chip"
+              onClick={()=> setActiveSection(k)}
+              aria-pressed={active===k}
+              style={{
+                padding:'8px 16px',
+                border:'1px solid var(--border)',
+                borderRadius:999,
+                background: active===k ? 'linear-gradient(180deg, var(--panel-2), var(--panel))' : 'var(--panel)',
+                boxShadow: active===k ? '0 1px 4px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.06)' : 'inset 0 1px 0 rgba(255,255,255,0.04)',
+                fontWeight: active===k? 900:600,
+                letterSpacing: 0.2,
+              }}
+            >{k.charAt(0).toUpperCase()+k.slice(1)}</button>
+          ))}
         </div>
       </div>
 
       {active==='agent' && (
         <>
-      {/* Agent Metrics */}
+      {/* Agent Integrated Metrics */}
       <div className="card" style={{ display: 'grid', gap: 10 }}>
         <div className="card-header">
           <div className="card-title">Agent Performance, Earnings & Payment Details</div>
@@ -365,100 +404,47 @@ export default function UserFinances() {
           {joined.length === 0 ? (
             <div className="empty-state">No agents</div>
           ) : (
-            <table style={{ width: '100%', minWidth: 980, borderCollapse: 'separate', borderSpacing: 0 }}>
+            <table style={{ width: '100%', minWidth: 1080, borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
                 <tr>
                   <th style={{ textAlign: 'left', padding: '8px 10px' }}>Agent</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Orders</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Submitted Orders</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Delivered Orders</th>
                   <th style={{ textAlign: 'left', padding: '8px 10px' }}>Chats Assigned</th>
                   <th style={{ textAlign: 'left', padding: '8px 10px' }}>Avg Response</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Payout Method</th>
                   <th style={{ textAlign: 'left', padding: '8px 10px' }}>Payment Detail</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Pending (PKR)</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Upcoming (PKR)</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Withdrawn (PKR)</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Available (PKR)</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Manual Receipt</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Wallet (PKR)</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Requested (PKR)</th>
+                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Remaining (PKR)</th>
                 </tr>
               </thead>
               <tbody>
                 {joined.map((a) => (
                   <tr key={a.id} style={{ borderTop: '1px solid var(--border)' }}>
                     <td style={{ padding: '8px 10px' }}>
-                      <div style={{ fontWeight: 600 }}>{a.name || '—'}</div>
-                      <div className="helper" style={{ fontSize: 12 }}>
-                        {a.phone || ''}
-                      </div>
+                      <div style={{ fontWeight: 700 }}>{a.name || '—'}</div>
+                      <div className="helper" style={{ fontSize: 12 }}>{a.phone || ''}</div>
                     </td>
-                    <td style={{ padding: '8px 10px' }}>{a.done}</td>
-                    <td style={{ padding: '8px 10px' }}>{a.assigned}</td>
-                    <td style={{ padding: '8px 10px' }}>
-                      {a.avgResponseSeconds != null ? `${a.avgResponseSeconds}s` : '—'}
-                    </td>
-                    <td style={{ padding: '8px 10px' }}>
-                      {String(a?.payoutProfile?.method || '').toUpperCase() || '—'}
-                    </td>
+                    <td style={{ padding: '8px 10px' }}>{Number(a.submitted||0).toLocaleString()}</td>
+                    <td style={{ padding: '8px 10px' }}>{Number(a.delivered||0).toLocaleString()}</td>
+                    <td style={{ padding: '8px 10px' }}>{Number(a.chatsAssigned||0).toLocaleString()}</td>
+                    <td style={{ padding: '8px 10px' }}>{a.avgResponseSeconds!=null? formatDuration(a.avgResponseSeconds) : '—'}</td>
                     <td style={{ padding: '8px 10px' }}>
                       {(() => {
                         const p = a.payoutProfile || {}
                         const method = String(p.method || '')
                         if (!method) return '—'
                         if (method === 'bank') {
-                          const bank = [p.bankName, p.iban || p.accountNumber]
-                            .filter(Boolean)
-                            .join(' · ')
+                          const bank = [p.bankName, p.iban || p.accountNumber].filter(Boolean).join(' · ')
                           return `${p.accountName || ''}${bank ? ' — ' + bank : ''}`
-                        } else {
-                          const wallet = [p.accountName, p.phoneNumber || p.accountNumber]
-                            .filter(Boolean)
-                            .join(' · ')
-                          return wallet || '—'
                         }
+                        const wallet = [p.accountName, p.phoneNumber || p.accountNumber].filter(Boolean).join(' · ')
+                        return wallet || '—'
                       })()}
                     </td>
-                    <td style={{ padding: '8px 10px' }}>{(a.pendingPKR || 0).toLocaleString()}</td>
-                    <td style={{ padding: '8px 10px' }}>
-                      {(a.upcomingCommissionPKR || 0).toLocaleString()}
-                    </td>
-                    <td style={{ padding: '8px 10px' }}>
-                      {(a.withdrawnPKR || 0).toLocaleString()}
-                    </td>
-                    <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--success)' }}>
-                      {(a.availablePKR || 0).toLocaleString()}
-                    </td>
-                    <td style={{ padding: '8px 10px' }}>
-                      <div
-                        style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}
-                      >
-                        <input
-                          className="input small"
-                          style={{ width: 120 }}
-                          placeholder="Amount"
-                          value={manualMap[a.id]?.amount ?? ''}
-                          onChange={(e) =>
-                            setManualMap((m) => ({
-                              ...m,
-                              [a.id]: { ...(m[a.id] || {}), amount: e.target.value },
-                            }))
-                          }
-                        />
-                        <input
-                          className="input small"
-                          style={{ width: 200 }}
-                          placeholder="Note (optional)"
-                          value={manualMap[a.id]?.note ?? ''}
-                          onChange={(e) =>
-                            setManualMap((m) => ({
-                              ...m,
-                              [a.id]: { ...(m[a.id] || {}), note: e.target.value },
-                            }))
-                          }
-                        />
-                        <button className="btn small" onClick={() => onSendManual(a)}>
-                          Send
-                        </button>
-                      </div>
-                    </td>
+                    <td style={{ padding: '8px 10px', fontWeight:700, color:'var(--success)' }}>{Number(a.availablePKR||0).toLocaleString()}</td>
+                    <td style={{ padding: '8px 10px' }}>{Number(a.requestedPKR||0).toLocaleString()}</td>
+                    <td style={{ padding: '8px 10px', fontWeight:700 }}>{Number(a.remainingAfterRequest||0).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -467,131 +453,9 @@ export default function UserFinances() {
         </div>
       </div>
 
-      {/* Requests */}
-      <div className="card" style={{ display: 'grid', gap: 10 }}>
-        <div className="card-header">
-          <div className="card-title">Agent Requests</div>
-          <div className="card-subtitle">Send payouts directly; no approval step needed.</div>
-        </div>
-        <div className="section" style={{ overflowX: 'auto' }}>
-          {requests.length === 0 ? (
-            <div className="empty-state">No agent requests</div>
-          ) : (
-            <table style={{ width: '100%', minWidth: 900, borderCollapse: 'separate', borderSpacing: 0 }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Date</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Agent</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Phone</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Payout Method</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Payment Detail</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Requested (PKR)</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Send Amount (PKR)</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map((r) => (
-                  <tr key={String(r._id || r.id)} style={{ borderTop: '1px solid var(--border)' }}>
-                    <td style={{ padding: '8px 10px' }}>
-                      {new Date(r.createdAt).toLocaleString()}
-                    </td>
-                    <td style={{ padding: '8px 10px' }}>
-                      {r.agent?.firstName} {r.agent?.lastName}
-                    </td>
-                    <td style={{ padding: '8px 10px' }}>{r.agent?.phone || ''}</td>
-                    <td style={{ padding: '8px 10px' }}>
-                      {String(r.agent?.payoutProfile?.method || '').toUpperCase() || '—'}
-                    </td>
-                    <td style={{ padding: '8px 10px' }}>
-                      {(() => {
-                        const p = r.agent?.payoutProfile || {}
-                        const method = String(p.method || '')
-                        if (!method) return '—'
-                        if (method === 'bank') {
-                          const bank = [p.bankName, p.iban || p.accountNumber]
-                            .filter(Boolean)
-                            .join(' · ')
-                          return `${p.accountName || ''}${bank ? ' — ' + bank : ''}`
-                        } else {
-                          const wallet = [p.accountName, p.phoneNumber || p.accountNumber]
-                            .filter(Boolean)
-                            .join(' · ')
-                          return wallet || '—'
-                        }
-                      })()}
-                    </td>
-                    <td style={{ padding: '8px 10px' }}>
-                      PKR {Number(r.amount || 0).toLocaleString()}
-                    </td>
-                    <td style={{ padding: '8px 10px' }}>
-                      <input
-                        className="input small"
-                        style={{ width: 140 }}
-                        value={sendMap[String(r._id || r.id)] ?? String(r.amount || '')}
-                        onChange={(e) =>
-                          setSendMap((m) => ({ ...m, [String(r._id || r.id)]: e.target.value }))
-                        }
-                        placeholder="PKR"
-                      />
-                    </td>
-                    <td style={{ padding: '8px 10px' }}>
-                      <button className="btn small" onClick={() => onSend(r)}>
-                        Send
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
+      {/* Agent Requests integrated above in table (Requested column) */}
 
-      {/* Manual Receipt (Global) */}
-      <div className="card" style={{ display: 'grid', gap: 10 }}>
-        <div className="card-header">
-          <div className="card-title">Send Manual Receipt</div>
-          <div className="card-subtitle">
-            Send a manual payout receipt to any agent via WhatsApp (does not affect balances).
-          </div>
-        </div>
-        <div
-          className="section"
-          style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}
-        >
-          <select
-            className="input"
-            style={{ minWidth: 220 }}
-            value={manualGlobal.agentId}
-            onChange={(e) => setManualGlobal((s) => ({ ...s, agentId: e.target.value }))}
-          >
-            <option value="">Select agent…</option>
-            {joined.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} {a.phone ? `(${a.phone})` : ''}
-              </option>
-            ))}
-          </select>
-          <input
-            className="input"
-            style={{ width: 160 }}
-            placeholder="Amount"
-            value={manualGlobal.amount}
-            onChange={(e) => setManualGlobal((s) => ({ ...s, amount: e.target.value }))}
-          />
-          <input
-            className="input"
-            style={{ width: 260 }}
-            placeholder="Note (optional)"
-            value={manualGlobal.note}
-            onChange={(e) => setManualGlobal((s) => ({ ...s, note: e.target.value }))}
-          />
-          <button className="btn" onClick={onSendManualGlobal}>
-            Send Manual Receipt
-          </button>
-        </div>
-      </div>
+      {/* Manual Receipt removed from UI per spec */}
       </>
       )}
 
