@@ -38,9 +38,9 @@ export default function DriverDashboard(){
     try{
       const [meRes, a, m, s] = await Promise.all([
         apiGet('/api/users/me').catch(()=>({})),
-        apiGet(appendRange('/api/orders/driver/assigned')),
-        apiGet(appendRange('/api/orders/driver/metrics')),
-        apiGet(appendRange('/api/finance/remittances/summary')).catch(()=>({}))
+        apiGet('/api/orders/driver/assigned'),
+        apiGet('/api/orders/driver/metrics'),
+        apiGet('/api/finance/remittances/summary').catch(()=>({}))
       ])
       if (meRes && meRes.user) setUser(meRes.user)
       if (m && typeof m.totalAssignedAllTime === 'number' && m.status){
