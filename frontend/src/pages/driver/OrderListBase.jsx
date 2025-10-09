@@ -11,7 +11,9 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
   const [error, setError] = useState('')
   const [q, setQ] = useState('')
   const [ship, setShip] = useState('')
-  const [range, setRange] = useState('last7') // today | last7 | last30
+  const [range, setRange] = useState('last7') // today | last7 | last30 | custom
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
   // Initialize filters from URL on mount and when URL changes
   useEffect(()=>{
     try{
@@ -40,6 +42,11 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
   const rangeDates = useMemo(()=>{
     if (!withRange) return null
     try{
+      if (range==='custom' && customFrom && customTo){
+        const f = new Date(customFrom); f.setHours(0,0,0,0)
+        const t = new Date(customTo); t.setHours(23,59,59,999)
+        return { from: f.toISOString(), to: t.toISOString() }
+      }
       const now = new Date()
       const end = new Date(now); end.setHours(23,59,59,999)
       let from
@@ -52,10 +59,27 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
       }
       return { from: from.toISOString(), to: end.toISOString() }
     }catch{ return null }
-  }, [withRange, range])
+  }, [withRange, range, customFrom, customTo])
+  const filteredRows = React.useMemo(()=>{
+    try{
+      let list = Array.isArray(rows)? rows : []
+      if (withRange && rangeDates && rangeDates.from && rangeDates.to){
+        const fromTs = new Date(rangeDates.from).getTime()
+        const toTs = new Date(rangeDates.to).getTime()
+        list = list.filter(o=>{
+          const dAt = o?.deliveredAt ? new Date(o.deliveredAt).getTime() : null
+          const cAt = o?.createdAt ? new Date(o.createdAt).getTime() : null
+          if (dAt!=null) return dAt>=fromTs && dAt<=toTs
+          if (cAt!=null) return cAt>=fromTs && cAt<=toTs
+          return false
+        })
+      }
+      return list
+    }catch{ return Array.isArray(rows)? rows: [] }
+  }, [rows, withRange, rangeDates?.from, rangeDates?.to])
   const totalCollected = React.useMemo(()=>{
-    try{ return (rows||[]).reduce((sum,o)=> sum + (Number(o?.collectedAmount)||0), 0) }catch{ return 0 }
-  }, [rows])
+    try{ return (filteredRows||[]).reduce((sum,o)=> sum + (Number(o?.collectedAmount)||0), 0) }catch{ return 0 }
+  }, [filteredRows])
 
   async function load(){
     setLoading(true); setError('')
@@ -125,7 +149,18 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
       <div className="card" style={{display:'grid'}}>
         {withRange && (
           <div className="section" style={{display:'grid', gap:8}}>
-            <DateRangeChips value={range} onChange={setRange} />
+            <DateRangeChips value={range} onChange={setRange} options={[
+              {k:'today', label:'Today'},
+              {k:'last7', label:'Last 7 Days'},
+              {k:'last30', label:'Last 30 Days'},
+              {k:'custom', label:'Custom'}
+            ]} />
+            {range==='custom' && (
+              <div style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center'}}>
+                <input type="date" className="input" value={customFrom} onChange={e=> setCustomFrom(e.target.value)} />
+                <input type="date" className="input" value={customTo} onChange={e=> setCustomTo(e.target.value)} />
+              </div>
+            )}
           </div>
         )}
         {withFilters && (
@@ -150,11 +185,11 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
             <div className="chip" title="Sum of collectedAmount on these orders">Total Collected: {totalCollected.toFixed(2)}</div>
           </div>
         )}
-        {loading ? <div className="section">Loading…</div> : error ? <div className="section helper-text error">{error}</div> : rows.length === 0 ? (
+        {loading ? <div className="section">Loading…</div> : error ? <div className="section helper-text error">{error}</div> : filteredRows.length === 0 ? (
           <div className="section">No orders</div>
         ) : (
           <div className="section" style={{display:'grid', gap:10}}>
-            {rows.map(o => (
+            {filteredRows.map(o => (
               <div key={String(o._id||o.id)} className="panel" style={{display:'grid', gap:8, border:'1px solid var(--border)', borderRadius:10, padding:12}}>
                 <div style={{display:'flex', justifyContent:'space-between', gap:8, alignItems:'center'}}>
                   <div style={{fontWeight:800}}>#{o.invoiceNumber || String(o._id||'').slice(-6)}</div>

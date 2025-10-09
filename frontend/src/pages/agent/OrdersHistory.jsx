@@ -32,7 +32,9 @@ export default function AgentOrdersHistory(){
   const loadingMoreRef = useRef(false)
   const endRef = useRef(null)
   const exportingRef = useRef(false)
-  const [range, setRange] = useState('last7') // today | last7 | last30
+  const [range, setRange] = useState('last7') // today | last7 | last30 | custom
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
 
   // Support preserving range via URL (?fromDate=&toDate=) when navigated from dashboard
   const rangeFromUrl = useMemo(()=>{
@@ -61,6 +63,11 @@ export default function AgentOrdersHistory(){
 
   const rangeDates = useMemo(()=>{
     try{
+      if (range==='custom' && customFrom && customTo){
+        const f = new Date(customFrom); f.setHours(0,0,0,0)
+        const t = new Date(customTo); t.setHours(23,59,59,999)
+        return { from: f.toISOString(), to: t.toISOString() }
+      }
       const now = new Date()
       const end = new Date(now); end.setHours(23,59,59,999)
       let from
@@ -73,7 +80,7 @@ export default function AgentOrdersHistory(){
       }
       return { from: from.toISOString(), to: end.toISOString() }
     }catch{ return null }
-  }, [range])
+  }, [range, customFrom, customTo])
 
   async function loadOptions(selectedCountry=''){
     try{
@@ -140,17 +147,33 @@ export default function AgentOrdersHistory(){
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endRef.current, hasMore, page, buildQuery])
 
-  // Product search (client-side) like user Orders
+  // First, enforce range locally so Today is strict even if server ignores TZ
+  const rangeFiltered = useMemo(()=>{
+    try{
+      if (!rangeDates || !rangeDates.from || !rangeDates.to) return orders
+      const fromTs = new Date(rangeDates.from).getTime()
+      const toTs = new Date(rangeDates.to).getTime()
+      return (Array.isArray(orders)? orders: []).filter(o=>{
+        const dAt = o?.deliveredAt ? new Date(o.deliveredAt).getTime() : null
+        const cAt = o?.createdAt ? new Date(o.createdAt).getTime() : null
+        if (dAt!=null) return dAt>=fromTs && dAt<=toTs
+        if (cAt!=null) return cAt>=fromTs && cAt<=toTs
+        return false
+      })
+    }catch{ return orders }
+  }, [orders, rangeDates?.from, rangeDates?.to])
+
+  // Then apply product search (client-side) like user Orders
   const productFiltered = useMemo(()=>{
     const pq = productQuery.trim().toLowerCase()
-    if (!pq) return orders
-    return orders.filter(o=>{
+    if (!pq) return rangeFiltered
+    return rangeFiltered.filter(o=>{
       if (Array.isArray(o.items) && o.items.length){
         return o.items.some(it => String(it?.productId?.name||'').toLowerCase().includes(pq))
       }
       return String(o?.productId?.name||'').toLowerCase().includes(pq)
     })
-  }, [orders, productQuery])
+  }, [rangeFiltered, productQuery])
 
   async function exportCsv(){
     if (exportingRef.current) return
@@ -198,8 +221,19 @@ export default function AgentOrdersHistory(){
       </div>
 
       {/* Date Range */}
-      <div className="section" style={{marginBottom:8}}>
-        <DateRangeChips value={range} onChange={setRange} />
+      <div className="section" style={{marginBottom:8, display:'grid', gap:8}}>
+        <DateRangeChips value={range} onChange={setRange} options={[
+          {k:'today', label:'Today'},
+          {k:'last7', label:'Last 7 Days'},
+          {k:'last30', label:'Last 30 Days'},
+          {k:'custom', label:'Custom'}
+        ]} />
+        {range==='custom' && (
+          <div style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center'}}>
+            <input type="date" className="input" value={customFrom} onChange={e=> setCustomFrom(e.target.value)} />
+            <input type="date" className="input" value={customTo} onChange={e=> setCustomTo(e.target.value)} />
+          </div>
+        )}
       </div>
 
       <div className="card" style={{display:'grid', gap:10}}>
