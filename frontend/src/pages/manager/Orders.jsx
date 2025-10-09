@@ -18,6 +18,7 @@ export default function ManagerOrders(){
   const loadingMoreRef = useRef(false)
   const endRef = useRef(null)
   const exportingRef = useRef(false)
+  const urlSyncRef = useRef({ raf: 0, last: '' })
   const [assigning, setAssigning] = useState('')
   const [q, setQ] = useState('')
   const [country, setCountry] = useState('')
@@ -115,14 +116,14 @@ export default function ManagerOrders(){
       const qParam = p.get('q') || ''
       const ag = p.get('agent') || ''
       const dr = p.get('driver') || ''
-      setQ(qParam)
-      setCountry(c)
-      setCity(ci)
-      setShip(s)
-      setOnlyUnassigned(un)
-      setOnlyAssigned(oa)
-      setAgentFilter(ag)
-      setDriverFilter(dr)
+      if (q !== qParam) setQ(qParam)
+      if (country !== c) setCountry(c)
+      if (city !== ci) setCity(ci)
+      if (ship !== s) setShip(s)
+      if (onlyUnassigned !== un) setOnlyUnassigned(un)
+      if (onlyAssigned !== oa) setOnlyAssigned(oa)
+      if (agentFilter !== ag) setAgentFilter(ag)
+      if (driverFilter !== dr) setDriverFilter(dr)
     }catch{}
   }, [location.search])
   useEffect(()=>{
@@ -174,13 +175,23 @@ export default function ManagerOrders(){
       }
       const nextQS = canonical(buildQuery.toString())
       const currQS = canonical(location.search||'')
-      if (nextQS !== currQS){
+      if (nextQS === currQS || urlSyncRef.current.last === nextQS){
+        return
+      }
+      if (urlSyncRef.current.raf){
+        cancelAnimationFrame(urlSyncRef.current.raf)
+        urlSyncRef.current.raf = 0
+      }
+      urlSyncRef.current.raf = requestAnimationFrame(()=>{
         const path = location.pathname || '/manager/orders'
         navigate(`${path}${nextQS ? `?${nextQS}` : ''}`, { replace: true })
-      }
+        urlSyncRef.current.last = nextQS
+        urlSyncRef.current.raf = 0
+      })
     }catch{}
+    return ()=>{ if (urlSyncRef.current.raf){ cancelAnimationFrame(urlSyncRef.current.raf); urlSyncRef.current.raf = 0 } }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildQuery, location.pathname])
+  }, [buildQuery, location.pathname, location.search])
 
   // Infinite scroll observer
   useEffect(()=>{

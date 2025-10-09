@@ -94,6 +94,7 @@ export default function UserOrders(){
   const loadingMoreRef = useRef(false)
   const endRef = useRef(null)
   const exportingRef = useRef(false)
+  const urlSyncRef = useRef({ raf: 0, last: '' })
   const toast = useToast()
   // Preserve scroll helper to avoid jumping to top on state updates
   const preserveScroll = async (fn)=>{
@@ -215,17 +216,18 @@ export default function UserOrders(){
       const col = (sp.get('collected')||'').toLowerCase() === 'true'
       const ag = sp.get('agent') || ''
       const dr = sp.get('driver') || ''
-      setQuery(q)
-      setCountry(ctry)
-      setCity(cty)
-      setOnlyUnassigned(un)
-      setStatusFilter(st)
-      setShipFilter(ship)
-      setPaymentFilter(pay === 'COD' || pay === 'PREPAID' ? pay : '')
-      setCollectedOnly(col)
-      setAgentFilter(ag)
-      setDriverFilter(dr)
-      setOnlyAssigned(oa)
+      if (query !== q) setQuery(q)
+      if (country !== ctry) setCountry(ctry)
+      if (city !== cty) setCity(cty)
+      if (onlyUnassigned !== un) setOnlyUnassigned(un)
+      if (statusFilter !== st) setStatusFilter(st)
+      if (shipFilter !== ship) setShipFilter(ship)
+      const payVal = (pay === 'COD' || pay === 'PREPAID') ? pay : ''
+      if (paymentFilter !== payVal) setPaymentFilter(payVal)
+      if (collectedOnly !== col) setCollectedOnly(col)
+      if (agentFilter !== ag) setAgentFilter(ag)
+      if (driverFilter !== dr) setDriverFilter(dr)
+      if (onlyAssigned !== oa) setOnlyAssigned(oa)
     }catch{}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search])
@@ -244,13 +246,23 @@ export default function UserOrders(){
       }
       const nextQS = canonical(buildQuery.toString())
       const currQS = canonical(location.search||'')
-      if (nextQS !== currQS){
+      if (nextQS === currQS || urlSyncRef.current.last === nextQS){
+        return
+      }
+      if (urlSyncRef.current.raf){
+        cancelAnimationFrame(urlSyncRef.current.raf)
+        urlSyncRef.current.raf = 0
+      }
+      urlSyncRef.current.raf = requestAnimationFrame(()=>{
         const path = location.pathname || '/user/orders'
         navigate(`${path}${nextQS ? `?${nextQS}` : ''}`, { replace: true })
-      }
+        urlSyncRef.current.last = nextQS
+        urlSyncRef.current.raf = 0
+      })
     }catch{}
+    return ()=>{ if (urlSyncRef.current.raf){ cancelAnimationFrame(urlSyncRef.current.raf); urlSyncRef.current.raf = 0 } }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildQuery, location.pathname])
+  }, [buildQuery, location.pathname, location.search])
 
   // Infinite scroll observer
   useEffect(()=>{
