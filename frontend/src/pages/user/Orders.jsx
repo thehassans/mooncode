@@ -115,6 +115,46 @@ export default function UserOrders(){
     if (!c) return []
     return (driverOptions||[]).filter(d => String(d?.country||'') === c)
   }, [driverOptions, country])
+
+  // Canonicalization + strict client-side filtering to ensure dashboard deep links (e.g., UAE + picked_up) match exactly
+  const OPEN_STATUSES = useMemo(()=> ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response'], [])
+  function normCountryKey(s){
+    const n = String(s||'').trim().toLowerCase().replace(/\./g,'').replace(/-/g,' ').replace(/\s+/g,' ')
+    if (n==='ksa' || n==='saudi arabia' || n==='saudi') return 'ksa'
+    if (n==='uae' || n==='united arab emirates' || n==='ae' || n==='u a e') return 'uae'
+    if (n==='bahrain') return 'bahrain'
+    if (n==='oman') return 'oman'
+    if (n==='qatar') return 'qatar'
+    if (n==='kuwait') return 'kuwait'
+    if (n==='india') return 'india'
+    return n
+  }
+  function normalizeShip(s){
+    const n = String(s||'').toLowerCase().replace(/\s+/g,'_').replace(/-/g,'_')
+    if (n==='picked' || n==='pickedup') return 'picked_up'
+    if (n==='shipped' || n==='contacted' || n==='attempted') return 'in_transit'
+    if (n==='open') return 'open'
+    return n
+  }
+  const renderedOrders = useMemo(()=>{
+    try{
+      let list = Array.isArray(orders)? orders: []
+      const c = String(country||'').trim()
+      const ship = normalizeShip(shipFilter)
+      if (c){
+        const key = normCountryKey(c)
+        list = list.filter(o => normCountryKey(o?.orderCountry) === key)
+      }
+      if (ship){
+        if (ship==='open'){
+          list = list.filter(o => OPEN_STATUSES.includes(normalizeShip(o?.shipmentStatus)))
+        } else {
+          list = list.filter(o => normalizeShip(o?.shipmentStatus) === ship)
+        }
+      }
+      return list
+    }catch{ return Array.isArray(orders)? orders: [] }
+  }, [orders, country, shipFilter])
   async function loadOptions(selectedCountry=''){
     try{
       const qs = selectedCountry ? `?country=${encodeURIComponent(selectedCountry)}` : ''
@@ -307,9 +347,9 @@ export default function UserOrders(){
 
   // Load drivers for visible orders when orders change
   useEffect(()=>{
-    const countries = [...new Set(orders.map(o => o.orderCountry).filter(Boolean))]
+    const countries = [...new Set(renderedOrders.map(o => o.orderCountry).filter(Boolean))]
     countries.forEach(country => fetchDriversByCountry(country))
-  }, [orders])
+  }, [renderedOrders])
 
   // Live updates: patch single order in-place and preserve scroll
   useEffect(()=>{
@@ -455,10 +495,10 @@ export default function UserOrders(){
           <div className="card"><div className="section">Loading…</div></div>
         ) : error ? (
           <div className="card"><div className="section error">{error}</div></div>
-        ) : orders.length === 0 ? (
+        ) : renderedOrders.length === 0 ? (
           <div className="card"><div className="section">No orders found</div></div>
         ) : (
-          orders.map((o) => {
+          renderedOrders.map((o) => {
                   const id = String(o._id||o.id)
                   const ordNo = o.invoiceNumber ? `#${o.invoiceNumber}` : shortId(id)
                   const fromWebsite = (o.websiteOrder === true) || (String(o.source||'').toLowerCase() === 'website')
