@@ -33,30 +33,48 @@ export default function UserFinances() {
   // Company payout profile
   const [companyProfile, setCompanyProfile] = useState({ method:'bank', accountName:'', bankName:'', iban:'', accountNumber:'', phoneNumber:'' })
   const [companyMsg, setCompanyMsg] = useState('')
+  const driverInitRef = useRef(false)
+  const companyInitRef = useRef(false)
 
   useEffect(() => {
     let alive = true
+    const endEarly = () => { if (alive) setLoading(false) }
+    // Safety: if network is slow, stop blocking UI after a short delay
+    const slowTimer = setTimeout(endEarly, 800)
+
+    // Fetch metrics first; when done (or fails), allow UI to render
     ;(async () => {
       try {
-        const [m, c, r] = await Promise.all([
-          apiGet('/api/users/agents/performance'),
-          apiGet('/api/finance/agents/commission'),
-          apiGet('/api/finance/agent-remittances'),
-        ])
+        const m = await apiGet('/api/users/agents/performance')
         if (!alive) return
         setMetrics(Array.isArray(m?.metrics) ? m.metrics : [])
-        setComm(Array.isArray(c?.agents) ? c.agents : [])
-        // Only show requests for this owner
-        const list = Array.isArray(r?.remittances) ? r.remittances : []
-        setRequests(list.filter((x) => x.status === 'pending' || x.status === 'approved'))
       } catch (e) {
         setMsg(e?.message || 'Failed to load finances')
       } finally {
-        if (alive) setLoading(false)
+        endEarly()
       }
     })()
+    // Fetch commissions in parallel
+    ;(async () => {
+      try {
+        const c = await apiGet('/api/finance/agents/commission')
+        if (!alive) return
+        setComm(Array.isArray(c?.agents) ? c.agents : [])
+      } catch {}
+    })()
+    // Fetch agent remittance requests in parallel
+    ;(async () => {
+      try {
+        const r = await apiGet('/api/finance/agent-remittances')
+        if (!alive) return
+        const list = Array.isArray(r?.remittances) ? r.remittances : []
+        setRequests(list.filter((x) => x.status === 'pending' || x.status === 'approved'))
+      } catch {}
+    })()
+
     return () => {
       alive = false
+      clearTimeout(slowTimer)
     }
   }, [])
 
@@ -71,8 +89,10 @@ export default function UserFinances() {
     }catch{}
   }, [location.search])
 
-  // Load driver + company (best-effort, paged loaders)
+  // Load company payout profile lazily when section is opened first time
   useEffect(() => {
+    if (!showCompany || companyInitRef.current) return
+    companyInitRef.current = true
     let alive = true
     ;(async () => {
       try {
@@ -81,12 +101,17 @@ export default function UserFinances() {
         const prof = cp?.profile
         if (prof && typeof prof === 'object') setCompanyProfile(p => ({ ...p, ...prof }))
       } catch {}
-      try { await loadDriversPage(1) } catch {}
-      try { await loadDriverRequestsPage(1) } catch {}
     })()
     return () => { alive = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [showCompany])
+
+  // Load driver data lazily when Driver section is opened first time
+  useEffect(() => {
+    if (!showDriver || driverInitRef.current) return
+    driverInitRef.current = true
+    ;(async () => { try { await loadDriversPage(1) } catch {} })()
+    ;(async () => { try { await loadDriverRequestsPage(1) } catch {} })()
+  }, [showDriver])
 
   async function loadDriversPage(page){
     if (driverLoadingRef.current) return
