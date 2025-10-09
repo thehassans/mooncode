@@ -211,6 +211,30 @@ export default function UserOrders(){
       setHasMore(!!r?.hasMore)
       setPage(nextPage)
       setError('')
+      // Fallback: if user came from dashboard with specific country/ship filter but server returned none, refetch without those filters and rely on client-side strict filter
+      if (reset && list.length === 0 && (String(country||'').trim() || String(shipFilter||'').trim())){
+        try{
+          const base = new URLSearchParams(buildQuery.toString())
+          base.delete('country')
+          base.delete('ship')
+          let acc = []
+          let p = 1
+          const lim = 200
+          for(;;){
+            const loop = new URLSearchParams(base.toString())
+            loop.set('page', String(p))
+            loop.set('limit', String(lim))
+            const rr = await apiGet(`/api/orders?${loop.toString()}`)
+            const arr = Array.isArray(rr?.orders) ? rr.orders : []
+            acc = acc.concat(arr)
+            if (!rr?.hasMore) break
+            p += 1
+            if (p > 10) break // safety
+          }
+          setOrders(acc)
+          setHasMore(false)
+        }catch{}
+      }
     }catch(e){ setError(e?.message||'Failed to load orders'); setHasMore(false) }
     finally{ setLoading(false); loadingMoreRef.current = false }
   }
