@@ -30,6 +30,9 @@ export default function ManagerDashboard(){
       } else { // last7 (including today)
         const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
       }
+      return { from: from.toISOString(), to: end.toISOString() }
+    }catch{ return null }
+  }, [range])
   // Open statuses used across local filtering
   const OPEN_STATUSES = useMemo(()=> ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response'], [])
   const isOpenStatus = (s)=> OPEN_STATUSES.includes(String(s||'').toLowerCase())
@@ -47,9 +50,6 @@ export default function ManagerDashboard(){
       return createdIn || deliveredIn
     }catch{ return true }
   }
-      return { from: from.toISOString(), to: end.toISOString() }
-    }catch{ return null }
-  }, [range])
   const qsRangeBare = useMemo(()=>{
     try{ return (rangeDates && rangeDates.from && rangeDates.to) ? `fromDate=${encodeURIComponent(rangeDates.from)}&toDate=${encodeURIComponent(rangeDates.to)}` : '' }catch{ return '' }
   }, [rangeDates])
