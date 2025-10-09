@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { API_BASE, apiGet, apiPatch, apiGetBlob, apiPost } from '../../api.js'
+import OrderStatusTrack from '../../ui/OrderStatusTrack.jsx'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
-import OrderProgress from '../../ui/OrderProgress.jsx'
 
 function StatusBadge({ status, kind='status' }){
   const s = String(status||'').toLowerCase()
@@ -498,8 +498,8 @@ export default function UserOrders(){
                           <button className="btn secondary" onClick={()=> window.open(`/label/${id}`, '_blank', 'noopener,noreferrer')}>Print Label</button>
                         </div>
                       </div>
-                      <div className="section" style={{paddingTop:0}}>
-                        <OrderProgress status={o.shipmentStatus || o.status} />
+                      <div className="section" style={{padding:'0 12px'}}>
+                        <OrderStatusTrack order={o} compact />
                       </div>
                       <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
                         <div>
@@ -599,8 +599,8 @@ export default function UserOrders(){
                   <DetailRow label="Invoice" value={selected.invoiceNumber || '-'} />
                 </div>
                 <div style={{display:'grid', gap:8}}>
-                  <div style={{fontWeight:800}}>Timeline</div>
-                  <OrderTimeline order={selected} />
+                  <div style={{fontWeight:800}}>Shipment Progress</div>
+                  <OrderStatusTrack order={selected} />
                 </div>
               </div>
             </div>

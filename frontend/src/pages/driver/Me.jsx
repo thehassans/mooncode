@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { API_BASE, apiGet, apiPatch } from '../../api.js'
-import { useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
+import { useNavigate } from 'react-router-dom'
 
 export default function DriverMe() {
   const navigate = useNavigate()
@@ -78,6 +78,16 @@ export default function DriverMe() {
     finally{ setSavingPayout(false) }
   }
 
+  function handleLogout(){
+    try{
+      localStorage.removeItem('token')
+      localStorage.removeItem('me')
+      localStorage.removeItem('navColors')
+    }catch{}
+    try{ navigate('/login', { replace:true }) }catch{}
+    setTimeout(()=>{ try{ window.location.assign('/login') }catch{} }, 30)
+  }
+
   const stats = useMemo(() => {
     const list = orders || []
     const delivered = list.filter(o => String(o?.shipmentStatus||'').toLowerCase() === 'delivered')
@@ -111,8 +121,8 @@ export default function DriverMe() {
         <div style={{ fontWeight: 800, fontSize: 20 }}>Driver Profile</div>
         <div className="helper">Your profile and delivery stats</div>
       </div>
-      <div style={{display:'flex', justifyContent:'flex-end'}}>
-        <button className="btn light" onClick={() => { try{ localStorage.removeItem('token'); localStorage.removeItem('me') }catch{}; try{ navigate('/login', { replace:true }) }catch{} }}>Logout</button>
+      <div style={{ display:'flex', justifyContent:'flex-end' }}>
+        <button className="btn danger" onClick={handleLogout}>Logout</button>
       </div>
 
       {/* Settlement Summary */}

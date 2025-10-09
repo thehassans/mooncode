@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { apiGet, apiPost, apiPatch, API_BASE, apiGetBlob } from '../../api'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
-import OrderProgress from '../../ui/OrderProgress.jsx'
+import OrderStatusTrack from '../../ui/OrderStatusTrack.jsx'
+import OrderStatusTrack from '../../ui/OrderStatusTrack.jsx'
 
 export default function ManagerOrders(){
   const location = useLocation()
@@ -324,8 +325,8 @@ export default function ManagerOrders(){
             <button className="btn secondary" onClick={()=> window.open(`/label/${id}`, '_blank', 'noopener,noreferrer')}>Print Label</button>
           </div>
         </div>
-        <div className="section" style={{paddingTop:0}}>
-          <OrderProgress status={o.shipmentStatus || o.status} />
+        <div className="section" style={{padding:'0 12px'}}>
+          <OrderStatusTrack order={o} compact />
         </div>
         <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
           <div>
