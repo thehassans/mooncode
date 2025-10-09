@@ -38,7 +38,11 @@ export default function AgentMe() {
   // Setup Me: theme + ringtone
   const [theme, setTheme] = useState(() => {
     try {
-      return localStorage.getItem('theme') || 'dark'
+      // Prefer current DOM theme to avoid flipping on mount
+      const attr = document.documentElement.getAttribute('data-theme')
+      if (attr === 'light') return 'light'
+      const saved = localStorage.getItem('theme')
+      return saved || 'dark'
     } catch {
       return 'dark'
     }
@@ -238,14 +242,12 @@ export default function AgentMe() {
     finally{ setSavingPayout(false) }
   }
 
-  // Apply theme immediately on change
+  // Apply theme immediately on change (align with global behavior)
   useEffect(() => {
-    try {
-      localStorage.setItem('theme', theme)
-    } catch {}
+    try { localStorage.setItem('theme', theme) } catch {}
     const root = document.documentElement
     if (theme === 'light') root.setAttribute('data-theme', 'light')
-    else root.setAttribute('data-theme', 'dark')
+    else root.removeAttribute('data-theme')
   }, [theme])
 
   // When modal is open, add a class to the body to apply modal-specific CSS (see styles.css)

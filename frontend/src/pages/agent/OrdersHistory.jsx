@@ -104,7 +104,7 @@ export default function AgentOrdersHistory(){
     if (shipFilter.trim()) params.set('ship', shipFilter.trim())
     // Use explicit range passed via URL if present; else use selected chips range
     try{
-      const src = rangeFromUrl || rangeDates
+      const src = rangeDates || rangeFromUrl
       if (src && src.from && src.to){
         params.set('fromDate', src.from)
         params.set('toDate', src.to)

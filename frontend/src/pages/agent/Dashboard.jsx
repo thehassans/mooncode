@@ -12,6 +12,21 @@ export default function AgentDashboard(){
   const me = useMemo(()=>{
     try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} }
   },[])
+  const [isMobile, setIsMobile] = useState(()=> (typeof window!=='undefined' ? window.innerWidth <= 768 : false))
+  useEffect(()=>{
+    function onResize(){ try{ setIsMobile(window.innerWidth <= 768) }catch{} }
+    window.addEventListener('resize', onResize)
+    return ()=> window.removeEventListener('resize', onResize)
+  }, [])
+  const [theme, setTheme] = useState(()=>{ try{ return localStorage.getItem('theme') || 'dark' }catch{ return 'dark' } })
+  useEffect(()=>{
+    try{ localStorage.setItem('theme', theme) }catch{}
+    try{
+      const root = document.documentElement
+      if (theme === 'light') root.setAttribute('data-theme','light')
+      else root.removeAttribute('data-theme')
+    }catch{}
+  }, [theme])
   const [loading, setLoading] = useState(true)
   const [assignedCount, setAssignedCount] = useState(0)
   // Orders for metrics
@@ -167,6 +182,15 @@ export default function AgentDashboard(){
 
   // Derived metrics
   const ordersSubmitted = ordersSubmittedOverride != null ? ordersSubmittedOverride : statusCounts.total
+  const levelThresholds = useMemo(()=> [0,5,50,100,250,500], [])
+  const levelIdx = useMemo(()=>{
+    try{
+      const n = Number(ordersSubmitted||0)
+      let idx = 0
+      for (let i=0;i<levelThresholds.length;i++){ if (n>=levelThresholds[i]) idx=i; else break }
+      return idx
+    }catch{ return 0 }
+  }, [ordersSubmitted, levelThresholds])
 
   // Build driver-like tiles for status counts (agent submitted)
   const statusTiles = [
@@ -184,6 +208,36 @@ export default function AgentDashboard(){
 
   return (
     <div className="section" style={{display:'grid', gap:12}}>
+      {isMobile && (
+        <div className="card" style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px'}}>
+          <div style={{display:'flex', alignItems:'center', gap:10, minWidth:0}}>
+            {(()=>{
+              const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
+              return <img src={fallback} alt="BuySial" style={{height:24, width:'auto', objectFit:'contain'}} />
+            })()}
+            <button
+              className="btn secondary"
+              onClick={()=> setTheme(t=> t==='light' ? 'dark' : 'light')}
+              title="Toggle theme"
+              aria-label="Toggle theme"
+              style={{ width:34, height:34, padding:0, display:'grid', placeItems:'center' }}
+            >
+              {theme==='light' ? (
+                // Moon icon
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              ) : (
+                // Sun icon
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+              )}
+            </button>
+            <div style={{display:'flex', alignItems:'center', gap:8, minWidth:0}}>
+              <div style={{fontWeight:900, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{`${me.firstName||''} ${me.lastName||''}`.trim() || 'Agent'} Dashboard</div>
+              <span className="badge" title="Recent" style={{whiteSpace:'nowrap'}}>Recent</span>
+              {levelIdx>0 && <span className="badge" title="Level" style={{whiteSpace:'nowrap'}}>Lv {levelIdx}</span>}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="page-header">
         <div>
           <div className="page-title gradient heading-green">Agent Dashboard</div>
