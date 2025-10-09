@@ -23,6 +23,21 @@ const DEFAULT = {
 let cache = null
 let ts = 0
 
+function resolveRole(){
+  try{ const me = JSON.parse(localStorage.getItem('me')||'null'); return me?.role || null }catch{ return null }
+}
+function shouldFetchCurrency(){
+  try{
+    const role = resolveRole()
+    if (role === 'agent' || role === 'driver') return false
+  }catch{}
+  try{
+    const p = (typeof window!=='undefined' ? (window.location?.pathname||'') : '')
+    if (p.startsWith('/agent') || p.startsWith('/driver')) return false
+  }catch{}
+  return true
+}
+
 export function getCachedCurrencyConfig(){
   return cache || DEFAULT
 }
@@ -58,6 +73,12 @@ export function normalizeCurrencyConfig(cfg){
 export async function getCurrencyConfig(force=false){
   try{
     if (!force && cache && Date.now() - ts < 5 * 60 * 1000){
+      return cache
+    }
+    // Skip network fetch for roles/routes that typically lack permission
+    if (!force && !shouldFetchCurrency()){
+      cache = cache || { ...DEFAULT }
+      ts = Date.now()
       return cache
     }
     const raw = await apiGet('/api/settings/currency')
