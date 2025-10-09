@@ -113,7 +113,17 @@ export default function UserDashboard(){
   const qsRangeBare = useMemo(()=>{
     try{ return (rangeDates && rangeDates.from && rangeDates.to) ? `fromDate=${encodeURIComponent(rangeDates.from)}&toDate=${encodeURIComponent(rangeDates.to)}` : '' }catch{ return '' }
   }, [rangeDates])
-  const appendRange = (url)=> qsRangeBare ? (url + (url.includes('?') ? '&' : '?') + qsRangeBare) : url
+  const appendRange = (url)=>{
+    if (!qsRangeBare) return url
+    try{
+      const [path, q=''] = String(url||'').split('?')
+      const sp = new URLSearchParams(q)
+      const ship = String(sp.get('ship')||'').toLowerCase()
+      const openSet = new Set(['open','pending','assigned','picked_up','in_transit','out_for_delivery','no_response'])
+      if (openSet.has(ship)) return url
+      return url + (url.includes('?') ? '&' : '?') + qsRangeBare
+    }catch{ return url }
+  }
   // Union filter: include all open orders (any date) OR created in range OR delivered in range
   const OPEN_STATUSES = useMemo(()=> ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response'], [])
   const isOpenStatus = (s)=> OPEN_STATUSES.includes(String(s||'').toLowerCase())

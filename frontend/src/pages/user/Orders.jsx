@@ -96,6 +96,7 @@ export default function UserOrders(){
   const exportingRef = useRef(false)
   const urlSyncRef = useRef({ raf: 0, last: '' })
   const toast = useToast()
+  const fallbackTriedRef = useRef(false)
   // Preserve scroll helper to avoid jumping to top on state updates
   const preserveScroll = async (fn)=>{
     const y = window.scrollY
@@ -119,9 +120,9 @@ export default function UserOrders(){
   // Canonicalization + strict client-side filtering to ensure dashboard deep links (e.g., UAE + picked_up) match exactly
   const OPEN_STATUSES = useMemo(()=> ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response'], [])
   function normCountryKey(s){
-    const n = String(s||'').trim().toLowerCase().replace(/\./g,'').replace(/-/g,' ').replace(/\s+/g,' ')
+    const n = String(s||'').trim().toLowerCase().replace(/\(.*?\)/g,'').replace(/\./g,'').replace(/-/g,' ').replace(/\s+/g,' ')
     if (n==='ksa' || n==='saudi arabia' || n==='saudi') return 'ksa'
-    if (n==='uae' || n==='united arab emirates' || n==='ae' || n==='u a e') return 'uae'
+    if (n==='uae' || n==='united arab emirates' || n==='ae' || n==='u a e' || n.includes('united arab emirates')) return 'uae'
     if (n==='bahrain') return 'bahrain'
     if (n==='oman') return 'oman'
     if (n==='qatar') return 'qatar'
@@ -130,8 +131,8 @@ export default function UserOrders(){
     return n
   }
   function normalizeShip(s){
-    const n = String(s||'').toLowerCase().replace(/\s+/g,'_').replace(/-/g,'_')
-    if (n==='picked' || n==='pickedup') return 'picked_up'
+    const n = String(s||'').toLowerCase().trim().replace(/\s+/g,'_').replace(/-/g,'_')
+    if (n==='picked' || n==='pickedup' || n==='pick_up' || n==='pick-up' || n==='pickup') return 'picked_up'
     if (n==='shipped' || n==='contacted' || n==='attempted') return 'in_transit'
     if (n==='open') return 'open'
     return n
@@ -147,14 +148,33 @@ export default function UserOrders(){
       }
       if (ship){
         if (ship==='open'){
-          list = list.filter(o => OPEN_STATUSES.includes(normalizeShip(o?.shipmentStatus)))
+          list = list.filter(o => OPEN_STATUSES.includes(normalizeShip(o?.shipmentStatus ?? o?.status)))
         } else {
-          list = list.filter(o => normalizeShip(o?.shipmentStatus) === ship)
+          list = list.filter(o => normalizeShip(o?.shipmentStatus ?? o?.status) === ship)
+        }
+      }
+      // Apply date range from URL only for non-open filters
+      if (rangeFromUrl && rangeFromUrl.from && rangeFromUrl.to){
+        const fromTs = new Date(rangeFromUrl.from).getTime()
+        const toTs = new Date(rangeFromUrl.to).getTime()
+        if (ship && ship==='delivered'){
+          list = list.filter(o=>{
+            const dAt = o?.deliveredAt ? new Date(o.deliveredAt).getTime() : null
+            return (dAt!=null && dAt>=fromTs && dAt<=toTs)
+          })
+        } else if (!ship || !OPEN_STATUSES.includes(ship)){
+          list = list.filter(o=>{
+            const dAt = o?.deliveredAt ? new Date(o.deliveredAt).getTime() : null
+            const cAt = o?.createdAt ? new Date(o.createdAt).getTime() : null
+            if (dAt!=null) return dAt>=fromTs && dAt<=toTs
+            if (cAt!=null) return cAt>=fromTs && cAt<=toTs
+            return false
+          })
         }
       }
       return list
     }catch{ return Array.isArray(orders)? orders: [] }
-  }, [orders, country, shipFilter])
+  }, [orders, country, shipFilter, rangeFromUrl?.from, rangeFromUrl?.to])
   async function loadOptions(selectedCountry=''){
     try{
       const qs = selectedCountry ? `?country=${encodeURIComponent(selectedCountry)}` : ''
@@ -196,6 +216,17 @@ export default function UserOrders(){
     return params
   }, [query, country, city, onlyUnassigned, statusFilter, shipFilter, paymentFilter, collectedOnly, agentFilter, driverFilter])
 
+  // Read range params from URL (from Dashboard deep links)
+  const rangeFromUrl = useMemo(()=>{
+    try{
+      const sp = new URLSearchParams(location.search||'')
+      const f = sp.get('fromDate')
+      const t = sp.get('toDate')
+      if (!f || !t) return null
+      return { from: f, to: t }
+    }catch{ return null }
+  }, [location.search])
+
   async function loadOrders(reset=false){
     if (loadingMoreRef.current) return
     loadingMoreRef.current = true
@@ -211,12 +242,12 @@ export default function UserOrders(){
       setHasMore(!!r?.hasMore)
       setPage(nextPage)
       setError('')
-      // Fallback: if user came from dashboard with specific country/ship filter but server returned none, refetch without those filters and rely on client-side strict filter
+      // Fallback: if user came from dashboard with specific country/ship filter but server returned none,
+      // refetch without restrictive filters and rely on client-side strict filter
       if (reset && list.length === 0 && (String(country||'').trim() || String(shipFilter||'').trim())){
         try{
           const base = new URLSearchParams(buildQuery.toString())
-          base.delete('country')
-          base.delete('ship')
+          ;['country','ship','collected','onlyUnassigned','onlyAssigned','status','payment','agent','driver','city'].forEach(k=> base.delete(k))
           let acc = []
           let p = 1
           const lim = 200
@@ -243,6 +274,39 @@ export default function UserOrders(){
   useEffect(()=>{ loadOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
   // Reload on filter changes (except productQuery which is client-side)
   useEffect(()=>{ loadOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [buildQuery])
+
+  // Reset fallback flag on filter changes
+  useEffect(()=>{ fallbackTriedRef.current = false }, [buildQuery])
+
+  // If server returns items but strict filter yields none, perform wide refetch once
+  useEffect(()=>{
+    if (loading) return
+    const hasDashFilters = String(country||'').trim() || String(shipFilter||'').trim()
+    if (!hasDashFilters) return
+    if (!fallbackTriedRef.current && Array.isArray(orders) && orders.length>0 && renderedOrders.length===0){
+      fallbackTriedRef.current = true
+      ;(async ()=>{
+        try{
+          const base = new URLSearchParams(buildQuery.toString())
+          ;['country','ship','collected','onlyUnassigned','onlyAssigned','status','payment','agent','driver','city'].forEach(k=> base.delete(k))
+          let acc=[], p=1, lim=200
+          for(;;){
+            const loop = new URLSearchParams(base.toString())
+            loop.set('page', String(p))
+            loop.set('limit', String(lim))
+            const rr = await apiGet(`/api/orders?${loop.toString()}`)
+            const arr = Array.isArray(rr?.orders) ? rr.orders : []
+            acc = acc.concat(arr)
+            if (!rr?.hasMore) break
+            p += 1
+            if (p > 10) break
+          }
+          setOrders(acc)
+          setHasMore(false)
+        }catch{}
+      })()
+    }
+  }, [loading, orders, renderedOrders.length, country, shipFilter, buildQuery])
 
   async function exportCsv(){
     if (exportingRef.current) return
