@@ -9,6 +9,7 @@ export default function DriverDashboard(){
   const [assigned, setAssigned] = useState([])
   const [payout, setPayout] = useState({ currency:'', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
   const [loading, setLoading] = useState(false)
+  const [user, setUser] = useState(null)
   const [range, setRange] = useState('last7') // today | last7 | month
 
   const rangeDates = React.useMemo(()=>{
@@ -34,11 +35,13 @@ export default function DriverDashboard(){
   async function loadData(){
     setLoading(true)
     try{
-      const [a, m, s] = await Promise.all([
+      const [meRes, a, m, s] = await Promise.all([
+        apiGet('/api/users/me').catch(()=>({})),
         apiGet(appendRange('/api/orders/driver/assigned')),
         apiGet(appendRange('/api/orders/driver/metrics')),
         apiGet(appendRange('/api/finance/remittances/summary')).catch(()=>({}))
       ])
+      if (meRes && meRes.user) setUser(meRes.user)
       if (m && typeof m.totalAssignedAllTime === 'number' && m.status){
         setMetrics({
           totalAssignedAllTime: Number(m.totalAssignedAllTime||0),
@@ -106,7 +109,12 @@ export default function DriverDashboard(){
     { key:'returned', title:'Returned', value: metrics.status.returned, to:'/driver/orders/history?ship=returned', color:'#737373' },
     { key:'cancelled', title:'Cancelled', value: metrics.status.cancelled, to:'/driver/orders/cancelled', color:'#b91c1c' },
   ]
+  const deliveredCount = Number(metrics?.status?.delivered||0)
+  const commissionPerOrder = Number(user?.commissionPerOrder||0)
+  const commissionCurrency = (user?.commissionCurrency ? String(user.commissionCurrency).toUpperCase() : (payout.currency||'')).trim() || 'SAR'
+  const walletDelivered = (commissionPerOrder>0 && deliveredCount>=0) ? (commissionPerOrder * deliveredCount) : 0
   const payoutCards = [
+    { key:'wallet_delivered', title:'Wallet (Delivered Commission)', value: `${commissionCurrency} ${walletDelivered.toFixed(2)}`, to:'/driver/orders/delivered', color:'#22c55e' },
     { key:'collected_amount', title:'Total Collected (Delivered)', value: money(payout.totalCollectedAmount), to:'/driver/orders/delivered', color:'#0ea5e9' },
     { key:'delivered_company', title:'Delivered to Company', value: money(payout.deliveredToCompany), to:'/driver/payout#remittances', color:'#22c55e' },
     { key:'pending_company', title:'Pending Delivery to Company', value: money(payout.pendingToCompany), to:'/driver/payout#pay', color:'#f59e0b' },
