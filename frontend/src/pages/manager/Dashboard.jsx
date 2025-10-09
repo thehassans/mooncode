@@ -55,7 +55,14 @@ export default function ManagerDashboard(){
   }, [rangeDates])
   const appendRange = (url)=>{
     if (!qsRangeBare) return url
-    return url + (url.includes('?') ? '&' : '?') + qsRangeBare
+    try{
+      const [path, q=''] = String(url||'').split('?')
+      const sp = new URLSearchParams(q)
+      const ship = String(sp.get('ship')||'').toLowerCase()
+      const openSet = new Set(['open','pending','assigned','picked_up','in_transit','out_for_delivery','no_response'])
+      if (openSet.has(ship)) return url
+      return url + (url.includes('?') ? '&' : '?') + qsRangeBare
+    }catch{ return url }
   }
 
   useEffect(()=>{
