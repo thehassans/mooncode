@@ -3,7 +3,6 @@ import { apiGet, apiPost, apiPatch, API_BASE, apiGetBlob } from '../../api'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import OrderStatusTrack from '../../ui/OrderStatusTrack.jsx'
-import OrderStatusTrack from '../../ui/OrderStatusTrack.jsx'
 
 export default function ManagerOrders(){
   const location = useLocation()
