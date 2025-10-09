@@ -3,6 +3,13 @@ import React from 'react'
 // Professional order status track for: pending -> assigned -> picked_up -> in_transit -> out_for_delivery -> <final>
 // final can be delivered | no_response | returned | cancelled
 export default function OrderStatusTrack({ order, compact=false }){
+  // Theme-aware color tokens with sensible fallbacks
+  const BLUE = 'var(--primary, #2563eb)'
+  const GREEN = 'var(--success, #10b981)'
+  const RED = 'var(--danger, #ef4444)'
+  const MUTED = 'var(--muted, #6b7280)'
+  const FG = 'var(--fg, #111827)'
+  const BORDER = 'var(--border, #e5e7eb)'
   const raw0 = String(order?.shipmentStatus || order?.status || 'pending').toLowerCase()
   const norm = (s)=>{
     if (!s) return 'pending'
@@ -32,22 +39,37 @@ export default function OrderStatusTrack({ order, compact=false }){
   }
 
   const colorOf = (idx, k)=>{
-    const doneColor = (finalKey==='delivered' ? '#2563eb' : (terminal.includes(finalKey) ? '#ef4444' : '#2563eb')) // blue or red track when final negative
+    const doneColor = (finalKey==='delivered' ? BLUE : (terminal.includes(finalKey) ? RED : BLUE)) // primary or danger when final negative
     const activeColor = doneColor
-    const future = '#e5e7eb'
+    const future = BORDER
     if (idx < currentIdx) return doneColor
     if (idx === currentIdx) return activeColor
     return future
   }
 
+  function timeOf(k){
+    const d = (
+      k==='pending' ? (order?.createdAt || null) :
+      k==='in_transit' ? (order?.shippedAt || order?.updatedAt || null) :
+      k==='delivered' ? (order?.deliveredAt || null) :
+      ['cancelled','returned','no_response'].includes(k) ? (order?.updatedAt || null) :
+      null
+    )
+    return d ? new Date(d).toLocaleString() : ''
+  }
+
   function Icon({ k, color }){
-    const size = 16
-    const s = { width:size, height:size, stroke:color, fill:'none', strokeWidth:1.8, strokeLinecap:'round', strokeLinejoin:'round' }
+    const size = 18
+    const s = { width:size, height:size, stroke:color, fill:'none', strokeWidth:2, strokeLinecap:'round', strokeLinejoin:'round' }
     if (k==='pending') return (
       <svg {...s} viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></svg>
     )
     if (k==='assigned') return (
-      <svg {...s} viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      // Centered user silhouette: head and shoulders perfectly centered
+      <svg {...s} viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="3"/>
+        <path d="M6 20a6 6 0 0 1 12 0"/>
+      </svg>
     )
     if (k==='picked_up') return (
       <svg {...s} viewBox="0 0 24 24"><path d="M3 7h18v10H3z"/><path d="M16 7l-4-4-4 4"/></svg>
@@ -76,33 +98,36 @@ export default function OrderStatusTrack({ order, compact=false }){
   return (
     <div role="progressbar" aria-valuemin={0} aria-valuemax={steps.length-1} aria-valuenow={currentIdx}
          style={{display:'grid', gap: compact? 6 : 8}}>
-      <div style={{display:'flex', alignItems:'center', gap:8}}>
+      <div style={{display:'flex', alignItems:'center'}}>
         {steps.map((k, idx)=>{
           const col = colorOf(idx, k)
+          const doneCol = (finalKey==='delivered' ? BLUE : (['cancelled','returned','no_response'].includes(finalKey) ? RED : BLUE))
+          const leftLineColor = idx === 0 ? 'transparent' : (idx <= currentIdx ? doneCol : BORDER)
+          const rightLineColor = idx < currentIdx ? doneCol : BORDER
           const bg = idx <= currentIdx ? (finalKey==='delivered' || idx<steps.length-1 ? 'rgba(37,99,235,0.12)' : 'rgba(239,68,68,0.12)') : 'transparent'
+          const finalIconColor = (k==='delivered' && finalKey==='delivered') ? GREEN : (['cancelled','returned','no_response'].includes(finalKey) && k===finalKey ? RED : col)
+          const labelColor = idx===currentIdx ? FG : MUTED
+          const labelWeight = idx===currentIdx ? 700 : 500
           return (
-            <React.Fragment key={k}>
-              <div title={labelOf(k)} style={{width:28, height:28, borderRadius:999, border:`2px solid ${col}`, background:bg, display:'grid', placeItems:'center', flex:'0 0 auto'}}>
-                <Icon k={k} color={col} />
+            <div key={k} style={{flex:'1 1 0%', display:'grid', rowGap:6, justifyItems:'center'}}>
+              <div style={{display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', width:'100%'}}>
+                <div style={{height:2, background:leftLineColor, visibility: idx===0 ? 'hidden' : 'visible'}} aria-hidden />
+                <div title={`${labelOf(k)}${timeOf(k)? ' • '+timeOf(k): ''}`} aria-label={`${labelOf(k)}${timeOf(k)? ', '+timeOf(k): ''}`}
+                     style={{width:30, height:30, borderRadius:999, border:`2px solid ${col}`, background:bg, display:'grid', placeItems:'center', boxShadow: idx===currentIdx ? '0 1px 4px rgba(0,0,0,0.12)' : 'none'}}>
+                  <Icon k={k} color={finalIconColor} />
+                </div>
+                <div style={{height:2, background:rightLineColor, visibility: idx===steps.length-1 ? 'hidden' : 'visible'}} aria-hidden />
               </div>
-              {idx < steps.length-1 && (
-                <div style={{height:2, flex:'1 1 0%', background: idx < currentIdx ? '#93c5fd' : '#e5e7eb'}} aria-hidden />
+              {compact ? null : (
+                <div style={{textAlign:'center', fontSize:12, color: labelColor, fontWeight: labelWeight}}>{labelOf(k)}</div>
               )}
-            </React.Fragment>
+            </div>
           )
         })}
       </div>
-      {compact ? (
-        <div style={{textAlign:'center', fontSize:12, color: (raw==='delivered'? '#065f46' : (['cancelled','returned','no_response'].includes(raw)? '#991b1b' : '#1d4ed8')), fontWeight:700}}>
-          {labelOf(raw)}
-        </div>
-      ) : (
-        <div style={{display:'grid', gridTemplateColumns:`repeat(${steps.length}, minmax(0,1fr))`, gap:8}}>
-          {steps.map((k, idx)=> (
-            <div key={k} style={{textAlign:'center', fontSize:12, color: idx===currentIdx ? '#111827' : '#6b7280', fontWeight: idx===currentIdx ? 700 : 500}}>{labelOf(k)}</div>
-          ))}
-        </div>
-      )}
+      <div style={{textAlign:'center', fontSize:12, color: (raw==='delivered'? '#065f46' : (['cancelled','returned','no_response'].includes(raw)? '#991b1b' : '#1d4ed8')), fontWeight:700}}>
+        {labelOf(raw)}
+      </div>
     </div>
   )
 }
