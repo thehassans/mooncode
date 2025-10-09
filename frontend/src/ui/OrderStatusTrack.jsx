@@ -109,7 +109,7 @@ export default function OrderStatusTrack({ order, compact=false }){
           const labelColor = idx===currentIdx ? FG : MUTED
           const labelWeight = idx===currentIdx ? 700 : 500
           return (
-            <div key={k} style={{flex:'1 1 0%', display:'grid', rowGap:6, justifyItems:'center'}}>
+            <div key={k} style={{flex:'1 1 0%', minWidth:0, display:'grid', rowGap:6, justifyItems:'center'}}>
               <div style={{display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', width:'100%'}}>
                 <div style={{height:2, background:leftLineColor, visibility: idx===0 ? 'hidden' : 'visible'}} aria-hidden />
                 <div title={`${labelOf(k)}${timeOf(k)? ' • '+timeOf(k): ''}`} aria-label={`${labelOf(k)}${timeOf(k)? ', '+timeOf(k): ''}`}
@@ -119,7 +119,7 @@ export default function OrderStatusTrack({ order, compact=false }){
                 <div style={{height:2, background:rightLineColor, visibility: idx===steps.length-1 ? 'hidden' : 'visible'}} aria-hidden />
               </div>
               {compact ? null : (
-                <div style={{textAlign:'center', fontSize:12, color: labelColor, fontWeight: labelWeight}}>{labelOf(k)}</div>
+                <div style={{textAlign:'center', fontSize:12, color: labelColor, fontWeight: labelWeight, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.15, maxWidth:'100%'}}>{labelOf(k)}</div>
               )}
             </div>
           )

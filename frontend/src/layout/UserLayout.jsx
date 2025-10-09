@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { API_BASE, apiGet } from '../api.js'
 import Sidebar from '../components/Sidebar.jsx'
 import Modal from '../components/Modal.jsx'
-import Tabs from '../ui/Tabs.jsx'
+ 
 
 export default function UserLayout(){
   const navigate = useNavigate()
@@ -271,37 +271,10 @@ export default function UserLayout(){
             </button>
           </div>
         </div>
-        <div className={`container ${location.pathname.includes('/inbox/whatsapp') ? 'edge-to-edge' : ''} ${isMobile ? 'with-mobile-tabs' : ''}`}>
+        <div className={`container ${location.pathname.includes('/inbox/whatsapp') ? 'edge-to-edge' : ''}`}>
           <Outlet />
         </div>
-        {/* Mobile bottom tabs */}
-        {isMobile && (
-          (()=>{
-            const path = location.pathname || ''
-            const items = [
-              { key:'chats', label:'Chats', icon:'💬', to:'/user/inbox/whatsapp' },
-              { key:'agents', label:'Agents', icon:'👥', to:'/user/agents' },
-              { key:'orders', label:'Orders', icon:'🧾', to:'/user/orders' },
-              { key:'products', label:'Products', icon:'🏷️', to:'/user/inhouse-products' },
-              { key:'support', label:'Support', icon:'🛟', to:'/user/support' },
-            ]
-            const activeKey = (
-              path.includes('/inbox/whatsapp') ? 'chats' :
-              path.includes('/agents') ? 'agents' :
-              path.includes('/orders') ? 'orders' :
-              path.includes('/inhouse-products') ? 'products' :
-              path.includes('/support') ? 'support' :
-              'chats'
-            )
-            return (
-              <Tabs
-                items={items}
-                activeKey={activeKey}
-                onChange={(k)=>{ const t = items.find(x=>x.key===k); if(t) navigate(t.to) }}
-              />
-            )
-          })()
-        )}
+        {/* Mobile bottom tabs removed for user panel */}
       </div>
       {/* Settings Modal */}
       <Modal
