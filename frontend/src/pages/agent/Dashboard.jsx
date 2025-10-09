@@ -170,16 +170,16 @@ export default function AgentDashboard(){
 
   // Build driver-like tiles for status counts (agent submitted)
   const statusTiles = [
-    { key:'total', title:'Total Orders (Submitted)', value: ordersSubmitted, color:'#0ea5e9', to:'/agent/orders' },
-    { key:'pending', title:'Pending', value: statusCounts.pending, color:'#64748b', to:'/agent/orders?ship=pending' },
-    { key:'assigned', title:'Assigned', value: statusCounts.assigned, color:'#3b82f6', to:'/agent/orders?ship=assigned' },
-    { key:'picked_up', title:'Picked Up', value: statusCounts.picked_up, color:'#f59e0b', to:'/agent/orders?ship=picked_up' },
-    { key:'in_transit', title:'In Transit', value: statusCounts.in_transit, color:'#0284c7', to:'/agent/orders?ship=in_transit' },
-    { key:'out_for_delivery', title:'Out for Delivery', value: statusCounts.out_for_delivery, color:'#f97316', to:'/agent/orders?ship=out_for_delivery' },
-    { key:'delivered', title:'Delivered', value: statusCounts.delivered, color:'#10b981', to:'/agent/orders?ship=delivered' },
-    { key:'no_response', title:'No Response', value: statusCounts.no_response, color:'#ef4444', to:'/agent/orders?ship=no_response' },
-    { key:'returned', title:'Returned', value: statusCounts.returned, color:'#737373', to:'/agent/orders?ship=returned' },
-    { key:'cancelled', title:'Cancelled', value: statusCounts.cancelled, color:'#b91c1c', to:'/agent/orders?ship=cancelled' },
+    { key:'total', title:'Total Orders (Submitted)', value: ordersSubmitted, color:'#0ea5e9', to:'/agent/orders/history' },
+    { key:'pending', title:'Pending', value: statusCounts.pending, color:'#64748b', to:'/agent/orders/history?ship=pending' },
+    { key:'assigned', title:'Assigned', value: statusCounts.assigned, color:'#3b82f6', to:'/agent/orders/history?ship=assigned' },
+    { key:'picked_up', title:'Picked Up', value: statusCounts.picked_up, color:'#f59e0b', to:'/agent/orders/history?ship=picked_up' },
+    { key:'in_transit', title:'In Transit', value: statusCounts.in_transit, color:'#0284c7', to:'/agent/orders/history?ship=in_transit' },
+    { key:'out_for_delivery', title:'Out for Delivery', value: statusCounts.out_for_delivery, color:'#f97316', to:'/agent/orders/history?ship=out_for_delivery' },
+    { key:'delivered', title:'Delivered', value: statusCounts.delivered, color:'#10b981', to:'/agent/orders/history?ship=delivered' },
+    { key:'no_response', title:'No Response', value: statusCounts.no_response, color:'#ef4444', to:'/agent/orders/history?ship=no_response' },
+    { key:'returned', title:'Returned', value: statusCounts.returned, color:'#737373', to:'/agent/orders/history?ship=returned' },
+    { key:'cancelled', title:'Cancelled', value: statusCounts.cancelled, color:'#b91c1c', to:'/agent/orders/history?ship=cancelled' },
   ]
 
   return (
@@ -211,7 +211,7 @@ export default function AgentDashboard(){
               <div style={{fontSize:12, color:'var(--muted)'}}>Orders Submitted</div>
               <div style={{fontSize:28, fontWeight:800, color:'#10b981'}}>{loading? '…' : ordersSubmitted}</div>
             </div>
-            <button className="btn secondary" onClick={()=> navigate('/agent/orders/history')}>Order History</button>
+            <button className="btn secondary" onClick={()=> navigate(appendRange('/agent/orders/history'))}>Order History</button>
           </div>
           <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
             <div style={{fontSize:12, color:'var(--muted)'}}>Avg. Response Time</div>
@@ -241,7 +241,7 @@ export default function AgentDashboard(){
         <div className="card-title" style={{marginBottom:8}}>Your Orders by Status</div>
         <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px,1fr))', gap:12}}>
           {statusTiles.map(c => (
-            <button key={c.key} className="tile" onClick={()=> c.to ? navigate(c.to) : null} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <button key={c.key} className="tile" onClick={()=> c.to ? navigate(appendRange(c.to)) : null} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
               <div style={{fontSize:12, color:'var(--muted)'}}>{c.title}</div>
               <div style={{fontSize:28, fontWeight:800, color:c.color}}>{loading? '…' : c.value}</div>
             </button>

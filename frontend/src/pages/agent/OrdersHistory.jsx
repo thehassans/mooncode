@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { API_BASE, apiGet, apiGetBlob } from '../../api.js'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
+import DateRangeChips from '../../ui/DateRangeChips.jsx'
 
 function StatusBadge({ status }){
   const s = String(status||'').toLowerCase()
@@ -31,6 +32,48 @@ export default function AgentOrdersHistory(){
   const loadingMoreRef = useRef(false)
   const endRef = useRef(null)
   const exportingRef = useRef(false)
+  const [range, setRange] = useState('last7') // today | last7 | last30
+
+  // Support preserving range via URL (?fromDate=&toDate=) when navigated from dashboard
+  const rangeFromUrl = useMemo(()=>{
+    try{
+      const sp = new URLSearchParams(location.search||'')
+      const from = sp.get('fromDate') || ''
+      const to = sp.get('toDate') || ''
+      if (from && to) return { from, to }
+      return null
+    }catch{ return null }
+  }, [location.search])
+  useEffect(()=>{
+    try{
+      if (!rangeFromUrl) return
+      const now = new Date(); now.setHours(23,59,59,999)
+      const from = new Date(rangeFromUrl.from)
+      const to = new Date(rangeFromUrl.to)
+      const msInDay = 24*60*60*1000
+      const diffDays = Math.round((to.setHours(0,0,0,0) - from.setHours(0,0,0,0))/msInDay) + 1
+      const fromToday = (from.toDateString() === (new Date().toDateString()))
+      if (diffDays===1 && fromToday) setRange('today')
+      else if (diffDays===7) setRange('last7')
+      else if (diffDays===30) setRange('last30')
+    }catch{}
+  }, [rangeFromUrl])
+
+  const rangeDates = useMemo(()=>{
+    try{
+      const now = new Date()
+      const end = new Date(now); end.setHours(23,59,59,999)
+      let from
+      if (range==='today'){
+        const s = new Date(now); s.setHours(0,0,0,0); from = s
+      } else if (range==='last30'){
+        const s = new Date(now); s.setDate(now.getDate()-29); s.setHours(0,0,0,0); from = s
+      } else { // last7
+        const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
+      }
+      return { from: from.toISOString(), to: end.toISOString() }
+    }catch{ return null }
+  }, [range])
 
   async function loadOptions(selectedCountry=''){
     try{
@@ -52,8 +95,16 @@ export default function AgentOrdersHistory(){
     if (country.trim()) params.set('country', country.trim())
     if (city.trim()) params.set('city', city.trim())
     if (shipFilter.trim()) params.set('ship', shipFilter.trim())
+    // Use explicit range passed via URL if present; else use selected chips range
+    try{
+      const src = rangeFromUrl || rangeDates
+      if (src && src.from && src.to){
+        params.set('fromDate', src.from)
+        params.set('toDate', src.to)
+      }
+    }catch{}
     return params
-  }, [query, country, city, shipFilter])
+  }, [query, country, city, shipFilter, rangeFromUrl, rangeDates])
 
   async function loadOrders(reset=false){
     if (loadingMoreRef.current) return
@@ -144,6 +195,11 @@ export default function AgentOrdersHistory(){
           <div className="page-subtitle">All orders you submitted</div>
         </div>
         <button className="btn small" onClick={()=> navigate('/agent/orders')} title="Submit Order">Submit Order</button>
+      </div>
+
+      {/* Date Range */}
+      <div className="section" style={{marginBottom:8}}>
+        <DateRangeChips value={range} onChange={setRange} />
       </div>
 
       <div className="card" style={{display:'grid', gap:10}}>

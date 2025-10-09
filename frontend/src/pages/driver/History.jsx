@@ -10,6 +10,7 @@ export default function DriverHistory(){
       showTotalCollected
       showMap={false}
       withFilters
+      withRange
     />
   )
 }

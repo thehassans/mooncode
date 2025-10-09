@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost } from '../../api'
 import { useNavigate, useLocation } from 'react-router-dom'
+import DateRangeChips from '../../ui/DateRangeChips.jsx'
 
-export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false, withFilters=false }){
+export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false, withFilters=false, withRange=false }){
   const nav = useNavigate()
   const location = useLocation()
   const [rows, setRows] = useState([])
@@ -10,6 +11,7 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
   const [error, setError] = useState('')
   const [q, setQ] = useState('')
   const [ship, setShip] = useState('')
+  const [range, setRange] = useState('last7') // today | last7 | last30
   // Initialize filters from URL on mount and when URL changes
   useEffect(()=>{
     try{
@@ -18,8 +20,39 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
       const s0 = sp.get('ship') || ''
       setQ(q0)
       setShip(s0)
+      if (withRange){
+        const from = sp.get('fromDate') || ''
+        const to = sp.get('toDate') || ''
+        if (from && to){
+          try{
+            const f = new Date(from), t = new Date(to)
+            const msInDay = 24*60*60*1000
+            const diffDays = Math.round((t.setHours(0,0,0,0) - f.setHours(0,0,0,0))/msInDay) + 1
+            const isToday = (f.toDateString() === (new Date().toDateString()))
+            if (diffDays===1 && isToday) setRange('today')
+            else if (diffDays===7) setRange('last7')
+            else if (diffDays===30) setRange('last30')
+          }catch{}
+        }
+      }
     }catch{}
-  }, [location.search])
+  }, [location.search, withRange])
+  const rangeDates = useMemo(()=>{
+    if (!withRange) return null
+    try{
+      const now = new Date()
+      const end = new Date(now); end.setHours(23,59,59,999)
+      let from
+      if (range==='today'){
+        const s = new Date(now); s.setHours(0,0,0,0); from = s
+      } else if (range==='last30'){
+        const s = new Date(now); s.setDate(now.getDate()-29); s.setHours(0,0,0,0); from = s
+      } else { // last7
+        const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
+      }
+      return { from: from.toISOString(), to: end.toISOString() }
+    }catch{ return null }
+  }, [withRange, range])
   const totalCollected = React.useMemo(()=>{
     try{ return (rows||[]).reduce((sum,o)=> sum + (Number(o?.collectedAmount)||0), 0) }catch{ return 0 }
   }, [rows])
@@ -28,12 +61,19 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
     setLoading(true); setError('')
     try{
       const url = (()=>{
-        if (!withFilters || (!q.trim() && !ship.trim())) return endpoint
         const hasQ = endpoint.includes('?')
         const sp = new URLSearchParams()
-        if (q.trim()) sp.set('q', q.trim())
-        if (ship.trim()) sp.set('ship', ship.trim())
-        return endpoint + (hasQ ? '&' : '?') + sp.toString()
+        if (withFilters){
+          if (q.trim()) sp.set('q', q.trim())
+          if (ship.trim()) sp.set('ship', ship.trim())
+        }
+        if (withRange && rangeDates && rangeDates.from && rangeDates.to){
+          sp.set('fromDate', rangeDates.from)
+          sp.set('toDate', rangeDates.to)
+        }
+        const qs = sp.toString()
+        if (!qs) return endpoint
+        return endpoint + (hasQ ? '&' : '?') + qs
       })()
       const res = await apiGet(url)
       setRows(res.orders||[])
@@ -41,7 +81,7 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
     catch(e){ setRows([]); setError(e?.message||'Failed to load') }
     finally{ setLoading(false) }
   }
-  useEffect(()=>{ load() },[endpoint, q, ship, withFilters])
+  useEffect(()=>{ load() },[endpoint, q, ship, withFilters, withRange, rangeDates?.from, rangeDates?.to])
 
   function mapsUrl(o){
     const lat = o?.locationLat, lng = o?.locationLng
@@ -83,6 +123,11 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
       </div>
 
       <div className="card" style={{display:'grid'}}>
+        {withRange && (
+          <div className="section" style={{display:'grid', gap:8}}>
+            <DateRangeChips value={range} onChange={setRange} />
+          </div>
+        )}
         {withFilters && (
           <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:8}}>
             <input className="input" placeholder="Search invoice, product, customer, city" value={q} onChange={e=> setQ(e.target.value)} />

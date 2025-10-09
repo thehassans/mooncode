@@ -1050,6 +1050,7 @@ export default function SubmitOrder(){
         </form>
       </div>
 
+      {(!String(location.pathname||'').startsWith('/agent')) && (
       <div className="card" style={{marginTop:12}}>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
           <div style={{fontWeight:700}}>Recent Orders</div>
@@ -1156,6 +1157,7 @@ export default function SubmitOrder(){
           </table>
         </div>
       </div>
+      )}
     </div>
   )
 }
