@@ -91,6 +91,27 @@ export default function UserDashboard(){
   const [salesByCountry, setSalesByCountry] = useState({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 })
   const [orders, setOrders] = useState([])
   const [drivers, setDrivers] = useState([])
+  const [range, setRange] = useState('last7') // today | last7 | month
+
+  const rangeDates = useMemo(()=>{
+    try{
+      const now = new Date()
+      const end = new Date(now); end.setHours(23,59,59,999)
+      let from
+      if (range==='today'){
+        const s = new Date(now); s.setHours(0,0,0,0); from = s
+      } else if (range==='month'){
+        from = new Date(now.getFullYear(), now.getMonth(), 1)
+      } else { // last7
+        const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
+      }
+      return { from: from.toISOString(), to: end.toISOString() }
+    }catch{ return null }
+  }, [range])
+  const qsRangeBare = useMemo(()=>{
+    try{ return (rangeDates && rangeDates.from && rangeDates.to) ? `fromDate=${encodeURIComponent(rangeDates.from)}&toDate=${encodeURIComponent(rangeDates.to)}` : '' }catch{ return '' }
+  }, [rangeDates])
+  const appendRange = (url)=> qsRangeBare ? (url + (url.includes('?') ? '&' : '?') + qsRangeBare) : url
   const driverCountrySummary = useMemo(()=>{
     const canonical = (c)=> (c === 'Saudi Arabia' ? 'KSA' : String(c||''))
     const currencyByCountry = { KSA:'SAR', UAE:'AED', Oman:'OMR', Bahrain:'BHD', India:'INR', Kuwait:'KWD', Qatar:'QAR', Other:'AED' }
@@ -213,15 +234,18 @@ export default function UserDashboard(){
   }, [metrics])
   async function load(){
     try{ const cfg = await getCurrencyConfig(); setCurrencyCfg(cfg) }catch(_e){ setCurrencyCfg(null) }
-    try{ setAnalytics(await apiGet('/api/orders/analytics/last7days')) }catch(_e){ setAnalytics({ days: [], totals:{} }) }
-    try{ setMetrics(await apiGet('/api/reports/user-metrics')) }catch(_e){ console.error('Failed to fetch metrics') }
-    try{ setSalesByCountry(await apiGet('/api/reports/user-metrics/sales-by-country')) }catch(_e){ setSalesByCountry({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 }) }
-    try{ const res = await apiGet('/api/orders'); setOrders(Array.isArray(res?.orders) ? res.orders : []) }catch(_e){ setOrders([]) }
+    try{
+      const aUrl = (range==='last7') ? '/api/orders/analytics/last7days' : appendRange('/api/orders/analytics')
+      setAnalytics(await apiGet(aUrl))
+    }catch(_e){ setAnalytics({ days: [], totals:{} }) }
+    try{ setMetrics(await apiGet(appendRange('/api/reports/user-metrics'))) }catch(_e){ console.error('Failed to fetch metrics') }
+    try{ setSalesByCountry(await apiGet(appendRange('/api/reports/user-metrics/sales-by-country'))) }catch(_e){ setSalesByCountry({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 }) }
+    try{ const res = await apiGet(appendRange('/api/orders')); setOrders(Array.isArray(res?.orders) ? res.orders : []) }catch(_e){ setOrders([]) }
     try{
       // Fetch all pages of driver summaries to build accurate aggregates
       let page = 1, limit = 100, all = []
       for(;;){
-        const ds = await apiGet(`/api/finance/drivers/summary?page=${page}&limit=${limit}`)
+        const ds = await apiGet(appendRange(`/api/finance/drivers/summary?page=${page}&limit=${limit}`))
         const arr = Array.isArray(ds?.drivers) ? ds.drivers : []
         all = all.concat(arr)
         if (!ds?.hasMore) break
@@ -231,7 +255,7 @@ export default function UserDashboard(){
       setDrivers(all)
     }catch(_e){ setDrivers([]) }
   }
-  useEffect(()=>{ load() },[])
+  useEffect(()=>{ load() },[qsRangeBare])
   // Live updates via socket
   useEffect(()=>{
     let socket
@@ -275,6 +299,23 @@ export default function UserDashboard(){
           <div className="page-title gradient heading-purple">Dashboard</div>
           <div className="page-subtitle">Your business at a glance</div>
         </div>
+      </div>
+
+      {/* Date Range Picker */}
+      <div className="section" style={{display:'flex', gap:8, flexWrap:'wrap', marginBottom:8}}>
+        {[
+          {k:'today', label:'Today'},
+          {k:'last7', label:'Last 7 Days'},
+          {k:'month', label:'This Month'},
+        ].map(opt=>{
+          const active = range===opt.k
+          return (
+            <button key={opt.k} className={active? 'chip primary' : 'chip'} onClick={()=> setRange(opt.k)}
+              style={{cursor:'pointer', border:'1px solid var(--border)', background: active? 'var(--panel-2)' : 'var(--panel)'}}>
+              {opt.label}
+            </button>
+          )
+        })}
       </div>
 
       {/* Orders Summary (Counts & Amounts) */}

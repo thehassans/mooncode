@@ -9,14 +9,35 @@ export default function DriverDashboard(){
   const [assigned, setAssigned] = useState([])
   const [payout, setPayout] = useState({ currency:'', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
   const [loading, setLoading] = useState(false)
+  const [range, setRange] = useState('last7') // today | last7 | month
+
+  const rangeDates = React.useMemo(()=>{
+    try{
+      const now = new Date()
+      const end = new Date(now); end.setHours(23,59,59,999)
+      let from
+      if (range==='today'){
+        const s = new Date(now); s.setHours(0,0,0,0); from = s
+      } else if (range==='month'){
+        from = new Date(now.getFullYear(), now.getMonth(), 1)
+      } else { // last7
+        const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
+      }
+      return { from: from.toISOString(), to: end.toISOString() }
+    }catch{ return null }
+  }, [range])
+  const qsRangeBare = React.useMemo(()=>{
+    try{ return (rangeDates && rangeDates.from && rangeDates.to) ? `fromDate=${encodeURIComponent(rangeDates.from)}&toDate=${encodeURIComponent(rangeDates.to)}` : '' }catch{ return '' }
+  }, [rangeDates])
+  const appendRange = (url)=> qsRangeBare ? (url + (url.includes('?') ? '&' : '?') + qsRangeBare) : url
 
   async function loadData(){
     setLoading(true)
     try{
       const [a, m, s] = await Promise.all([
-        apiGet('/api/orders/driver/assigned'),
-        apiGet('/api/orders/driver/metrics'),
-        apiGet('/api/finance/remittances/summary').catch(()=>({}))
+        apiGet(appendRange('/api/orders/driver/assigned')),
+        apiGet(appendRange('/api/orders/driver/metrics')),
+        apiGet(appendRange('/api/finance/remittances/summary')).catch(()=>({}))
       ])
       if (m && typeof m.totalAssignedAllTime === 'number' && m.status){
         setMetrics({
@@ -52,7 +73,7 @@ export default function DriverDashboard(){
       setPayout({ currency:'', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
     }finally{ setLoading(false) }
   }
-  useEffect(()=>{ loadData() },[])
+  useEffect(()=>{ loadData() },[qsRangeBare])
 
   // Real-time: refresh counts on order events
   useEffect(()=>{
@@ -125,6 +146,23 @@ export default function DriverDashboard(){
           <div className="page-title gradient heading-blue">Driver Dashboard</div>
           <div className="page-subtitle">Overview of your delivery workload</div>
         </div>
+      </div>
+
+      {/* Date Range Picker */}
+      <div className="section" style={{display:'flex', gap:8, flexWrap:'wrap', marginBottom:8}}>
+        {[
+          {k:'today', label:'Today'},
+          {k:'last7', label:'Last 7 Days'},
+          {k:'month', label:'This Month'},
+        ].map(opt=>{
+          const active = range===opt.k
+          return (
+            <button key={opt.k} className={active? 'chip primary' : 'chip'} onClick={()=> setRange(opt.k)}
+              style={{cursor:'pointer', border:'1px solid var(--border)', background: active? 'var(--panel-2)' : 'var(--panel)'}}>
+              {opt.label}
+            </button>
+          )
+        })}
       </div>
 
       <div className="card" style={{padding:16}}>

@@ -22,6 +22,27 @@ export default function AgentDashboard(){
   const [currencyCfg, setCurrencyCfg] = useState(null) // normalized { anchor:'AED', perAED, enabled }
   const [walletAED, setWalletAED] = useState(0)
   const [walletPKR, setWalletPKR] = useState(0)
+  const [range, setRange] = useState('last7') // today | last7 | month
+
+  const rangeDates = useMemo(()=>{
+    try{
+      const now = new Date()
+      const end = new Date(now); end.setHours(23,59,59,999)
+      let from
+      if (range==='today'){
+        const s = new Date(now); s.setHours(0,0,0,0); from = s
+      } else if (range==='month'){
+        from = new Date(now.getFullYear(), now.getMonth(), 1)
+      } else { // last7
+        const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
+      }
+      return { from: from.toISOString(), to: end.toISOString() }
+    }catch{ return null }
+  }, [range])
+  const qsRangeBare = useMemo(()=>{
+    try{ return (rangeDates && rangeDates.from && rangeDates.to) ? `fromDate=${encodeURIComponent(rangeDates.from)}&toDate=${encodeURIComponent(rangeDates.to)}` : '' }catch{ return '' }
+  }, [rangeDates])
+  const appendRange = (url)=> qsRangeBare ? (url + (url.includes('?') ? '&' : '?') + qsRangeBare) : url
 
   // Load metrics for the signed-in agent
   async function load(){
@@ -30,7 +51,7 @@ export default function AgentDashboard(){
       const [meRes, chats, perf, cfg] = await Promise.all([
         apiGet('/api/users/me').catch(()=>({})),
         apiGet('/api/wa/chats').catch(()=>[]),
-        apiGet('/api/users/agents/me/performance').catch(()=>({})),
+        apiGet(appendRange('/api/users/agents/me/performance')).catch(()=>({})),
         getCurrencyConfig().catch(()=>null),
       ])
       // meRes.user available for id checks below
@@ -40,7 +61,7 @@ export default function AgentDashboard(){
       async function fetchAllOrders(){
         let page = 1, limit = 200, out = []
         for(;;){
-          const r = await apiGet(`/api/orders?page=${page}&limit=${limit}`).catch(()=>({ orders: [], hasMore:false }))
+          const r = await apiGet(appendRange(`/api/orders?page=${page}&limit=${limit}`)).catch(()=>({ orders: [], hasMore:false }))
           const list = Array.isArray(r?.orders) ? r.orders : []
           out = out.concat(list)
           if (!r?.hasMore) break
@@ -102,7 +123,7 @@ export default function AgentDashboard(){
     }finally{ setLoading(false) }
   }
 
-  useEffect(()=>{ load() },[])
+  useEffect(()=>{ load() },[qsRangeBare])
   // Removed recent orders infinite scroll and related fetches from dashboard
 
   // Fallback: periodic polling to keep data fresh even if socket misses an event
@@ -167,6 +188,23 @@ export default function AgentDashboard(){
           <div className="page-title gradient heading-green">Agent Dashboard</div>
           <div className="page-subtitle">Overview of your chats and orders you submitted</div>
         </div>
+      </div>
+
+      {/* Date Range Picker */}
+      <div className="section" style={{display:'flex', gap:8, flexWrap:'wrap', marginBottom:8}}>
+        {[
+          {k:'today', label:'Today'},
+          {k:'last7', label:'Last 7 Days'},
+          {k:'month', label:'This Month'},
+        ].map(opt=>{
+          const active = range===opt.k
+          return (
+            <button key={opt.k} className={active? 'chip primary' : 'chip'} onClick={()=> setRange(opt.k)}
+              style={{cursor:'pointer', border:'1px solid var(--border)', background: active? 'var(--panel-2)' : 'var(--panel)'}}>
+              {opt.label}
+            </button>
+          )
+        })}
       </div>
 
       {/* Top metrics (like driver tiles) */}

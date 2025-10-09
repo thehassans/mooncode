@@ -15,6 +15,30 @@ export default function ManagerDashboard(){
   const [currencyCfg, setCurrencyCfg] = useState(null)
   const [amountFallback, setAmountFallback] = useState({ totalAED:0, deliveredAED:0, pendingAED:0 })
   const [statusExact, setStatusExact] = useState({ total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0, byCountry:{} })
+  const [range, setRange] = useState('last7') // today | last7 | month
+
+  const rangeDates = useMemo(()=>{
+    try{
+      const now = new Date()
+      const end = new Date(now); end.setHours(23,59,59,999)
+      let from
+      if (range==='today'){
+        const s = new Date(now); s.setHours(0,0,0,0); from = s
+      } else if (range==='month'){
+        from = new Date(now.getFullYear(), now.getMonth(), 1)
+      } else { // last7 (including today)
+        const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
+      }
+      return { from: from.toISOString(), to: end.toISOString() }
+    }catch{ return null }
+  }, [range])
+  const qsRangeBare = useMemo(()=>{
+    try{ return (rangeDates && rangeDates.from && rangeDates.to) ? `fromDate=${encodeURIComponent(rangeDates.from)}&toDate=${encodeURIComponent(rangeDates.to)}` : '' }catch{ return '' }
+  }, [rangeDates])
+  const appendRange = (url)=>{
+    if (!qsRangeBare) return url
+    return url + (url.includes('?') ? '&' : '?') + qsRangeBare
+  }
 
   useEffect(()=>{
     function onResize(){ setIsMobile(window.innerWidth <= 768) }
@@ -172,16 +196,16 @@ export default function ManagerDashboard(){
   useEffect(()=>{
     // Load drivers summary once (manager-scoped backend)
     (async()=>{
-      try{ const ds = await apiGet('/api/finance/drivers/summary?page=1&limit=200'); setDrivers(Array.isArray(ds?.drivers)? ds.drivers: []) }catch{ setDrivers([]) }
+      try{ const ds = await apiGet(appendRange('/api/finance/drivers/summary?page=1&limit=200')); setDrivers(Array.isArray(ds?.drivers)? ds.drivers: []) }catch{ setDrivers([]) }
     })()
-  },[])
+  },[qsRangeBare])
 
   // Load manager metrics (assigned-country scoped by backend)
   useEffect(()=>{
     (async()=>{
-      try{ setMetrics(await apiGet('/api/reports/manager-metrics')) }catch{ setMetrics(null) }
+      try{ setMetrics(await apiGet(appendRange('/api/reports/manager-metrics'))) }catch{ setMetrics(null) }
     })()
-  },[])
+  },[qsRangeBare])
 
   // Load currency config for AED conversion
   useEffect(()=>{
@@ -211,7 +235,7 @@ export default function ManagerDashboard(){
           counts.byCountry[c] = { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 }
           let page=1, limit=200
           for(;;){
-            const r = await apiGet(`/api/orders?country=${qs}&page=${page}&limit=${limit}`).catch(()=>({orders:[], hasMore:false}))
+            const r = await apiGet(appendRange(`/api/orders?country=${qs}&page=${page}&limit=${limit}`)).catch(()=>({orders:[], hasMore:false}))
             const list = Array.isArray(r?.orders) ? r.orders : []
             for (const o of list){
               const amt = (()=>{
@@ -253,7 +277,7 @@ export default function ManagerDashboard(){
         setStatusExact({ total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0, byCountry:{} })
       }
     })()
-  }, [summary, COUNTRY_LIST.join('|'), currencyCfg])
+  }, [summary, COUNTRY_LIST.join('|'), currencyCfg, qsRangeBare])
 
   useEffect(()=>{
     // Compute per-country counts via lightweight total queries
@@ -262,10 +286,10 @@ export default function ManagerDashboard(){
         const rows = {}
         await Promise.all(assignedList.map(async (ctry)=>{
           const qs = encodeURIComponent(toParam(ctry))
-          const all = await apiGet(`/api/orders?country=${qs}&limit=1`)
-          const del = await apiGet(`/api/orders?country=${qs}&ship=delivered&limit=1`)
-          const can = await apiGet(`/api/orders?country=${qs}&ship=cancelled&limit=1`)
-          const pen = await apiGet(`/api/orders?country=${qs}&ship=pending&limit=1`)
+          const all = await apiGet(appendRange(`/api/orders?country=${qs}&limit=1`))
+          const del = await apiGet(appendRange(`/api/orders?country=${qs}&ship=delivered&limit=1`))
+          const can = await apiGet(appendRange(`/api/orders?country=${qs}&ship=cancelled&limit=1`))
+          const pen = await apiGet(appendRange(`/api/orders?country=${qs}&ship=pending&limit=1`))
           rows[ctry] = {
             orders: Number(all?.total||0),
             delivered: Number(del?.total||0),
@@ -276,7 +300,7 @@ export default function ManagerDashboard(){
         setSummary(rows)
       }catch{ setSummary({}) }
     })()
-  }, [assignedList.join('|')])
+  }, [assignedList.join('|'), qsRangeBare])
 
   // Exact status totals (per-country and overall) via orders API totals
   useEffect(()=>{
@@ -297,11 +321,11 @@ export default function ManagerDashboard(){
         await Promise.all((assignedList||[]).map(async (ctry)=>{
           const qs = encodeURIComponent(toParam(ctry))
           const by = { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 }
-          const all = await apiGet(`/api/orders?country=${qs}&limit=1`).catch(()=>({ total:0 }))
+          const all = await apiGet(appendRange(`/api/orders?country=${qs}&limit=1`)).catch(()=>({ total:0 }))
           by.total = Number(all?.total||0)
           acc.total += by.total
           await Promise.all(STATUS.map(async s=>{
-            const r = await apiGet(`/api/orders?country=${qs}&ship=${encodeURIComponent(s.ship)}&limit=1`).catch(()=>({ total:0 }))
+            const r = await apiGet(appendRange(`/api/orders?country=${qs}&ship=${encodeURIComponent(s.ship)}&limit=1`)).catch(()=>({ total:0 }))
             const v = Number(r?.total||0)
             by[s.key] = v
             acc[s.key] += v
@@ -313,7 +337,7 @@ export default function ManagerDashboard(){
         setStatusExact({ total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0, byCountry:{} })
       }
     })()
-  }, [assignedList.join('|')])
+  }, [assignedList.join('|'), qsRangeBare])
 
   return (
     <div className="section">
@@ -322,6 +346,23 @@ export default function ManagerDashboard(){
           <div className="page-title gradient heading-blue">Manager</div>
           <div className="page-subtitle">Dashboard overview for your assigned countries</div>
         </div>
+      </div>
+
+      {/* Date Range Picker */}
+      <div className="section" style={{display:'flex', gap:8, flexWrap:'wrap', marginBottom:8}}>
+        {[
+          {k:'today', label:'Today'},
+          {k:'last7', label:'Last 7 Days'},
+          {k:'month', label:'This Month'},
+        ].map(opt=>{
+          const active = range===opt.k
+          return (
+            <button key={opt.k} className={active? 'chip primary' : 'chip'} onClick={()=> setRange(opt.k)}
+              style={{cursor:'pointer', border:'1px solid var(--border)', background: active? 'var(--panel-2)' : 'var(--panel)'}}>
+              {opt.label}
+            </button>
+          )
+        })}
       </div>
 
       <div className="grid" style={{gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap:tileGap, alignItems:'start'}}>
