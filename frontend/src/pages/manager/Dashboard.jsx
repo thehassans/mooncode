@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { apiGet } from '../../api'
 import { getCurrencyConfig, toAEDByCode, fromAED } from '../../util/currency'
+import DateRangeChips from '../../ui/DateRangeChips.jsx'
 
 export default function ManagerDashboard(){
   const [isMobile, setIsMobile] = useState(()=> (typeof window!=='undefined' ? window.innerWidth <= 768 : false))
@@ -404,20 +405,8 @@ export default function ManagerDashboard(){
       </div>
 
       {/* Date Range Picker */}
-      <div className="section" style={{display:'flex', gap:8, flexWrap:'wrap', marginBottom:8}}>
-        {[
-          {k:'today', label:'Today'},
-          {k:'last7', label:'Last 7 Days'},
-          {k:'last30', label:'Last 30 Days'},
-        ].map(opt=>{
-          const active = range===opt.k
-          return (
-            <button key={opt.k} className={active? 'chip primary' : 'chip'} onClick={()=> setRange(opt.k)}
-              style={{cursor:'pointer', border:'1px solid var(--border)', background: active? 'var(--panel-2)' : 'var(--panel)'}}>
-              {opt.label}
-            </button>
-          )
-        })}
+      <div className="section" style={{marginBottom:8}}>
+        <DateRangeChips value={range} onChange={setRange} />
       </div>
 
       <div className="grid" style={{gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap:tileGap, alignItems:'start'}}>

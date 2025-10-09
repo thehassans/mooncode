@@ -4,6 +4,7 @@ import { API_BASE, apiGet } from '../../api.js'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
 import { getCurrencyConfig, toAEDByCode } from '../../util/currency'
+import DateRangeChips from '../../ui/DateRangeChips.jsx'
 
 const OrderStatusPie = ({ statusTotals }) => {
   const st = statusTotals || { pending:0, picked_up:0, delivered:0, cancelled:0 }
@@ -246,10 +247,12 @@ export default function UserDashboard(){
   }, [metrics, orders, qsRangeBare])
   async function load(){
     try{ const cfg = await getCurrencyConfig(); setCurrencyCfg(cfg) }catch(_e){ setCurrencyCfg(null) }
-    try{
-      const aUrl = (range==='last7') ? '/api/orders/analytics/last7days' : appendRange('/api/orders/analytics')
-      setAnalytics(await apiGet(aUrl))
-    }catch(_e){ setAnalytics({ days: [], totals:{} }) }
+    if (range==='last7'){
+      try{ setAnalytics(await apiGet('/api/orders/analytics/last7days')) }catch(_e){ setAnalytics({ days: [], totals:{} }) }
+    } else {
+      // Backend doesn't support generic analytics with from/to; skip to avoid 404
+      setAnalytics({ days: [], totals:{} })
+    }
     try{ setMetrics(await apiGet(appendRange('/api/reports/user-metrics'))) }catch(_e){ console.error('Failed to fetch metrics') }
     try{ setSalesByCountry(await apiGet(appendRange('/api/reports/user-metrics/sales-by-country'))) }catch(_e){ setSalesByCountry({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 }) }
     try{
@@ -330,20 +333,8 @@ export default function UserDashboard(){
       </div>
 
       {/* Date Range Picker */}
-      <div className="section" style={{display:'flex', gap:8, flexWrap:'wrap', marginBottom:8}}>
-        {[
-          {k:'today', label:'Today'},
-          {k:'last7', label:'Last 7 Days'},
-          {k:'last30', label:'Last 30 Days'},
-        ].map(opt=>{
-          const active = range===opt.k
-          return (
-            <button key={opt.k} className={active? 'chip primary' : 'chip'} onClick={()=> setRange(opt.k)}
-              style={{cursor:'pointer', border:'1px solid var(--border)', background: active? 'var(--panel-2)' : 'var(--panel)'}}>
-              {opt.label}
-            </button>
-          )
-        })}
+      <div className="section" style={{marginBottom:8}}>
+        <DateRangeChips value={range} onChange={setRange} />
       </div>
 
       {/* Orders Summary (Counts & Amounts) */}

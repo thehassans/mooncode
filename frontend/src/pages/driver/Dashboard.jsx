@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { API_BASE, apiGet, apiPost } from '../../api'
 import { io } from 'socket.io-client'
 import { useNavigate } from 'react-router-dom'
+import DateRangeChips from '../../ui/DateRangeChips.jsx'
 
 export default function DriverDashboard(){
   const nav = useNavigate()
@@ -157,20 +158,8 @@ export default function DriverDashboard(){
       </div>
 
       {/* Date Range Picker */}
-      <div className="section" style={{display:'flex', gap:8, flexWrap:'wrap', marginBottom:8}}>
-        {[
-          {k:'today', label:'Today'},
-          {k:'last7', label:'Last 7 Days'},
-          {k:'last30', label:'Last 30 Days'},
-        ].map(opt=>{
-          const active = range===opt.k
-          return (
-            <button key={opt.k} className={active? 'chip primary' : 'chip'} onClick={()=> setRange(opt.k)}
-              style={{cursor:'pointer', border:'1px solid var(--border)', background: active? 'var(--panel-2)' : 'var(--panel)'}}>
-              {opt.label}
-            </button>
-          )
-        })}
+      <div className="section" style={{marginBottom:8}}>
+        <DateRangeChips value={range} onChange={setRange} />
       </div>
 
       <div className="card" style={{padding:16}}>
