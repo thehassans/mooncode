@@ -81,21 +81,25 @@ export default function OrderStatusTrack({ order, compact=false }){
           const col = colorOf(idx, k)
           const bg = idx <= currentIdx ? (finalKey==='delivered' || idx<steps.length-1 ? 'rgba(37,99,235,0.12)' : 'rgba(239,68,68,0.12)') : 'transparent'
           return (
-            <div key={k} style={{display:'flex', alignItems:'center', gap:8}}>
-              <div title={labelOf(k)} style={{width:28, height:28, borderRadius:999, border:`2px solid ${col}`, background:bg, display:'grid', placeItems:'center'}}>
+            <React.Fragment key={k}>
+              <div title={labelOf(k)} style={{width:28, height:28, borderRadius:999, border:`2px solid ${col}`, background:bg, display:'grid', placeItems:'center', flex:'0 0 auto'}}>
                 <Icon k={k} color={col} />
               </div>
               {idx < steps.length-1 && (
-                <div style={{height:2, width: compact? 36 : 60, background: idx < currentIdx ? '#93c5fd' : '#e5e7eb'}} aria-hidden />
+                <div style={{height:2, flex:'1 1 0%', background: idx < currentIdx ? '#93c5fd' : '#e5e7eb'}} aria-hidden />
               )}
-            </div>
+            </React.Fragment>
           )
         })}
       </div>
-      {!compact && (
+      {compact ? (
+        <div style={{textAlign:'center', fontSize:12, color: (raw==='delivered'? '#065f46' : (['cancelled','returned','no_response'].includes(raw)? '#991b1b' : '#1d4ed8')), fontWeight:700}}>
+          {labelOf(raw)}
+        </div>
+      ) : (
         <div style={{display:'grid', gridTemplateColumns:`repeat(${steps.length}, minmax(0,1fr))`, gap:8}}>
-          {steps.map((k)=> (
-            <div key={k} style={{textAlign:'center', fontSize:12, color:'#6b7280'}}>{labelOf(k)}</div>
+          {steps.map((k, idx)=> (
+            <div key={k} style={{textAlign:'center', fontSize:12, color: idx===currentIdx ? '#111827' : '#6b7280', fontWeight: idx===currentIdx ? 700 : 500}}>{labelOf(k)}</div>
           ))}
         </div>
       )}
