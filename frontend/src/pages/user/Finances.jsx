@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { API_BASE, apiGet, apiPost } from '../../api'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 export default function UserFinances() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [metrics, setMetrics] = useState([]) // { id, name, assigned, done, avgResponseSeconds }
   const [comm, setComm] = useState([]) // { id, payoutProfile, deliveredCommissionPKR, upcomingCommissionPKR, withdrawnPKR, pendingPKR }
@@ -16,6 +17,7 @@ export default function UserFinances() {
   const [showAgent, setShowAgent] = useState(false) // initially closed
   const [showDriver, setShowDriver] = useState(false)
   const [showCompany, setShowCompany] = useState(false)
+  const [active, setActive] = useState('agent') // agent | driver | company
   // Driver finances (paged with infinite scroll)
   const [driverDeliveries, setDriverDeliveries] = useState([])
   const [driverPage, setDriverPage] = useState(1)
@@ -83,11 +85,22 @@ export default function UserFinances() {
     try{
       const sp = new URLSearchParams(location.search||'')
       const sec = String(sp.get('section')||'').toLowerCase()
-      if (sec === 'agent') { setShowAgent(true); setShowDriver(false); setShowCompany(false) }
-      else if (sec === 'driver') { setShowDriver(true); setShowAgent(false); setShowCompany(false) }
-      else if (sec === 'company') { setShowCompany(true); setShowAgent(false); setShowDriver(false) }
+      if (sec === 'driver') { setActive('driver'); setShowDriver(true) }
+      else if (sec === 'company') { setActive('company'); setShowCompany(true) }
+      else { setActive('agent'); setShowAgent(true) }
     }catch{}
   }, [location.search])
+
+  function setActiveSection(next){
+    try{
+      setActive(next)
+      const sp = new URLSearchParams(location.search||'')
+      sp.set('section', next)
+      navigate({ pathname: location.pathname || '/user/finances', search: `?${sp.toString()}` }, { replace:true })
+      if (next==='driver') setShowDriver(true)
+      if (next==='company') setShowCompany(true)
+    }catch{}
+  }
 
   // Load company payout profile lazily when section is opened first time
   useEffect(() => {
@@ -317,14 +330,31 @@ export default function UserFinances() {
         <div className="helper">Review agent, driver, and company finance details and requests.</div>
       </div>
 
-      {/* Agent Section Toggle */}
-      <div className="card" style={{ display: 'grid', gap: 10 }}>
-        <div className="card-header" style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div className="card-title">Agent Finances</div>
-          <button className="btn secondary" onClick={() => setShowAgent(v => !v)}>{showAgent ? 'Hide' : 'Show'}</button>
+      {/* Horizontal options */}
+      <div className="card" style={{ position:'sticky', top:0, zIndex:5, backdropFilter:'blur(6px)' }}>
+        <div className="section" style={{ display:'flex', gap:8, overflowX:'auto' }}>
+          <button
+            className="chip"
+            onClick={()=> setActiveSection('agent')}
+            style={{ border:'1px solid var(--border)', background: active==='agent' ? 'var(--panel-2)' : 'var(--panel)', fontWeight: active==='agent'? 800:600 }}
+            aria-pressed={active==='agent'}
+          >Agent</button>
+          <button
+            className="chip"
+            onClick={()=> setActiveSection('driver')}
+            style={{ border:'1px solid var(--border)', background: active==='driver' ? 'var(--panel-2)' : 'var(--panel)', fontWeight: active==='driver'? 800:600 }}
+            aria-pressed={active==='driver'}
+          >Driver</button>
+          <button
+            className="chip"
+            onClick={()=> setActiveSection('company')}
+            style={{ border:'1px solid var(--border)', background: active==='company' ? 'var(--panel-2)' : 'var(--panel)', fontWeight: active==='company'? 800:600 }}
+            aria-pressed={active==='company'}
+          >Company</button>
         </div>
       </div>
-      {showAgent && (
+
+      {active==='agent' && (
         <>
       {/* Agent Metrics */}
       <div className="card" style={{ display: 'grid', gap: 10 }}>
@@ -335,7 +365,7 @@ export default function UserFinances() {
           {joined.length === 0 ? (
             <div className="empty-state">No agents</div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+            <table style={{ width: '100%', minWidth: 980, borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
                 <tr>
                   <th style={{ textAlign: 'left', padding: '8px 10px' }}>Agent</th>
@@ -447,7 +477,7 @@ export default function UserFinances() {
           {requests.length === 0 ? (
             <div className="empty-state">No agent requests</div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+            <table style={{ width: '100%', minWidth: 900, borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
                 <tr>
                   <th style={{ textAlign: 'left', padding: '8px 10px' }}>Date</th>
@@ -565,14 +595,7 @@ export default function UserFinances() {
       </>
       )}
 
-      {/* Driver Section Toggle */}
-      <div className="card" style={{ display:'grid', gap:10 }}>
-        <div className="card-header" style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div className="card-title">Driver Finances</div>
-          <button className="btn secondary" onClick={() => setShowDriver(v => !v)}>{showDriver ? 'Hide' : 'Show'}</button>
-        </div>
-      </div>
-      {showDriver && (
+      {active==='driver' && (
         <>
           {/* Driver Deliveries */}
           <div className="card" style={{ display:'grid', gap:10 }}>
@@ -584,7 +607,7 @@ export default function UserFinances() {
               {driverDeliveries.length === 0 ? (
                 <div className="empty-state">No driver data</div>
               ) : (
-                <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:0 }}>
+                <table style={{ width:'100%', minWidth: 980, borderCollapse:'separate', borderSpacing:0 }}>
                   <thead>
                     <tr>
                       <th style={{textAlign:'left', padding:'8px 10px'}}>Driver</th>
@@ -656,14 +679,7 @@ export default function UserFinances() {
         </>
       )}
 
-      {/* Company Section Toggle */}
-      <div className="card" style={{ display:'grid', gap:10 }}>
-        <div className="card-header" style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div className="card-title">Company Details</div>
-          <button className="btn secondary" onClick={() => setShowCompany(v => !v)}>{showCompany ? 'Hide' : 'Show'}</button>
-        </div>
-      </div>
-      {showCompany && (
+      {active==='company' && (
         <div className="card" style={{ display:'grid', gap:10 }}>
           <div className="card-header">
             <div className="card-title">Payout / Bank Details</div>
