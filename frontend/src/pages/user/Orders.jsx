@@ -153,28 +153,9 @@ export default function UserOrders(){
           list = list.filter(o => normalizeShip(o?.shipmentStatus ?? o?.status) === ship)
         }
       }
-      // Apply date range from URL only for non-open filters
-      if (rangeFromUrl && rangeFromUrl.from && rangeFromUrl.to){
-        const fromTs = new Date(rangeFromUrl.from).getTime()
-        const toTs = new Date(rangeFromUrl.to).getTime()
-        if (ship && ship==='delivered'){
-          list = list.filter(o=>{
-            const dAt = o?.deliveredAt ? new Date(o.deliveredAt).getTime() : null
-            return (dAt!=null && dAt>=fromTs && dAt<=toTs)
-          })
-        } else if (!ship || !OPEN_STATUSES.includes(ship)){
-          list = list.filter(o=>{
-            const dAt = o?.deliveredAt ? new Date(o.deliveredAt).getTime() : null
-            const cAt = o?.createdAt ? new Date(o.createdAt).getTime() : null
-            if (dAt!=null) return dAt>=fromTs && dAt<=toTs
-            if (cAt!=null) return cAt>=fromTs && cAt<=toTs
-            return false
-          })
-        }
-      }
       return list
     }catch{ return Array.isArray(orders)? orders: [] }
-  }, [orders, country, shipFilter, rangeFromUrl?.from, rangeFromUrl?.to])
+  }, [orders, country, shipFilter])
   async function loadOptions(selectedCountry=''){
     try{
       const qs = selectedCountry ? `?country=${encodeURIComponent(selectedCountry)}` : ''
@@ -215,17 +196,6 @@ export default function UserOrders(){
     if (driverFilter.trim()) params.set('driver', driverFilter.trim())
     return params
   }, [query, country, city, onlyUnassigned, statusFilter, shipFilter, paymentFilter, collectedOnly, agentFilter, driverFilter])
-
-  // Read range params from URL (from Dashboard deep links)
-  const rangeFromUrl = useMemo(()=>{
-    try{
-      const sp = new URLSearchParams(location.search||'')
-      const f = sp.get('fromDate')
-      const t = sp.get('toDate')
-      if (!f || !t) return null
-      return { from: f, to: t }
-    }catch{ return null }
-  }, [location.search])
 
   async function loadOrders(reset=false){
     if (loadingMoreRef.current) return
