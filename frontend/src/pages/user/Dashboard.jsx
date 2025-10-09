@@ -91,7 +91,7 @@ export default function UserDashboard(){
   const [salesByCountry, setSalesByCountry] = useState({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 })
   const [orders, setOrders] = useState([])
   const [drivers, setDrivers] = useState([])
-  const [range, setRange] = useState('last7') // today | last7 | month
+  const [range, setRange] = useState('last7') // today | last7 | last30
 
   const rangeDates = useMemo(()=>{
     try{
@@ -100,8 +100,8 @@ export default function UserDashboard(){
       let from
       if (range==='today'){
         const s = new Date(now); s.setHours(0,0,0,0); from = s
-      } else if (range==='month'){
-        from = new Date(now.getFullYear(), now.getMonth(), 1)
+      } else if (range==='last30'){
+        const s = new Date(now); s.setDate(now.getDate()-29); s.setHours(0,0,0,0); from = s
       } else { // last7
         const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
       }
@@ -215,8 +215,20 @@ export default function UserDashboard(){
     return init
   }, [drivers, COUNTRY_LIST])
   const statusTotals = useMemo(()=>{
+    // If a date range is active, derive totals from the fetched orders (already range-filtered server-side when supported)
+    if (qsRangeBare) {
+      const list = Array.isArray(orders)? orders: []
+      return list.reduce((acc,o)=>{
+        const s = String(o?.shipmentStatus||'').toLowerCase()
+        acc.total += 1
+        const map = ['pending','assigned','picked_up','in_transit','out_for_delivery','delivered','no_response','returned','cancelled']
+        if (map.includes(s)) acc[s] += 1
+        else acc.pending += 1
+        return acc
+      }, { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 })
+    }
+    // Else use backend metrics or per-country fallback
     if (metrics && metrics.statusTotals) return metrics.statusTotals
-    // Fallback: aggregate from countries if backend older
     return COUNTRY_LIST.reduce((acc, c)=>{
       const m = countryMetrics(c)
       acc.total += Number(m.orders||0)
@@ -231,7 +243,7 @@ export default function UserDashboard(){
       acc.cancelled += Number(m.cancelled||0)
       return acc
     }, { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 })
-  }, [metrics])
+  }, [metrics, orders, qsRangeBare])
   async function load(){
     try{ const cfg = await getCurrencyConfig(); setCurrencyCfg(cfg) }catch(_e){ setCurrencyCfg(null) }
     try{
@@ -240,7 +252,23 @@ export default function UserDashboard(){
     }catch(_e){ setAnalytics({ days: [], totals:{} }) }
     try{ setMetrics(await apiGet(appendRange('/api/reports/user-metrics'))) }catch(_e){ console.error('Failed to fetch metrics') }
     try{ setSalesByCountry(await apiGet(appendRange('/api/reports/user-metrics/sales-by-country'))) }catch(_e){ setSalesByCountry({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 }) }
-    try{ const res = await apiGet(appendRange('/api/orders')); setOrders(Array.isArray(res?.orders) ? res.orders : []) }catch(_e){ setOrders([]) }
+    try{
+      if (qsRangeBare){
+        let page = 1, limit = 200, all = []
+        for(;;){
+          const r = await apiGet(appendRange(`/api/orders?page=${page}&limit=${limit}`))
+          const list = Array.isArray(r?.orders) ? r.orders : []
+          all = all.concat(list)
+          if (!r?.hasMore) break
+          page += 1
+          if (page > 100) break
+        }
+        setOrders(all)
+      } else {
+        const res = await apiGet('/api/orders')
+        setOrders(Array.isArray(res?.orders) ? res.orders : [])
+      }
+    }catch(_e){ setOrders([]) }
     try{
       // Fetch all pages of driver summaries to build accurate aggregates
       let page = 1, limit = 100, all = []
@@ -306,7 +334,7 @@ export default function UserDashboard(){
         {[
           {k:'today', label:'Today'},
           {k:'last7', label:'Last 7 Days'},
-          {k:'month', label:'This Month'},
+          {k:'last30', label:'Last 30 Days'},
         ].map(opt=>{
           const active = range===opt.k
           return (

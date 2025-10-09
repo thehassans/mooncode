@@ -15,7 +15,7 @@ export default function ManagerDashboard(){
   const [currencyCfg, setCurrencyCfg] = useState(null)
   const [amountFallback, setAmountFallback] = useState({ totalAED:0, deliveredAED:0, pendingAED:0 })
   const [statusExact, setStatusExact] = useState({ total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0, byCountry:{} })
-  const [range, setRange] = useState('last7') // today | last7 | month
+  const [range, setRange] = useState('last7') // today | last7 | last30
 
   const rangeDates = useMemo(()=>{
     try{
@@ -24,8 +24,8 @@ export default function ManagerDashboard(){
       let from
       if (range==='today'){
         const s = new Date(now); s.setHours(0,0,0,0); from = s
-      } else if (range==='month'){
-        from = new Date(now.getFullYear(), now.getMonth(), 1)
+      } else if (range==='last30'){
+        const s = new Date(now); s.setDate(now.getDate()-29); s.setHours(0,0,0,0); from = s
       } else { // last7 (including today)
         const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
       }
@@ -238,6 +238,14 @@ export default function ManagerDashboard(){
             const r = await apiGet(appendRange(`/api/orders?country=${qs}&page=${page}&limit=${limit}`)).catch(()=>({orders:[], hasMore:false}))
             const list = Array.isArray(r?.orders) ? r.orders : []
             for (const o of list){
+              // Local date filter when range is active (use createdAt as canonical)
+              if (qsRangeBare && rangeDates){
+                try{
+                  const t = new Date(o?.createdAt || o?.updatedAt || o?.deliveredAt).getTime()
+                  const fromTs = new Date(rangeDates.from).getTime(), toTs = new Date(rangeDates.to).getTime()
+                  if (!(t>=fromTs && t<=toTs)) continue
+                }catch{}
+              }
               const amt = (()=>{
                 try{
                   if (o && o.total != null) return Number(o.total||0)
@@ -286,15 +294,41 @@ export default function ManagerDashboard(){
         const rows = {}
         await Promise.all(assignedList.map(async (ctry)=>{
           const qs = encodeURIComponent(toParam(ctry))
-          const all = await apiGet(appendRange(`/api/orders?country=${qs}&limit=1`))
-          const del = await apiGet(appendRange(`/api/orders?country=${qs}&ship=delivered&limit=1`))
-          const can = await apiGet(appendRange(`/api/orders?country=${qs}&ship=cancelled&limit=1`))
-          const pen = await apiGet(appendRange(`/api/orders?country=${qs}&ship=pending&limit=1`))
-          rows[ctry] = {
-            orders: Number(all?.total||0),
-            delivered: Number(del?.total||0),
-            cancelled: Number(can?.total||0),
-            pending: Number(pen?.total||0),
+          if (qsRangeBare){
+            // Page through orders and count locally for date-range accuracy
+            let page=1, limit=200
+            let orders=0, delivered=0, cancelled=0, pending=0
+            for(;;){
+              const r = await apiGet(appendRange(`/api/orders?country=${qs}&page=${page}&limit=${limit}`)).catch(()=>({orders:[], hasMore:false}))
+              const list = Array.isArray(r?.orders) ? r.orders : []
+              for (const o of list){
+                try{
+                  const t = new Date(o?.createdAt || o?.updatedAt || o?.deliveredAt).getTime()
+                  const f = new Date(rangeDates.from).getTime(), to = new Date(rangeDates.to).getTime()
+                  if (!(t>=f && t<=to)) continue
+                }catch{}
+                orders += 1
+                const s = String(o?.shipmentStatus||'').toLowerCase()
+                if (s==='delivered') delivered += 1
+                else if (s==='cancelled') cancelled += 1
+                else if (['pending','assigned','picked_up','in_transit','out_for_delivery','no_response','returned'].includes(s)) pending += 1
+              }
+              if (!r?.hasMore) break
+              page += 1
+              if (page > 100) break
+            }
+            rows[ctry] = { orders, delivered, cancelled, pending }
+          } else {
+            const all = await apiGet(`/api/orders?country=${qs}&limit=1`)
+            const del = await apiGet(`/api/orders?country=${qs}&ship=delivered&limit=1`)
+            const can = await apiGet(`/api/orders?country=${qs}&ship=cancelled&limit=1`)
+            const pen = await apiGet(`/api/orders?country=${qs}&ship=pending&limit=1`)
+            rows[ctry] = {
+              orders: Number(all?.total||0),
+              delivered: Number(del?.total||0),
+              cancelled: Number(can?.total||0),
+              pending: Number(pen?.total||0),
+            }
           }
         }))
         setSummary(rows)
@@ -306,30 +340,51 @@ export default function ManagerDashboard(){
   useEffect(()=>{
     (async()=>{
       try{
-        const STATUS = [
-          { key:'pending', ship:'pending' },
-          { key:'assigned', ship:'assigned' },
-          { key:'picked_up', ship:'picked_up' },
-          { key:'in_transit', ship:'in_transit' },
-          { key:'out_for_delivery', ship:'out_for_delivery' },
-          { key:'delivered', ship:'delivered' },
-          { key:'no_response', ship:'no_response' },
-          { key:'returned', ship:'returned' },
-          { key:'cancelled', ship:'cancelled' },
-        ]
         const acc = { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0, byCountry:{} }
         await Promise.all((assignedList||[]).map(async (ctry)=>{
           const qs = encodeURIComponent(toParam(ctry))
           const by = { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 }
-          const all = await apiGet(appendRange(`/api/orders?country=${qs}&limit=1`)).catch(()=>({ total:0 }))
-          by.total = Number(all?.total||0)
-          acc.total += by.total
-          await Promise.all(STATUS.map(async s=>{
-            const r = await apiGet(appendRange(`/api/orders?country=${qs}&ship=${encodeURIComponent(s.ship)}&limit=1`)).catch(()=>({ total:0 }))
-            const v = Number(r?.total||0)
-            by[s.key] = v
-            acc[s.key] += v
-          }))
+          if (qsRangeBare){
+            let page=1, limit=200
+            for(;;){
+              const r = await apiGet(appendRange(`/api/orders?country=${qs}&page=${page}&limit=${limit}`)).catch(()=>({orders:[], hasMore:false}))
+              const list = Array.isArray(r?.orders) ? r.orders : []
+              for (const o of list){
+                try{
+                  const t = new Date(o?.createdAt || o?.updatedAt || o?.deliveredAt).getTime()
+                  const f = new Date(rangeDates.from).getTime(), to = new Date(rangeDates.to).getTime()
+                  if (!(t>=f && t<=to)) continue
+                }catch{}
+                by.total += 1
+                const s = String(o?.shipmentStatus||'').toLowerCase()
+                const key = (s==='shipped' ? 'in_transit' : s)
+                if (by[key] != null) by[key] += 1; else by.pending += 1
+              }
+              if (!r?.hasMore) break
+              page += 1
+              if (page > 100) break
+            }
+          } else {
+            const STATUS = [
+              { key:'pending', ship:'pending' },
+              { key:'assigned', ship:'assigned' },
+              { key:'picked_up', ship:'picked_up' },
+              { key:'in_transit', ship:'in_transit' },
+              { key:'out_for_delivery', ship:'out_for_delivery' },
+              { key:'delivered', ship:'delivered' },
+              { key:'no_response', ship:'no_response' },
+              { key:'returned', ship:'returned' },
+              { key:'cancelled', ship:'cancelled' },
+            ]
+            const all = await apiGet(`/api/orders?country=${qs}&limit=1`).catch(()=>({ total:0 }))
+            by.total = Number(all?.total||0)
+            await Promise.all(STATUS.map(async s=>{
+              const r = await apiGet(`/api/orders?country=${qs}&ship=${encodeURIComponent(s.ship)}&limit=1`).catch(()=>({ total:0 }))
+              const v = Number(r?.total||0)
+              by[s.key] = v
+            }))
+          }
+          Object.keys(by).forEach(k=>{ if (k!=='byCountry') acc[k] += Number(by[k]||0) })
           acc.byCountry[ctry] = by
         }))
         setStatusExact(acc)
@@ -353,7 +408,7 @@ export default function ManagerDashboard(){
         {[
           {k:'today', label:'Today'},
           {k:'last7', label:'Last 7 Days'},
-          {k:'month', label:'This Month'},
+          {k:'last30', label:'Last 30 Days'},
         ].map(opt=>{
           const active = range===opt.k
           return (

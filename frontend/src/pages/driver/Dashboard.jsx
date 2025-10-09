@@ -10,7 +10,7 @@ export default function DriverDashboard(){
   const [payout, setPayout] = useState({ currency:'', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
   const [loading, setLoading] = useState(false)
   const [user, setUser] = useState(null)
-  const [range, setRange] = useState('last7') // today | last7 | month
+  const [range, setRange] = useState('last7') // today | last7 | last30
 
   const rangeDates = React.useMemo(()=>{
     try{
@@ -19,8 +19,8 @@ export default function DriverDashboard(){
       let from
       if (range==='today'){
         const s = new Date(now); s.setHours(0,0,0,0); from = s
-      } else if (range==='month'){
-        from = new Date(now.getFullYear(), now.getMonth(), 1)
+      } else if (range==='last30'){
+        const s = new Date(now); s.setDate(now.getDate()-29); s.setHours(0,0,0,0); from = s
       } else { // last7
         const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
       }
@@ -161,7 +161,7 @@ export default function DriverDashboard(){
         {[
           {k:'today', label:'Today'},
           {k:'last7', label:'Last 7 Days'},
-          {k:'month', label:'This Month'},
+          {k:'last30', label:'Last 30 Days'},
         ].map(opt=>{
           const active = range===opt.k
           return (
