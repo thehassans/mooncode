@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { NavLink } from 'react-router-dom'
 import Chart from '../../components/Chart.jsx'
 import { API_BASE, apiGet } from '../../api.js'
 import { io } from 'socket.io-client'
@@ -113,6 +114,23 @@ export default function UserDashboard(){
     try{ return (rangeDates && rangeDates.from && rangeDates.to) ? `fromDate=${encodeURIComponent(rangeDates.from)}&toDate=${encodeURIComponent(rangeDates.to)}` : '' }catch{ return '' }
   }, [rangeDates])
   const appendRange = (url)=> qsRangeBare ? (url + (url.includes('?') ? '&' : '?') + qsRangeBare) : url
+  // Union filter: include all open orders (any date) OR created in range OR delivered in range
+  const OPEN_STATUSES = useMemo(()=> ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response'], [])
+  const isOpenStatus = (s)=> OPEN_STATUSES.includes(String(s||'').toLowerCase())
+  const includeByRangeOrOpen = (o)=>{
+    try{
+      const s = String(o?.shipmentStatus||'').toLowerCase()
+      if (isOpenStatus(s)) return true
+      if (!rangeDates || !rangeDates.from || !rangeDates.to) return true
+      const fromTs = new Date(rangeDates.from).getTime()
+      const toTs = new Date(rangeDates.to).getTime()
+      const cAt = o?.createdAt ? new Date(o.createdAt).getTime() : null
+      const dAt = o?.deliveredAt ? new Date(o.deliveredAt).getTime() : null
+      const createdIn = (cAt!=null && cAt>=fromTs && cAt<=toTs)
+      const deliveredIn = (dAt!=null && dAt>=fromTs && dAt<=toTs)
+      return createdIn || deliveredIn
+    }catch{ return true }
+  }
   const driverCountrySummary = useMemo(()=>{
     const canonical = (c)=> (c === 'Saudi Arabia' ? 'KSA' : String(c||''))
     const currencyByCountry = { KSA:'SAR', UAE:'AED', Oman:'OMR', Bahrain:'BHD', India:'INR', Kuwait:'KWD', Qatar:'QAR', Other:'AED' }
@@ -257,16 +275,49 @@ export default function UserDashboard(){
     try{ setSalesByCountry(await apiGet(appendRange('/api/reports/user-metrics/sales-by-country'))) }catch(_e){ setSalesByCountry({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 }) }
     try{
       if (qsRangeBare){
-        let page = 1, limit = 200, all = []
+        // 1) Created in range
+        let page = 1, limit = 200, createdList = []
         for(;;){
           const r = await apiGet(appendRange(`/api/orders?page=${page}&limit=${limit}`))
           const list = Array.isArray(r?.orders) ? r.orders : []
-          all = all.concat(list)
+          createdList = createdList.concat(list)
           if (!r?.hasMore) break
           page += 1
           if (page > 100) break
         }
-        setOrders(all)
+        // 2) Open orders (any date): fetch per open status and union
+        const fetchOpenBy = async (ship)=>{
+          let p=1, lim=200, acc=[]
+          for(;;){
+            const r = await apiGet(`/api/orders?ship=${encodeURIComponent(ship)}&page=${p}&limit=${lim}`)
+            const list = Array.isArray(r?.orders) ? r.orders : []
+            acc = acc.concat(list)
+            if (!r?.hasMore) break
+            p += 1
+            if (p > 50) break
+          }
+          return acc
+        }
+        const openLists = await Promise.all(OPEN_STATUSES.map(s=> fetchOpenBy(s)))
+        let openAll = [].concat(...openLists)
+        // 3) Delivered in range: fetch delivered pages and locally filter deliveredAt within [from,to]
+        let dp=1, dlim=200, deliveredList=[]
+        for(;;){
+          const r = await apiGet(`/api/orders?ship=delivered&page=${dp}&limit=${dlim}`)
+          const list = Array.isArray(r?.orders) ? r.orders : []
+          deliveredList = deliveredList.concat(list)
+          if (!r?.hasMore) break
+          dp += 1
+          if (dp > 50) break
+        }
+        const deliveredInRange = deliveredList.filter(includeByRangeOrOpen)
+        // Union: open OR created-in-range OR delivered-in-range
+        const byId = new Map()
+        const addMany = (arr)=>{ for (const o of (arr||[])){ const id=String(o?._id||o?.id||''); if (!byId.has(id)) byId.set(id, o) } }
+        addMany(createdList)
+        addMany(openAll)
+        addMany(deliveredInRange)
+        setOrders(Array.from(byId.values()))
       } else {
         const res = await apiGet('/api/orders')
         setOrders(Array.isArray(res?.orders) ? res.orders : [])
@@ -380,12 +431,12 @@ export default function UserDashboard(){
                 <div className="helper">Totals only (amounts in AED)</div>
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile title="Total Orders" valueEl={<a className="link" style={{color:'#0ea5e9'}} href="/user/orders">{fmtNum(totalOrdersCount)}</a>} />
-                <Tile title="Amount of Total Orders (AED)" valueEl={<a className="link" style={{color:'#10b981'}} href="/user/orders">{`AED ${fmtAmt(amountTotalOrdersAED)}`}</a>} chipsEl={currencyChipsFor('amountTotalOrders')} />
-                <Tile title="Orders Delivered" valueEl={<a className="link" style={{color:'#10b981'}} href="/user/orders?ship=delivered">{fmtNum(deliveredCount)}</a>} />
-                <Tile title="Amount of Orders Delivered (AED)" valueEl={<a className="link" style={{color:'#10b981'}} href="/user/orders?ship=delivered">{`AED ${fmtAmt(amountDeliveredAED)}`}</a>} chipsEl={currencyChipsFor('amountDelivered')} />
-                <Tile title="Open Orders" valueEl={<a className="link" style={{color:'#f59e0b'}} href="/user/orders?ship=open">{fmtNum(pendingCount)}</a>} />
-                <Tile title="Open Amount (AED)" valueEl={<a className="link" style={{color:'#f97316'}} href="/user/orders?ship=open">{`AED ${fmtAmt(amountPendingAED)}`}</a>} chipsEl={currencyChipsFor('amountPending')} />
+                <Tile title="Total Orders" valueEl={<NavLink className="link" style={{color:'#0ea5e9'}} to={appendRange('/user/orders')}>{fmtNum(totalOrdersCount)}</NavLink>} />
+                <Tile title="Amount of Total Orders (AED)" valueEl={<NavLink className="link" style={{color:'#10b981'}} to={appendRange('/user/orders')}>{`AED ${fmtAmt(amountTotalOrdersAED)}`}</NavLink>} chipsEl={currencyChipsFor('amountTotalOrders')} />
+                <Tile title="Orders Delivered" valueEl={<NavLink className="link" style={{color:'#10b981'}} to={appendRange('/user/orders?ship=delivered')}>{fmtNum(deliveredCount)}</NavLink>} />
+                <Tile title="Amount of Orders Delivered (AED)" valueEl={<NavLink className="link" style={{color:'#10b981'}} to={appendRange('/user/orders?ship=delivered')}>{`AED ${fmtAmt(amountDeliveredAED)}`}</NavLink>} chipsEl={currencyChipsFor('amountDelivered')} />
+                <Tile title="Open Orders" valueEl={<NavLink className="link" style={{color:'#f59e0b'}} to={appendRange('/user/orders?ship=open')}>{fmtNum(pendingCount)}</NavLink>} />
+                <Tile title="Open Amount (AED)" valueEl={<NavLink className="link" style={{color:'#f97316'}} to={appendRange('/user/orders?ship=open')}>{`AED ${fmtAmt(amountPendingAED)}`}</NavLink>} chipsEl={currencyChipsFor('amountPending')} />
               </div>
             </div>
           )
@@ -403,7 +454,7 @@ export default function UserDashboard(){
             return (
               <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
                 <div className="helper">{title}</div>
-                <div style={{fontSize:24, fontWeight:900, color:color||'inherit'}}>{to ? (<a className="link" style={{color:color||'inherit'}} href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
+                <div style={{fontSize:24, fontWeight:900, color:color||'inherit'}}>{to ? (<NavLink className="link" style={{color:color||'inherit'}} to={appendRange(to)}>{fmtNum(value||0)}</NavLink>) : fmtNum(value||0)}</div>
               </div>
             )
           }
@@ -455,27 +506,27 @@ export default function UserDashboard(){
                 <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Total Orders</div>
-                    <div style={{fontWeight:900, fontSize:18}}><a className="link" style={{color:'#0ea5e9'}} href={`/user/orders?country=${qs}`}>{fmtNum(m?.orders||0)}</a></div>
+                    <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#0ea5e9'}} to={appendRange(`/user/orders?country=${qs}`)}>{fmtNum(m?.orders||0)}</NavLink></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Amount of Total Orders</div>
-                    <div style={{fontWeight:900, fontSize:18}}><a className="link" style={{color:'#10b981'}} href={`/user/orders?country=${qs}`}>{amtTotalStr}</a></div>
+                    <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#10b981'}} to={appendRange(`/user/orders?country=${qs}`)}>{amtTotalStr}</NavLink></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Delivered</div>
-                    <div style={{fontWeight:900, fontSize:18}}><a className="link" style={{color:'#10b981'}} href={`/user/orders?country=${qs}&ship=delivered`}>{fmtNum(m?.delivered||0)}</a></div>
+                    <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#10b981'}} to={appendRange(`/user/orders?country=${qs}&ship=delivered`)}>{fmtNum(m?.delivered||0)}</NavLink></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Amount of Delivered</div>
-                    <div style={{fontWeight:900, fontSize:18}}><a className="link" style={{color:'#10b981'}} href={`/user/orders?country=${qs}&ship=delivered`}>{amtDeliveredStr}</a></div>
+                    <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#10b981'}} to={appendRange(`/user/orders?country=${qs}&ship=delivered`)}>{amtDeliveredStr}</NavLink></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Open Orders</div>
-                    <div style={{fontWeight:900, fontSize:18}}><a className="link" style={{color:'#f59e0b'}} href={`/user/orders?country=${qs}&ship=open`}>{fmtNum(m?.pending||0)}</a></div>
+                    <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#f59e0b'}} to={appendRange(`/user/orders?country=${qs}&ship=open`)}>{fmtNum(m?.pending||0)}</NavLink></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Open Amount</div>
-                    <div style={{fontWeight:900, fontSize:18}}><a className="link" style={{color:'#f97316'}} href={`/user/orders?country=${qs}&ship=open`}>{amtPendingStr}</a></div>
+                    <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#f97316'}} to={appendRange(`/user/orders?country=${qs}&ship=open`)}>{amtPendingStr}</NavLink></div>
                   </div>
                 </div>
                 <div style={{marginTop:10}}>
@@ -483,35 +534,35 @@ export default function UserDashboard(){
                   <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:10}}>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Assigned</div>
-                      <div style={{fontWeight:900}}><a className="link" style={{color:'#3b82f6'}} href={`/user/orders?country=${qs}&ship=assigned`}>{fmtNum(m?.assigned||0)}</a></div>
+                      <div style={{fontWeight:900}}><NavLink className="link" style={{color:'#3b82f6'}} to={appendRange(`/user/orders?country=${qs}&ship=assigned`)}>{fmtNum(m?.assigned||0)}</NavLink></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Picked Up</div>
-                      <div style={{fontWeight:900}}><a className="link" style={{color:'#f59e0b'}} href={`/user/orders?country=${qs}&ship=picked_up`}>{fmtNum(m?.pickedUp||0)}</a></div>
+                      <div style={{fontWeight:900}}><NavLink className="link" style={{color:'#f59e0b'}} to={appendRange(`/user/orders?country=${qs}&ship=picked_up`)}>{fmtNum(m?.pickedUp||0)}</NavLink></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">In Transit</div>
-                      <div style={{fontWeight:900}}><a className="link" style={{color:'#0284c7'}} href={`/user/orders?country=${qs}&ship=in_transit`}>{fmtNum(m?.transit||0)}</a></div>
+                      <div style={{fontWeight:900}}><NavLink className="link" style={{color:'#0284c7'}} to={appendRange(`/user/orders?country=${qs}&ship=in_transit`)}>{fmtNum(m?.transit||0)}</NavLink></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Out for Delivery</div>
-                      <div style={{fontWeight:900}}><a className="link" style={{color:'#f97316'}} href={`/user/orders?country=${qs}&ship=out_for_delivery`}>{fmtNum(m?.outForDelivery||0)}</a></div>
+                      <div style={{fontWeight:900}}><NavLink className="link" style={{color:'#f97316'}} to={appendRange(`/user/orders?country=${qs}&ship=out_for_delivery`)}>{fmtNum(m?.outForDelivery||0)}</NavLink></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Delivered</div>
-                      <div style={{fontWeight:900}}><a className="link" style={{color:'#10b981'}} href={`/user/orders?country=${qs}&ship=delivered`}>{fmtNum(m?.delivered||0)}</a></div>
+                      <div style={{fontWeight:900}}><NavLink className="link" style={{color:'#10b981'}} to={appendRange(`/user/orders?country=${qs}&ship=delivered`)}>{fmtNum(m?.delivered||0)}</NavLink></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">No Response</div>
-                      <div style={{fontWeight:900}}><a className="link" style={{color:'#ef4444'}} href={`/user/orders?country=${qs}&ship=no_response`}>{fmtNum(m?.noResponse||0)}</a></div>
+                      <div style={{fontWeight:900}}><NavLink className="link" style={{color:'#ef4444'}} to={appendRange(`/user/orders?country=${qs}&ship=no_response`)}>{fmtNum(m?.noResponse||0)}</NavLink></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Returned</div>
-                      <div style={{fontWeight:900}}><a className="link" style={{color:'#737373'}} href={`/user/orders?country=${qs}&ship=returned`}>{fmtNum(m?.returned||0)}</a></div>
+                      <div style={{fontWeight:900}}><NavLink className="link" style={{color:'#737373'}} to={appendRange(`/user/orders?country=${qs}&ship=returned`)}>{fmtNum(m?.returned||0)}</NavLink></div>
                     </div>
                     <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                       <div className="helper">Cancelled</div>
-                      <div style={{fontWeight:900}}><a className="link" style={{color:'#b91c1c'}} href={`/user/orders?country=${qs}&ship=cancelled`}>{fmtNum(m?.cancelled||0)}</a></div>
+                      <div style={{fontWeight:900}}><NavLink className="link" style={{color:'#b91c1c'}} to={appendRange(`/user/orders?country=${qs}&ship=cancelled`)}>{fmtNum(m?.cancelled||0)}</NavLink></div>
                     </div>
                   </div>
                 </div>

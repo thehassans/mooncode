@@ -30,6 +30,23 @@ export default function ManagerDashboard(){
       } else { // last7 (including today)
         const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
       }
+  // Open statuses used across local filtering
+  const OPEN_STATUSES = useMemo(()=> ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response'], [])
+  const isOpenStatus = (s)=> OPEN_STATUSES.includes(String(s||'').toLowerCase())
+  const includeByRangeOrOpen = (o)=>{
+    try{
+      const s = String(o?.shipmentStatus||'').toLowerCase()
+      if (isOpenStatus(s)) return true
+      if (!rangeDates || !rangeDates.from || !rangeDates.to) return true
+      const fromTs = new Date(rangeDates.from).getTime()
+      const toTs = new Date(rangeDates.to).getTime()
+      const cAt = o?.createdAt ? new Date(o.createdAt).getTime() : null
+      const dAt = o?.deliveredAt ? new Date(o.deliveredAt).getTime() : null
+      const createdIn = (cAt!=null && cAt>=fromTs && cAt<=toTs)
+      const deliveredIn = (dAt!=null && dAt>=fromTs && dAt<=toTs)
+      return createdIn || deliveredIn
+    }catch{ return true }
+  }
       return { from: from.toISOString(), to: end.toISOString() }
     }catch{ return null }
   }, [range])
@@ -239,14 +256,8 @@ export default function ManagerDashboard(){
             const r = await apiGet(appendRange(`/api/orders?country=${qs}&page=${page}&limit=${limit}`)).catch(()=>({orders:[], hasMore:false}))
             const list = Array.isArray(r?.orders) ? r.orders : []
             for (const o of list){
-              // Local date filter when range is active (use createdAt as canonical)
-              if (qsRangeBare && rangeDates){
-                try{
-                  const t = new Date(o?.createdAt || o?.updatedAt || o?.deliveredAt).getTime()
-                  const fromTs = new Date(rangeDates.from).getTime(), toTs = new Date(rangeDates.to).getTime()
-                  if (!(t>=fromTs && t<=toTs)) continue
-                }catch{}
-              }
+              // Union: open OR created in range OR delivered in range
+              if (qsRangeBare && !includeByRangeOrOpen(o)) continue
               const amt = (()=>{
                 try{
                   if (o && o.total != null) return Number(o.total||0)
@@ -303,16 +314,12 @@ export default function ManagerDashboard(){
               const r = await apiGet(appendRange(`/api/orders?country=${qs}&page=${page}&limit=${limit}`)).catch(()=>({orders:[], hasMore:false}))
               const list = Array.isArray(r?.orders) ? r.orders : []
               for (const o of list){
-                try{
-                  const t = new Date(o?.createdAt || o?.updatedAt || o?.deliveredAt).getTime()
-                  const f = new Date(rangeDates.from).getTime(), to = new Date(rangeDates.to).getTime()
-                  if (!(t>=f && t<=to)) continue
-                }catch{}
+                if (qsRangeBare && !includeByRangeOrOpen(o)) continue
                 orders += 1
                 const s = String(o?.shipmentStatus||'').toLowerCase()
                 if (s==='delivered') delivered += 1
                 else if (s==='cancelled') cancelled += 1
-                else if (['pending','assigned','picked_up','in_transit','out_for_delivery','no_response','returned'].includes(s)) pending += 1
+                else if ([...OPEN_STATUSES,'returned'].includes(s)) pending += 1
               }
               if (!r?.hasMore) break
               page += 1
@@ -351,11 +358,7 @@ export default function ManagerDashboard(){
               const r = await apiGet(appendRange(`/api/orders?country=${qs}&page=${page}&limit=${limit}`)).catch(()=>({orders:[], hasMore:false}))
               const list = Array.isArray(r?.orders) ? r.orders : []
               for (const o of list){
-                try{
-                  const t = new Date(o?.createdAt || o?.updatedAt || o?.deliveredAt).getTime()
-                  const f = new Date(rangeDates.from).getTime(), to = new Date(rangeDates.to).getTime()
-                  if (!(t>=f && t<=to)) continue
-                }catch{}
+                if (qsRangeBare && !includeByRangeOrOpen(o)) continue
                 by.total += 1
                 const s = String(o?.shipmentStatus||'').toLowerCase()
                 const key = (s==='shipped' ? 'in_transit' : s)
@@ -508,10 +511,10 @@ export default function ManagerDashboard(){
                       const valNum = Number(t.val||0)
                       const displayVal = t.isAmount ? `${cur} ${fmtAmt(valNum)}` : fmtNum(valNum)
                       return (
-                        <a key={t.key} className="tile" href={t.to} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12, minHeight:100, textDecoration:'none', color:'inherit', cursor:'pointer'}}>
+                        <NavLink key={t.key} className="tile" to={appendRange(t.to)} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12, minHeight:100, textDecoration:'none', color:'inherit', cursor:'pointer'}}>
                           <div className="helper">{t.title}</div>
                           <div style={{fontSize:valueFontSize, fontWeight:800, color: STATUS_COLORS[t.key] || 'inherit'}}>{displayVal}</div>
-                        </a>
+                        </NavLink>
                       )
                     })}
                   </div>
@@ -547,7 +550,7 @@ export default function ManagerDashboard(){
             return (
               <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12, minHeight:100}}>
                 <div className="helper">{title}</div>
-                <div style={{fontSize:valueFontSize, fontWeight:800, color: color || 'inherit'}}>{to ? (<a className="link" href={to}>{fmtNum(value||0)}</a>) : fmtNum(value||0)}</div>
+                <div style={{fontSize:valueFontSize, fontWeight:800, color: color || 'inherit'}}>{to ? (<NavLink className="link" to={appendRange(to)}>{fmtNum(value||0)}</NavLink>) : fmtNum(value||0)}</div>
                 <Chips keyName={keyName} />
               </div>
             )
@@ -605,13 +608,13 @@ export default function ManagerDashboard(){
                 <td style={{fontWeight:800, color: COLORS.successDeep}}>{cur} {fmtAmt(d.deliveredToCompany||0)}</td>
                 <td style={{fontWeight:800, color: COLORS.warning}}>{cur} {fmtAmt(d.pendingToCompany||0)}</td>
                 <td>
-                  <a className="link" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=pending`}>Open</a>
+                  <NavLink className="link" to={appendRange(`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=pending`)}>Open</NavLink>
                   <span className="helper"> | </span>
-                  <a className="link" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}`}>All</a>
+                  <NavLink className="link" to={appendRange(`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}`)}>All</NavLink>
                   <span className="helper"> | </span>
-                  <a className="link" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=assigned`}>Assigned</a>
+                  <NavLink className="link" to={appendRange(`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=assigned`)}>Assigned</NavLink>
                   <span className="helper"> | </span>
-                  <a className="link" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=delivered`}>Delivered</a>
+                  <NavLink className="link" to={appendRange(`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=delivered`)}>Delivered</NavLink>
                 </td>
               </tr>
             )
@@ -651,10 +654,10 @@ export default function ManagerDashboard(){
                   </div>
                 </div>
                 <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-                  <a className="chip" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=pending`}>Open</a>
-                  <a className="chip" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}`}>All</a>
-                  <a className="chip" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=assigned`}>Assigned</a>
-                  <a className="chip" href={`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=delivered`}>Delivered</a>
+                  <NavLink className="chip" to={appendRange(`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=pending`)}>Open</NavLink>
+                  <NavLink className="chip" to={appendRange(`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}`)}>All</NavLink>
+                  <NavLink className="chip" to={appendRange(`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=assigned`)}>Assigned</NavLink>
+                  <NavLink className="chip" to={appendRange(`/manager/orders?country=${qsC}&driver=${encodeURIComponent(id)}&ship=delivered`)}>Delivered</NavLink>
                 </div>
               </div>
             )
@@ -723,52 +726,52 @@ export default function ManagerDashboard(){
                 <div key={ctry} className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'10px 12px', background:'var(--panel)', minWidth:280}}>
                   <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6}}>
                     <div style={{fontWeight:800}}>{label}</div>
-                    <a className="chip" style={{background:'transparent'}} href={`/manager/orders?country=${qs}`}>View</a>
+                    <NavLink className="chip" style={{background:'transparent'}} to={appendRange(`/manager/orders?country=${qs}`)}>View</NavLink>
                   </div>
                   <div style={{display:'grid', gap:6}}>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                       <div className="helper">Orders</div>
-                      <a className="link" href={`/manager/orders?country=${qs}`}>{sums.orders.toLocaleString()}</a>
+                      <NavLink className="link" to={appendRange(`/manager/orders?country=${qs}`)}>{sums.orders.toLocaleString()}</NavLink>
                     </div>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                       <div className="helper">Pending</div>
-                      <a className="link" href={`/manager/orders?country=${qs}&ship=pending`}>{fmtNum(cm.pending||0)}</a>
+                      <NavLink className="link" to={appendRange(`/manager/orders?country=${qs}&ship=pending`)}>{fmtNum(cm.pending||0)}</NavLink>
                     </div>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                       <div className="helper">Assigned</div>
-                      <a className="link" href={`/manager/orders?country=${qs}&ship=assigned`}>{fmtNum(cm.assigned||0)}</a>
+                      <NavLink className="link" to={appendRange(`/manager/orders?country=${qs}&ship=assigned`)}>{fmtNum(cm.assigned||0)}</NavLink>
                     </div>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                       <div className="helper">Picked Up</div>
-                      <a className="link" href={`/manager/orders?country=${qs}&ship=picked_up`}>{fmtNum(cm.pickedUp||0)}</a>
+                      <NavLink className="link" to={appendRange(`/manager/orders?country=${qs}&ship=picked_up`)}>{fmtNum(cm.pickedUp||0)}</NavLink>
                     </div>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                       <div className="helper">In Transit</div>
-                      <a className="link" href={`/manager/orders?country=${qs}&ship=in_transit`}>{fmtNum(cm.transit||0)}</a>
+                      <NavLink className="link" to={appendRange(`/manager/orders?country=${qs}&ship=in_transit`)}>{fmtNum(cm.transit||0)}</NavLink>
                     </div>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                       <div className="helper">Out for Delivery</div>
-                      <a className="link" href={`/manager/orders?country=${qs}&ship=out_for_delivery`}>{fmtNum(cm.outForDelivery||0)}</a>
+                      <NavLink className="link" to={appendRange(`/manager/orders?country=${qs}&ship=out_for_delivery`)}>{fmtNum(cm.outForDelivery||0)}</NavLink>
                     </div>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                       <div className="helper">Delivered</div>
-                      <a className="link" href={`/manager/orders?country=${qs}&ship=delivered`}>{sums.delivered.toLocaleString()}</a>
+                      <NavLink className="link" to={appendRange(`/manager/orders?country=${qs}&ship=delivered`)}>{sums.delivered.toLocaleString()}</NavLink>
                     </div>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                       <div className="helper">No Response</div>
-                      <a className="link" href={`/manager/orders?country=${qs}&ship=no_response`}>{fmtNum(cm.noResponse||0)}</a>
+                      <NavLink className="link" to={appendRange(`/manager/orders?country=${qs}&ship=no_response`)}>{fmtNum(cm.noResponse||0)}</NavLink>
                     </div>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                       <div className="helper">Returned</div>
-                      <a className="link" href={`/manager/orders?country=${qs}&ship=returned`}>{fmtNum(cm.returned||0)}</a>
+                      <NavLink className="link" to={appendRange(`/manager/orders?country=${qs}&ship=returned`)}>{fmtNum(cm.returned||0)}</NavLink>
                     </div>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                       <div className="helper">Cancelled</div>
-                      <a className="link" href={`/manager/orders?country=${qs}&ship=cancelled`}>{sums.cancelled.toLocaleString()}</a>
+                      <NavLink className="link" to={appendRange(`/manager/orders?country=${qs}&ship=cancelled`)}>{sums.cancelled.toLocaleString()}</NavLink>
                     </div>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                       <div className="helper">Collected</div>
-                      <a className="link" href={`/manager/orders?country=${qs}&ship=delivered&collected=true`}>{currency} {Math.round(m.collected||0).toLocaleString()}</a>
+                      <NavLink className="link" to={appendRange(`/manager/orders?country=${qs}&ship=delivered&collected=true`)}>{currency} {Math.round(m.collected||0).toLocaleString()}</NavLink>
                     </div>
                     <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                       <div className="helper">Delivered to Company</div>
