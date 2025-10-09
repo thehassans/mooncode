@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { API_BASE, apiGet, apiPatch } from '../../api.js'
+import { useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 
 export default function DriverMe() {
+  const navigate = useNavigate()
   const [me, setMe] = useState(() => {
     try { return JSON.parse(localStorage.getItem('me') || '{}') } catch { return {} }
   })
@@ -108,6 +110,9 @@ export default function DriverMe() {
       <div style={{ display: 'grid', gap: 6 }}>
         <div style={{ fontWeight: 800, fontSize: 20 }}>Driver Profile</div>
         <div className="helper">Your profile and delivery stats</div>
+      </div>
+      <div style={{display:'flex', justifyContent:'flex-end'}}>
+        <button className="btn light" onClick={() => { try{ localStorage.removeItem('token'); localStorage.removeItem('me') }catch{}; try{ navigate('/login', { replace:true }) }catch{} }}>Logout</button>
       </div>
 
       {/* Settlement Summary */}

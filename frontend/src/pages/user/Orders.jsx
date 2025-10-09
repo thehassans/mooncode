@@ -3,6 +3,7 @@ import { API_BASE, apiGet, apiPatch, apiGetBlob, apiPost } from '../../api.js'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
+import OrderProgress from '../../ui/OrderProgress.jsx'
 
 function StatusBadge({ status, kind='status' }){
   const s = String(status||'').toLowerCase()
@@ -496,6 +497,9 @@ export default function UserOrders(){
                           <button className="btn primary" onClick={()=> openEditPopout(o)}>✏️ Edit</button>
                           <button className="btn secondary" onClick={()=> window.open(`/label/${id}`, '_blank', 'noopener,noreferrer')}>Print Label</button>
                         </div>
+                      </div>
+                      <div className="section" style={{paddingTop:0}}>
+                        <OrderProgress status={o.shipmentStatus || o.status} />
                       </div>
                       <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
                         <div>
