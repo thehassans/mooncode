@@ -70,7 +70,7 @@ export default function AgentDashboard(){
   const qsRangeBare = useMemo(()=>{
     try{ return (rangeDates && rangeDates.from && rangeDates.to) ? `fromDate=${encodeURIComponent(rangeDates.from)}&toDate=${encodeURIComponent(rangeDates.to)}` : '' }catch{ return '' }
   }, [rangeDates])
-  const appendRange = (url)=> qsRangeBare ? (url + (url.includes('?') ? '&' : '?') + qsRangeBare) : url
+  const appendRange = (url)=> url
 
   // Load metrics for the signed-in agent
   async function load(){

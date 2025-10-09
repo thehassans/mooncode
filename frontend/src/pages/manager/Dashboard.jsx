@@ -53,17 +53,7 @@ export default function ManagerDashboard(){
   const qsRangeBare = useMemo(()=>{
     try{ return (rangeDates && rangeDates.from && rangeDates.to) ? `fromDate=${encodeURIComponent(rangeDates.from)}&toDate=${encodeURIComponent(rangeDates.to)}` : '' }catch{ return '' }
   }, [rangeDates])
-  const appendRange = (url)=>{
-    if (!qsRangeBare) return url
-    try{
-      const [path, q=''] = String(url||'').split('?')
-      const sp = new URLSearchParams(q)
-      const ship = String(sp.get('ship')||'').toLowerCase()
-      const openSet = new Set(['open','pending','assigned','picked_up','in_transit','out_for_delivery','no_response'])
-      if (openSet.has(ship)) return url
-      return url + (url.includes('?') ? '&' : '?') + qsRangeBare
-    }catch{ return url }
-  }
+  const appendRange = (url)=> url
 
   useEffect(()=>{
     function onResize(){ setIsMobile(window.innerWidth <= 768) }

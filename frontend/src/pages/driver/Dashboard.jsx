@@ -31,7 +31,7 @@ export default function DriverDashboard(){
   const qsRangeBare = React.useMemo(()=>{
     try{ return (rangeDates && rangeDates.from && rangeDates.to) ? `fromDate=${encodeURIComponent(rangeDates.from)}&toDate=${encodeURIComponent(rangeDates.to)}` : '' }catch{ return '' }
   }, [rangeDates])
-  const appendRange = (url)=> qsRangeBare ? (url + (url.includes('?') ? '&' : '?') + qsRangeBare) : url
+  const appendRange = (url)=> url
 
   async function loadData(){
     setLoading(true)
