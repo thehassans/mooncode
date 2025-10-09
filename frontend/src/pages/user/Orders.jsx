@@ -498,8 +498,8 @@ export default function UserOrders(){
                           <button className="btn secondary" onClick={()=> window.open(`/label/${id}`, '_blank', 'noopener,noreferrer')}>Print Label</button>
                         </div>
                       </div>
-                      <div className="section" style={{padding:'0 12px'}}>
-                        <OrderStatusTrack order={o} compact />
+                      <div className="section" style={{padding:'10px 12px 0', borderTop:'1px solid var(--border)'}}>
+                        <OrderStatusTrack order={o} />
                       </div>
                       <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
                         <div>
