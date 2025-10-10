@@ -50,37 +50,44 @@ export default function InvestorDashboard(){
     }
   }, [])
 
-  return (
-    <div className="section">
-      <div className="page-header">
-        <div>
-          <div className="page-title gradient heading-purple">Investor Dashboard</div>
-          <div className="page-subtitle">Overview of your investments and performance</div>
-        </div>
-      </div>
+  // Formatting helpers
+  function fmtNum(n){ try{ return Number(n||0).toLocaleString() }catch{ return String(n||0) } }
+  function fmtAmt(n){ try{ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }catch{ return String(n||0) } }
+  const currencyLabel = useMemo(()=> String(metrics?.currency||'SAR'), [metrics?.currency])
 
-      {/* KPIs */}
-      <div className="kpis">
-        <div className="kpi">
-          <div className="label">Total Investment</div>
-          <div className="value">{metrics.currency} {metrics.investmentAmount.toFixed(2)}</div>
-        </div>
-        <div className="kpi">
-          <div className="label">Units Sold</div>
-          <div className="value">{metrics.unitsSold}</div>
-        </div>
-        <div className="kpi">
-          <div className="label">Total Sale Value</div>
-          <div className="value">{metrics.currency} {metrics.totalSaleValue.toFixed(2)}</div>
-        </div>
-        <div className="kpi">
-          <div className="label">Total Profit</div>
-          <div className="value">{metrics.currency} {metrics.totalProfit.toFixed(2)}</div>
-        </div>
-      </div>
+  return (
+    <div className="section" style={{display:'grid', gap:12}}>
+      {/* KPI Tiles */}
+      {(function(){
+        const items = [
+          { title: 'Total Investment', color: '#0ea5e9', value: `${currencyLabel} ${fmtAmt(metrics.investmentAmount)}` },
+          { title: 'Units Sold', color: '#10b981', value: fmtNum(metrics.unitsSold) },
+          { title: 'Total Sale Value', color: '#0ea5e9', value: `${currencyLabel} ${fmtAmt(metrics.totalSaleValue)}` },
+          { title: 'Total Profit', color: '#f59e0b', value: `${currencyLabel} ${fmtAmt(metrics.totalProfit)}` },
+        ]
+        const Tile = ({ title, value, color }) => (
+          <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
+            <div className="helper">{title}</div>
+            <div style={{fontSize:24, fontWeight:900, color:color||'inherit'}}>{value}</div>
+          </div>
+        )
+        return (
+          <div className="card">
+            <div className="section" style={{display:'grid', gap:12}}>
+              <div>
+                <div style={{fontWeight:800, fontSize:16}}>Overview</div>
+                <div className="helper">Live metrics for your assigned products</div>
+              </div>
+              <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
+                {items.map((it, i)=> (<Tile key={i} title={it.title} value={it.value} color={it.color} />))}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Breakdown */}
-      <div className="card" style={{marginTop:12}}>
+      <div className="card">
         <div className="card-header">
           <div className="card-title">Per-Product Breakdown</div>
           <div className="helper">Only shipped or delivered orders are counted</div>
@@ -103,9 +110,9 @@ export default function InvestorDashboard(){
               ) : metrics.breakdown.map((row, idx) => (
                 <tr key={idx} style={{borderTop:'1px solid var(--border)'}}>
                   <td style={{padding:'10px 12px'}}>{row.productName || '-'}</td>
-                  <td style={{padding:'10px 12px'}}>{row.unitsSold || 0}</td>
-                  <td style={{padding:'10px 12px'}}>{metrics.currency} {(Number(row.saleValue||0)).toFixed(2)}</td>
-                  <td style={{padding:'10px 12px'}}>{metrics.currency} {(Number(row.profit||0)).toFixed(2)}</td>
+                  <td style={{padding:'10px 12px'}}>{fmtNum(row.unitsSold || 0)}</td>
+                  <td style={{padding:'10px 12px'}}>{currencyLabel} {fmtAmt(row.saleValue||0)}</td>
+                  <td style={{padding:'10px 12px'}}>{currencyLabel} {fmtAmt(row.profit||0)}</td>
                 </tr>
               ))}
             </tbody>
