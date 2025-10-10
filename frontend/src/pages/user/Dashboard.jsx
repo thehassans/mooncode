@@ -380,22 +380,9 @@ export default function UserDashboard(){
       try{ socket && socket.disconnect() }catch{}
     }
   },[toast])
-
-  // Recent order history: delivered or cancelled
-  const orderHistory = React.useMemo(()=>{
-    const list = Array.isArray(orders) ? orders : []
-    const hist = list.filter(o => ['delivered','cancelled'].includes(String(o?.shipmentStatus||'').toLowerCase()))
-    hist.sort((a,b)=> new Date(b.deliveredAt || b.updatedAt || b.createdAt) - new Date(a.deliveredAt || a.updatedAt || a.createdAt))
-    return hist.slice(0, 12)
-  }, [orders])
   return (
     <div className="container">
-      <div className="page-header">
-        <div>
-          <div className="page-title gradient heading-purple">Dashboard</div>
-          <div className="page-subtitle">Your business at a glance</div>
-        </div>
-      </div>
+      
 
       {/* Date Range Picker */}
       <div className="section" style={{marginBottom:8}}>
@@ -685,37 +672,7 @@ export default function UserDashboard(){
         </div>
         <OrderStatusPie statusTotals={statusTotals} />
       </div>
-
-      {/* Recent Order History */}
-      <div className="card" style={{marginTop:12, display:'grid', gap:12}}>
-        <div>
-          <div style={{fontWeight:800}}>Recent Order History</div>
-          <div className="helper">Delivered or Cancelled</div>
-        </div>
-        {orderHistory.length === 0 ? (
-          <div className="empty-state">No delivered or cancelled orders yet</div>
-        ) : (
-          <div style={{display:'grid', gap:8}}>
-            {orderHistory.map(o => {
-              const id = String(o?._id || o?.id || '')
-              const code = o?.invoiceNumber ? `#${o.invoiceNumber}` : `#${id.slice(-5)}`
-              const st = String(o?.shipmentStatus||'').toLowerCase()
-              const when = o?.deliveredAt || o?.updatedAt || o?.createdAt
-              const whenStr = when ? new Date(when).toLocaleString() : ''
-              const color = st==='delivered' ? '#10b981' : (st==='cancelled' ? '#ef4444' : 'var(--fg)')
-              return (
-                <div key={id} style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px', border:'1px solid var(--border)', borderRadius:8, background:'var(--panel)'}}>
-                  <div style={{display:'grid'}}>
-                    <div style={{fontWeight:700}}>{code} • <span style={{opacity:.9}}>{o?.customerName || 'Customer'}</span></div>
-                    <div className="helper" style={{fontSize:12}}>{whenStr}</div>
-                  </div>
-                  <div className="chip" style={{background:'transparent', border:`1px solid ${color}`, color}}>{st.replace('_',' ')}</div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+      
     </div>
   )
 }
