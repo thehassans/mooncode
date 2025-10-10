@@ -54,14 +54,15 @@ export default function PrintLabel(){
   function fmt2(n){ try{ return Number(n||0).toFixed(2) }catch{ return '0.00' } }
 
   function orderCountryCurrency(c){
-    const k = String(c||'')
-    if (k==='KSA' || k==='Saudi Arabia') return 'SAR'
-    if (k==='UAE' || k==='United Arab Emirates') return 'AED'
-    if (k==='Oman' || k==='OM') return 'OMR'
-    if (k==='Bahrain' || k==='BH') return 'BHD'
-    if (k==='India' || k==='IN') return 'INR'
-    if (k==='Kuwait' || k==='KW') return 'KWD'
-    if (k==='Qatar' || k==='QA') return 'QAR'
+    const raw = String(c||'').trim().toLowerCase()
+    if (!raw) return 'SAR'
+    if (raw==='ksa' || raw==='saudi arabia' || raw==='saudi' || raw.includes('saudi')) return 'SAR'
+    if (raw==='uae' || raw==='united arab emirates' || raw==='ae' || raw.includes('united arab emirates')) return 'AED'
+    if (raw==='oman' || raw==='om' || raw.includes('sultanate of oman')) return 'OMR'
+    if (raw==='bahrain' || raw==='bh') return 'BHD'
+    if (raw==='india' || raw==='in') return 'INR'
+    if (raw==='kuwait' || raw==='kw' || raw==='kwt') return 'KWD'
+    if (raw==='qatar' || raw==='qa') return 'QAR'
     return 'SAR'
   }
 

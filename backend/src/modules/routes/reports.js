@@ -845,6 +845,90 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     // Total operational expenses (agent + driver)
     const totalExpense = totalAgentExpense + totalDriverExpense;
     
+    // ===== Product metrics (inventory + delivered orders) =====
+    const products = await Product.find({ createdBy: ownerId })
+      .select('_id price purchasePrice baseCurrency stockByCountry')
+      .lean()
+    const productIds = products.map(p => p._id)
+    // Aggregate delivered quantities per product and country
+    const deliveredPerProdCountry = await Order.aggregate([
+      { $match: { createdBy: { $in: creatorIds }, shipmentStatus: 'delivered', $or: [ { productId: { $in: productIds } }, { 'items.productId': { $in: productIds } } ] } },
+      { $project: {
+          orderCountry: 1,
+          items: { $cond: [ { $and: [ { $isArray: '$items' }, { $gt: [ { $size: '$items' }, 0 ] } ] }, '$items', [ { productId: '$productId', quantity: { $ifNull: ['$quantity', 1] } } ] ] }
+        }
+      },
+      { $unwind: '$items' },
+      { $project: {
+          orderCountry: { $ifNull: ['$orderCountry', ''] },
+          productId: '$items.productId',
+          quantity: { $let: { vars: { q: { $ifNull: ['$items.quantity', 1] } }, in: { $cond: [ { $lt: ['$$q', 1] }, 1, '$$q' ] } } }
+        }
+      },
+      { $match: { productId: { $in: productIds } } },
+      { $addFields: {
+          orderCountryCanon: {
+            $let: {
+              vars: { c: { $ifNull: ['$orderCountry', ''] } },
+              in: {
+                $switch: {
+                  branches: [
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
+                  ],
+                  default: '$$c'
+                }
+              }
+            }
+          }
+        }
+      },
+      { $group: { _id: { productId: '$productId', country: '$orderCountryCanon' }, qty: { $sum: '$quantity' } } }
+    ])
+    const deliveredMap = new Map()
+    for (const r of deliveredPerProdCountry){
+      const pid = String(r._id?.productId || '')
+      const country = String(r._id?.country || '')
+      if (!pid) continue
+      if (!deliveredMap.has(pid)) deliveredMap.set(pid, {})
+      deliveredMap.get(pid)[country] = Number(r.qty || 0)
+    }
+    const KNOWN_COUNTRIES = ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar']
+    const emptyCurrencyMap = () => ({ AED:0, OMR:0, SAR:0, BHD:0, INR:0, KWD:0, QAR:0, USD:0, CNY:0 })
+    const productCountryAgg = {}
+    for (const c of KNOWN_COUNTRIES){ productCountryAgg[c] = { stockPurchasedQty:0, stockDeliveredQty:0, stockLeftQty:0, purchaseValueByCurrency: emptyCurrencyMap(), deliveredValueByCurrency: emptyCurrencyMap() } }
+    const productGlobal = { stockPurchasedQty:0, stockDeliveredQty:0, stockLeftQty:0, purchaseValueByCurrency: emptyCurrencyMap(), deliveredValueByCurrency: emptyCurrencyMap() }
+    const normalizeCur = (v)=> (['AED','OMR','SAR','BHD','INR','KWD','QAR','USD','CNY'].includes(String(v)) ? String(v) : 'SAR')
+    for (const p of products){
+      const baseCur = normalizeCur(p.baseCurrency || 'SAR')
+      const byC = p.stockByCountry || {}
+      const leftBy = { KSA: Number(byC.KSA || 0), UAE: Number(byC.UAE || 0), Oman: Number(byC.Oman || 0), Bahrain: Number(byC.Bahrain || 0), India: Number(byC.India || 0), Kuwait: Number(byC.Kuwait || 0), Qatar: Number(byC.Qatar || 0) }
+      const delBy = deliveredMap.get(String(p._id)) || {}
+      let totalLeft = 0, totalDelivered = 0
+      for (const c of KNOWN_COUNTRIES){
+        const left = Number(leftBy[c] || 0)
+        const delivered = Number(delBy[c] || 0)
+        const purchased = left + delivered
+        totalLeft += left
+        totalDelivered += delivered
+        productCountryAgg[c].stockLeftQty += left
+        productCountryAgg[c].stockDeliveredQty += delivered
+        productCountryAgg[c].stockPurchasedQty += purchased
+        productCountryAgg[c].purchaseValueByCurrency[baseCur] += purchased * Number(p.purchasePrice || 0)
+        productCountryAgg[c].deliveredValueByCurrency[baseCur] += delivered * Number(p.price || 0)
+      }
+      productGlobal.stockLeftQty += totalLeft
+      productGlobal.stockDeliveredQty += totalDelivered
+      productGlobal.stockPurchasedQty += (totalLeft + totalDelivered)
+      productGlobal.purchaseValueByCurrency[baseCur] += (totalLeft + totalDelivered) * Number(p.purchasePrice || 0)
+      productGlobal.deliveredValueByCurrency[baseCur] += totalDelivered * Number(p.price || 0)
+    }
+
     // Country-specific metrics
     const countryMetrics = await Order.aggregate([
       { $match: { createdBy: { $in: creatorIds } } },
@@ -993,7 +1077,11 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       totalDriverExpense,
       totalRevenue,
       countries,
-      statusTotals
+      statusTotals,
+      productMetrics: {
+        global: productGlobal,
+        countries: productCountryAgg
+      }
     });
   } catch (error) {
     console.error('Error fetching user metrics:', error);

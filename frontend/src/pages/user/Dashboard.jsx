@@ -4,7 +4,7 @@ import Chart from '../../components/Chart.jsx'
 import { API_BASE, apiGet } from '../../api.js'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
-import { getCurrencyConfig, toAEDByCode } from '../../util/currency'
+import { getCurrencyConfig, toAEDByCode, convert } from '../../util/currency'
 import DateRangeChips from '../../ui/DateRangeChips.jsx'
 
 const OrderStatusPie = ({ statusTotals }) => {
@@ -69,7 +69,8 @@ export default function UserDashboard(){
       Kuwait: { sales: 0, orders: 0, pickedUp: 0, delivered: 0, transit: 0, driverExpense: 0 },
       Qatar: { sales: 0, orders: 0, pickedUp: 0, delivered: 0, transit: 0, driverExpense: 0 },
       'Saudi Arabia': { sales: 0, orders: 0, pickedUp: 0, delivered: 0, transit: 0, driverExpense: 0 },
-    }
+    },
+    productMetrics: { global: { stockPurchasedQty:0, stockDeliveredQty:0, stockLeftQty:0, purchaseValueByCurrency:{}, deliveredValueByCurrency:{} }, countries: {} }
   })
   
   // Currency formatter helper
@@ -205,6 +206,19 @@ export default function UserDashboard(){
       const code = String(currency||'AED')
       return toAEDByCode(Number(amount||0), code, currencyCfg)
     }catch{ return Number(amount||0) }
+  }
+  function sumCurrencyMapAED(map){
+    try{
+      const entries = Object.entries(map||{})
+      return entries.reduce((s,[code, val])=> s + toAEDByCode(Number(val||0), String(code||'AED'), currencyCfg), 0)
+    }catch{ return 0 }
+  }
+  function sumCurrencyMapLocal(map, targetCode){
+    try{
+      const tgt = String(targetCode||'AED')
+      const entries = Object.entries(map||{})
+      return entries.reduce((s,[code, val])=> s + convert(Number(val||0), String(code||'AED'), tgt, currencyCfg), 0)
+    }catch{ return 0 }
   }
   function sumAmountAED(key){
     try{ return COUNTRY_LIST.reduce((s,c)=> s + toAED((countryMetrics(c)[key]||0), c), 0) }catch{ return 0 }
@@ -441,6 +455,88 @@ export default function UserDashboard(){
             </div>
           )
         })()}
+      </div>
+
+      {/* Product Metrics (All Countries) */}
+      <div className="card" style={{marginTop:12}}>
+        {(function(){
+          const pm = metrics?.productMetrics || {}
+          const g = pm?.global || {}
+          const purchaseAED = sumCurrencyMapAED(g?.purchaseValueByCurrency||{})
+          const deliveredAED = sumCurrencyMapAED(g?.deliveredValueByCurrency||{})
+          const purchasedQty = Number(g?.stockPurchasedQty||0)
+          const deliveredQty = Number(g?.stockDeliveredQty||0)
+          const pendingQty = Number(g?.stockLeftQty||0)
+          function Tile({ title, valueEl }){
+            return (
+              <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
+                <div className="helper">{title}</div>
+                <div style={{fontSize:24, fontWeight:900}}>{valueEl}</div>
+              </div>
+            )
+          }
+          return (
+            <div className="section" style={{display:'grid', gap:12}}>
+              <div>
+                <div style={{fontWeight:800,fontSize:16}}>Product Metrics (All Countries)</div>
+                <div className="helper">Amounts in AED</div>
+              </div>
+              <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
+                <Tile title="Total Purchase Price (AED)" valueEl={<span style={{color:'#0ea5e9'}}>{`AED ${fmtAmt(purchaseAED)}`}</span>} />
+                <Tile title="Delivered Price (AED)" valueEl={<span style={{color:'#10b981'}}>{`AED ${fmtAmt(deliveredAED)}`}</span>} />
+                <Tile title="Stock Purchased (Qty)" valueEl={<span style={{color:'#0ea5e9'}}>{fmtNum(purchasedQty)}</span>} />
+                <Tile title="Stock Delivered (Qty)" valueEl={<span style={{color:'#10b981'}}>{fmtNum(deliveredQty)}</span>} />
+                <Tile title="Pending Stock (Qty)" valueEl={<span style={{color:'#f59e0b'}}>{fmtNum(pendingQty)}</span>} />
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Product Metrics by Country */}
+      <div className="card" style={{marginTop:12}}>
+        <div style={{marginBottom:12}}>
+          <div style={{fontWeight:800,fontSize:16}}>Per-Country Product Metrics</div>
+          <div className="helper">Amounts in local currency</div>
+        </div>
+        <div className="section" style={{display:'grid', gap:12}}>
+          {['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar'].map(c=>{
+            const pm = metrics?.productMetrics || {}
+            const pc = (pm?.countries && pm.countries[c]) ? pm.countries[c] : { stockPurchasedQty:0, stockDeliveredQty:0, stockLeftQty:0, purchaseValueByCurrency:{}, deliveredValueByCurrency:{} }
+            const code = COUNTRY_INFO[c]?.cur || 'AED'
+            const purchaseLocal = sumCurrencyMapLocal(pc?.purchaseValueByCurrency||{}, code)
+            const deliveredLocal = sumCurrencyMapLocal(pc?.deliveredValueByCurrency||{}, code)
+            const flag = (COUNTRY_INFO[c] && COUNTRY_INFO[c].flag) ? COUNTRY_INFO[c].flag + ' ' : ''
+            const title = flag + ((c==='KSA') ? 'Saudi Arabia (KSA)' : c)
+            return (
+              <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
+                <div style={{fontWeight:900, marginBottom:8}}>{title}</div>
+                <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Purchase Price</div>
+                    <div style={{fontWeight:900, fontSize:18}}>{formatCurrency(purchaseLocal, c)}</div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Delivered Price</div>
+                    <div style={{fontWeight:900, fontSize:18}}>{formatCurrency(deliveredLocal, c)}</div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Stock Purchased</div>
+                    <div style={{fontWeight:900, fontSize:18}}>{fmtNum(pc?.stockPurchasedQty||0)}</div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Stock Delivered</div>
+                    <div style={{fontWeight:900, fontSize:18}}>{fmtNum(pc?.stockDeliveredQty||0)}</div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Pending Stock</div>
+                    <div style={{fontWeight:900, fontSize:18}}>{fmtNum(pc?.stockLeftQty||0)}</div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       {/* Driver Report (All Countries) removed as requested */}
