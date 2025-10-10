@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { apiGet } from '../../api'
+import { getCurrencyConfig, convert } from '../../util/currency'
 
 export default function PrintLabel(){
   const { id } = useParams()
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
   const barcodeRef = useRef(null)
+  const [curCfg, setCurCfg] = useState(null)
 
   useEffect(()=>{
     let alive = true
@@ -16,9 +18,18 @@ export default function PrintLabel(){
     return ()=>{ alive = false }
   }, [id])
 
-  // Lazy-load JsBarcode via CDN and render once order is ready
+  // Fetch currency config to support conversion/labels
   useEffect(()=>{
-    if (!order) return
+    let alive = true
+    ;(async()=>{
+      try{ const cfg = await getCurrencyConfig().catch(()=>null); if(alive) setCurCfg(cfg) }catch{ if(alive) setCurCfg(null) }
+    })()
+    return ()=>{ alive = false }
+  },[])
+
+  // Lazy-load JsBarcode via CDN and render once order and currency are ready
+  useEffect(()=>{
+    if (!order || !curCfg) return
     function loadScript(src){
       return new Promise((resolve, reject)=>{
         const s = document.createElement('script')
@@ -37,10 +48,22 @@ export default function PrintLabel(){
         setTimeout(()=>{ try{ window.print() }catch{} }, 300)
       }catch{}
     })()
-  }, [order])
+  }, [order, curCfg])
 
   function fmt(n){ try{ return Number(n||0).toFixed(2) }catch{ return '0.00' } }
   function fmt2(n){ try{ return Number(n||0).toFixed(2) }catch{ return '0.00' } }
+
+  function orderCountryCurrency(c){
+    const k = String(c||'')
+    if (k==='KSA' || k==='Saudi Arabia') return 'SAR'
+    if (k==='UAE' || k==='United Arab Emirates') return 'AED'
+    if (k==='Oman' || k==='OM') return 'OMR'
+    if (k==='Bahrain' || k==='BH') return 'BHD'
+    if (k==='India' || k==='IN') return 'INR'
+    if (k==='Kuwait' || k==='KW') return 'KWD'
+    if (k==='Qatar' || k==='QA') return 'QAR'
+    return 'SAR'
+  }
 
   if (loading){
     return (
@@ -59,6 +82,7 @@ export default function PrintLabel(){
   const customerName = order.customerName || '-'
   const phoneFull = `${order.phoneCountryCode||''} ${order.customerPhone||''}`.trim()
   const whatsapp = phoneFull
+  const targetCode = orderCountryCurrency(order.orderCountry)
   // Build a more detailed address without duplication and excluding coordinates
   function tokenize(src, maxSegs){
     if (!src) return []
@@ -92,23 +116,39 @@ export default function PrintLabel(){
   const addressDetail = noCoords.join(', ').slice(0, 160)
   // Build display items from order.items (if any) else fallback to single productId/details
   const hasItems = Array.isArray(order.items) && order.items.length > 0
+  function itemBaseCurrency(it){
+    try{ return String(it?.productId?.baseCurrency||'').toUpperCase() || null }catch{ return null }
+  }
   const displayItems = hasItems
-    ? order.items.map(it => ({
-        name: it?.productId?.name || '-',
-        qty: Math.max(1, Number(it?.quantity||1)),
-        unit: (it?.productId?.price != null) ? Number(it.productId.price) : undefined,
-      }))
-    : [
-        {
-          name: order.productId?.name || (order.details ? String(order.details) : '-') ,
-          qty: Math.max(1, Number(order.quantity||1)),
-          unit: (order.productId?.price != null) ? Number(order.productId.price) : undefined,
+    ? order.items.map(it => {
+        const qty = Math.max(1, Number(it?.quantity||1))
+        const unitRaw = (it?.productId?.price != null) ? Number(it.productId.price) : undefined
+        const fromCode = itemBaseCurrency(it) || targetCode
+        const unitConv = (unitRaw!=null) ? convert(unitRaw, fromCode, targetCode, curCfg) : undefined
+        return {
+          name: it?.productId?.name || '-',
+          qty,
+          unit: unitConv,
         }
-      ]
+      })
+    : [{
+        name: order.productId?.name || (order.details ? String(order.details) : '-') ,
+        qty: Math.max(1, Number(order.quantity||1)),
+        unit: (order.productId?.price != null)
+          ? convert(Number(order.productId.price), String(order?.productId?.baseCurrency||targetCode).toUpperCase(), targetCode, curCfg)
+          : undefined,
+      }]
   const totalQty = displayItems.reduce((s, it) => s + Math.max(1, Number(it.qty||1)), 0)
+  const itemsSubtotalConv = displayItems.reduce((s, it) => s + ((it.unit!=null ? Number(it.unit) : 0) * Math.max(1, Number(it.qty||1))), 0)
+  function orderBaseCurrency(){
+    if (hasItems){
+      for (const it of order.items){ const bc = itemBaseCurrency(it); if (bc) return bc }
+    }
+    try{ return String(order?.productId?.baseCurrency||'').toUpperCase() || null }catch{ return null }
+  }
   const total = (order.total!=null)
-    ? Number(order.total)
-    : displayItems.reduce((s, it) => s + ((it.unit!=null ? Number(it.unit) : 0) * Math.max(1, Number(it.qty||1))), 0)
+    ? convert(Number(order.total), orderBaseCurrency() || targetCode, targetCode, curCfg)
+    : itemsSubtotalConv
   // Limit number of visible rows to keep within 4x6 page
   const MAX_ROWS = 5
   const visibleItems = displayItems.slice(0, MAX_ROWS)
@@ -208,8 +248,8 @@ export default function PrintLabel(){
                 <tr key={idx}>
                   <td style={{whiteSpace:'normal', wordBreak:'break-word'}}>{it.name || '-'}</td>
                   <td style={{textAlign:'center'}}>{it.qty}</td>
-                  <td style={{textAlign:'right'}}>{it.unit!=null ? fmt(it.unit) : '-'}</td>
-                  <td style={{textAlign:'right'}}>{it.unit!=null ? fmt(it.unit * it.qty) : '-'}</td>
+                  <td style={{textAlign:'right'}}>{it.unit!=null ? `${targetCode} ${fmt(it.unit)}` : '-'}</td>
+                  <td style={{textAlign:'right'}}>{it.unit!=null ? `${targetCode} ${fmt(it.unit * it.qty)}` : '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -231,7 +271,7 @@ export default function PrintLabel(){
           {/* Order No and Total Amount on same line */}
           <div className="sec row" style={{gap:8}}>
             <div style={{display:'flex', gap:6}}><div className="h">Order No:</div><div>{invoice}</div></div>
-            <div style={{display:'flex', gap:6, alignItems:'center'}}><div className="h">Total Amount:</div><div style={{fontSize:16, fontWeight:800}}>{(total!=null) ? fmt2(total) : '-'}</div></div>
+            <div style={{display:'flex', gap:6, alignItems:'center'}}><div className="h">Total Amount:</div><div style={{fontSize:16, fontWeight:800}}>{(total!=null) ? `${targetCode} ${fmt2(total)}` : '-'}</div></div>
           </div>
           <div className="sec" style={{display:'grid', gap:2, alignItems:'center', justifyItems:'center'}}>
             <svg ref={barcodeRef} style={{width:'100%', height:46}} shapeRendering="crispEdges"/>
