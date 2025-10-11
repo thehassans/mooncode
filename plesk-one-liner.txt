@@ -1,18 +1,20 @@
-# OPTION 1: With nodenv (RECOMMENDED - use nodenv exec)
-cd backend && npm ci --production && pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend && cd ../frontend && nodenv local 24 && nodenv exec npm ci && nodenv exec npm run build && echo "Deployed at $(date)"
+# OPTION 1: With nodenv initialization (RECOMMENDED - fixes npm not found error)
+export PATH="$HOME/.nodenv/bin:$PATH" && eval "$(nodenv init -)" && cd backend && npm ci --production && pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend && cd ../frontend && nodenv local 24 && npm ci && npm run build && echo "Deployed at $(date)"
 
 # OPTION 2: Multi-line with nodenv (more readable)
+export PATH="$HOME/.nodenv/bin:$PATH"
+eval "$(nodenv init -)"
 cd backend
 npm ci --production
 pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend
 cd ../frontend
 nodenv local 24
-nodenv exec npm ci
-nodenv exec npm run build
+npm ci
+npm run build
 echo "Deployment complete at $(date)"
 
 # OPTION 3: Without nodenv (if nodenv is not installed - uses system Node.js)
 cd backend && npm ci --production && pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend && cd ../frontend && npm ci && npm run build && echo "Deployed at $(date)"
 
-# OPTION 4: Using full nodenv path (if nodenv is in PATH but exec doesn't work)
-cd backend && npm ci --production && pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend && cd ../frontend && eval "$(nodenv init -)" && nodenv local 24 && npm ci && npm run build && echo "Deployed at $(date)"
+# OPTION 4: Using nvm instead of nodenv
+export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && nvm use 24 && cd backend && npm ci --production && pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend && cd ../frontend && npm ci && npm run build && echo "Deployed at $(date)"

@@ -1,13 +1,17 @@
 # Paste this into Plesk Git "Deploy actions" field
 # Each command runs from the repository root (/httpdocs)
 
+# Initialize nodenv in the shell
+export PATH="$HOME/.nodenv/bin:$PATH"
+eval "$(nodenv init -)"
+
 # Backend deployment
 cd backend && npm ci --production && pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend
 
-# Frontend deployment (using nodenv exec to ensure npm is available)
-cd frontend && nodenv local 24 && nodenv exec npm ci && nodenv exec npm run build
+# Frontend deployment
+cd ../frontend && nodenv local 24 && npm ci && npm run build
 
 # Set permissions
-find . -type f -exec chmod 644 {} \; && find . -type d -exec chmod 755 {} \;
+cd .. && find . -type f -exec chmod 644 {} \; && find . -type d -exec chmod 755 {} \;
 
 echo "Deployment complete at $(date)"
