@@ -149,11 +149,12 @@ export default function PrintLabel(){
   }
   // Compute totals in the target (label) currency robustly
   const baseCode = orderBaseCurrency() || targetCode
-  const shipLocal = convert(Number(order.shippingFee||0), baseCode, targetCode, curCfg)
-  const discountLocal = convert(Number(order.discount||0), baseCode, targetCode, curCfg)
+  // Shipping and Discount are entered/saved in the order's local currency already
+  const shipLocal = Number(order.shippingFee||0)
+  const discountLocal = Number(order.discount||0)
   const computedTotalLocal = Math.max(0, itemsSubtotalConv + shipLocal - discountLocal)
-  const codLocal = convert(Number(order.codAmount||0), baseCode, targetCode, curCfg)
-  const collectedLocal = convert(Number(order.collectedAmount||0), baseCode, targetCode, curCfg)
+  const codLocal = Number(order.codAmount||0)
+  const collectedLocal = Number(order.collectedAmount||0)
   const balanceDueLocal = Math.max(0, codLocal - collectedLocal - shipLocal)
   // For label display, always show the computed order total in target currency
   const labelTotalLocal = computedTotalLocal
