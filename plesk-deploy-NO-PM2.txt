@@ -1,0 +1,4 @@
+# VERSION WITHOUT PM2 - Uses node directly with nohup
+# This works without needing global PM2 installation
+
+export PATH="/opt/plesk/node/24/bin:$PATH" && cd backend && npm ci --production && pkill -f "node.*src/index.js" || true && nohup node src/index.js > /dev/null 2>&1 & && cd ../frontend && npm ci && npm run build && echo "✅ Deployment complete"
