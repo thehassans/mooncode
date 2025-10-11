@@ -196,29 +196,39 @@
 }
 
 :root[data-theme='dark'] {
-  --bg: #0f172a;
-  --fg: #e2e8f0;
-  --muted: #94a3b8;
-  --panel: #111827;
-  --panel-2: #0b1220;
-  --border: #1f2937;
+  /* Matte black base */
+  --bg: #000000;
+  --fg: #e6e6e6;
+  --muted: #9aa4b2;
+  /* Near-black panels with subtle contrast */
+  --panel: #0a0a0a;
+  --panel-2: #0d0d0d;
+  --border: #1a1a1a;
+  /* Sidebar/nav defaults for matte black */
+  --sidebar-bg: #0a0a0a;
+  --sidebar-border: #1a1a1a;
+  --nav-active-bg: #141414;
+  --nav-active-fg: #e6e6e6;
+  /* Buttons retain brand color for contrast */
   --btn: #2563eb;
-  --btn-secondary: #374151;
+  --btn-secondary: #1f1f1f;
   --btn-danger: #dc2626;
-  --input-bg: #0b1220;
-  --input-border: #334155;
+  /* Inputs */
+  --input-bg: #0d0d0d;
+  --input-border: #262626;
   /* Accent success in dark */
   --success: #22c55e; /* green-500 brighter for dark */
   --success-dark: #16a34a; /* green-600 */
   /* WhatsApp accents (dark) */
-  --wa-bg: #0b1220;
-  --wa-header: #0b1220;
-  --wa-incoming: #111827; /* dark panel */
+  --wa-bg: #000000;
+  --wa-header: #000000;
+  --wa-incoming: #0a0a0a; /* dark panel */
   --wa-outgoing: #005c4b; /* WhatsApp dark green */
   /* Heading gradient defaults (dark theme) */
   --heading-start: #60a5fa; /* sky-400 */
   --heading-end: #7c3aed; /* violet-600 */
-  --brand-wallpaper-opacity: 0.06;
+  /* Subtle watermark only */
+  --brand-wallpaper-opacity: 0.02;
 }
 
 * {
