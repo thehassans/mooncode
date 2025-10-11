@@ -1,0 +1,13 @@
+# Paste this into Plesk Git "Deploy actions" field
+# Each command runs from the repository root (/httpdocs)
+
+# Backend deployment
+cd backend && npm ci --production && pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend
+
+# Frontend deployment
+cd frontend && nodenv shell 24 && npm ci && npm run build
+
+# Set permissions
+find . -type f -exec chmod 644 {} \; && find . -type d -exec chmod 755 {} \;
+
+echo "Deployment complete at $(date)"

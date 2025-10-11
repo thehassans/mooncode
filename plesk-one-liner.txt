@@ -1,0 +1,18 @@
+# OPTION 1: Compact one-liner (copy this into Plesk "Deploy actions")
+cd backend && npm ci --production && pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend && cd ../frontend && nodenv shell 24 && npm ci && npm run build && echo "Deployed at $(date)"
+
+# OPTION 2: Multi-line (more readable, same functionality)
+cd backend
+npm ci --production
+pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend
+cd ../frontend
+nodenv shell 24
+npm ci
+npm run build
+echo "Deployment complete at $(date)"
+
+# OPTION 3: Without nodenv (if nodenv is not installed)
+cd backend && npm ci --production && pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend && cd ../frontend && npm ci && npm run build && echo "Deployed at $(date)"
+
+# OPTION 4: With error handling
+set -e && cd backend && npm ci --production && (pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend) && cd ../frontend && npm ci && npm run build && echo "✅ Deployment successful at $(date)" || echo "❌ Deployment failed at $(date)"
