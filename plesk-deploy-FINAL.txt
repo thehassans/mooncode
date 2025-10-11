@@ -1,7 +1,7 @@
-# Paste this into Plesk Git "Deploy actions" field
-# Uses Node.js 24 from nodenv by adding it directly to PATH
+# FINAL SOLUTION - Copy this into Plesk "Deploy actions" field
+# This explicitly uses Node.js 24 from nodenv
 
-# Set Node.js 24 path explicitly
+# Set Node.js 24 path
 export PATH="$HOME/.nodenv/versions/24.0.0/bin:$PATH"
 
 # Backend deployment
