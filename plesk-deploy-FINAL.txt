@@ -1,8 +1,8 @@
 # FINAL SOLUTION - Copy this into Plesk "Deploy actions" field
-# This explicitly uses Node.js 24 from nodenv
+# This explicitly uses Node.js 24.9.0 from nodenv
 
-# Set Node.js 24 path
-export PATH="$HOME/.nodenv/versions/24.0.0/bin:$PATH"
+# Set Node.js 24.9.0 path
+export PATH="$HOME/.nodenv/versions/24.9.0/bin:$PATH"
 
 # Backend deployment
 cd backend
