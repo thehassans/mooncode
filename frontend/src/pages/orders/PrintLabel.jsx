@@ -147,15 +147,22 @@ export default function PrintLabel(){
     }
     try{ return String(order?.productId?.baseCurrency||'').toUpperCase() || null }catch{ return null }
   }
-  const total = (order.total!=null)
-    ? convert(Number(order.total), orderBaseCurrency() || targetCode, targetCode, curCfg)
-    : itemsSubtotalConv
+  // Compute totals in the target (label) currency robustly
+  const baseCode = orderBaseCurrency() || targetCode
+  const shipLocal = convert(Number(order.shippingFee||0), baseCode, targetCode, curCfg)
+  const discountLocal = convert(Number(order.discount||0), baseCode, targetCode, curCfg)
+  const computedTotalLocal = Math.max(0, itemsSubtotalConv + shipLocal - discountLocal)
+  const codLocal = convert(Number(order.codAmount||0), baseCode, targetCode, curCfg)
+  const collectedLocal = convert(Number(order.collectedAmount||0), baseCode, targetCode, curCfg)
+  const balanceDueLocal = Math.max(0, codLocal - collectedLocal - shipLocal)
+  // For label display, always show the computed order total in target currency
+  const labelTotalLocal = computedTotalLocal
   // Limit number of visible rows to keep within 4x6 page
   const MAX_ROWS = 5
   const visibleItems = displayItems.slice(0, MAX_ROWS)
   const moreCount = Math.max(0, displayItems.length - MAX_ROWS)
   // Default payment mode to COD unless clearly paid in full
-  const paymentMode = ((Number(order.collectedAmount||0) > 0) && (Number(order.total||0) > 0) && (Number(order.collectedAmount||0) >= Number(order.total||0))) ? 'PAID' : 'COD'
+  const paymentMode = (labelTotalLocal <= 0) ? 'PAID' : 'COD'
   const driverName = order.deliveryBoy ? `${order.deliveryBoy.firstName||''} ${order.deliveryBoy.lastName||''}`.trim() : '-'
   const invoice = String(order.invoiceNumber || String(order._id||'').slice(-5)).toUpperCase()
   const discount = Number(order.discount || 0)
@@ -272,7 +279,7 @@ export default function PrintLabel(){
           {/* Order No and Total Amount on same line */}
           <div className="sec row" style={{gap:8}}>
             <div style={{display:'flex', gap:6}}><div className="h">Order No:</div><div>{invoice}</div></div>
-            <div style={{display:'flex', gap:6, alignItems:'center'}}><div className="h">Total Amount:</div><div style={{fontSize:16, fontWeight:800}}>{(total!=null) ? `${targetCode} ${fmt2(total)}` : '-'}</div></div>
+            <div style={{display:'flex', gap:6, alignItems:'center'}}><div className="h">Total Amount:</div><div style={{fontSize:16, fontWeight:800}}>{`${targetCode} ${fmt2(labelTotalLocal)}`}</div></div>
           </div>
           <div className="sec" style={{display:'grid', gap:2, alignItems:'center', justifyItems:'center'}}>
             <svg ref={barcodeRef} style={{width:'100%', height:46}} shapeRendering="crispEdges"/>

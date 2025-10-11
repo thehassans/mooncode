@@ -501,23 +501,23 @@ export default function UserDashboard(){
                 <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Purchase Price</div>
-                    <div style={{fontWeight:900, fontSize:18}}>{formatCurrency(purchaseLocal, c)}</div>
+                    <div style={{fontWeight:900, fontSize:18, color:'#0ea5e9'}}>{formatCurrency(purchaseLocal, c)}</div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Delivered Price</div>
-                    <div style={{fontWeight:900, fontSize:18}}>{formatCurrency(deliveredLocal, c)}</div>
+                    <div style={{fontWeight:900, fontSize:18, color:'#10b981'}}>{formatCurrency(deliveredLocal, c)}</div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Stock Purchased</div>
-                    <div style={{fontWeight:900, fontSize:18}}>{fmtNum(pc?.stockPurchasedQty||0)}</div>
+                    <div style={{fontWeight:900, fontSize:18, color:'#0ea5e9'}}>{fmtNum(pc?.stockPurchasedQty||0)}</div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Stock Delivered</div>
-                    <div style={{fontWeight:900, fontSize:18}}>{fmtNum(pc?.stockDeliveredQty||0)}</div>
+                    <div style={{fontWeight:900, fontSize:18, color:'#10b981'}}>{fmtNum(pc?.stockDeliveredQty||0)}</div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Pending Stock</div>
-                    <div style={{fontWeight:900, fontSize:18}}>{fmtNum(pc?.stockLeftQty||0)}</div>
+                    <div style={{fontWeight:900, fontSize:18, color:'#f59e0b'}}>{fmtNum(pc?.stockLeftQty||0)}</div>
                   </div>
                 </div>
               </div>
