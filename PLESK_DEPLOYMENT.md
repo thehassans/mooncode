@@ -73,8 +73,8 @@ ENABLE_WA=true
 # Backend deployment
 cd backend && npm ci --production && pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend
 
-# Frontend deployment  
-cd frontend && nodenv shell 24 && npm ci && npm run build
+# Frontend deployment (using nodenv exec to ensure npm is available)
+cd frontend && nodenv local 24 && nodenv exec npm ci && nodenv exec npm run build
 
 # Set permissions
 find . -type f -exec chmod 644 {} \; && find . -type d -exec chmod 755 {} \;
@@ -174,11 +174,19 @@ pm2 logs mooncode-backend --lines 100
 
 ## Troubleshooting
 
-### Issue: "nodenv: command not found"
+### Issue: "nodenv: npm: command not found"
 
-**Solution**: Remove `nodenv shell 24` from deploy actions or install nodenv:
+**Solution**: Use `nodenv exec` instead of `nodenv shell`:
 ```bash
-# Use system Node.js instead
+# Replace this:
+cd frontend && nodenv shell 24 && npm ci && npm run build
+
+# With this:
+cd frontend && nodenv local 24 && nodenv exec npm ci && nodenv exec npm run build
+```
+
+Or use system Node.js if nodenv is not needed:
+```bash
 cd frontend && npm ci && npm run build
 ```
 
