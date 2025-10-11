@@ -260,6 +260,23 @@ export default function PrintLabel(){
                   <td style={{textAlign:'right'}}>{it.unit!=null ? `${targetCode} ${fmt(it.unit * it.qty)}` : '-'}</td>
                 </tr>
               ))}
+              {/* Summary rows (converted to target currency) */}
+              <tr>
+                <td colSpan={3} style={{textAlign:'right'}}><strong>Subtotal</strong></td>
+                <td style={{textAlign:'right'}}>{`${targetCode} ${fmt(itemsSubtotalConv)}`}</td>
+              </tr>
+              {shipLocal > 0 && (
+                <tr>
+                  <td colSpan={3} style={{textAlign:'right'}}>Shipping</td>
+                  <td style={{textAlign:'right'}}>{`${targetCode} ${fmt(shipLocal)}`}</td>
+                </tr>
+              )}
+              {discountLocal > 0 && (
+                <tr>
+                  <td colSpan={3} style={{textAlign:'right'}}>Discount</td>
+                  <td style={{textAlign:'right'}}>-{`${targetCode} ${fmt(discountLocal)}`}</td>
+                </tr>
+              )}
             </tbody>
           </table>
           {moreCount>0 && (
