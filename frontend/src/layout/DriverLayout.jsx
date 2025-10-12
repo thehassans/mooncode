@@ -143,8 +143,8 @@ export default function DriverLayout() {
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
+          <circle cx="12" cy="8" r="4" />
+          <path d="M6 20a6 6 0 0 1 12 0" />
         </svg>
       ),
     },
@@ -223,11 +223,24 @@ export default function DriverLayout() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
-                className="btn secondary"
+                className="icon-btn secondary"
                 onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
-                title="Toggle theme"
+                title={theme === 'light' ? 'Switch to dark' : 'Switch to light'}
+                aria-label={theme === 'light' ? 'Switch to dark' : 'Switch to light'}
+                style={{ width: 36, height: 36, borderRadius: 10, padding: 0 }}
               >
-                {theme === 'light' ? '🌙 Dark' : '🌞 Light'}
+                {theme === 'light' ? (
+                  // Moon icon
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                  </svg>
+                ) : (
+                  // Sun icon
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="4" />
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                  </svg>
+                )}
               </button>
               <button type="button" className="btn danger" onClick={doLogout}>
                 Logout
