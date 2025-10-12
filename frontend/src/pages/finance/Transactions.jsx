@@ -18,8 +18,17 @@ export default function Transactions(){
   const [remitModalFor, setRemitModalFor] = useState('')
   const [countryOrders, setCountryOrders] = useState([])
   const [detailModalFor, setDetailModalFor] = useState('')
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(()=>{ /* initial no-op */ },[])
+  useEffect(()=>{
+    try{
+      const onResize = ()=> setIsMobile(typeof window !== 'undefined' && window.innerWidth < 720)
+      onResize()
+      window.addEventListener('resize', onResize)
+      return ()=> window.removeEventListener('resize', onResize)
+    }catch{}
+  },[])
 
   // Load country options for filter (top selector)
   useEffect(() => {
@@ -239,6 +248,19 @@ export default function Transactions(){
     return arr
   }, [drivers, driverStats, driverAcceptedSum, openAssignedByDriver, totalAssignedByDriver, returnedByDriver, cancelledByDriver, sortBy, sortDir])
 
+  const totals = useMemo(()=>{
+    let delivered=0, collected=0, remitted=0, pending=0, openA=0, totalA=0
+    for (const r of rows){
+      delivered += Number(r.deliveredCount||0)
+      collected += Number(r.collectedSum||0)
+      remitted += Number(r.remittedSum||0)
+      pending += Number(r.variance||0)
+      openA += Number(r.openAssigned||0)
+      totalA += Number(r.totalAssigned||0)
+    }
+    return { delivered, collected, remitted, pending, openA, totalA }
+  }, [rows])
+
   function exportCsv(){
     try{
       const header = ['Driver','Email','OpenAssigned','TotalAssigned','Delivered','Returned','Cancelled','Collected','Remitted','Pending']
@@ -319,6 +341,7 @@ export default function Transactions(){
           <div className="helper">Currency: {country ? countryCurrency(country) : '-'}</div>
         </div>
         <div style={{ overflowX: 'auto' }}>
+          {!isMobile && (
           <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
             <thead>
               <tr>
@@ -328,16 +351,18 @@ export default function Transactions(){
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Delivered Orders</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Total Collected ({ccy})</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Delivered to Company ({ccy})</th>
-                <th style={{ padding: '10px 12px', textAlign:'left' }}>Details</th>
+                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Pending ({ccy})</th>
+                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)' }}>Details</th>
+                <th style={{ padding: '10px 12px', textAlign:'left' }}>History</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ padding: '10px 12px', opacity: 0.7 }}>Loading…</td></tr>
+                <tr><td colSpan={9} style={{ padding: '10px 12px', opacity: 0.7 }}>Loading…</td></tr>
               ) : !country ? (
-                <tr><td colSpan={7} style={{ padding: '10px 12px', opacity: 0.7 }}>Select a country to view driver finances</td></tr>
+                <tr><td colSpan={9} style={{ padding: '10px 12px', opacity: 0.7 }}>Select a country to view driver finances</td></tr>
               ) : drivers.length === 0 ? (
-                <tr><td colSpan={7} style={{ padding: '10px 12px', opacity: 0.7 }}>No drivers found</td></tr>
+                <tr><td colSpan={9} style={{ padding: '10px 12px', opacity: 0.7 }}>No drivers found</td></tr>
               ) : (
                 rows.map((r, idx) => {
                   const varianceColor = r.variance > 0 ? 'var(--warning)' : (r.variance < 0 ? 'var(--success)' : 'var(--muted)')
@@ -349,19 +374,19 @@ export default function Transactions(){
                         <div className="helper">{r.driver.email || ''}</div>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} title="View open assigned" style={{ padding: '6px 10px', color:'#f59e0b' }}>{num(r.openAssigned)}</button>
+                        <button className="btn secondary" onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} title="View open assigned" style={{ padding: '6px 10px', background:'rgba(245,158,11,0.15)', borderColor:'#f59e0b', color:'#f59e0b' }}>{num(r.openAssigned)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> goAllOrders(r.id)} title="View all assigned" style={{ padding: '6px 10px' }}>{num(r.totalAssigned)}</button>
+                        <button className="btn secondary" onClick={()=> goAllOrders(r.id)} title="View all assigned" style={{ padding: '6px 10px', background:'rgba(99,102,241,0.15)', borderColor:'#6366f1', color:'#6366f1' }}>{num(r.totalAssigned)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> goDelivered(r.id)} title="View delivered orders" style={{ padding: '6px 10px' }}>{num(r.deliveredCount)}</button>
+                        <button className="btn secondary" onClick={()=> goDelivered(r.id)} title="View delivered orders" style={{ padding: '6px 10px', background:'rgba(59,130,246,0.15)', borderColor:'#3b82f6', color:'#3b82f6' }}>{num(r.deliveredCount)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)} title="View delivered orders with collected payments" style={{ padding: '6px 10px' }}>{num(r.collectedSum)}</button>
+                        <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)} title="View delivered orders with collected payments" style={{ padding: '6px 10px', background:'rgba(34,197,94,0.15)', borderColor:'#22c55e', color:'#22c55e' }}>{num(r.collectedSum)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)} title="View remittances" style={{ padding: '6px 10px', color:'#22c55e', fontWeight:800 }}>{num(r.remittedSum)}</button>
+                        <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)} title="View remittances" style={{ padding: '6px 10px', background:'rgba(34,197,94,0.15)', borderColor:'#22c55e', color:'#22c55e', fontWeight:800 }}>{num(r.remittedSum)}</button>
                         <div className="helper" style={{ marginTop:6 }}>
                           <div style={{ height:6, background:'var(--panel-2)', borderRadius:999 }}>
                             <div style={{ width:`${barPct}%`, height:'100%', borderRadius:999, background:'linear-gradient(90deg, #22c55e, #3b82f6)' }} />
@@ -369,15 +394,71 @@ export default function Transactions(){
                           <span style={{ color: 'var(--danger)', fontWeight:800 }}>Pending: {num(r.variance)}</span>
                         </div>
                       </td>
-                      <td style={{ padding: '10px 12px' }}>
+                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'var(--danger)', fontWeight:800 }}>
+                        {num(r.variance)}
+                      </td>
+                      <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
                         <button className="btn" onClick={()=> setDetailModalFor(r.id)}>Details</button>
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)}>History</button>
                       </td>
                     </tr>
                   )
                 })
               )}
             </tbody>
+            <tfoot>
+              <tr style={{ borderTop:'2px solid var(--border)', background:'var(--panel)' }}>
+                <td style={{ padding:'10px 12px', fontWeight:800 }}>Totals</td>
+                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#f59e0b' }}>{num(totals.openA)}</td>
+                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#6366f1' }}>{num(totals.totalA)}</td>
+                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#3b82f6' }}>{num(totals.delivered)}</td>
+                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#22c55e' }}>{num(totals.collected)}</td>
+                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#22c55e' }}>{num(totals.remitted)}</td>
+                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'var(--danger)' }}>{num(totals.pending)}</td>
+                <td></td>
+                <td></td>
+              </tr>
+            </tfoot>
           </table>
+          )}
+          {isMobile && (
+            <div style={{ display:'grid', gap:8 }}>
+              {loading ? (
+                <div className="helper">Loading…</div>
+              ) : !country ? (
+                <div className="helper">Select a country to view driver finances</div>
+              ) : rows.length===0 ? (
+                <div className="helper">No drivers found</div>
+              ) : rows.map(r => {
+                const barPct = r.collectedSum > 0 ? Math.min(100, Math.max(0, (r.remittedSum / r.collectedSum) * 100)) : 0
+                return (
+                  <div key={r.id} className="card" style={{ display:'grid', gap:8, padding:10 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <div style={{ fontWeight:800 }}>{userName(r.driver)}</div>
+                      <button className="btn secondary" onClick={()=> setDetailModalFor(r.id)}>Details</button>
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8 }}>
+                      <button className="btn secondary" onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} style={{ background:'rgba(245,158,11,0.15)', borderColor:'#f59e0b', color:'#f59e0b' }}>Open: {num(r.openAssigned)}</button>
+                      <button className="btn secondary" onClick={()=> goAllOrders(r.id)} style={{ background:'rgba(99,102,241,0.15)', borderColor:'#6366f1', color:'#6366f1' }}>Assigned: {num(r.totalAssigned)}</button>
+                      <button className="btn secondary" onClick={()=> goDelivered(r.id)} style={{ background:'rgba(59,130,246,0.15)', borderColor:'#3b82f6', color:'#3b82f6' }}>Delivered: {num(r.deliveredCount)}</button>
+                      <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)} style={{ background:'rgba(34,197,94,0.15)', borderColor:'#22c55e', color:'#22c55e' }}>Collected: {num(r.collectedSum)}</button>
+                    </div>
+                    <div>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                        <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)} style={{ background:'rgba(34,197,94,0.15)', borderColor:'#22c55e', color:'#22c55e', fontWeight:800 }}>Remitted: {num(r.remittedSum)}</button>
+                        <div style={{ color:'var(--danger)', fontWeight:800 }}>Pending: {num(r.variance)}</div>
+                      </div>
+                      <div style={{ height:6, background:'var(--panel-2)', borderRadius:999, marginTop:6 }}>
+                        <div style={{ width:`${barPct}%`, height:'100%', borderRadius:999, background:'linear-gradient(90deg, #22c55e, #3b82f6)' }} />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -433,6 +514,9 @@ export default function Transactions(){
         if (!r) return null
         const actionsStyle = { display:'flex', gap:8, flexWrap:'wrap' }
         const btnStyle = { padding:'6px 10px' }
+        const hist = driverRemits
+          .filter(x => String(x?.driver?._id || x?.driver || '') === String(r.id))
+          .filter(x => (fromDate || toDate) ? dateInRange(x?.acceptedAt || x?.createdAt, fromDate, toDate) : true)
         return (
           <div className="modal-backdrop">
             <div className="modal">
@@ -487,6 +571,39 @@ export default function Transactions(){
                   <button className="btn" style={btnStyle} onClick={()=> goDeliveredCollected(r.id)}>Collected</button>
                   <button className="btn" style={btnStyle} onClick={()=> { const p = new URLSearchParams(); if(country) p.set('country', country); p.set('driver', r.id); p.set('ship','returned'); navigate(`/user/orders?${p.toString()}`) }}>Returned</button>
                   <button className="btn" style={btnStyle} onClick={()=> { const p = new URLSearchParams(); if(country) p.set('country', country); p.set('driver', r.id); p.set('ship','cancelled'); navigate(`/user/orders?${p.toString()}`) }}>Cancelled</button>
+                </div>
+                <div className="card" style={{ padding:10 }}>
+                  <div className="card-title">Remittance History</div>
+                  {hist.length === 0 ? (
+                    <div className="helper">No remittances in selected date range.</div>
+                  ) : (
+                    <div style={{ overflowX:'auto' }}>
+                      <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:0 }}>
+                        <thead>
+                          <tr>
+                            <th style={{ padding:'8px 10px', textAlign:'left' }}>Amount</th>
+                            <th style={{ padding:'8px 10px', textAlign:'left' }}>Status</th>
+                            <th style={{ padding:'8px 10px', textAlign:'left' }}>Method</th>
+                            <th style={{ padding:'8px 10px', textAlign:'left' }}>Accepted At</th>
+                            <th style={{ padding:'8px 10px', textAlign:'left' }}>Created At</th>
+                            <th style={{ padding:'8px 10px', textAlign:'left' }}>Receipt</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {hist.map((h,i)=> (
+                            <tr key={String(h._id||i)} style={{ borderTop:'1px solid var(--border)' }}>
+                              <td style={{ padding:'8px 10px', fontWeight:700, color:'#22c55e' }}>{num(h.amount)} {h.currency||''}</td>
+                              <td style={{ padding:'8px 10px' }}>{String(h.status||'').toUpperCase()}</td>
+                              <td style={{ padding:'8px 10px' }}>{(String(h.method||'hand').toLowerCase()==='transfer') ? 'Transfer' : 'Hand'}</td>
+                              <td style={{ padding:'8px 10px' }}>{h.acceptedAt? new Date(h.acceptedAt).toLocaleString(): '—'}</td>
+                              <td style={{ padding:'8px 10px' }}>{h.createdAt? new Date(h.createdAt).toLocaleString(): '—'}</td>
+                              <td style={{ padding:'8px 10px' }}>{h.receiptPath ? (<a href={`${API_BASE}${h.receiptPath}`} target="_blank" rel="noopener noreferrer">Download</a>) : '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
