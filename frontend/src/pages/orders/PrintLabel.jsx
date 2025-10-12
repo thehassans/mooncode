@@ -84,6 +84,11 @@ export default function PrintLabel(){
   const phoneFull = `${order.phoneCountryCode||''} ${order.customerPhone||''}`.trim()
   const whatsapp = phoneFull
   const targetCode = orderCountryCurrency(order.orderCountry)
+  function phoneCodeCurrency(code){
+    const m = { '+966':'SAR', '+971':'AED', '+968':'OMR', '+973':'BHD', '+965':'KWD', '+974':'QAR', '+91':'INR' }
+    return m[String(code||'').trim()] || null
+  }
+  const localCode = phoneCodeCurrency(order.phoneCountryCode) || targetCode
   // Build a more detailed address without duplication and excluding coordinates
   function tokenize(src, maxSegs){
     if (!src) return []
@@ -152,7 +157,9 @@ export default function PrintLabel(){
   // Shipping and Discount are entered/saved in the order's local currency already
   const shipLocal = Number(order.shippingFee||0)
   const discountLocal = Number(order.discount||0)
-  const computedTotalLocal = Math.max(0, itemsSubtotalConv + shipLocal - discountLocal)
+  const shipConv = convert(shipLocal, localCode, targetCode, curCfg)
+  const discountConv = convert(discountLocal, localCode, targetCode, curCfg)
+  const computedTotalLocal = Math.max(0, itemsSubtotalConv + shipConv - discountConv)
   const codLocal = Number(order.codAmount||0)
   const collectedLocal = Number(order.collectedAmount||0)
   const balanceDueLocal = Math.max(0, codLocal - collectedLocal - shipLocal)
@@ -268,13 +275,13 @@ export default function PrintLabel(){
               {shipLocal > 0 && (
                 <tr>
                   <td colSpan={3} style={{textAlign:'right'}}>Shipping</td>
-                  <td style={{textAlign:'right'}}>{`${targetCode} ${fmt(shipLocal)}`}</td>
+                  <td style={{textAlign:'right'}}>{`${targetCode} ${fmt(shipConv)}`}</td>
                 </tr>
               )}
               {discountLocal > 0 && (
                 <tr>
                   <td colSpan={3} style={{textAlign:'right'}}>Discount</td>
-                  <td style={{textAlign:'right'}}>-{`${targetCode} ${fmt(discountLocal)}`}</td>
+                  <td style={{textAlign:'right'}}>-{`${targetCode} ${fmt(discountConv)}`}</td>
                 </tr>
               )}
             </tbody>

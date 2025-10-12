@@ -396,6 +396,10 @@ export default function UserOrders(){
     if (raw==='qatar' || raw==='qa') return 'QAR'
     return 'SAR'
   }
+  function phoneCodeCurrency(code){
+    const m = { '+966':'SAR', '+971':'AED', '+968':'OMR', '+973':'BHD', '+965':'KWD', '+974':'QAR', '+91':'INR' }
+    return m[String(code||'').trim()] || null
+  }
 
   // Drivers loaded on-demand by country
 
@@ -599,6 +603,7 @@ export default function UserOrders(){
                   }
                   
                   const targetCode = orderCountryCurrency(o.orderCountry)
+                  const localCode = phoneCodeCurrency(o.phoneCountryCode) || targetCode
                   let itemsSubtotalConv = 0
                   if (o.items && Array.isArray(o.items) && o.items.length > 0){
                     for (const it of o.items){
@@ -616,7 +621,9 @@ export default function UserOrders(){
                   }
                   const shipLocal = Number(o.shippingFee||0)
                   const discountLocal = Number(o.discount||0)
-                  const price = Math.max(0, itemsSubtotalConv + shipLocal - discountLocal)
+                  const shipConv = convert(shipLocal, localCode, targetCode, curCfg)
+                  const discountConv = convert(discountLocal, localCode, targetCode, curCfg)
+                  const price = Math.max(0, itemsSubtotalConv + shipConv - discountConv)
                   
                   // Driver and status
                   const currentDriver = editingDriver[id] !== undefined ? editingDriver[id] : (o.deliveryBoy?._id || o.deliveryBoy || '')

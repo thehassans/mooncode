@@ -334,7 +334,12 @@ export default function ManagerOrders(){
       if (raw==='qatar' || raw==='qa') return 'QAR'
       return 'SAR'
     }
+    function phoneCodeCurrency(code){
+      const m = { '+966':'SAR', '+971':'AED', '+968':'OMR', '+973':'BHD', '+965':'KWD', '+974':'QAR', '+91':'INR' }
+      return m[String(code||'').trim()] || null
+    }
     const targetCode = orderCountryCurrency(o.orderCountry)
+    const localCode = phoneCodeCurrency(o.phoneCountryCode) || targetCode
     let qty = 1
     if (o.items && Array.isArray(o.items) && o.items.length > 0){
       qty = o.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
@@ -358,7 +363,9 @@ export default function ManagerOrders(){
     }
     const shipLocal = Number(o.shippingFee||0)
     const discountLocal = Number(o.discount||0)
-    const totalConv = Math.max(0, itemsSubtotalConv + shipLocal - discountLocal)
+    const shipConv = convert(shipLocal, localCode, targetCode, curCfg)
+    const discountConv = convert(discountLocal, localCode, targetCode, curCfg)
+    const totalConv = Math.max(0, itemsSubtotalConv + shipConv - discountConv)
     return (
       <div className="card" style={{display:'grid', gap:10}}>
         <div className="card-header" style={{alignItems:'center'}}>
