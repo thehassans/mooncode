@@ -55,8 +55,8 @@ export default function EditOrder(){
   }, [editForm.items, products, editCurrency])
   
   const editSubtotal = useMemo(() => editItemsDetailed.reduce((s, r) => s + (r.amount||0), 0), [editItemsDetailed])
-  const editShippingNum = useMemo(() => Math.max(0, Number(editForm.shippingFee||0)), [editForm.shippingFee])
-  const editDiscountNum = useMemo(() => Math.max(0, Number(editForm.discount||0)), [editForm.discount])
+  const editShippingNum = useMemo(() => Math.max(0, Number(editForm.shippingFee===''?0:editForm.shippingFee||0)), [editForm.shippingFee])
+  const editDiscountNum = useMemo(() => Math.max(0, Number(editForm.discount===''?0:editForm.discount||0)), [editForm.discount])
   const editComputedTotal = useMemo(() => Math.max(0, editSubtotal + editShippingNum - editDiscountNum), [editSubtotal, editShippingNum, editDiscountNum])
 
   // Load order and products
@@ -103,8 +103,8 @@ export default function EditOrder(){
     setSaving(true)
     try{
       const localCcy = PHONE_CODE_TO_CCY[editForm.phoneCountryCode] || editCurrency
-      const discountLocal = convertPrice(Number(editForm.discount||0), editCurrency, localCcy)
-      const shippingLocal = convertPrice(Number(editForm.shippingFee||0), editCurrency, localCcy)
+      const discountLocal = convertPrice(Number(editForm.discount===''?0:editForm.discount||0), editCurrency, localCcy)
+      const shippingLocal = convertPrice(Number(editForm.shippingFee===''?0:editForm.shippingFee||0), editCurrency, localCcy)
       const payload = {
         ...editForm,
         discount: discountLocal,
@@ -261,11 +261,11 @@ export default function EditOrder(){
           <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12}}>
             <div>
               <div className="label">Discount ({editCurrency})</div>
-              <input className="input" type="number" step="0.01" value={editForm.discount || 0} onChange={e=> setEditForm(f=>({...f, discount:Number(e.target.value)||0}))} />
+              <input className="input" type="number" step="1" min="0" value={editForm.discount ?? ''} onChange={e=> setEditForm(f=>({...f, discount: e.target.value}))} />
             </div>
             <div>
               <div className="label">Shipping Fee ({editCurrency})</div>
-              <input className="input" type="number" step="0.01" value={editForm.shippingFee || 0} onChange={e=> setEditForm(f=>({...f, shippingFee:Number(e.target.value)||0}))} />
+              <input className="input" type="number" step="1" min="0" value={editForm.shippingFee ?? ''} onChange={e=> setEditForm(f=>({...f, shippingFee: e.target.value}))} />
             </div>
             <div>
               <div className="label">Total ({editCurrency})</div>
