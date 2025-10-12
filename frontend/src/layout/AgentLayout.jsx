@@ -91,6 +91,7 @@ export default function AgentLayout() {
 
   // Branding for header logo
   const [branding, setBranding] = useState({ headerLogo: null })
+  const [me, setMe] = useState(() => { try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} } })
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -98,6 +99,10 @@ export default function AgentLayout() {
         const j = await apiGet('/api/settings/branding')
         if (!cancelled) setBranding({ headerLogo: j.headerLogo || null })
       } catch {}
+      try{
+        const r = await apiGet('/api/users/me')
+        if (!cancelled) setMe(r?.user||{})
+      }catch{}
     })()
     return () => {
       cancelled = true
@@ -482,7 +487,23 @@ export default function AgentLayout() {
                   />
                 )
               })()}
-              {/* Welcome chip removed */}
+              {/* Agent identity chip */}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
+                  borderRadius: 999,
+                  background: 'var(--panel)',
+                  border: '1px solid var(--border)',
+                }}
+              >
+                <span aria-hidden>🧑‍💼</span>
+                <span style={{ fontWeight: 800, letterSpacing: 0.3 }}>
+                  Agent {me.firstName||''} {me.lastName||''}
+                </span>
+              </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {/* Swatches left of theme toggle */}
@@ -541,7 +562,7 @@ export default function AgentLayout() {
             const count = isInbox ? unreadCount : isOrders ? ordersSubmitted : 0
             const showCount = isInbox && count > 0
             // Show level badge when levelIdx > 0 (from Level 1 and above)
-            const meBadge = isMe && levelIdx > 0 ? `Level ${levelIdx}` : ''
+            const meBadge = isMe && levelIdx > 1 ? `Level ${levelIdx}` : ''
             return (
               <NavLink
                 key={tab.to}
