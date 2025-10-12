@@ -158,24 +158,24 @@ export default function Drivers(){
         return
       }
       const clean = String(form.phone||'').replace(/[^\d+]/g,'')
-      // Special-case Bahrain: +973 followed by 8 digits
-      const isBahrain = form.country === 'Bahrain' || clean.startsWith('+973')
-      const bhValid = /^\+973\d{8,12}$/.test(clean)
-      const libValid = isValidPhoneNumber(clean)
-      if (!(isBahrain ? bhValid : libValid)){
-        setLoading(false)
-        setPhoneError('Enter a valid phone number with country code')
-        setMsg('')
-        return
-      }
-      
-      // Validate phone number is from allowed countries
+      // Validate allowed country codes first
       const allowedCodes = ['+971', '+968', '+966', '+973', '+965', '+974', '+91'] // UAE, Oman, KSA, Bahrain, Kuwait, Qatar, India
       const isAllowedCountry = allowedCodes.some(code => clean.startsWith(code))
-      
       if (!isAllowedCountry) {
         setLoading(false)
         setPhoneError('Phone must start with +971 (UAE), +968 (Oman), +966 (KSA), +973 (Bahrain), +965 (Kuwait), +974 (Qatar) or +91 (India)')
+        setMsg('')
+        return
+      }
+      // Special-case Bahrain: accept +973 with 8-12 digits
+      const isBahrain = form.country === 'Bahrain' || clean.startsWith('+973')
+      const bhValid = /^\+973\d{8,12}$/.test(clean)
+      // Generic fallback if library is too strict: allow +<6-15 digits>
+      const genericValid = /^\+\d{6,15}$/.test(clean)
+      const libValid = isValidPhoneNumber(clean)
+      if (!(isBahrain ? bhValid : (libValid || genericValid))){
+        setLoading(false)
+        setPhoneError('Enter a valid phone number with country code')
         setMsg('')
         return
       }
