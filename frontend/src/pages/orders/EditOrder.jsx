@@ -198,7 +198,9 @@ export default function EditOrder(){
                 }}>
                   <option value="">Select Product</option>
                   {products.map(p => (
-                    <option key={p._id} value={p._id}>{p.name} - {p.baseCurrency} {p.price}</option>
+                    <option key={p._id} value={p._id}>
+                      {p.name} - {editCurrency} {convertPrice(Number(p?.price||0), p?.baseCurrency||'SAR', editCurrency).toFixed(2)}
+                    </option>
                   ))}
                 </select>
               </div>
