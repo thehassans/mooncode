@@ -73,6 +73,7 @@ export default function EditOrder(){
         setProducts(Array.isArray(productsRes?.products)? productsRes.products : [])
         
         const o = orderRes.order || orderRes
+        // Preserve discount/shipping as entered by agent (assumed local currency)
         setEditForm({
           customerName: o.customerName || '',
           customerPhone: o.customerPhone || '',
@@ -101,8 +102,13 @@ export default function EditOrder(){
   async function saveEdit(){
     setSaving(true)
     try{
+      const localCcy = PHONE_CODE_TO_CCY[editForm.phoneCountryCode] || editCurrency
+      const discountLocal = convertPrice(Number(editForm.discount||0), editCurrency, localCcy)
+      const shippingLocal = convertPrice(Number(editForm.shippingFee||0), editCurrency, localCcy)
       const payload = {
         ...editForm,
+        discount: discountLocal,
+        shippingFee: shippingLocal,
         total: editComputedTotal
       }
       await apiPatch(`/api/orders/${id}`, payload)
