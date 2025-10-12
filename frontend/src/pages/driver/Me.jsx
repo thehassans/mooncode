@@ -22,11 +22,12 @@ export default function DriverMe() {
     if (theme === 'light') root.setAttribute('data-theme','light')
     else root.removeAttribute('data-theme')
   }, [theme])
-  // Change password
+  // Change password (modal like Agent Me)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [changingPass, setChangingPass] = useState(false)
+  const [showPassModal, setShowPassModal] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -103,30 +104,46 @@ export default function DriverMe() {
 
       {/* Achievements & Progress */}
       <div className="panel" style={{display:'grid', gap:10}}>
-        <div style={{fontWeight:800}}>Achievements</div>
+        <div className="card-title">Achievements</div>
         <div className="helper">Current: {levelInfo.current.title} • Next: {levelInfo.next? levelInfo.next.title : 'Max level'}</div>
         <div style={{height:10, background:'var(--panel-2)', borderRadius:6, overflow:'hidden'}}>
           <div style={{width:`${levelInfo.pct}%`, height:'100%', background:'var(--wa-accent)'}} />
         </div>
       </div>
 
-      {/* Change Password */}
+      {/* Change Password (modal trigger) */}
       <div className="panel" style={{display:'grid', gap:10}}>
-        <div style={{fontWeight:800}}>Change Password</div>
-        <div className="form-grid" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:8}}>
-          <input className="input" type="password" placeholder="Current password" value={currentPassword} onChange={e=> setCurrentPassword(e.target.value)} />
-          <input className="input" type="password" placeholder="New password" value={newPassword} onChange={e=> setNewPassword(e.target.value)} />
-          <input className="input" type="password" placeholder="Confirm new password" value={confirmPassword} onChange={e=> setConfirmPassword(e.target.value)} />
-        </div>
+        <div className="card-title">Security</div>
+        <div className="helper">Manage your password</div>
         <div style={{display:'flex', justifyContent:'flex-end'}}>
-          <button className="btn" disabled={changingPass} onClick={async()=>{
-            if (!currentPassword || !newPassword) return alert('Please fill all fields')
-            if (newPassword.length < 6) return alert('Password must be at least 6 characters')
-            if (newPassword !== confirmPassword) return alert('Passwords do not match')
-            try{ setChangingPass(true); await apiPatch('/api/users/me/password', { currentPassword, newPassword }); alert('Password updated'); setCurrentPassword(''); setNewPassword(''); setConfirmPassword('') }catch(e){ alert(e?.message||'Failed to update password') } finally { setChangingPass(false) }
-          }}>Update Password</button>
+          <button className="btn" onClick={()=> setShowPassModal(true)}>Change Password</button>
         </div>
       </div>
+
+      {showPassModal && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <div className="modal-header">
+              <div className="modal-title">Change Password</div>
+              <button className="btn light" onClick={()=> setShowPassModal(false)}>Close</button>
+            </div>
+            <div className="modal-body" style={{display:'grid', gap:8}}>
+              <input className="input" type="password" placeholder="Current password" value={currentPassword} onChange={e=> setCurrentPassword(e.target.value)} />
+              <input className="input" type="password" placeholder="New password" value={newPassword} onChange={e=> setNewPassword(e.target.value)} />
+              <input className="input" type="password" placeholder="Confirm new password" value={confirmPassword} onChange={e=> setConfirmPassword(e.target.value)} />
+            </div>
+            <div className="modal-footer" style={{display:'flex', justifyContent:'flex-end', gap:8}}>
+              <button className="btn light" onClick={()=> setShowPassModal(false)}>Cancel</button>
+              <button className="btn primary" disabled={changingPass} onClick={async()=>{
+                if (!currentPassword || !newPassword) return alert('Please fill all fields')
+                if (newPassword.length < 6) return alert('Password must be at least 6 characters')
+                if (newPassword !== confirmPassword) return alert('Passwords do not match')
+                try{ setChangingPass(true); await apiPatch('/api/users/me/password', { currentPassword, newPassword }); alert('Password updated'); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setShowPassModal(false) }catch(e){ alert(e?.message||'Failed to update password') } finally { setChangingPass(false) }
+              }}>Update Password</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

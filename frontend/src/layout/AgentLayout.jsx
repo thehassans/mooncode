@@ -501,7 +501,7 @@ export default function AgentLayout() {
               >
                 <span aria-hidden>🧑‍💼</span>
                 <span style={{ fontWeight: 800, letterSpacing: 0.3 }}>
-                  Agent {me.firstName||''} {me.lastName||''}
+                  {(String(me.firstName||'').split(' ')[0]||'').trim()} Agent
                 </span>
               </div>
             </div>

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Outlet, useLocation, NavLink, useNavigate } from 'react-router-dom'
-import { API_BASE } from '../api.js'
+import { API_BASE, apiGet } from '../api.js'
 
 export default function DriverLayout() {
   const [closed, setClosed] = useState(() =>
@@ -35,6 +35,22 @@ export default function DriverLayout() {
   }, [])
 
   const me = JSON.parse(localStorage.getItem('me') || '{}')
+  // Driver level for badge (based on delivered orders)
+  const [deliveredCount, setDeliveredCount] = useState(0)
+  const levelThresholds = useMemo(()=>[0,10,50,100,250,500], [])
+  const levelIdx = useMemo(()=>{
+    const n = Number(deliveredCount||0)
+    let idx = 0
+    for (let i=0;i<levelThresholds.length;i++){ if (n >= levelThresholds[i]) idx = i; else break }
+    return idx
+  }, [deliveredCount, levelThresholds])
+  useEffect(()=>{
+    let alive = true
+    ;(async()=>{
+      try{ const m = await apiGet('/api/orders/driver/metrics'); if (alive) setDeliveredCount(Number(m?.status?.delivered||0)) }catch{}
+    })()
+    return ()=>{ alive = false }
+  }, [])
 
   const mobileTabs = [
     {
@@ -201,7 +217,7 @@ export default function DriverLayout() {
               >
                 <span aria-hidden>🚚</span>
                 <span style={{ fontWeight: 800, letterSpacing: 0.3 }}>
-                  Driver {me.firstName || ''} {me.lastName || ''}
+                  {(String(me.firstName||'').split(' ')[0]||'').trim()} Driver
                 </span>
               </div>
             </div>
@@ -227,18 +243,27 @@ export default function DriverLayout() {
       </div>
       {tabsVisible && (
         <nav className="mobile-tabs" role="navigation" aria-label="Primary" style={{gap:6}}>
-          {mobileTabs.map((tab) => (
-            <NavLink
-              key={tab.to}
-              to={tab.to}
-              end={tab.to === '/driver'}
-              className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}
-              style={{padding:'8px 6px'}}
-            >
-              <span className="icon">{tab.icon}</span>
-              <span style={{ fontSize: 11 }}>{tab.label}</span>
-            </NavLink>
-          ))}
+          {mobileTabs.map((tab) => {
+            const isMe = tab.to.endsWith('/me')
+            const meBadge = isMe && levelIdx > 1 ? `Level ${levelIdx}` : ''
+            return (
+              <NavLink
+                key={tab.to}
+                to={tab.to}
+                end={tab.to === '/driver'}
+                className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}
+                style={{padding:'8px 6px'}}
+              >
+                <span className="icon" style={{position:'relative'}}>
+                  {tab.icon}
+                </span>
+                <span style={{ fontSize: 11 }}>{tab.label}</span>
+                {isMe && meBadge && (
+                  <span className="badge" style={{ marginLeft: 6, fontSize: 10 }}>{meBadge}</span>
+                )}
+              </NavLink>
+            )
+          })}
         </nav>
       )}
     </div>
