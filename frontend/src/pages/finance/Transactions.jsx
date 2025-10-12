@@ -241,7 +241,7 @@ export default function Transactions(){
 
   function exportCsv(){
     try{
-      const header = ['Driver','Email','OpenAssigned','TotalAssigned','Delivered','Returned','Cancelled','Collected','Remitted','Variance']
+      const header = ['Driver','Email','OpenAssigned','TotalAssigned','Delivered','Returned','Cancelled','Collected','Remitted','Pending']
       const lines = [header.join(',')]
       for (const r of rows){
         lines.push([
@@ -297,7 +297,7 @@ export default function Transactions(){
           <input className="input" type="date" value={fromDate} onChange={e=> setFromDate(e.target.value)} />
           <input className="input" type="date" value={toDate} onChange={e=> setToDate(e.target.value)} />
           <select className="input" value={sortBy} onChange={e=> setSortBy(e.target.value)}>
-            <option value="variance">Sort by Variance</option>
+            <option value="variance">Sort by Pending</option>
             <option value="collectedSum">Sort by Collected</option>
             <option value="remittedSum">Sort by Remitted</option>
             <option value="deliveredCount">Sort by Delivered</option>
@@ -361,12 +361,12 @@ export default function Transactions(){
                         <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)} title="View delivered orders with collected payments" style={{ padding: '6px 10px' }}>{num(r.collectedSum)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)} title="View remittances" style={{ padding: '6px 10px', color:'#0ea5e9' }}>{num(r.remittedSum)}</button>
+                        <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)} title="View remittances" style={{ padding: '6px 10px', color:'#22c55e', fontWeight:800 }}>{num(r.remittedSum)}</button>
                         <div className="helper" style={{ marginTop:6 }}>
                           <div style={{ height:6, background:'var(--panel-2)', borderRadius:999 }}>
                             <div style={{ width:`${barPct}%`, height:'100%', borderRadius:999, background:'linear-gradient(90deg, #22c55e, #3b82f6)' }} />
                           </div>
-                          <span style={{ color: varianceColor, fontWeight:700 }}>Variance: {num(r.variance)}</span>
+                          <span style={{ color: 'var(--danger)', fontWeight:800 }}>Pending: {num(r.variance)}</span>
                         </div>
                       </td>
                       <td style={{ padding: '10px 12px' }}>
@@ -473,11 +473,11 @@ export default function Transactions(){
                   </div>
                   <div className="card" style={{ padding:10 }}>
                     <div className="label">Remitted ({ccy})</div>
-                    <div style={{ fontWeight:800, color:'#0ea5e9' }}>{num(r.remittedSum)}</div>
+                    <div style={{ fontWeight:800, color:'#22c55e' }}>{num(r.remittedSum)}</div>
                   </div>
                   <div className="card" style={{ padding:10 }}>
-                    <div className="label">Variance ({ccy})</div>
-                    <div style={{ fontWeight:800 }}>{num(r.variance)}</div>
+                    <div className="label">Pending ({ccy})</div>
+                    <div style={{ fontWeight:800, color:'var(--danger)' }}>{num(r.variance)}</div>
                   </div>
                 </div>
                 <div style={actionsStyle}>
