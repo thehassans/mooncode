@@ -374,24 +374,24 @@ export default function Transactions(){
                         <div className="helper">{r.driver.email || ''}</div>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} title="View open assigned" style={{ padding: '6px 10px', background:'rgba(245,158,11,0.15)', borderColor:'#f59e0b', color:'#f59e0b' }}>{num(r.openAssigned)}</button>
+                        <button className="btn secondary" onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} title="View open assigned" style={{ padding: '6px 10px' }}>{num(r.openAssigned)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> goAllOrders(r.id)} title="View all assigned" style={{ padding: '6px 10px', background:'rgba(99,102,241,0.15)', borderColor:'#6366f1', color:'#6366f1' }}>{num(r.totalAssigned)}</button>
+                        <button className="btn secondary" onClick={()=> goAllOrders(r.id)} title="View all assigned" style={{ padding: '6px 10px' }}>{num(r.totalAssigned)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> goDelivered(r.id)} title="View delivered orders" style={{ padding: '6px 10px', background:'rgba(59,130,246,0.15)', borderColor:'#3b82f6', color:'#3b82f6' }}>{num(r.deliveredCount)}</button>
+                        <button className="btn secondary" onClick={()=> goDelivered(r.id)} title="View delivered orders" style={{ padding: '6px 10px' }}>{num(r.deliveredCount)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)} title="View delivered orders with collected payments" style={{ padding: '6px 10px', background:'rgba(34,197,94,0.15)', borderColor:'#22c55e', color:'#22c55e' }}>{num(r.collectedSum)}</button>
+                        <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)} title="View delivered orders with collected payments" style={{ padding: '6px 10px' }}>{num(r.collectedSum)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)} title="View remittances" style={{ padding: '6px 10px', background:'rgba(34,197,94,0.15)', borderColor:'#22c55e', color:'#22c55e', fontWeight:800 }}>{num(r.remittedSum)}</button>
+                        <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)} title="View remittances" style={{ padding: '6px 10px', color:'#22c55e', fontWeight:800 }}>{num(r.remittedSum)}</button>
                         <div className="helper" style={{ marginTop:6 }}>
                           <div style={{ height:6, background:'var(--panel-2)', borderRadius:999 }}>
                             <div style={{ width:`${barPct}%`, height:'100%', borderRadius:999, background:'linear-gradient(90deg, #22c55e, #3b82f6)' }} />
                           </div>
-                          <span style={{ color: 'var(--danger)', fontWeight:800 }}>Pending: {num(r.variance)}</span>
+                          {null}
                         </div>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'var(--danger)', fontWeight:800 }}>
@@ -440,15 +440,14 @@ export default function Transactions(){
                       <button className="btn secondary" onClick={()=> setDetailModalFor(r.id)}>Details</button>
                     </div>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8 }}>
-                      <button className="btn secondary" onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} style={{ background:'rgba(245,158,11,0.15)', borderColor:'#f59e0b', color:'#f59e0b' }}>Open: {num(r.openAssigned)}</button>
-                      <button className="btn secondary" onClick={()=> goAllOrders(r.id)} style={{ background:'rgba(99,102,241,0.15)', borderColor:'#6366f1', color:'#6366f1' }}>Assigned: {num(r.totalAssigned)}</button>
-                      <button className="btn secondary" onClick={()=> goDelivered(r.id)} style={{ background:'rgba(59,130,246,0.15)', borderColor:'#3b82f6', color:'#3b82f6' }}>Delivered: {num(r.deliveredCount)}</button>
-                      <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)} style={{ background:'rgba(34,197,94,0.15)', borderColor:'#22c55e', color:'#22c55e' }}>Collected: {num(r.collectedSum)}</button>
+                      <button className="btn secondary" onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }}>Open: {num(r.openAssigned)}</button>
+                      <button className="btn secondary" onClick={()=> goAllOrders(r.id)}>Assigned: {num(r.totalAssigned)}</button>
+                      <button className="btn secondary" onClick={()=> goDelivered(r.id)}>Delivered: {num(r.deliveredCount)}</button>
+                      <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)}>Collected: {num(r.collectedSum)}</button>
                     </div>
                     <div>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                        <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)} style={{ background:'rgba(34,197,94,0.15)', borderColor:'#22c55e', color:'#22c55e', fontWeight:800 }}>Remitted: {num(r.remittedSum)}</button>
-                        <div style={{ color:'var(--danger)', fontWeight:800 }}>Pending: {num(r.variance)}</div>
+                        <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)} style={{ color:'#22c55e', fontWeight:800 }}>Remitted: {num(r.remittedSum)}</button>
                       </div>
                       <div style={{ height:6, background:'var(--panel-2)', borderRadius:999, marginTop:6 }}>
                         <div style={{ width:`${barPct}%`, height:'100%', borderRadius:999, background:'linear-gradient(90deg, #22c55e, #3b82f6)' }} />
