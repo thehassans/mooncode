@@ -84,6 +84,7 @@ export default function PrintLabel(){
   const phoneFull = `${order.phoneCountryCode||''} ${order.customerPhone||''}`.trim()
   const whatsapp = phoneFull
   const targetCode = orderCountryCurrency(order.orderCountry)
+  const isUAE = targetCode === 'AED'
   // Build a more detailed address without duplication and excluding coordinates
   function tokenize(src, maxSegs){
     if (!src) return []
@@ -152,12 +153,14 @@ export default function PrintLabel(){
   // Shipping and Discount are entered/saved in the order's local currency already
   const shipLocal = Number(order.shippingFee||0)
   const discountLocal = Number(order.discount||0)
-  const computedTotalLocal = Math.max(0, itemsSubtotalConv + shipLocal - discountLocal)
+  const includeShipping = !isUAE
+  const computedTotalLocal = Math.max(0, itemsSubtotalConv + (includeShipping ? shipLocal : 0) - discountLocal)
   const codLocal = Number(order.codAmount||0)
   const collectedLocal = Number(order.collectedAmount||0)
   const balanceDueLocal = Math.max(0, codLocal - collectedLocal - shipLocal)
   // For label display, always show the computed order total in target currency
-  const labelTotalLocal = computedTotalLocal
+  const orderTotalMaybe = (order?.total != null && isFinite(Number(order.total))) ? Number(order.total) : null
+  const labelTotalLocal = (isUAE && orderTotalMaybe != null) ? orderTotalMaybe : computedTotalLocal
   // Limit number of visible rows to keep within 4x6 page
   const MAX_ROWS = 5
   const visibleItems = displayItems.slice(0, MAX_ROWS)
@@ -266,7 +269,7 @@ export default function PrintLabel(){
                 <td colSpan={3} style={{textAlign:'right'}}><strong>Subtotal</strong></td>
                 <td style={{textAlign:'right'}}>{`${targetCode} ${fmt(itemsSubtotalConv)}`}</td>
               </tr>
-              {shipLocal > 0 && (
+              {!isUAE && shipLocal > 0 && (
                 <tr>
                   <td colSpan={3} style={{textAlign:'right'}}>Shipping</td>
                   <td style={{textAlign:'right'}}>{`${targetCode} ${fmt(shipLocal)}`}</td>
