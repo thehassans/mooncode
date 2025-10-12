@@ -351,7 +351,7 @@ export default function Transactions(){
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Delivered Orders</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Total Collected ({ccy})</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Delivered to Company ({ccy})</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Pending ({ccy})</th>
+                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'var(--danger)' }}>Pending ({ccy})</th>
                 <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)' }}>Details</th>
                 <th style={{ padding: '10px 12px', textAlign:'left' }}>History</th>
               </tr>
@@ -374,16 +374,16 @@ export default function Transactions(){
                         <div className="helper">{r.driver.email || ''}</div>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} title="View open assigned" style={{ padding: '6px 10px' }}>{num(r.openAssigned)}</button>
+                        <button className="btn secondary" onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} title="View open assigned" style={{ padding: '6px 10px', color:'#f59e0b', fontWeight:700 }}>{num(r.openAssigned)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> goAllOrders(r.id)} title="View all assigned" style={{ padding: '6px 10px' }}>{num(r.totalAssigned)}</button>
+                        <button className="btn secondary" onClick={()=> goAllOrders(r.id)} title="View all assigned" style={{ padding: '6px 10px', color:'#6366f1', fontWeight:700 }}>{num(r.totalAssigned)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> goDelivered(r.id)} title="View delivered orders" style={{ padding: '6px 10px' }}>{num(r.deliveredCount)}</button>
+                        <button className="btn secondary" onClick={()=> goDelivered(r.id)} title="View delivered orders" style={{ padding: '6px 10px', color:'#3b82f6', fontWeight:700 }}>{num(r.deliveredCount)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)} title="View delivered orders with collected payments" style={{ padding: '6px 10px' }}>{num(r.collectedSum)}</button>
+                        <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)} title="View delivered orders with collected payments" style={{ padding: '6px 10px', color:'#22c55e', fontWeight:700 }}>{num(r.collectedSum)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
                         <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)} title="View remittances" style={{ padding: '6px 10px', color:'#22c55e', fontWeight:800 }}>{num(r.remittedSum)}</button>
@@ -440,10 +440,10 @@ export default function Transactions(){
                       <button className="btn secondary" onClick={()=> setDetailModalFor(r.id)}>Details</button>
                     </div>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8 }}>
-                      <button className="btn secondary" onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }}>Open: {num(r.openAssigned)}</button>
-                      <button className="btn secondary" onClick={()=> goAllOrders(r.id)}>Assigned: {num(r.totalAssigned)}</button>
-                      <button className="btn secondary" onClick={()=> goDelivered(r.id)}>Delivered: {num(r.deliveredCount)}</button>
-                      <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)}>Collected: {num(r.collectedSum)}</button>
+                      <button className="btn secondary" onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} style={{ color:'#f59e0b', fontWeight:700 }}>Open: {num(r.openAssigned)}</button>
+                      <button className="btn secondary" onClick={()=> goAllOrders(r.id)} style={{ color:'#6366f1', fontWeight:700 }}>Assigned: {num(r.totalAssigned)}</button>
+                      <button className="btn secondary" onClick={()=> goDelivered(r.id)} style={{ color:'#3b82f6', fontWeight:700 }}>Delivered: {num(r.deliveredCount)}</button>
+                      <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)} style={{ color:'#22c55e', fontWeight:700 }}>Collected: {num(r.collectedSum)}</button>
                     </div>
                     <div>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
