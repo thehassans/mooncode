@@ -157,10 +157,10 @@ export default function Drivers(){
         setMsg('')
         return
       }
-      const clean = String(form.phone||'').replace(/\s/g,'')
+      const clean = String(form.phone||'').replace(/[^\d+]/g,'')
       // Special-case Bahrain: +973 followed by 8 digits
       const isBahrain = form.country === 'Bahrain' || clean.startsWith('+973')
-      const bhValid = /^\+973\d{8}$/.test(clean)
+      const bhValid = /^\+973\d{8,12}$/.test(clean)
       const libValid = isValidPhoneNumber(clean)
       if (!(isBahrain ? bhValid : libValid)){
         setLoading(false)
