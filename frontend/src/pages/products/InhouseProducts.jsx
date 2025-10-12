@@ -54,7 +54,7 @@ export default function InhouseProducts(){
   const [editForm, setEditForm] = useState(null)
   const [editPreviews, setEditPreviews] = useState([])
   // Gallery/lightbox state
-  const [gallery, setGallery] = useState({ open:false, images:[], index:0, zoom:1 })
+  const [gallery, setGallery] = useState({ open:false, images:[], index:0, zoom:1, fit:'fit' })
   // Quick popups
   const [stockPopup, setStockPopup] = useState({ open:false, product:null, stockUAE:0, stockOman:0, stockKSA:0, stockBahrain:0, stockIndia:0, stockKuwait:0, stockQatar:0, inStock:true })
   const [pricePopup, setPricePopup] = useState({ open:false, product:null, baseCurrency:'SAR', price:'', purchasePrice:'', x:0, y:0 })
@@ -103,14 +103,23 @@ export default function InhouseProducts(){
   function openGallery(images, startIdx=0){
     const imgs = (images||[]).filter(Boolean)
     if (!imgs.length) return
-    setGallery({ open:true, images: imgs, index: Math.max(0, Math.min(startIdx, imgs.length-1)), zoom: 1 })
+    setGallery({ open:true, images: imgs, index: Math.max(0, Math.min(startIdx, imgs.length-1)), zoom: 1, fit:'fit' })
+  }
+  function openImageOrGallery(images){
+    const imgs = (images||[]).filter(Boolean)
+    if (!imgs.length) return
+    if (imgs.length === 1){
+      try{ window.open(`${API_BASE}${imgs[0]}`,'_blank','noopener,noreferrer') }catch{}
+      return
+    }
+    openGallery(imgs, 0)
   }
   function closeGallery(){ setGallery(g => ({ ...g, open:false })) }
   function nextImg(){ setGallery(g => ({ ...g, index: (g.index + 1) % g.images.length, zoom:1 })) }
   function prevImg(){ setGallery(g => ({ ...g, index: (g.index - 1 + g.images.length) % g.images.length, zoom:1 })) }
   function zoomIn(){ setGallery(g => ({ ...g, zoom: Math.min(4, g.zoom + 0.25) })) }
   function zoomOut(){ setGallery(g => ({ ...g, zoom: Math.max(0.5, g.zoom - 0.25) })) }
-  function resetZoom(){ setGallery(g => ({ ...g, zoom: 1 })) }
+  function resetZoom(){ setGallery(g => ({ ...g, zoom: 1, fit:'fit' })) }
 
   // Close popups with Escape key
   useEffect(() => {
@@ -775,28 +784,30 @@ export default function InhouseProducts(){
 
       {gallery.open && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', display:'grid', placeItems:'center', zIndex:110}}>
-          <div style={{position:'relative', width:'min(96vw, 1200px)', height:'min(94vh, 900px)', display:'grid', gridTemplateRows:'auto 1fr auto', gap:8}}>
+          <div style={{position:'relative', width:'98vw', height:'96vh', display:'grid', gridTemplateRows:'auto 1fr auto', gap:8}}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', color:'#fff'}}>
               <div>Images {gallery.index+1} / {gallery.images.length}</div>
               <div style={{display:'flex', gap:8}}>
+                <button className="btn secondary" onClick={()=> setGallery(g=> ({...g, fit:'fit', zoom:1}))}>Fit</button>
+                <button className="btn secondary" onClick={()=> setGallery(g=> ({...g, fit:'actual', zoom:1}))}>100%</button>
+                <button className="btn secondary" onClick={()=> window.open(`${API_BASE}${gallery.images[gallery.index]}`,'_blank','noopener,noreferrer')}>Open</button>
                 <button className="btn secondary" onClick={resetZoom}>Reset</button>
                 <button className="btn secondary" onClick={zoomOut}>-</button>
                 <button className="btn secondary" onClick={zoomIn}>+</button>
                 <button className="btn" onClick={closeGallery}>Close</button>
               </div>
             </div>
-            <div style={{position:'relative', overflow:'hidden', display:'grid', placeItems:'center', background:'#000'}}>
+            <div style={{position:'relative', overflow: gallery.fit==='actual' ? 'auto' : 'hidden', display:'grid', placeItems:'center', background:'#000'}}>
               <img
                 src={`${API_BASE}${gallery.images[gallery.index]}`}
                 alt={`img-${gallery.index}`}
+                onDoubleClick={()=> setGallery(g=> ({...g, fit: g.fit==='fit' ? 'actual' : 'fit', zoom:1 }))}
                 style={{
-                  width:'100%',
-                  height:'100%',
-                  objectFit:'contain',
-                  maxWidth:'100%',
-                  maxHeight:'100%',
-                  transform:`scale(${gallery.zoom})`,
-                  transformOrigin:'center center',
+                  ...(gallery.fit==='fit' 
+                    ? { width:'100%', height:'100%', maxWidth:'100%', maxHeight:'100%', objectFit:'contain' }
+                    : { width:'auto', height:'auto', maxWidth:'none', maxHeight:'none' }
+                  ),
+                  ...(gallery.zoom !== 1 ? { transform:`scale(${gallery.zoom})`, transformOrigin:'center center' } : {}),
                   transition:'transform 120ms ease'
                 }}
               />
@@ -857,7 +868,7 @@ export default function InhouseProducts(){
                       const first = imgs[0]
                       return (
                         <div style={{position:'relative', width:48, height:48}}>
-                          <img onClick={()=>openGallery(imgs,0)} src={`${API_BASE}${first}`} alt={p.name} style={{height:48, width:48, objectFit:'cover', borderRadius:6, cursor:'zoom-in'}} />
+                          <img onClick={()=>openImageOrGallery(imgs)} src={`${API_BASE}${first}`} alt={p.name} style={{height:48, width:48, objectFit:'cover', borderRadius:6, cursor:'zoom-in'}} />
                           {imgs.length > 1 && (
                             <button onClick={()=>openGallery(imgs,0)} title={`+${imgs.length-1} more`} style={{position:'absolute', right:-6, bottom:-6, transform:'translate(0,0)', background:'var(--panel-2)', color:'var(--fg)', border:'1px solid var(--border)', borderRadius:12, padding:'2px 6px', fontSize:12, cursor:'pointer'}}>+{imgs.length-1}</button>
                           )}
