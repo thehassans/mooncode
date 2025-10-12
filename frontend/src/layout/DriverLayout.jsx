@@ -23,7 +23,7 @@ export default function DriverLayout() {
       localStorage.setItem('theme', theme)
     } catch {}
     const root = document.documentElement
-    if (theme === 'light') root.setAttribute('data-theme', 'light')
+    if (theme === 'dark') root.setAttribute('data-theme', 'dark')
     else root.removeAttribute('data-theme')
   }, [theme])
   useEffect(() => {

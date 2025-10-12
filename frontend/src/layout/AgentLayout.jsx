@@ -36,9 +36,8 @@ export default function AgentLayout() {
       localStorage.setItem('theme', theme)
     } catch {}
     const root = document.documentElement
-    if (theme === 'light') root.setAttribute('data-theme', 'light')
+    if (theme === 'dark') root.setAttribute('data-theme', 'dark')
     else root.removeAttribute('data-theme')
-    setTheme(theme)
   }, [theme])
   useEffect(() => {
     function onResize() {
@@ -306,7 +305,7 @@ export default function AgentLayout() {
     if (__theme) {
       localStorage.setItem('theme', __theme)
       const root = document.documentElement
-      if (__theme === 'light') root.setAttribute('data-theme', 'light')
+      if (__theme === 'dark') root.setAttribute('data-theme', 'dark')
       else root.removeAttribute('data-theme')
       setTheme(__theme)
     }
@@ -432,8 +431,8 @@ export default function AgentLayout() {
       <div
         className={`main ${hideSidebar ? 'full-mobile' : closed ? 'full' : ''} ${tabsVisible ? 'with-mobile-tabs' : ''}`}
       >
-        {/* Hide heavy layout topbar on mobile for a cleaner look */}
-        {!isMobile && (
+        {/* Show topbar on all viewports to allow theme toggle and identity on mobile */}
+        {(
           <div
             className="topbar"
             style={{
