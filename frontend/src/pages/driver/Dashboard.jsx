@@ -144,7 +144,7 @@ export default function DriverDashboard(){
   async function markPicked(o){
     try{
       await apiPost(`/api/orders/${o._id||o.id}/shipment/update`, { shipmentStatus: 'picked_up' })
-      await loadCounts()
+      await loadData()
     }catch(e){ alert(e?.message || 'Failed to mark picked up') }
   }
 

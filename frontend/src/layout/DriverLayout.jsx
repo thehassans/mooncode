@@ -158,7 +158,8 @@ export default function DriverLayout() {
       <div
         className={`main ${hideSidebar ? 'full-mobile' : closed ? 'full' : ''} ${tabsVisible ? 'with-mobile-tabs' : ''}`}
       >
-        {!isMobile && (
+        {/* Show topbar on all viewports to allow theme toggle and identity on mobile */}
+        {(
           <div
             className="topbar"
             style={{
@@ -225,13 +226,14 @@ export default function DriverLayout() {
         </div>
       </div>
       {tabsVisible && (
-        <nav className="mobile-tabs" role="navigation" aria-label="Primary">
+        <nav className="mobile-tabs" role="navigation" aria-label="Primary" style={{gap:6}}>
           {mobileTabs.map((tab) => (
             <NavLink
               key={tab.to}
               to={tab.to}
               end={tab.to === '/driver'}
               className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}
+              style={{padding:'8px 6px'}}
             >
               <span className="icon">{tab.icon}</span>
               <span style={{ fontSize: 11 }}>{tab.label}</span>
