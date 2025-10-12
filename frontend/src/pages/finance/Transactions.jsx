@@ -16,6 +16,8 @@ export default function Transactions(){
   const [sortBy, setSortBy] = useState('variance')
   const [sortDir, setSortDir] = useState('desc')
   const [remitModalFor, setRemitModalFor] = useState('')
+  const [countryOrders, setCountryOrders] = useState([])
+  const [detailModalFor, setDetailModalFor] = useState('')
 
   useEffect(()=>{ /* initial no-op */ },[])
 
@@ -33,7 +35,7 @@ export default function Transactions(){
 
   // When country changes, load drivers for that country and their delivered orders (paged)
   useEffect(() => {
-    if (!country) { setDrivers([]); setDeliveredOrders([]); setDriverRemits([]); return }
+    if (!country) { setDrivers([]); setDeliveredOrders([]); setDriverRemits([]); setCountryOrders([]); return }
     let alive = true
     ;(async () => {
       try {
@@ -64,6 +66,22 @@ export default function Transactions(){
           page += 1
         }
         if (alive) setDeliveredOrders(acc)
+        // Accumulate all current orders for selected country (for assigned counts)
+        let p2 = 1
+        let more2 = true
+        let all = []
+        while (more2 && p2 <= 10){
+          const q2 = new URLSearchParams()
+          q2.set('country', country)
+          q2.set('page', String(p2))
+          q2.set('limit', String(lim))
+          const r2 = await apiGet(`/api/orders?${q2.toString()}`)
+          const arr2 = Array.isArray(r2?.orders) ? r2.orders : []
+          all = all.concat(arr2)
+          more2 = !!r2?.hasMore
+          p2 += 1
+        }
+        if (alive) setCountryOrders(all)
       } catch (e) {
         if (alive) setErr(e?.message || 'Failed to load driver finances')
       } finally { if (alive) setLoading(false) }
@@ -118,6 +136,67 @@ export default function Transactions(){
     return by
   }, [driverRemits, country, fromDate, toDate])
 
+  function normalizeShip(s){
+    const n = String(s||'').toLowerCase().trim().replace(/\s+/g,'_').replace(/-/g,'_')
+    if (n==='picked' || n==='pickedup' || n==='pick_up' || n==='pick-up' || n==='pickup') return 'picked_up'
+    if (n==='shipped' || n==='contacted' || n==='attempted') return 'in_transit'
+    if (n==='open') return 'open'
+    return n
+  }
+  const openAssignedByDriver = useMemo(()=>{
+    const map = new Map()
+    for (const o of countryOrders){
+      const did = String(o?.deliveryBoy?._id || o?.deliveryBoy || '')
+      if (!did) continue
+      const ship = normalizeShip(o?.shipmentStatus || o?.status)
+      const isOpen = ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response'].includes(ship)
+      if (!isOpen) continue
+      if ((fromDate || toDate) && !dateInRange(o?.updatedAt || o?.createdAt, fromDate, toDate)) continue
+      if (!map.has(did)) map.set(did, 0)
+      map.set(did, map.get(did) + 1)
+    }
+    return map
+  }, [countryOrders, fromDate, toDate])
+  const totalAssignedByDriver = useMemo(()=>{
+    const map = new Map()
+    for (const o of countryOrders){
+      const did = String(o?.deliveryBoy?._id || o?.deliveryBoy || '')
+      if (!did) continue
+      if ((fromDate || toDate) && !dateInRange(o?.updatedAt || o?.createdAt, fromDate, toDate)) continue
+      if (!map.has(did)) map.set(did, 0)
+      map.set(did, map.get(did) + 1)
+    }
+    return map
+  }, [countryOrders, fromDate, toDate])
+
+  const returnedByDriver = useMemo(()=>{
+    const map = new Map()
+    for (const o of countryOrders){
+      const did = String(o?.deliveryBoy?._id || o?.deliveryBoy || '')
+      if (!did) continue
+      const ship = normalizeShip(o?.shipmentStatus || o?.status)
+      if (ship !== 'returned') continue
+      if ((fromDate || toDate) && !dateInRange(o?.updatedAt || o?.createdAt, fromDate, toDate)) continue
+      if (!map.has(did)) map.set(did, 0)
+      map.set(did, map.get(did) + 1)
+    }
+    return map
+  }, [countryOrders, fromDate, toDate])
+
+  const cancelledByDriver = useMemo(()=>{
+    const map = new Map()
+    for (const o of countryOrders){
+      const did = String(o?.deliveryBoy?._id || o?.deliveryBoy || '')
+      if (!did) continue
+      const ship = normalizeShip(o?.shipmentStatus || o?.status)
+      if (ship !== 'cancelled') continue
+      if ((fromDate || toDate) && !dateInRange(o?.updatedAt || o?.createdAt, fromDate, toDate)) continue
+      if (!map.has(did)) map.set(did, 0)
+      map.set(did, map.get(did) + 1)
+    }
+    return map
+  }, [countryOrders, fromDate, toDate])
+
   function countryCurrency(c){
     const raw = String(c||'').trim().toLowerCase()
     if (!raw) return 'SAR'
@@ -142,7 +221,11 @@ export default function Transactions(){
       const s = driverStats.get(id) || { deliveredCount:0, collectedSum:0 }
       const rem = driverAcceptedSum.get(id) || 0
       const variance = (s.collectedSum || 0) - (rem || 0)
-      return { id, driver: d, deliveredCount: s.deliveredCount||0, collectedSum: s.collectedSum||0, remittedSum: rem||0, variance }
+      const openAssigned = openAssignedByDriver.get(id) || 0
+      const totalAssigned = totalAssignedByDriver.get(id) || 0
+      const returned = returnedByDriver.get(id) || 0
+      const cancelled = cancelledByDriver.get(id) || 0
+      return { id, driver: d, openAssigned, totalAssigned, deliveredCount: s.deliveredCount||0, collectedSum: s.collectedSum||0, remittedSum: rem||0, variance, returned, cancelled }
     })
     const dir = sortDir === 'asc' ? 1 : -1
     const key = sortBy
@@ -154,17 +237,21 @@ export default function Transactions(){
       return 0
     })
     return arr
-  }, [drivers, driverStats, driverAcceptedSum, sortBy, sortDir])
+  }, [drivers, driverStats, driverAcceptedSum, openAssignedByDriver, totalAssignedByDriver, returnedByDriver, cancelledByDriver, sortBy, sortDir])
 
   function exportCsv(){
     try{
-      const header = ['Driver','Email','Delivered','Collected','Remitted','Variance']
+      const header = ['Driver','Email','OpenAssigned','TotalAssigned','Delivered','Returned','Cancelled','Collected','Remitted','Variance']
       const lines = [header.join(',')]
       for (const r of rows){
         lines.push([
           `${r.driver.firstName||''} ${r.driver.lastName||''}`.trim(),
           r.driver.email||'',
+          r.openAssigned,
+          r.totalAssigned,
           r.deliveredCount,
+          r.returned,
+          r.cancelled,
           r.collectedSum,
           r.remittedSum,
           r.variance,
@@ -214,6 +301,8 @@ export default function Transactions(){
             <option value="collectedSum">Sort by Collected</option>
             <option value="remittedSum">Sort by Remitted</option>
             <option value="deliveredCount">Sort by Delivered</option>
+            <option value="openAssigned">Sort by Open Assigned</option>
+            <option value="totalAssigned">Sort by Total Assigned</option>
           </select>
           <select className="input" value={sortDir} onChange={e=> setSortDir(e.target.value)}>
             <option value="desc">Desc</option>
@@ -234,18 +323,21 @@ export default function Transactions(){
             <thead>
               <tr>
                 <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)' }}>Driver</th>
+                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Assigned (Open)</th>
+                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Total Assigned</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Delivered Orders</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Total Collected ({ccy})</th>
-                <th style={{ padding: '10px 12px', textAlign:'right' }}>Delivered to Company ({ccy})</th>
+                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Delivered to Company ({ccy})</th>
+                <th style={{ padding: '10px 12px', textAlign:'left' }}>Details</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={4} style={{ padding: '10px 12px', opacity: 0.7 }}>Loading…</td></tr>
+                <tr><td colSpan={7} style={{ padding: '10px 12px', opacity: 0.7 }}>Loading…</td></tr>
               ) : !country ? (
-                <tr><td colSpan={4} style={{ padding: '10px 12px', opacity: 0.7 }}>Select a country to view driver finances</td></tr>
+                <tr><td colSpan={7} style={{ padding: '10px 12px', opacity: 0.7 }}>Select a country to view driver finances</td></tr>
               ) : drivers.length === 0 ? (
-                <tr><td colSpan={4} style={{ padding: '10px 12px', opacity: 0.7 }}>No drivers found</td></tr>
+                <tr><td colSpan={7} style={{ padding: '10px 12px', opacity: 0.7 }}>No drivers found</td></tr>
               ) : (
                 rows.map((r, idx) => {
                   const varianceColor = r.variance > 0 ? 'var(--warning)' : (r.variance < 0 ? 'var(--success)' : 'var(--muted)')
@@ -257,12 +349,18 @@ export default function Transactions(){
                         <div className="helper">{r.driver.email || ''}</div>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
+                        <button className="btn secondary" onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} title="View open assigned" style={{ padding: '6px 10px', color:'#f59e0b' }}>{num(r.openAssigned)}</button>
+                      </td>
+                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
+                        <button className="btn secondary" onClick={()=> goAllOrders(r.id)} title="View all assigned" style={{ padding: '6px 10px' }}>{num(r.totalAssigned)}</button>
+                      </td>
+                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
                         <button className="btn secondary" onClick={()=> goDelivered(r.id)} title="View delivered orders" style={{ padding: '6px 10px' }}>{num(r.deliveredCount)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
                         <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)} title="View delivered orders with collected payments" style={{ padding: '6px 10px' }}>{num(r.collectedSum)}</button>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right' }}>
+                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
                         <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)} title="View remittances" style={{ padding: '6px 10px', color:'#0ea5e9' }}>{num(r.remittedSum)}</button>
                         <div className="helper" style={{ marginTop:6 }}>
                           <div style={{ height:6, background:'var(--panel-2)', borderRadius:999 }}>
@@ -270,6 +368,9 @@ export default function Transactions(){
                           </div>
                           <span style={{ color: varianceColor, fontWeight:700 }}>Variance: {num(r.variance)}</span>
                         </div>
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <button className="btn" onClick={()=> setDetailModalFor(r.id)}>Details</button>
                       </td>
                     </tr>
                   )
@@ -326,6 +427,72 @@ export default function Transactions(){
           </div>
         </div>
       )}
+
+      {detailModalFor && (()=>{
+        const r = rows.find(x => String(x.id) === String(detailModalFor))
+        if (!r) return null
+        const actionsStyle = { display:'flex', gap:8, flexWrap:'wrap' }
+        const btnStyle = { padding:'6px 10px' }
+        return (
+          <div className="modal-backdrop">
+            <div className="modal">
+              <div className="modal-header">
+                <div className="modal-title">Driver Details</div>
+                <button className="btn light" onClick={()=> setDetailModalFor('')}>Close</button>
+              </div>
+              <div className="modal-body" style={{ display:'grid', gap:12 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:8 }}>
+                  <div className="card" style={{ padding:10 }}>
+                    <div className="label">Driver</div>
+                    <div style={{ fontWeight:800 }}>{userName(r.driver)}</div>
+                    <div className="helper">{r.driver.email||''}</div>
+                  </div>
+                  <div className="card" style={{ padding:10 }}>
+                    <div className="label">Assigned (Open)</div>
+                    <div style={{ fontWeight:800, color:'#f59e0b' }}>{num(r.openAssigned)}</div>
+                  </div>
+                  <div className="card" style={{ padding:10 }}>
+                    <div className="label">Total Assigned</div>
+                    <div style={{ fontWeight:800 }}>{num(r.totalAssigned)}</div>
+                  </div>
+                  <div className="card" style={{ padding:10 }}>
+                    <div className="label">Delivered</div>
+                    <div style={{ fontWeight:800 }}>{num(r.deliveredCount)}</div>
+                  </div>
+                  <div className="card" style={{ padding:10 }}>
+                    <div className="label">Returned</div>
+                    <div style={{ fontWeight:800, color:'var(--danger)' }}>{num(r.returned)}</div>
+                  </div>
+                  <div className="card" style={{ padding:10 }}>
+                    <div className="label">Cancelled</div>
+                    <div style={{ fontWeight:800, color:'var(--danger)' }}>{num(r.cancelled)}</div>
+                  </div>
+                  <div className="card" style={{ padding:10 }}>
+                    <div className="label">Collected ({ccy})</div>
+                    <div style={{ fontWeight:800, color:'#22c55e' }}>{num(r.collectedSum)}</div>
+                  </div>
+                  <div className="card" style={{ padding:10 }}>
+                    <div className="label">Remitted ({ccy})</div>
+                    <div style={{ fontWeight:800, color:'#0ea5e9' }}>{num(r.remittedSum)}</div>
+                  </div>
+                  <div className="card" style={{ padding:10 }}>
+                    <div className="label">Variance ({ccy})</div>
+                    <div style={{ fontWeight:800 }}>{num(r.variance)}</div>
+                  </div>
+                </div>
+                <div style={actionsStyle}>
+                  <button className="btn" style={btnStyle} onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }}>Open Assigned</button>
+                  <button className="btn" style={btnStyle} onClick={()=> goAllOrders(r.id)}>All Assigned</button>
+                  <button className="btn" style={btnStyle} onClick={()=> goDelivered(r.id)}>Delivered</button>
+                  <button className="btn" style={btnStyle} onClick={()=> goDeliveredCollected(r.id)}>Collected</button>
+                  <button className="btn" style={btnStyle} onClick={()=> { const p = new URLSearchParams(); if(country) p.set('country', country); p.set('driver', r.id); p.set('ship','returned'); navigate(`/user/orders?${p.toString()}`) }}>Returned</button>
+                  <button className="btn" style={btnStyle} onClick={()=> { const p = new URLSearchParams(); if(country) p.set('country', country); p.set('driver', r.id); p.set('ship','cancelled'); navigate(`/user/orders?${p.toString()}`) }}>Cancelled</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
