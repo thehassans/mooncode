@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { apiGet, apiPost, apiPatch, API_BASE, apiGetBlob } from '../../api'
+import { getCurrencyConfig, convert } from '../../util/currency'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import OrderStatusTrack from '../../ui/OrderStatusTrack.jsx'
@@ -29,6 +30,7 @@ export default function ManagerOrders(){
   const [agentFilter, setAgentFilter] = useState('')
   const [driverFilter, setDriverFilter] = useState('')
   const [agentOptions, setAgentOptions] = useState([])
+  const [curCfg, setCurCfg] = useState(null)
 
   const perms = me?.managerPermissions || {}
 
@@ -96,6 +98,7 @@ export default function ManagerOrders(){
   }, [orders])
 
   useEffect(()=>{ fetchMe(); loadOrders(true) },[])
+  useEffect(()=>{ let alive=true; getCurrencyConfig().then(c=>{ if(alive) setCurCfg(c) }).catch(()=>{}); return ()=>{ alive=false } },[])
   // Load agents for workspace (owner scope handled server-side)
   useEffect(()=>{
     (async()=>{
@@ -319,6 +322,43 @@ export default function ManagerOrders(){
     const countryDrivers = driversByCountry[o.orderCountry] || []
     const fullAddress = [o.customerAddress, o.customerArea, o.city, o.orderCountry, o.customerLocation].filter(Boolean).filter((v,i,a)=> a.indexOf(v)===i).join(', ')
     const driverName = o?.deliveryBoy ? `${o.deliveryBoy.firstName||''} ${o.deliveryBoy.lastName||''}`.trim() : ''
+    function orderCountryCurrency(c){
+      const raw = String(c||'').trim().toLowerCase()
+      if (!raw) return 'SAR'
+      if (raw==='ksa' || raw==='saudi arabia' || raw==='saudi' || raw.includes('saudi')) return 'SAR'
+      if (raw==='uae' || raw==='united arab emirates' || raw==='ae' || raw.includes('united arab emirates')) return 'AED'
+      if (raw==='oman' || raw==='om' || raw.includes('sultanate of oman')) return 'OMR'
+      if (raw==='bahrain' || raw==='bh') return 'BHD'
+      if (raw==='india' || raw==='in') return 'INR'
+      if (raw==='kuwait' || raw==='kw' || raw==='kwt') return 'KWD'
+      if (raw==='qatar' || raw==='qa') return 'QAR'
+      return 'SAR'
+    }
+    const targetCode = orderCountryCurrency(o.orderCountry)
+    let qty = 1
+    if (o.items && Array.isArray(o.items) && o.items.length > 0){
+      qty = o.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
+    } else if (o.quantity != null){
+      qty = Math.max(1, Number(o.quantity||1))
+    }
+    let itemsSubtotalConv = 0
+    if (o.items && Array.isArray(o.items) && o.items.length > 0){
+      for (const it of o.items){
+        const q = Math.max(1, Number(it?.quantity||1))
+        const unitRaw = (it?.productId?.price != null) ? Number(it.productId.price) : 0
+        const fromCode = (it?.productId?.baseCurrency ? String(it.productId.baseCurrency).toUpperCase() : targetCode)
+        const unitConv = convert(unitRaw, fromCode, targetCode, curCfg)
+        itemsSubtotalConv += unitConv * q
+      }
+    } else {
+      const unitRaw = (o?.productId?.price != null) ? Number(o.productId.price) : 0
+      const fromCode = (o?.productId?.baseCurrency ? String(o.productId.baseCurrency).toUpperCase() : targetCode)
+      const unitConv = convert(unitRaw, fromCode, targetCode, curCfg)
+      itemsSubtotalConv = unitConv * qty
+    }
+    const shipLocal = Number(o.shippingFee||0)
+    const discountLocal = Number(o.discount||0)
+    const totalConv = Math.max(0, itemsSubtotalConv + shipLocal - discountLocal)
     return (
       <div className="card" style={{display:'grid', gap:10}}>
         <div className="card-header" style={{alignItems:'center'}}>
@@ -348,8 +388,8 @@ export default function ManagerOrders(){
           <div>
             <div className="label">Product</div>
             <div style={{fontWeight:700}}>{o.productId?.name || '-'}</div>
-            <div className="helper">Qty: {o.quantity || 1}</div>
-            <div className="helper">Total: {o.total != null ? Number(o.total).toFixed(2) : '-'}</div>
+            <div className="helper">Qty: {qty}</div>
+            <div className="helper">Total: {targetCode} {totalConv.toFixed(2)}</div>
           </div>
           <div>
             <div className="label">Assign Driver</div>

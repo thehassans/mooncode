@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { API_BASE, apiGet, apiPatch, apiGetBlob, apiPost } from '../../api.js'
+import { getCurrencyConfig, convert } from '../../util/currency'
 import OrderStatusTrack from '../../ui/OrderStatusTrack.jsx'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
@@ -88,6 +89,7 @@ export default function UserOrders(){
   const [updating, setUpdating] = useState({})
   const [editingDriver, setEditingDriver] = useState({}) // Track edited driver per order
   const [editingStatus, setEditingStatus] = useState({}) // Track edited status per order
+  const [curCfg, setCurCfg] = useState(null)
   // Infinite scroll state
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
@@ -242,6 +244,7 @@ export default function UserOrders(){
 
   // Initial load
   useEffect(()=>{ loadOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
+  useEffect(()=>{ let alive=true; getCurrencyConfig().then(c=>{ if(alive) setCurCfg(c) }).catch(()=>{}); return ()=>{ alive=false } },[])
   // Reload on filter changes (except productQuery which is client-side)
   useEffect(()=>{ loadOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [buildQuery])
 
@@ -381,6 +384,18 @@ export default function UserOrders(){
 
   function shortId(id){ return String(id||'').slice(-5).toUpperCase() }
   function userName(u){ if (!u) return '-'; return `${u.firstName||''} ${u.lastName||''}`.trim() || (u.email||'-') }
+  function orderCountryCurrency(c){
+    const raw = String(c||'').trim().toLowerCase()
+    if (!raw) return 'SAR'
+    if (raw==='ksa' || raw==='saudi arabia' || raw==='saudi' || raw.includes('saudi')) return 'SAR'
+    if (raw==='uae' || raw==='united arab emirates' || raw==='ae' || raw.includes('united arab emirates')) return 'AED'
+    if (raw==='oman' || raw==='om' || raw.includes('sultanate of oman')) return 'OMR'
+    if (raw==='bahrain' || raw==='bh') return 'BHD'
+    if (raw==='india' || raw==='in') return 'INR'
+    if (raw==='kuwait' || raw==='kw' || raw==='kwt') return 'KWD'
+    if (raw==='qatar' || raw==='qa') return 'QAR'
+    return 'SAR'
+  }
 
   // Drivers loaded on-demand by country
 
@@ -583,7 +598,25 @@ export default function UserOrders(){
                     qty = Math.max(1, Number(o?.quantity||1))
                   }
                   
-                  const price = (o?.total!=null ? Number(o.total) : (o?.productId?.price ? Number(o.productId.price) * qty : 0))
+                  const targetCode = orderCountryCurrency(o.orderCountry)
+                  let itemsSubtotalConv = 0
+                  if (o.items && Array.isArray(o.items) && o.items.length > 0){
+                    for (const it of o.items){
+                      const q = Math.max(1, Number(it?.quantity||1))
+                      const unitRaw = (it?.productId?.price != null) ? Number(it.productId.price) : 0
+                      const fromCode = (it?.productId?.baseCurrency ? String(it.productId.baseCurrency).toUpperCase() : targetCode)
+                      const unitConv = convert(unitRaw, fromCode, targetCode, curCfg)
+                      itemsSubtotalConv += unitConv * q
+                    }
+                  } else {
+                    const unitRaw = (o?.productId?.price != null) ? Number(o.productId.price) : 0
+                    const fromCode = (o?.productId?.baseCurrency ? String(o.productId.baseCurrency).toUpperCase() : targetCode)
+                    const unitConv = convert(unitRaw, fromCode, targetCode, curCfg)
+                    itemsSubtotalConv = unitConv * qty
+                  }
+                  const shipLocal = Number(o.shippingFee||0)
+                  const discountLocal = Number(o.discount||0)
+                  const price = Math.max(0, itemsSubtotalConv + shipLocal - discountLocal)
                   
                   // Driver and status
                   const currentDriver = editingDriver[id] !== undefined ? editingDriver[id] : (o.deliveryBoy?._id || o.deliveryBoy || '')
@@ -622,7 +655,7 @@ export default function UserOrders(){
                           <div className="label">Product</div>
                           <div style={{fontWeight:700}}>{productName}</div>
                           <div className="helper">Qty: {qty}</div>
-                          <div className="helper">Total: {price.toFixed(2)}</div>
+                          <div className="helper">Total: {targetCode} {price.toFixed(2)}</div>
                         </div>
                         <div>
                           <div className="label">Assign Driver</div>
