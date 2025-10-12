@@ -55,9 +55,12 @@ export default function ManagerCreateDriver(){
     setLoading(true)
     try{
       if (!form.phone){ setLoading(false); setPhoneError('Phone number is required'); return }
-      if (!isValidPhoneNumber(form.phone)){ setLoading(false); setPhoneError('Enter a valid phone number with country code'); return }
+      const clean = String(form.phone||'').replace(/\s/g,'')
+      const isBahrain = form.country === 'Bahrain' || clean.startsWith('+973')
+      const bhValid = /^\+973\d{8}$/.test(clean)
+      const libValid = isValidPhoneNumber(clean)
+      if (!(isBahrain ? bhValid : libValid)){ setLoading(false); setPhoneError('Enter a valid phone number with country code'); return }
       const allowedCodes = ['+971', '+968', '+966', '+973', '+965', '+974', '+91']
-      const clean = form.phone.replace(/\s/g,'')
       if (!allowedCodes.some(c=> clean.startsWith(c))){ setLoading(false); setPhoneError('Only UAE, Oman, KSA, Bahrain, Kuwait, Qatar or India numbers allowed'); return }
 
       await apiPost('/api/users/drivers', { 

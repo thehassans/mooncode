@@ -157,8 +157,12 @@ export default function Drivers(){
         setMsg('')
         return
       }
-      
-      if (!isValidPhoneNumber(form.phone)){
+      const clean = String(form.phone||'').replace(/\s/g,'')
+      // Special-case Bahrain: +973 followed by 8 digits
+      const isBahrain = form.country === 'Bahrain' || clean.startsWith('+973')
+      const bhValid = /^\+973\d{8}$/.test(clean)
+      const libValid = isValidPhoneNumber(clean)
+      if (!(isBahrain ? bhValid : libValid)){
         setLoading(false)
         setPhoneError('Enter a valid phone number with country code')
         setMsg('')
@@ -167,8 +171,7 @@ export default function Drivers(){
       
       // Validate phone number is from allowed countries
       const allowedCodes = ['+971', '+968', '+966', '+973', '+965', '+974', '+91'] // UAE, Oman, KSA, Bahrain, Kuwait, Qatar, India
-      const phoneWithoutSpaces = form.phone.replace(/\s/g, '')
-      const isAllowedCountry = allowedCodes.some(code => phoneWithoutSpaces.startsWith(code))
+      const isAllowedCountry = allowedCodes.some(code => clean.startsWith(code))
       
       if (!isAllowedCountry) {
         setLoading(false)
