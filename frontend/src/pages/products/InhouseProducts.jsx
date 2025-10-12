@@ -775,7 +775,7 @@ export default function InhouseProducts(){
 
       {gallery.open && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', display:'grid', placeItems:'center', zIndex:110}}>
-          <div style={{position:'relative', width:'min(96vw, 1000px)', height:'min(90vh, 720px)', display:'grid', gridTemplateRows:'auto 1fr auto', gap:8}}>
+          <div style={{position:'relative', width:'min(96vw, 1200px)', height:'min(94vh, 900px)', display:'grid', gridTemplateRows:'auto 1fr auto', gap:8}}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', color:'#fff'}}>
               <div>Images {gallery.index+1} / {gallery.images.length}</div>
               <div style={{display:'flex', gap:8}}>
@@ -785,15 +785,16 @@ export default function InhouseProducts(){
                 <button className="btn" onClick={closeGallery}>Close</button>
               </div>
             </div>
-            <div style={{position:'relative', overflow:'hidden', display:'grid', placeItems:'center', background:'#000', borderRadius:8, padding:12}}>
+            <div style={{position:'relative', overflow:'hidden', display:'grid', placeItems:'center', background:'#000'}}>
               <img
                 src={`${API_BASE}${gallery.images[gallery.index]}`}
                 alt={`img-${gallery.index}`}
                 style={{
-                  width:'auto',
-                  height:'auto',
-                  maxWidth:'95%',
-                  maxHeight:'95%',
+                  width:'100%',
+                  height:'100%',
+                  objectFit:'contain',
+                  maxWidth:'100%',
+                  maxHeight:'100%',
                   transform:`scale(${gallery.zoom})`,
                   transformOrigin:'center center',
                   transition:'transform 120ms ease'
