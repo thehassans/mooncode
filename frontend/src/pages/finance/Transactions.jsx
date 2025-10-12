@@ -370,23 +370,23 @@ export default function Transactions(){
                   return (
                     <tr key={r.id} style={{ borderTop: '1px solid var(--border)', background: idx % 2 ? 'transparent' : 'var(--panel)' }}>
                       <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> goAllOrders(r.id)} title="View all orders" style={{ padding: '6px 10px' }}>{userName(r.driver)}</button>
+                        <button className="btn secondary" onClick={()=> goAllOrders(r.id)} title="View all orders" style={{ padding: '6px 10px', background:'transparent', borderColor:'transparent', boxShadow:'none' }}>{userName(r.driver)}</button>
                         <div className="helper">{r.driver.email || ''}</div>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} title="View open assigned" style={{ padding: '6px 10px', color:'#f59e0b', fontWeight:700 }}>{num(r.openAssigned)}</button>
+                        <button className="btn secondary" onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} title="View open assigned" style={{ padding: '6px 10px', background:'transparent', borderColor:'transparent', boxShadow:'none', color:'#f59e0b', fontWeight:700 }}>{num(r.openAssigned)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> goAllOrders(r.id)} title="View all assigned" style={{ padding: '6px 10px', color:'#6366f1', fontWeight:700 }}>{num(r.totalAssigned)}</button>
+                        <button className="btn secondary" onClick={()=> goAllOrders(r.id)} title="View all assigned" style={{ padding: '6px 10px', background:'transparent', borderColor:'transparent', boxShadow:'none', color:'#6366f1', fontWeight:700 }}>{num(r.totalAssigned)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> goDelivered(r.id)} title="View delivered orders" style={{ padding: '6px 10px', color:'#3b82f6', fontWeight:700 }}>{num(r.deliveredCount)}</button>
+                        <button className="btn secondary" onClick={()=> goDelivered(r.id)} title="View delivered orders" style={{ padding: '6px 10px', background:'transparent', borderColor:'transparent', boxShadow:'none', color:'#3b82f6', fontWeight:700 }}>{num(r.deliveredCount)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)} title="View delivered orders with collected payments" style={{ padding: '6px 10px', color:'#22c55e', fontWeight:700 }}>{num(r.collectedSum)}</button>
+                        <button className="btn secondary" onClick={()=> goDeliveredCollected(r.id)} title="View delivered orders with collected payments" style={{ padding: '6px 10px', background:'transparent', borderColor:'transparent', boxShadow:'none', color:'#22c55e', fontWeight:700 }}>{num(r.collectedSum)}</button>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)} title="View remittances" style={{ padding: '6px 10px', color:'#22c55e', fontWeight:800 }}>{num(r.remittedSum)}</button>
+                        <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)} title="View remittances" style={{ padding: '6px 10px', background:'transparent', borderColor:'transparent', boxShadow:'none', color:'#22c55e', fontWeight:800 }}>{num(r.remittedSum)}</button>
                         <div className="helper" style={{ marginTop:6 }}>
                           <div style={{ height:6, background:'var(--panel-2)', borderRadius:999 }}>
                             <div style={{ width:`${barPct}%`, height:'100%', borderRadius:999, background:'linear-gradient(90deg, #22c55e, #3b82f6)' }} />
