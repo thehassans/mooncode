@@ -13,6 +13,9 @@ export default function Warehouse(){
   const [ccyCfg, setCcyCfg] = useState(null)
   const navigate = useNavigate()
   const [prodMap, setProdMap] = useState({})
+  const [countryFilter, setCountryFilter] = useState('All')
+  const COUNTRY_KEYS = ['UAE','Oman','KSA','Bahrain','India','Kuwait','Qatar']
+  const CUR_KEY_ORDER = ['SAR','OMR','AED','BHD','INR','KWD','QAR']
 
   useEffect(()=>{ load() },[])
   // Live refresh on order deliveries
@@ -145,6 +148,9 @@ export default function Warehouse(){
       const s = q.toLowerCase()
       out = out.filter(x => (x.name||'').toLowerCase().includes(s))
     }
+    if (countryFilter && countryFilter !== 'All'){
+      out = out.filter(x => Number(x?.stockLeft?.[countryFilter]||0) > 0 || Number(x?.delivered?.[countryFilter]||0) > 0)
+    }
     if (sort === 'name'){
       out = [...out].sort((a,b)=> (a.name||'').localeCompare(b.name||''))
     } else if (sort === 'stock_desc'){
@@ -153,7 +159,7 @@ export default function Warehouse(){
       out = [...out].sort((a,b)=> (b.delivered?.total||0) - (a.delivered?.total||0))
     }
     return out
-  }, [items, q, sort])
+  }, [items, q, sort, countryFilter])
 
   function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
   function conv(v, from, to){
@@ -163,7 +169,7 @@ export default function Warehouse(){
     if (!ccyCfg) return f===t ? val : 0
     try{ return fxConvert(val, f, t, ccyCfg) }catch{ return f===t ? val : 0 }
   }
-  const COUNTRY_TO_CCY = useMemo(()=>({ UAE:'AED', Oman:'OMR', KSA:'SAR', Bahrain:'BHD' }),[])
+  const COUNTRY_TO_CCY = useMemo(()=>({ UAE:'AED', Oman:'OMR', KSA:'SAR', Bahrain:'BHD', India:'INR', Kuwait:'KWD', Qatar:'QAR' }),[])
   function goOrders(productName, country, ship){
     const p = new URLSearchParams()
     if (country) p.set('country', country)
@@ -201,13 +207,32 @@ export default function Warehouse(){
     return (a + b) || 'P'
   }
 
+  function calcStockValueByCurrency(it){
+    const base = it?.baseCurrency || it?.currency || 'SAR'
+    const p = Number(it?.purchasePrice||0)
+    const s = it?.stockLeft || {}
+    const m = { AED: s.UAE||0, OMR: s.Oman||0, SAR: s.KSA||0, BHD: s.Bahrain||0, INR: s.India||0, KWD: s.Kuwait||0, QAR: s.Qatar||0 }
+    const out = {}
+    for (const k of CUR_KEY_ORDER){ out[k] = conv(p, base, k) * Number(m[k]||0) }
+    return out
+  }
+  function calcDeliveredRevByCurrency(it){
+    const base = it?.baseCurrency || it?.currency || 'SAR'
+    const price = Number(it?.price||0)
+    const d = it?.delivered || {}
+    const m = { AED: d.UAE||0, OMR: d.Oman||0, SAR: d.KSA||0, BHD: d.Bahrain||0, INR: d.India||0, KWD: d.Kuwait||0, QAR: d.Qatar||0 }
+    const out = {}
+    for (const k of CUR_KEY_ORDER){ out[k] = conv(price, base, k) * Number(m[k]||0) }
+    return out
+  }
+
   const totals = useMemo(()=>{
-    const curKeys = ['SAR','OMR','AED','BHD']
+    const curKeys = CUR_KEY_ORDER
     let stockUAE=0, stockOman=0, stockKSA=0, stockBahrain=0, stockIndia=0, stockKuwait=0, stockQatar=0, stockTotal=0
     let deliveredUAE=0, deliveredOman=0, deliveredKSA=0, deliveredBahrain=0, deliveredIndia=0, deliveredKuwait=0, deliveredQatar=0, deliveredTotal=0
-    let totalBought=0
-    const stockValueByC = { SAR:0, OMR:0, AED:0, BHD:0 }
-    const deliveredRevByC = { SAR:0, OMR:0, AED:0, BHD:0 }
+    let totalBought=0, potentialRevenueTotal=0
+    const stockValueByC = { SAR:0, OMR:0, AED:0, BHD:0, INR:0, KWD:0, QAR:0 }
+    const deliveredRevByC = { SAR:0, OMR:0, AED:0, BHD:0, INR:0, KWD:0, QAR:0 }
     for (const it of filtered){
       stockUAE += Number(it?.stockLeft?.UAE||0)
       stockOman += Number(it?.stockLeft?.Oman||0)
@@ -226,11 +251,12 @@ export default function Warehouse(){
       deliveredQatar += Number(it?.delivered?.Qatar||0)
       deliveredTotal += Number(it?.delivered?.total||0)
       totalBought += Number(it?.totalBought||0)
-      const sv = it?.stockValueByCurrency || {}
-      const dr = it?.deliveredRevenueByCurrency || {}
+      const sv = calcStockValueByCurrency(it)
+      const dr = calcDeliveredRevByCurrency(it)
       for (const k of curKeys){ stockValueByC[k] += Number(sv[k]||0); deliveredRevByC[k] += Number(dr[k]||0) }
+      potentialRevenueTotal += Number(it?.potentialRevenue||0)
     }
-    return { stockUAE, stockOman, stockKSA, stockBahrain, stockIndia, stockKuwait, stockQatar, stockTotal, deliveredUAE, deliveredOman, deliveredKSA, deliveredBahrain, deliveredIndia, deliveredKuwait, deliveredQatar, deliveredTotal, totalBought, stockValueByC, deliveredRevByC }
+    return { stockUAE, stockOman, stockKSA, stockBahrain, stockIndia, stockKuwait, stockQatar, stockTotal, deliveredUAE, deliveredOman, deliveredKSA, deliveredBahrain, deliveredIndia, deliveredKuwait, deliveredQatar, deliveredTotal, totalBought, potentialRevenueTotal, stockValueByC, deliveredRevByC }
   }, [filtered])
 
   return (
@@ -244,6 +270,12 @@ export default function Warehouse(){
             <option value="stock_desc">Sort: Stock Left (desc)</option>
             <option value="delivered_desc">Sort: Delivered (desc)</option>
           </select>
+          <select className="input" value={countryFilter} onChange={e=>setCountryFilter(e.target.value)}>
+            <option value="All">All Countries</option>
+            {COUNTRY_KEYS.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
           <button className="btn" onClick={load} disabled={loading}>{loading? 'Refreshing...' : 'Refresh'}</button>
         </div>
         {msg && <div style={{marginTop:8}}>{msg}</div>}
@@ -256,6 +288,37 @@ export default function Warehouse(){
             <thead>
               <tr>
                 <th style={{textAlign:'left', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Product</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock UAE</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock Oman</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock KSA</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock Bahrain</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock India</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock Kuwait</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock Qatar</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock Total</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered UAE</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Oman</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered KSA</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Bahrain</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered India</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Kuwait</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Qatar</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Total</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#06b6d4'}}>Stock Value SAR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#06b6d4'}}>Stock Value OMR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#06b6d4'}}>Stock Value AED</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#06b6d4'}}>Stock Value BHD</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#06b6d4'}}>Stock Value INR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#06b6d4'}}>Stock Value KWD</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#06b6d4'}}>Stock Value QAR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Delivered Revenue SAR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Delivered Revenue OMR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Delivered Revenue AED</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Delivered Revenue BHD</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Delivered Revenue INR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Delivered Revenue KWD</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Delivered Revenue QAR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Total Bought</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1'}}>Buy AED</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1'}}>Buy OMR</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1'}}>Buy SAR</th>
@@ -269,46 +332,21 @@ export default function Warehouse(){
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Sell BHD</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Sell INR</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Sell KWD</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Sell QAR</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock UAE</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock Oman</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock KSA</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock Bahrain</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock India</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock Kuwait</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock Qatar</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Stock Total</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered UAE</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Oman</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered KSA</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Bahrain</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered India</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Kuwait</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Qatar</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Total</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Total Bought</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Stock Value SAR</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Stock Value OMR</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Stock Value AED</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Stock Value BHD</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Potential Revenue</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Delivered Revenue SAR</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Delivered Revenue OMR</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Delivered Revenue AED</th>
-                <th style={{textAlign:'right', padding:'10px 12px', color:'#22c55e'}}>Delivered Revenue BHD</th>
+                <th style={{textAlign:'right', padding:'10px 12px', color:'#22c55e'}}>Sell QAR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', color:'#22c55e'}}>Potential Revenue</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({length:5}).map((_,i)=> (
                   <tr key={`sk${i}`}>
-                    <td colSpan={41} style={{ padding:'10px 12px' }}>
+                    <td colSpan={47} style={{ padding:'10px 12px' }}>
                       <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
                     </td>
                   </tr>
                 ))
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={41} style={{padding:'10px 12px', opacity:0.7}}>No products</td></tr>
+                <tr><td colSpan={47} style={{padding:'10px 12px', opacity:0.7}}>No products</td></tr>
               ) : (
                 filtered.map(it => (
                   <tr key={it._id} style={{borderTop:'1px solid var(--border)'}}>
@@ -335,6 +373,37 @@ export default function Warehouse(){
                         )
                       })()}
                     </td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'UAE', 'open')}>{num(it.stockLeft?.UAE)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Oman', 'open')}>{num(it.stockLeft?.Oman)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'KSA', 'open')}>{num(it.stockLeft?.KSA)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Bahrain', 'open')}>{num(it.stockLeft?.Bahrain)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'India', 'open')}>{num(it.stockLeft?.India)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Kuwait', 'open')}>{num(it.stockLeft?.Kuwait)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Qatar', 'open')}>{num(it.stockLeft?.Qatar)}</span></td>
+                    <td style={{padding:'10px 12px', fontWeight:600, textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>{num(it.stockLeft?.total)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'UAE', 'delivered')}>{num(it.delivered?.UAE)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Oman', 'delivered')}>{num(it.delivered?.Oman)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'KSA', 'delivered')}>{num(it.delivered?.KSA)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Bahrain', 'delivered')}>{num(it.delivered?.Bahrain)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'India', 'delivered')}>{num(it.delivered?.India)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Kuwait', 'delivered')}>{num(it.delivered?.Kuwait)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Qatar', 'delivered')}>{num(it.delivered?.Qatar)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>{num(it.delivered?.total)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#06b6d4'}}>{num(calcStockValueByCurrency(it).SAR)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#06b6d4'}}>{num(calcStockValueByCurrency(it).OMR)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#06b6d4'}}>{num(calcStockValueByCurrency(it).AED)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#06b6d4'}}>{num(calcStockValueByCurrency(it).BHD)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#06b6d4'}}>{num(calcStockValueByCurrency(it).INR)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#06b6d4'}}>{num(calcStockValueByCurrency(it).KWD)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#06b6d4'}}>{num(calcStockValueByCurrency(it).QAR)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(calcDeliveredRevByCurrency(it).SAR)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(calcDeliveredRevByCurrency(it).OMR)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(calcDeliveredRevByCurrency(it).AED)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(calcDeliveredRevByCurrency(it).BHD)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(calcDeliveredRevByCurrency(it).INR)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(calcDeliveredRevByCurrency(it).KWD)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(calcDeliveredRevByCurrency(it).QAR)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)'}}>{num(it.totalBought)}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'AED'))}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'OMR'))}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'SAR'))}</td>
@@ -346,32 +415,10 @@ export default function Warehouse(){
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(conv(it.price, it.baseCurrency||it.currency||'SAR', 'OMR'))}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(conv(it.price, it.baseCurrency||it.currency||'SAR', 'SAR'))}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(conv(it.price, it.baseCurrency||it.currency||'SAR', 'BHD'))}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'UAE', 'open')}>{num(it.stockLeft?.UAE)}</span></td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Oman', 'open')}>{num(it.stockLeft?.Oman)}</span></td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'KSA', 'open')}>{num(it.stockLeft?.KSA)}</span></td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Bahrain', 'open')}>{num(it.stockLeft?.Bahrain)}</span></td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'India', 'open')}>{num(it.stockLeft?.India)}</span></td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Kuwait', 'open')}>{num(it.stockLeft?.Kuwait)}</span></td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Qatar', 'open')}>{num(it.stockLeft?.Qatar)}</span></td>
-                    <td style={{padding:'10px 12px', fontWeight:600, textAlign:'right', borderRight:'1px solid var(--border)'}}>{num(it.stockLeft?.total)}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'UAE', 'delivered')}>{num(it.delivered?.UAE)}</span></td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Oman', 'delivered')}>{num(it.delivered?.Oman)}</span></td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'KSA', 'delivered')}>{num(it.delivered?.KSA)}</span></td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Bahrain', 'delivered')}>{num(it.delivered?.Bahrain)}</span></td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'India', 'delivered')}>{num(it.delivered?.India)}</span></td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Kuwait', 'delivered')}>{num(it.delivered?.Kuwait)}</span></td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Qatar', 'delivered')}>{num(it.delivered?.Qatar)}</span></td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>{num(it.delivered?.total)}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)'}}>{num(it.totalBought)}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)'}}>{num(it.stockValueByCurrency?.SAR)}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)'}}>{num(it.stockValueByCurrency?.OMR)}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)'}}>{num(it.stockValueByCurrency?.AED)}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)'}}>{num(it.stockValueByCurrency?.BHD)}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(it.potentialRevenue)}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(it.deliveredRevenueByCurrency?.SAR)}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(it.deliveredRevenueByCurrency?.OMR)}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(it.deliveredRevenueByCurrency?.AED)}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right', color:'#22c55e'}}>{num(it.deliveredRevenueByCurrency?.BHD)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(conv(it.price, it.baseCurrency||it.currency||'SAR', 'INR'))}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(conv(it.price, it.baseCurrency||it.currency||'SAR', 'KWD'))}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(conv(it.price, it.baseCurrency||it.currency||'SAR', 'QAR'))}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', color:'#22c55e'}}>{num(it.potentialRevenue)}</td>
                   </tr>
                 ))
               )}
@@ -379,8 +426,6 @@ export default function Warehouse(){
               {!loading && filtered.length>0 && (
                 <tr style={{borderTop:'2px solid var(--border)', background:'var(--panel)'}}>
                   <td style={{padding:'10px 12px', fontWeight:800}}>Totals</td>
-                  <td colSpan={7}></td>
-                  <td colSpan={7}></td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockUAE)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockOman)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockKSA)}</td>
@@ -397,16 +442,36 @@ export default function Warehouse(){
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredKuwait)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredQatar)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredTotal)}</td>
-                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.totalBought)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockValueByC.SAR)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockValueByC.OMR)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockValueByC.AED)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockValueByC.BHD)}</td>
-                  <td></td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockValueByC.INR)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockValueByC.KWD)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockValueByC.QAR)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredRevByC.SAR)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredRevByC.OMR)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredRevByC.AED)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredRevByC.BHD)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredRevByC.INR)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredRevByC.KWD)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredRevByC.QAR)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.totalBought)}</td>
+                  <td style={{padding:'10px 12px'}}></td>
+                  <td style={{padding:'10px 12px'}}></td>
+                  <td style={{padding:'10px 12px'}}></td>
+                  <td style={{padding:'10px 12px'}}></td>
+                  <td style={{padding:'10px 12px'}}></td>
+                  <td style={{padding:'10px 12px'}}></td>
+                  <td style={{padding:'10px 12px'}}></td>
+                  <td style={{padding:'10px 12px'}}></td>
+                  <td style={{padding:'10px 12px'}}></td>
+                  <td style={{padding:'10px 12px'}}></td>
+                  <td style={{padding:'10px 12px'}}></td>
+                  <td style={{padding:'10px 12px'}}></td>
+                  <td style={{padding:'10px 12px'}}></td>
+                  <td style={{padding:'10px 12px'}}></td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.potentialRevenueTotal)}</td>
                 </tr>
               )}
             </tbody>
