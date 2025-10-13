@@ -50,55 +50,60 @@ export default function Transactions(){
     })()
   }, [])
 
-  // When country changes, load drivers for that country and their delivered orders (paged)
+  // When country changes, load drivers, remittances, and orders in parallel for responsiveness
   useEffect(() => {
     if (!country) { setDrivers([]); setDeliveredOrders([]); setDriverRemits([]); setCountryOrders([]); return }
     let alive = true
     ;(async () => {
       try {
         setLoading(true)
-        // Load drivers for selected country
-        const d = await apiGet(`/api/users/drivers?country=${encodeURIComponent(country)}`)
-        if (alive) setDrivers(Array.isArray(d?.users) ? d.users : [])
-        // Load remittances for selected country (all statuses)
-        const remitResp = await apiGet('/api/finance/remittances')
-        const allRemits = Array.isArray(remitResp?.remittances) ? remitResp.remittances : []
-        const filteredRemits = allRemits.filter(r => String(r?.country||'').trim() === String(country).trim())
-        if (alive) setDriverRemits(filteredRemits)
-        // Accumulate delivered orders for selected country
-        let page = 1
         const lim = 200
-        let hasMore = true
-        let acc = []
-        while (hasMore && page <= 10) {
-          const q = new URLSearchParams()
-          q.set('country', country)
-          q.set('ship', 'delivered')
-          q.set('page', String(page))
-          q.set('limit', String(lim))
-          const r = await apiGet(`/api/orders?${q.toString()}`)
-          const arr = Array.isArray(r?.orders) ? r.orders : []
-          acc = acc.concat(arr)
-          hasMore = !!r?.hasMore
-          page += 1
-        }
-        if (alive) setDeliveredOrders(acc)
-        // Accumulate all current orders for selected country (for assigned counts)
-        let p2 = 1
-        let more2 = true
-        let all = []
-        while (more2 && p2 <= 10){
-          const q2 = new URLSearchParams()
-          q2.set('country', country)
-          q2.set('page', String(p2))
-          q2.set('limit', String(lim))
-          const r2 = await apiGet(`/api/orders?${q2.toString()}`)
-          const arr2 = Array.isArray(r2?.orders) ? r2.orders : []
-          all = all.concat(arr2)
-          more2 = !!r2?.hasMore
-          p2 += 1
-        }
-        if (alive) setCountryOrders(all)
+
+        const loadDrivers = apiGet(`/api/users/drivers?country=${encodeURIComponent(country)}`)
+          .then(d => { if (alive) setDrivers(Array.isArray(d?.users) ? d.users : []) })
+          .catch(()=> { if (alive) setDrivers([]) })
+
+        const loadRemits = apiGet('/api/finance/remittances')
+          .then(remitResp => {
+            const allRemits = Array.isArray(remitResp?.remittances) ? remitResp.remittances : []
+            const filteredRemits = allRemits.filter(r => String(r?.country||'').trim().toLowerCase() === String(country).trim().toLowerCase())
+            if (alive) setDriverRemits(filteredRemits)
+          }).catch(()=> { if (alive) setDriverRemits([]) })
+
+        const loadDelivered = (async ()=>{
+          let page = 1, hasMore = true, acc = []
+          while (hasMore && page <= 10) {
+            const q = new URLSearchParams()
+            q.set('country', country)
+            q.set('ship', 'delivered')
+            q.set('page', String(page))
+            q.set('limit', String(lim))
+            const r = await apiGet(`/api/orders?${q.toString()}`)
+            const arr = Array.isArray(r?.orders) ? r.orders : []
+            acc = acc.concat(arr)
+            hasMore = !!r?.hasMore
+            page += 1
+          }
+          if (alive) setDeliveredOrders(acc)
+        })()
+
+        const loadAllOrders = (async ()=>{
+          let p2 = 1, more2 = true, all = []
+          while (more2 && p2 <= 10){
+            const q2 = new URLSearchParams()
+            q2.set('country', country)
+            q2.set('page', String(p2))
+            q2.set('limit', String(lim))
+            const r2 = await apiGet(`/api/orders?${q2.toString()}`)
+            const arr2 = Array.isArray(r2?.orders) ? r2.orders : []
+            all = all.concat(arr2)
+            more2 = !!r2?.hasMore
+            p2 += 1
+          }
+          if (alive) setCountryOrders(all)
+        })()
+
+        await Promise.all([loadDrivers, loadRemits, loadDelivered, loadAllOrders])
       } catch (e) {
         if (alive) setErr(e?.message || 'Failed to load driver finances')
       } finally { if (alive) setLoading(false) }
@@ -359,14 +364,20 @@ export default function Transactions(){
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Delivered Orders</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Total Collected ({ccy})</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>Delivered to Company ({ccy})</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'var(--danger)' }}>Pending ({ccy})</th>
+                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#ef4444' }}>Pending ({ccy})</th>
                 <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)' }}>Details</th>
                 <th style={{ padding: '10px 12px', textAlign:'left' }}>History</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} style={{ padding: '10px 12px', opacity: 0.7 }}>Loading…</td></tr>
+                Array.from({length:5}).map((_,i)=> (
+                  <tr key={`sk${i}`}>
+                    <td colSpan={9} style={{ padding:'10px 12px' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                  </tr>
+                ))
               ) : !country ? (
                 <tr><td colSpan={9} style={{ padding: '10px 12px', opacity: 0.7 }}>Select a country to view driver finances</td></tr>
               ) : drivers.length === 0 ? (
@@ -396,8 +407,8 @@ export default function Transactions(){
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
                         <span onClick={()=> { setDetailModalFor(''); setRemitModalFor(r.id) }} title="View remittances" style={{ cursor:'pointer', color:'#22c55e', fontWeight:800 }}>{num(r.remittedSum)}</span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'var(--danger)', fontWeight:800 }}>
-                        <span onClick={()=> { setDetailModalFor(''); setRemitModalFor(r.id) }} title="View pending remittances" style={{ cursor:'pointer', color:'var(--danger)', fontWeight:800 }}>{num(r.variance)}</span>
+                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#ef4444', fontWeight:800 }}>
+                        <span onClick={()=> { setDetailModalFor(''); setRemitModalFor(r.id) }} title="View pending remittances" style={{ cursor:'pointer', color:'#ef4444', fontWeight:800 }}>{num(r.variance)}</span>
                       </td>
                       <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
                         <button className="btn" onClick={()=> { setRemitModalFor(''); setDetailModalFor(r.id) }}>Details</button>
@@ -426,7 +437,7 @@ export default function Transactions(){
                   <span style={{ cursor:'pointer' }} onClick={()=>{ const p=new URLSearchParams(); if(country) p.set('country', country); p.set('ship','delivered'); p.set('collected','true'); navigate(`/user/orders?${p.toString()}`) }}>{num(totals.collected)}</span>
                 </td>
                 <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#22c55e' }}>{num(totals.remitted)}</td>
-                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'var(--danger)' }}>{num(totals.pending)}</td>
+                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#ef4444' }}>{num(totals.pending)}</td>
                 <td></td>
                 <td></td>
               </tr>
