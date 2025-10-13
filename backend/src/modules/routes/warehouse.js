@@ -14,25 +14,60 @@ router.get('/summary', auth, allowRoles('admin','user'), async (req, res) => {
     const products = await Product.find(productQuery).sort({ name: 1 })
     const productIds = products.map(p => p._id)
 
-    const orderMatch = { shipmentStatus: 'delivered', productId: { $in: productIds } }
-    if (!isAdmin) orderMatch.createdBy = req.user.id
+    // Aggregate delivered quantities per product and country, supporting both single-product orders and multi-item orders
+    const baseMatch = { shipmentStatus: 'delivered' }
+    if (!isAdmin) baseMatch.createdBy = req.user.id
 
-    // Aggregate delivered quantities per product and country
     const deliveredAgg = await Order.aggregate([
-      { $match: orderMatch },
+      { $match: { 
+          ...baseMatch,
+          $or: [
+            { productId: { $in: productIds } },
+            { 'items.productId': { $in: productIds } },
+          ]
+        } 
+      },
+      { $addFields: {
+          _items: {
+            $cond: [
+              { $gt: [ { $size: { $ifNull: ['$items', []] } }, 0 ] },
+              '$items',
+              [ { productId: '$productId', quantity: { $ifNull: ['$quantity', 1] } } ]
+            ]
+          }
+        } 
+      },
+      { $unwind: '$_items' },
+      { $match: { '_items.productId': { $in: productIds } } },
       { $group: {
-          _id: { productId: '$productId', country: '$orderCountry' },
-          deliveredQty: { $sum: { $ifNull: ['$quantity', 1] } },
-        }
-      }
+          _id: { productId: '$_items.productId', country: '$orderCountry' },
+          deliveredQty: { $sum: { $ifNull: ['$_items.quantity', 1] } },
+        } 
+      },
     ])
 
     const deliveredMap = new Map()
+    const normCountry = (c)=>{
+      const s = String(c||'').trim()
+      if (!s) return 'Unknown'
+      const upper = s.toUpperCase()
+      if (upper === 'UNITED ARAB EMIRATES' || upper === 'AE') return 'UAE'
+      if (upper === 'SAUDI ARABIA' || upper === 'SA') return 'KSA'
+      // Keep canonical names for known keys
+      if (upper === 'UAE') return 'UAE'
+      if (upper === 'KSA') return 'KSA'
+      if (upper === 'OMAN') return 'Oman'
+      if (upper === 'BAHRAIN') return 'Bahrain'
+      if (upper === 'INDIA') return 'India'
+      if (upper === 'KUWAIT') return 'Kuwait'
+      if (upper === 'QATAR') return 'Qatar'
+      return s
+    }
     for (const row of deliveredAgg) {
       const pid = String(row._id.productId)
-      const country = row._id.country || 'Unknown'
+      const country = normCountry(row._id.country)
       if (!deliveredMap.has(pid)) deliveredMap.set(pid, {})
-      deliveredMap.get(pid)[country] = row.deliveredQty
+      deliveredMap.get(pid)[country] = (deliveredMap.get(pid)[country] || 0) + row.deliveredQty
     }
 
     const response = products.map(p => {
