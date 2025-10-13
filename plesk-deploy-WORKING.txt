@@ -1,0 +1,4 @@
+# WORKING VERSION - Single line to avoid bash syntax errors
+# Copy this ENTIRE line into Plesk "Deploy actions" field
+
+export PATH="$HOME/.nodenv/versions/24.9.0/bin:$PATH" && cd backend && npm ci --production && pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend && cd ../frontend && npm ci && npm run build && echo "Deployment complete"

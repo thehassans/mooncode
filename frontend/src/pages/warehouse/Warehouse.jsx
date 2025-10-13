@@ -1,0 +1,357 @@
+import React, { useEffect, useMemo, useState } from 'react'
+import { API_BASE, apiGet } from '../../api'
+import { io } from 'socket.io-client'
+import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
+import { useNavigate } from 'react-router-dom'
+
+export default function Warehouse(){
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [q, setQ] = useState('')
+  const [sort, setSort] = useState('name')
+  const [ccyCfg, setCcyCfg] = useState(null)
+  const navigate = useNavigate()
+
+  useEffect(()=>{ load() },[])
+  // Live refresh on order deliveries
+  useEffect(()=>{
+    let socket
+    try{
+      const token = localStorage.getItem('token')||''
+      socket = io(API_BASE || undefined, { path:'/socket.io', transports:['polling'], upgrade:false, withCredentials:true, auth:{ token } })
+      const reload = ()=>{ try{ load() }catch{} }
+      socket.on('orders.changed', reload)
+    }catch{}
+    return ()=>{ try{ socket && socket.off('orders.changed') }catch{}; try{ socket && socket.disconnect() }catch{} }
+  },[])
+
+  // Load currency configuration once for conversions
+  useEffect(()=>{ let alive=true; getCurrencyConfig().then(cfg=>{ if(alive) setCcyCfg(cfg) }).catch(()=>{}); return ()=>{ alive=false } },[])
+
+  async function load(){
+    setLoading(true)
+    setMsg('')
+    try{
+      const data = await apiGet('/api/warehouse/summary')
+      const arr = Array.isArray(data?.items) ? data.items : []
+      if (arr.length > 0){
+        setItems(arr)
+      } else {
+        // Fallback: build minimal summary from products
+        try{
+          const pr = await apiGet('/api/products')
+          const list = Array.isArray(pr?.products) ? pr.products : (Array.isArray(pr) ? pr : [])
+          const mapped = list.map(p => {
+            const stock = {
+              UAE: Number(p?.stockUAE||0),
+              Oman: Number(p?.stockOman||0),
+              KSA: Number(p?.stockKSA||0),
+              Bahrain: Number(p?.stockBahrain||0),
+              India: Number(p?.stockIndia||0),
+              Kuwait: Number(p?.stockKuwait||0),
+              Qatar: Number(p?.stockQatar||0),
+            }
+            const total = Object.values(stock).reduce((a,b)=> a + Number(b||0), 0)
+            const base = p?.baseCurrency || p?.currency || 'SAR'
+            const purchase = Number(p?.purchasePrice||0)
+            const sell = Number(p?.price||0)
+            const stockValueByCurrency = {
+              SAR: conv(purchase, base, 'SAR') * total,
+              OMR: conv(purchase, base, 'OMR') * total,
+              AED: conv(purchase, base, 'AED') * total,
+              BHD: conv(purchase, base, 'BHD') * total,
+            }
+            return {
+              _id: String(p?._id||p?.id||p?.name||Math.random()),
+              name: p?.name || '-',
+              purchasePrice: purchase,
+              price: sell,
+              baseCurrency: base,
+              stockLeft: { ...stock, total },
+              delivered: { UAE:0, Oman:0, KSA:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, total:0 },
+              totalBought: 0,
+              stockValueByCurrency,
+              deliveredRevenueByCurrency: { SAR:0, OMR:0, AED:0, BHD:0 },
+              potentialRevenue: conv(sell, base, 'SAR') * total,
+            }
+          })
+          setItems(mapped)
+          setMsg('Showing fallback from products')
+        }catch(e2){
+          setItems([])
+          setMsg('Failed to load summary')
+        }
+      }
+    }catch(err){ 
+      // Fallback if summary endpoint fails
+      try{
+        const pr = await apiGet('/api/products')
+        const list = Array.isArray(pr?.products) ? pr.products : (Array.isArray(pr) ? pr : [])
+        const mapped = list.map(p => {
+          const stock = {
+            UAE: Number(p?.stockUAE||0),
+            Oman: Number(p?.stockOman||0),
+            KSA: Number(p?.stockKSA||0),
+            Bahrain: Number(p?.stockBahrain||0),
+            India: Number(p?.stockIndia||0),
+            Kuwait: Number(p?.stockKuwait||0),
+            Qatar: Number(p?.stockQatar||0),
+          }
+          const total = Object.values(stock).reduce((a,b)=> a + Number(b||0), 0)
+          const base = p?.baseCurrency || p?.currency || 'SAR'
+          const purchase = Number(p?.purchasePrice||0)
+          const sell = Number(p?.price||0)
+          const stockValueByCurrency = {
+            SAR: conv(purchase, base, 'SAR') * total,
+            OMR: conv(purchase, base, 'OMR') * total,
+            AED: conv(purchase, base, 'AED') * total,
+            BHD: conv(purchase, base, 'BHD') * total,
+          }
+          return {
+            _id: String(p?._id||p?.id||p?.name||Math.random()),
+            name: p?.name || '-',
+            purchasePrice: purchase,
+            price: sell,
+            baseCurrency: base,
+            stockLeft: { ...stock, total },
+            delivered: { UAE:0, Oman:0, KSA:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, total:0 },
+            totalBought: 0,
+            stockValueByCurrency,
+            deliveredRevenueByCurrency: { SAR:0, OMR:0, AED:0, BHD:0 },
+            potentialRevenue: conv(sell, base, 'SAR') * total,
+          }
+        })
+        setItems(mapped)
+        setMsg('Showing fallback from products')
+      }catch{ setMsg(err?.message || 'Failed to load summary') }
+    }
+    finally{ setLoading(false) }
+  }
+
+  const filtered = useMemo(()=>{
+    let out = items
+    if (q){
+      const s = q.toLowerCase()
+      out = out.filter(x => (x.name||'').toLowerCase().includes(s))
+    }
+    if (sort === 'name'){
+      out = [...out].sort((a,b)=> (a.name||'').localeCompare(b.name||''))
+    } else if (sort === 'stock_desc'){
+      out = [...out].sort((a,b)=> (b.stockLeft?.total||0) - (a.stockLeft?.total||0))
+    } else if (sort === 'delivered_desc'){
+      out = [...out].sort((a,b)=> (b.delivered?.total||0) - (a.delivered?.total||0))
+    }
+    return out
+  }, [items, q, sort])
+
+  function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
+  function conv(v, from, to){
+    const val = Number(v||0)
+    const f = String(from||'SAR').toUpperCase()
+    const t = String(to||'SAR').toUpperCase()
+    if (!ccyCfg) return f===t ? val : 0
+    try{ return fxConvert(val, f, t, ccyCfg) }catch{ return f===t ? val : 0 }
+  }
+  const COUNTRY_TO_CCY = useMemo(()=>({ UAE:'AED', Oman:'OMR', KSA:'SAR', Bahrain:'BHD' }),[])
+  function goOrders(productName, country, ship){
+    const p = new URLSearchParams()
+    if (country) p.set('country', country)
+    if (ship) p.set('ship', ship)
+    if (productName) p.set('q', productName)
+    navigate(`/user/orders?${p.toString()}`)
+  }
+
+  const totals = useMemo(()=>{
+    const curKeys = ['SAR','OMR','AED','BHD']
+    let stockUAE=0, stockOman=0, stockKSA=0, stockBahrain=0, stockIndia=0, stockKuwait=0, stockQatar=0, stockTotal=0
+    let deliveredUAE=0, deliveredOman=0, deliveredKSA=0, deliveredBahrain=0, deliveredIndia=0, deliveredKuwait=0, deliveredQatar=0, deliveredTotal=0
+    let totalBought=0
+    const stockValueByC = { SAR:0, OMR:0, AED:0, BHD:0 }
+    const deliveredRevByC = { SAR:0, OMR:0, AED:0, BHD:0 }
+    for (const it of filtered){
+      stockUAE += Number(it?.stockLeft?.UAE||0)
+      stockOman += Number(it?.stockLeft?.Oman||0)
+      stockKSA += Number(it?.stockLeft?.KSA||0)
+      stockBahrain += Number(it?.stockLeft?.Bahrain||0)
+      stockIndia += Number(it?.stockLeft?.India||0)
+      stockKuwait += Number(it?.stockLeft?.Kuwait||0)
+      stockQatar += Number(it?.stockLeft?.Qatar||0)
+      stockTotal += Number(it?.stockLeft?.total||0)
+      deliveredUAE += Number(it?.delivered?.UAE||0)
+      deliveredOman += Number(it?.delivered?.Oman||0)
+      deliveredKSA += Number(it?.delivered?.KSA||0)
+      deliveredBahrain += Number(it?.delivered?.Bahrain||0)
+      deliveredIndia += Number(it?.delivered?.India||0)
+      deliveredKuwait += Number(it?.delivered?.Kuwait||0)
+      deliveredQatar += Number(it?.delivered?.Qatar||0)
+      deliveredTotal += Number(it?.delivered?.total||0)
+      totalBought += Number(it?.totalBought||0)
+      const sv = it?.stockValueByCurrency || {}
+      const dr = it?.deliveredRevenueByCurrency || {}
+      for (const k of curKeys){ stockValueByC[k] += Number(sv[k]||0); deliveredRevByC[k] += Number(dr[k]||0) }
+    }
+    return { stockUAE, stockOman, stockKSA, stockBahrain, stockIndia, stockKuwait, stockQatar, stockTotal, deliveredUAE, deliveredOman, deliveredKSA, deliveredBahrain, deliveredIndia, deliveredKuwait, deliveredQatar, deliveredTotal, totalBought, stockValueByC, deliveredRevByC }
+  }, [filtered])
+
+  return (
+    <div>
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
+          <div style={{fontWeight:700, fontSize:18}}>Warehouse Summary</div>
+          <input className="input" placeholder="Search products" value={q} onChange={e=>setQ(e.target.value)} style={{minWidth:240}} />
+          <select className="input" value={sort} onChange={e=>setSort(e.target.value)}>
+            <option value="name">Sort: Name</option>
+            <option value="stock_desc">Sort: Stock Left (desc)</option>
+            <option value="delivered_desc">Sort: Delivered (desc)</option>
+          </select>
+          <button className="btn" onClick={load} disabled={loading}>{loading? 'Refreshing...' : 'Refresh'}</button>
+        </div>
+        {msg && <div style={{marginTop:8}}>{msg}</div>}
+      </div>
+
+      <div className="card">
+        <div style={{fontWeight:800, marginBottom:8}}>Inhouse Products (All Warehouses)</div>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%', borderCollapse:'separate', borderSpacing:0, border:'1px solid var(--border)', borderRadius:8, overflow:'hidden'}}>
+            <thead>
+              <tr>
+                <th style={{textAlign:'left', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Product</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1'}}>Buy AED</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1'}}>Buy OMR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1'}}>Buy SAR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1'}}>Buy BHD</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1'}}>Buy INR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1'}}>Buy KWD</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1'}}>Buy QAR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Sell AED</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Sell OMR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Sell SAR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Sell BHD</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Sell INR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Sell KWD</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Sell QAR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock UAE</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock Oman</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock KSA</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock Bahrain</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock India</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock Kuwait</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#3b82f6'}}>Stock Qatar</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Stock Total</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered UAE</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Oman</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered KSA</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Bahrain</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered India</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Kuwait</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Qatar</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>Delivered Total</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Total Bought</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Stock Value SAR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Stock Value OMR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Stock Value AED</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Stock Value BHD</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Potential Revenue</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Delivered Revenue SAR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Delivered Revenue OMR</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e'}}>Delivered Revenue AED</th>
+                <th style={{textAlign:'right', padding:'10px 12px', color:'#22c55e'}}>Delivered Revenue BHD</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                Array.from({length:5}).map((_,i)=> (
+                  <tr key={`sk${i}`}>
+                    <td colSpan={41} style={{ padding:'10px 12px' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                  </tr>
+                ))
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={41} style={{padding:'10px 12px', opacity:0.7}}>No products</td></tr>
+              ) : (
+                filtered.map(it => (
+                  <tr key={it._id} style={{borderTop:'1px solid var(--border)'}}>
+                    <td style={{padding:'10px 12px', borderRight:'1px solid var(--border)'}}>{it.name}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'AED'))}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'OMR'))}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'SAR'))}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'BHD'))}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'INR'))}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'KWD'))}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'QAR'))}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(conv(it.price, it.baseCurrency||it.currency||'SAR', 'AED'))}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(conv(it.price, it.baseCurrency||it.currency||'SAR', 'OMR'))}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(conv(it.price, it.baseCurrency||it.currency||'SAR', 'SAR'))}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(conv(it.price, it.baseCurrency||it.currency||'SAR', 'BHD'))}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'UAE', 'open')}>{num(it.stockLeft?.UAE)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Oman', 'open')}>{num(it.stockLeft?.Oman)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'KSA', 'open')}>{num(it.stockLeft?.KSA)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Bahrain', 'open')}>{num(it.stockLeft?.Bahrain)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'India', 'open')}>{num(it.stockLeft?.India)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Kuwait', 'open')}>{num(it.stockLeft?.Kuwait)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Qatar', 'open')}>{num(it.stockLeft?.Qatar)}</span></td>
+                    <td style={{padding:'10px 12px', fontWeight:600, textAlign:'right', borderRight:'1px solid var(--border)'}}>{num(it.stockLeft?.total)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'UAE', 'delivered')}>{num(it.delivered?.UAE)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Oman', 'delivered')}>{num(it.delivered?.Oman)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'KSA', 'delivered')}>{num(it.delivered?.KSA)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Bahrain', 'delivered')}>{num(it.delivered?.Bahrain)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'India', 'delivered')}>{num(it.delivered?.India)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Kuwait', 'delivered')}>{num(it.delivered?.Kuwait)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Qatar', 'delivered')}>{num(it.delivered?.Qatar)}</span></td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b'}}>{num(it.delivered?.total)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)'}}>{num(it.totalBought)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)'}}>{num(it.stockValueByCurrency?.SAR)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)'}}>{num(it.stockValueByCurrency?.OMR)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)'}}>{num(it.stockValueByCurrency?.AED)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)'}}>{num(it.stockValueByCurrency?.BHD)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(it.potentialRevenue)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(it.deliveredRevenueByCurrency?.SAR)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(it.deliveredRevenueByCurrency?.OMR)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e'}}>{num(it.deliveredRevenueByCurrency?.AED)}</td>
+                    <td style={{padding:'10px 12px', textAlign:'right', color:'#22c55e'}}>{num(it.deliveredRevenueByCurrency?.BHD)}</td>
+                  </tr>
+                ))
+              )}
+              {/* Highlighted totals row */}
+              {!loading && filtered.length>0 && (
+                <tr style={{borderTop:'2px solid var(--border)', background:'var(--panel)'}}>
+                  <td style={{padding:'10px 12px', fontWeight:800}}>Totals</td>
+                  <td colSpan={7}></td>
+                  <td colSpan={7}></td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockUAE)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockOman)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockKSA)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockBahrain)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockIndia)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockKuwait)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockQatar)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockTotal)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredUAE)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredOman)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredKSA)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredBahrain)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredIndia)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredKuwait)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredQatar)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredTotal)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.totalBought)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockValueByC.SAR)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockValueByC.OMR)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockValueByC.AED)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.stockValueByC.BHD)}</td>
+                  <td></td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredRevByC.SAR)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredRevByC.OMR)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredRevByC.AED)}</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right'}}>{num(totals.deliveredRevByC.BHD)}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}

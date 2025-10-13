@@ -1,0 +1,4 @@
+# FINAL WORKING VERSION - Paste this into Plesk Git "Deploy actions" field
+# Uses Plesk's Node.js 24, handles process restart gracefully
+
+export PATH="/opt/plesk/node/24/bin:$PATH"; cd backend; npm ci --omit=dev; pkill -f "node.*src/index.js" 2>/dev/null || true; sleep 2; nohup node src/index.js > ../backend.log 2>&1 & echo "Backend PID: $!"; cd ../frontend; npm ci; npm run build; echo "✅ Deployment complete - Backend running in background"
