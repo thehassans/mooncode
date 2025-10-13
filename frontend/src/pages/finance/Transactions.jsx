@@ -35,7 +35,15 @@ export default function Transactions(){
     (async () => {
       try {
         const r = await apiGet('/api/orders/options')
-        setCountryOptions(Array.isArray(r?.countries) ? r.countries : [])
+        const arr = Array.isArray(r?.countries) ? r.countries : []
+        // Normalize and dedupe (avoid both 'UAE' and 'Uae')
+        const map = new Map()
+        for (const c of arr){
+          const raw = String(c||'').trim()
+          const key = raw.toLowerCase()
+          if (!map.has(key)) map.set(key, raw.toUpperCase() === 'UAE' ? 'UAE' : raw)
+        }
+        setCountryOptions(Array.from(map.values()))
       } catch {
         setCountryOptions([])
       }
@@ -131,7 +139,7 @@ export default function Transactions(){
   const driverAcceptedSum = useMemo(()=>{
     const by = new Map()
     for (const r of driverRemits){
-      if (String(r?.country||'').trim() !== String(country||'').trim()) continue
+      if (String(r?.country||'').trim().toLowerCase() !== String(country||'').trim().toLowerCase()) continue
       const st = String(r?.status||'')
       if (st==='accepted' || st==='received'){
         const id = String(r?.driver?._id || r?.driver || '')
@@ -562,39 +570,7 @@ export default function Transactions(){
                   <button className="btn" style={btnStyle} onClick={()=> { const p = new URLSearchParams(); if(country) p.set('country', country); p.set('driver', r.id); p.set('ship','returned'); navigate(`/user/orders?${p.toString()}`) }}>Returned</button>
                   <button className="btn" style={btnStyle} onClick={()=> { const p = new URLSearchParams(); if(country) p.set('country', country); p.set('driver', r.id); p.set('ship','cancelled'); navigate(`/user/orders?${p.toString()}`) }}>Cancelled</button>
                 </div>
-                <div className="card" style={{ padding:10 }}>
-                  <div className="card-title">Remittance History</div>
-                  {hist.length === 0 ? (
-                    <div className="helper">No remittances in selected date range.</div>
-                  ) : (
-                    <div style={{ overflowX:'auto' }}>
-                      <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:0 }}>
-                        <thead>
-                          <tr>
-                            <th style={{ padding:'8px 10px', textAlign:'left' }}>Amount</th>
-                            <th style={{ padding:'8px 10px', textAlign:'left' }}>Status</th>
-                            <th style={{ padding:'8px 10px', textAlign:'left' }}>Method</th>
-                            <th style={{ padding:'8px 10px', textAlign:'left' }}>Accepted At</th>
-                            <th style={{ padding:'8px 10px', textAlign:'left' }}>Created At</th>
-                            <th style={{ padding:'8px 10px', textAlign:'left' }}>Receipt</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {hist.map((h,i)=> (
-                            <tr key={String(h._id||i)} style={{ borderTop:'1px solid var(--border)' }}>
-                              <td style={{ padding:'8px 10px', fontWeight:700, color:'#22c55e' }}>{num(h.amount)} {h.currency||''}</td>
-                              <td style={{ padding:'8px 10px' }}>{String(h.status||'').toUpperCase()}</td>
-                              <td style={{ padding:'8px 10px' }}>{(String(h.method||'hand').toLowerCase()==='transfer') ? 'Transfer' : 'Hand'}</td>
-                              <td style={{ padding:'8px 10px' }}>{h.acceptedAt? new Date(h.acceptedAt).toLocaleString(): '—'}</td>
-                              <td style={{ padding:'8px 10px' }}>{h.createdAt? new Date(h.createdAt).toLocaleString(): '—'}</td>
-                              <td style={{ padding:'8px 10px' }}>{h.receiptPath ? (<a href={`${API_BASE}${h.receiptPath}`} target="_blank" rel="noopener noreferrer">Download</a>) : '—'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+                {null}
               </div>
             </div>
           </div>
