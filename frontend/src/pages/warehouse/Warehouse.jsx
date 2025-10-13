@@ -12,6 +12,7 @@ export default function Warehouse(){
   const [sort, setSort] = useState('name')
   const [ccyCfg, setCcyCfg] = useState(null)
   const navigate = useNavigate()
+  const [prodMap, setProdMap] = useState({})
 
   useEffect(()=>{ load() },[])
   // Live refresh on order deliveries
@@ -37,6 +38,11 @@ export default function Warehouse(){
       const arr = Array.isArray(data?.items) ? data.items : []
       if (arr.length > 0){
         setItems(arr)
+        try{
+          const pr = await apiGet('/api/products')
+          const list = Array.isArray(pr?.products) ? pr.products : (Array.isArray(pr) ? pr : [])
+          setProdMap(buildProductMap(list))
+        }catch{}
       } else {
         // Fallback: build minimal summary from products
         try{
@@ -68,6 +74,7 @@ export default function Warehouse(){
               purchasePrice: purchase,
               price: sell,
               baseCurrency: base,
+              images: Array.isArray(p?.images)? p.images.filter(Boolean): [],
               stockLeft: { ...stock, total },
               delivered: { UAE:0, Oman:0, KSA:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, total:0 },
               totalBought: 0,
@@ -77,6 +84,7 @@ export default function Warehouse(){
             }
           })
           setItems(mapped)
+          setProdMap(buildProductMap(list))
           setMsg('Showing fallback from products')
         }catch(e2){
           setItems([])
@@ -114,6 +122,7 @@ export default function Warehouse(){
             purchasePrice: purchase,
             price: sell,
             baseCurrency: base,
+            images: Array.isArray(p?.images)? p.images.filter(Boolean): [],
             stockLeft: { ...stock, total },
             delivered: { UAE:0, Oman:0, KSA:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, total:0 },
             totalBought: 0,
@@ -123,6 +132,7 @@ export default function Warehouse(){
           }
         })
         setItems(mapped)
+        setProdMap(buildProductMap(list))
         setMsg('Showing fallback from products')
       }catch{ setMsg(err?.message || 'Failed to load summary') }
     }
@@ -160,6 +170,35 @@ export default function Warehouse(){
     if (ship) p.set('ship', ship)
     if (productName) p.set('q', productName)
     navigate(`/user/orders?${p.toString()}`)
+  }
+
+  function buildProductMap(list){
+    const m = {}
+    for (const p of Array.isArray(list)? list: []){
+      const key = String(p?.name||'').trim()
+      const images = Array.isArray(p?.images) ? p.images.filter(Boolean) : []
+      const category = String(p?.category||'').trim()
+      if (key) m[key] = { images, category }
+    }
+    return m
+  }
+  function getImages(it){
+    const self = Array.isArray(it?.images) ? it.images.filter(Boolean) : []
+    if (self.length) return self
+    const name = String(it?.name||'').trim()
+    const found = prodMap[name]
+    return found?.images || []
+  }
+  function imgUrl(path){
+    const p = String(path||'')
+    if (!p) return ''
+    return p.startsWith('http') ? p : `${API_BASE}${p}`
+  }
+  function initials(name){
+    const parts = String(name||'').trim().split(/\s+/).filter(Boolean)
+    const a = (parts[0]||'').charAt(0).toUpperCase()
+    const b = (parts[1]||'').charAt(0).toUpperCase()
+    return (a + b) || 'P'
   }
 
   const totals = useMemo(()=>{
@@ -273,7 +312,29 @@ export default function Warehouse(){
               ) : (
                 filtered.map(it => (
                   <tr key={it._id} style={{borderTop:'1px solid var(--border)'}}>
-                    <td style={{padding:'10px 12px', borderRight:'1px solid var(--border)'}}>{it.name}</td>
+                    <td style={{padding:'10px 12px', borderRight:'1px solid var(--border)'}}>
+                      {(() => {
+                        const imgs = getImages(it)
+                        const img = imgs[0] || ''
+                        const meta = prodMap[String(it?.name||'').trim()] || {}
+                        const cat = meta.category || ''
+                        return (
+                          <div style={{display:'flex', alignItems:'center', gap:10}}>
+                            <div style={{width:44, height:44, borderRadius:10, overflow:'hidden', background:'var(--panel-2)', border:'1px solid var(--border)', display:'grid', placeItems:'center'}}>
+                              {img ? (
+                                <img src={imgUrl(img)} alt={it.name||'Product'} loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', cursor:'zoom-in'}} onClick={()=>{ try{ window.open(imgUrl(img), '_blank', 'noopener,noreferrer') }catch{} }} />
+                              ) : (
+                                <div style={{fontWeight:800, fontSize:12, color:'var(--muted)'}}>{initials(it.name)}</div>
+                              )}
+                            </div>
+                            <div>
+                              <div style={{fontWeight:800}}>{it.name}</div>
+                              {cat ? <div className="helper" style={{fontSize:12}}>{cat}</div> : null}
+                            </div>
+                          </div>
+                        )
+                      })()}
+                    </td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'AED'))}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'OMR'))}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'SAR'))}</td>
