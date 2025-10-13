@@ -413,10 +413,18 @@ export default function Transactions(){
             <tfoot>
               <tr style={{ borderTop:'2px solid var(--border)', background:'var(--panel)' }}>
                 <td style={{ padding:'10px 12px', fontWeight:800 }}>Totals</td>
-                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#f59e0b' }}>{num(totals.openA)}</td>
-                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#6366f1' }}>{num(totals.totalA)}</td>
-                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#3b82f6' }}>{num(totals.delivered)}</td>
-                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#22c55e' }}>{num(totals.collected)}</td>
+                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#f59e0b' }}>
+                  <span style={{ cursor:'pointer' }} onClick={()=>{ const p=new URLSearchParams(); if(country) p.set('country', country); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }}>{num(totals.openA)}</span>
+                </td>
+                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#6366f1' }}>
+                  <span style={{ cursor:'pointer' }} onClick={()=>{ const p=new URLSearchParams(); if(country) p.set('country', country); navigate(`/user/orders?${p.toString()}`) }}>{num(totals.totalA)}</span>
+                </td>
+                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#3b82f6' }}>
+                  <span style={{ cursor:'pointer' }} onClick={()=>{ const p=new URLSearchParams(); if(country) p.set('country', country); p.set('ship','delivered'); navigate(`/user/orders?${p.toString()}`) }}>{num(totals.delivered)}</span>
+                </td>
+                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#22c55e' }}>
+                  <span style={{ cursor:'pointer' }} onClick={()=>{ const p=new URLSearchParams(); if(country) p.set('country', country); p.set('ship','delivered'); p.set('collected','true'); navigate(`/user/orders?${p.toString()}`) }}>{num(totals.collected)}</span>
+                </td>
                 <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#22c55e' }}>{num(totals.remitted)}</td>
                 <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'var(--danger)' }}>{num(totals.pending)}</td>
                 <td></td>
