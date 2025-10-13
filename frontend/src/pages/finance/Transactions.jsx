@@ -386,22 +386,16 @@ export default function Transactions(){
                         <span onClick={()=> goDeliveredCollected(r.id)} title="View delivered orders with collected payments" style={{ cursor:'pointer', color:'#22c55e', fontWeight:700 }}>{num(r.collectedSum)}</span>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <span onClick={()=> setRemitModalFor(r.id)} title="View remittances" style={{ cursor:'pointer', color:'#22c55e', fontWeight:800 }}>{num(r.remittedSum)}</span>
-                        <div className="helper" style={{ marginTop:6 }}>
-                          <div style={{ height:6, background:'var(--panel-2)', borderRadius:999 }}>
-                            <div style={{ width:`${barPct}%`, height:'100%', borderRadius:999, background:'linear-gradient(90deg, #22c55e, #3b82f6)' }} />
-                          </div>
-                          {null}
-                        </div>
+                        <span onClick={()=> { setDetailModalFor(''); setRemitModalFor(r.id) }} title="View remittances" style={{ cursor:'pointer', color:'#22c55e', fontWeight:800 }}>{num(r.remittedSum)}</span>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'var(--danger)', fontWeight:800 }}>
-                        {num(r.variance)}
+                        <span onClick={()=> { setDetailModalFor(''); setRemitModalFor(r.id) }} title="View pending remittances" style={{ cursor:'pointer', color:'var(--danger)', fontWeight:800 }}>{num(r.variance)}</span>
                       </td>
                       <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn" onClick={()=> setDetailModalFor(r.id)}>Details</button>
+                        <button className="btn" onClick={()=> { setRemitModalFor(''); setDetailModalFor(r.id) }}>Details</button>
                       </td>
                       <td style={{ padding: '10px 12px' }}>
-                        <button className="btn secondary" onClick={()=> setRemitModalFor(r.id)}>History</button>
+                        <button className="btn secondary" onClick={()=> { setDetailModalFor(''); setRemitModalFor(r.id) }}>History</button>
                       </td>
                     </tr>
                   )
@@ -448,9 +442,6 @@ export default function Transactions(){
                     <div>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                         <span onClick={()=> setRemitModalFor(r.id)} style={{ color:'#22c55e', fontWeight:800, cursor:'pointer' }}>Remitted: {num(r.remittedSum)}</span>
-                      </div>
-                      <div style={{ height:6, background:'var(--panel-2)', borderRadius:999, marginTop:6 }}>
-                        <div style={{ width:`${barPct}%`, height:'100%', borderRadius:999, background:'linear-gradient(90deg, #22c55e, #3b82f6)' }} />
                       </div>
                     </div>
                   </div>
