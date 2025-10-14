@@ -251,11 +251,19 @@ export default function Warehouse(){
       meta.append('stockQatar', String(editForm.stockQatar||0))
       await apiUploadPatch(`/api/products/${editingProd._id}`, meta)
       const imgs = Array.isArray(editForm.images) ? editForm.images : []
-      for (const file of imgs){
-        const fdi = new FormData()
-        fdi.append('appendImages', 'true')
-        fdi.append('images', file)
-        await apiUploadPatch(`/api/products/${editingProd._id}?append=true`, fdi)
+      if (imgs.length > 0){
+        // Replace existing images with the first file
+        const first = imgs[0]
+        const fd0 = new FormData()
+        fd0.append('images', first)
+        await apiUploadPatch(`/api/products/${editingProd._id}`, fd0)
+        // Append the rest (if any) sequentially
+        for (let i=1;i<imgs.length;i++){
+          const fdi = new FormData()
+          fdi.append('appendImages', 'true')
+          fdi.append('images', imgs[i])
+          await apiUploadPatch(`/api/products/${editingProd._id}?append=true`, fdi)
+        }
       }
       setEditOpen(false)
       setEditingProd(null)
@@ -462,7 +470,16 @@ export default function Warehouse(){
                                 const imgs = Array.isArray(p?.images) ? p.images : (p?.imagePath ? [p.imagePath] : [])
                                 if (!imgs || imgs.length === 0) return null
                                 return (
-                                  <div style={{display:'flex', gap:6, marginTop:6, overflowX:'auto', paddingBottom:4, maxWidth:'min(360px, 30vw)'}}>
+                                  <div style={{
+                                    display:'grid',
+                                    gridTemplateColumns:'repeat(auto-fill, minmax(40px, 1fr))',
+                                    gap:6,
+                                    marginTop:6,
+                                    maxWidth:'min(360px, 30vw)',
+                                    gridAutoRows:'40px',
+                                    maxHeight: 40*3 + 6*2 + 'px',
+                                    overflow:'hidden'
+                                  }}>
                                     {imgs.map((im, idx) => (
                                       <img
                                         key={idx}
@@ -471,7 +488,7 @@ export default function Warehouse(){
                                         title={`${it.name} ${idx+1}`}
                                         loading="lazy"
                                         onClick={()=>{ try{ window.open(imgUrl(im), '_blank', 'noopener,noreferrer') }catch{} }}
-                                        style={{height:40, width:40, borderRadius:6, objectFit:'cover', border:'1px solid var(--border)', flex:'0 0 auto', cursor:'zoom-in'}}
+                                        style={{height:'40px', width:'40px', borderRadius:6, objectFit:'cover', border:'1px solid var(--border)', cursor:'zoom-in'}}
                                       />
                                     ))}
                                   </div>
