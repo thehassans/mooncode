@@ -118,12 +118,29 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/geocode', geocodeRoutes);
 app.use('/api/ecommerce', ecommerceRoutes);
 
-// Serve uploaded product images
+// Serve uploaded product images from a robustly resolved directory
+function resolveUploadsDir(){
+  try{
+    const here = path.dirname(fileURLToPath(import.meta.url))
+    const candidates = [
+      path.resolve(process.cwd(), 'uploads'),
+      path.resolve(here, '../uploads'),
+      path.resolve(here, '../../uploads'),
+      path.resolve('/httpdocs/uploads'),
+    ]
+    for (const c of candidates){
+      try{ if (!fs.existsSync(c)) fs.mkdirSync(c, { recursive: true }); return c }catch{}
+    }
+  }catch{}
+  try{ fs.mkdirSync('uploads', { recursive: true }) }catch{}
+  return path.resolve('uploads')
+}
+const UPLOADS_DIR = resolveUploadsDir()
 app.use(['/uploads','/api/uploads'], (req, res, next) => {
   res.setHeader('Cache-Control', 'public, max-age=86400');
   next();
 });
-app.use(['/uploads','/api/uploads'], express.static(path.resolve(process.cwd(), 'uploads')));
+app.use(['/uploads','/api/uploads'], express.static(UPLOADS_DIR));
 
 // Serve frontend static build if available (single-server deploy)
 // Set SERVE_STATIC=false in env to disable.

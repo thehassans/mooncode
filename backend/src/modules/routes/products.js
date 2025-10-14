@@ -1,6 +1,7 @@
 import express from 'express'
 import multer from 'multer'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import fs from 'fs'
 import { auth, allowRoles } from '../middleware/auth.js'
 import Product from '../models/Product.js'
@@ -11,23 +12,41 @@ import imageGenService from '../services/imageGenService.js'
 
 const router = express.Router()
 
+// Resolve an uploads directory robustly across Plesk/PM2/systemd contexts
+function resolveUploadsDir(){
+  try{
+    const here = path.dirname(fileURLToPath(import.meta.url))
+    const candidates = [
+      path.resolve(process.cwd(), 'uploads'),
+      path.resolve(here, '../../../uploads'),
+      path.resolve(here, '../../uploads'),
+      path.resolve('/httpdocs/uploads'),
+    ]
+    for (const c of candidates){
+      try{ if (!fs.existsSync(c)) fs.mkdirSync(c, { recursive: true }); return c }catch{}
+    }
+  }catch{}
+  // Last resort
+  try{ fs.mkdirSync('uploads', { recursive: true }) }catch{}
+  return path.resolve('uploads')
+}
+const UPLOADS_DIR = resolveUploadsDir()
+
 // Multer config for image uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    try{
-      const dir = path.resolve(process.cwd(), 'uploads')
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-      cb(null, dir)
-    }catch(err){
-      // Fallback to relative path if resolution fails
-      try{ fs.mkdirSync('uploads', { recursive: true }) }catch{}
-      cb(null, 'uploads/')
-    }
+  destination: (_req, _file, cb) => {
+    cb(null, UPLOADS_DIR)
   },
-  filename: (req, file, cb) => {
+  filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname)
-    const name = path.basename(file.originalname, ext)
-    cb(null, `${name}-${Date.now()}${ext}`)
+    const base = path.basename(file.originalname, ext)
+    const safeBase = String(base)
+      .normalize('NFKD')
+      .replace(/[^a-zA-Z0-9._-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .toLowerCase()
+    cb(null, `${safeBase || 'image'}-${Date.now()}${ext.toLowerCase()}`)
   }
 })
 
