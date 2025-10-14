@@ -19,6 +19,15 @@ export default function ManagerFinances(){
   const agtEndRef = useRef(null)
   const showAgentSection = false
 
+  const [country, setCountry] = useState('')
+  const [managerCountries, setManagerCountries] = useState([])
+  const [loadingStats, setLoadingStats] = useState(false)
+  const [drivers, setDrivers] = useState([])
+  const [driverRemits, setDriverRemits] = useState([])
+  const [deliveredOrders, setDeliveredOrders] = useState([])
+  const [countryOrders, setCountryOrders] = useState([])
+  const [errStats, setErrStats] = useState('')
+
   async function loadDriverRemitsPage(page){
     if (drvLoadingRef.current) return
     drvLoadingRef.current = true
@@ -40,6 +49,135 @@ export default function ManagerFinances(){
     finally{ agtLoadingRef.current = false }
   }
   useEffect(()=>{ loadDriverRemitsPage(1); loadAgentRemitsPage(1) },[])
+
+  useEffect(()=>{
+    let alive = true
+    ;(async()=>{
+      try{
+        const { user } = await apiGet('/api/users/me')
+        const norm = (c)=> c==='Saudi Arabia' ? 'KSA' : (c==='United Arab Emirates' ? 'UAE' : c)
+        const arr = Array.isArray(user?.assignedCountries) && user.assignedCountries.length ? user.assignedCountries.map(norm) : (user?.assignedCountry ? [norm(String(user.assignedCountry))] : [])
+        if (!arr || !arr.length) { setManagerCountries([]); setCountry(''); return }
+        if (alive){ setManagerCountries(arr); setCountry(arr[0]||'') }
+      }catch{}
+    })()
+    return ()=>{ alive=false }
+  },[])
+
+  useEffect(()=>{
+    if (!country) { setDrivers([]); setDeliveredOrders([]); setCountryOrders([]); setDriverRemits([]); return }
+    let alive = true
+    ;(async()=>{
+      try{
+        setLoadingStats(true)
+        const lim = 200
+        const loadDrivers = apiGet(`/api/users/drivers?country=${encodeURIComponent(country)}`).then(r=>{ if(alive) setDrivers(Array.isArray(r?.users)? r.users:[]) }).catch(()=>{ if(alive) setDrivers([]) })
+        const loadRemits = apiGet('/api/finance/remittances').then(r=>{ const all = Array.isArray(r?.remittances)? r.remittances:[]; const filtered = all.filter(x=> String(x?.country||'').trim().toLowerCase()===String(country).trim().toLowerCase()); if(alive) setDriverRemits(filtered) }).catch(()=>{ if(alive) setDriverRemits([]) })
+        const loadDelivered = (async()=>{
+          let page=1, more=true, acc=[]
+          while(more && page<=10){
+            const q = new URLSearchParams(); q.set('country', country); q.set('ship','delivered'); q.set('page', String(page)); q.set('limit', String(lim))
+            const r = await apiGet(`/api/orders?${q.toString()}`)
+            const arr = Array.isArray(r?.orders)? r.orders:[]
+            acc = acc.concat(arr); more = !!r?.hasMore; page+=1
+          }
+          if (alive) setDeliveredOrders(acc)
+        })()
+        const loadAll = (async()=>{
+          let p=1, more=true, acc=[]
+          while(more && p<=10){
+            const q = new URLSearchParams(); q.set('country', country); q.set('page', String(p)); q.set('limit', String(lim))
+            const r = await apiGet(`/api/orders?${q.toString()}`)
+            const arr = Array.isArray(r?.orders)? r.orders:[]
+            acc = acc.concat(arr); more = !!r?.hasMore; p+=1
+          }
+          if (alive) setCountryOrders(acc)
+        })()
+        await Promise.all([loadDrivers, loadRemits, loadDelivered, loadAll])
+      }catch(e){ if(alive) setErrStats(e?.message||'Failed to load driver stats') }
+      finally{ if(alive) setLoadingStats(false) }
+    })()
+    return ()=>{ alive=false }
+  },[country])
+
+  function normalizeShip(s){
+    const n = String(s||'').toLowerCase().trim().replace(/\s+/g,'_').replace(/-/g,'_')
+    if (n==='picked' || n==='pickedup' || n==='pick_up' || n==='pick-up' || n==='pickup') return 'picked_up'
+    if (n==='shipped' || n==='contacted' || n==='attempted') return 'in_transit'
+    if (n==='open') return 'open'
+    return n
+  }
+  function orderNumericTotal(o){
+    try{
+      if (o && o.total != null && !Number.isNaN(Number(o.total))) return Number(o.total)
+      if (Array.isArray(o?.items) && o.items.length){ let sum=0; for(const it of o.items){ const price=Number(it?.productId?.price||0); const qty=Math.max(1, Number(it?.quantity||1)); sum+=price*qty } return sum }
+      const price = Number(o?.productId?.price||0); const qty = Math.max(1, Number(o?.quantity||1)); return price*qty
+    }catch{ return 0 }
+  }
+  function collectedOf(o){ const c = Number(o?.collectedAmount); if (!Number.isNaN(c) && c>0) return c; const cod = Number(o?.codAmount); if (!Number.isNaN(cod) && cod>0) return cod; return orderNumericTotal(o) }
+
+  const driverStats = useMemo(()=>{
+    const map = new Map()
+    for (const o of deliveredOrders){
+      const did = String(o?.deliveryBoy?._id || o?.deliveryBoy || '')
+      if (!did) continue
+      if (!map.has(did)) map.set(did, { deliveredCount:0, collectedSum:0 })
+      const s = map.get(did)
+      s.deliveredCount += 1
+      s.collectedSum += collectedOf(o)
+    }
+    return map
+  }, [deliveredOrders])
+  const driverAcceptedSum = useMemo(()=>{
+    const by = new Map()
+    for (const r of driverRemits){
+      const st = String(r?.status||'')
+      if (st==='accepted' || st==='received'){
+        const id = String(r?.driver?._id || r?.driver || '')
+        if (!id) continue
+        if (!by.has(id)) by.set(id, 0)
+        by.set(id, by.get(id) + Number(r?.amount||0))
+      }
+    }
+    return by
+  }, [driverRemits])
+  const openAssignedByDriver = useMemo(()=>{
+    const map = new Map()
+    for (const o of countryOrders){
+      const did = String(o?.deliveryBoy?._id || o?.deliveryBoy || '')
+      if (!did) continue
+      const ship = normalizeShip(o?.shipmentStatus || o?.status)
+      const isOpen = ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response'].includes(ship)
+      if (!isOpen) continue
+      if (!map.has(did)) map.set(did, 0)
+      map.set(did, map.get(did) + 1)
+    }
+    return map
+  }, [countryOrders])
+  const totalAssignedByDriver = useMemo(()=>{
+    const map = new Map()
+    for (const o of countryOrders){
+      const did = String(o?.deliveryBoy?._id || o?.deliveryBoy || '')
+      if (!did) continue
+      if (!map.has(did)) map.set(did, 0)
+      map.set(did, map.get(did) + 1)
+    }
+    return map
+  }, [countryOrders])
+  const rows = useMemo(()=>{
+    const arr = drivers.map(d => {
+      const id = String(d?._id)
+      const s = driverStats.get(id) || { deliveredCount:0, collectedSum:0 }
+      const rem = driverAcceptedSum.get(id) || 0
+      const variance = (s.collectedSum || 0) - (rem || 0)
+      const openAssigned = openAssignedByDriver.get(id) || 0
+      const totalAssigned = totalAssignedByDriver.get(id) || 0
+      return { id, driver:d, openAssigned, totalAssigned, deliveredCount:s.deliveredCount||0, collectedSum:s.collectedSum||0, remittedSum:rem||0, wallet:variance }
+    })
+    arr.sort((a,b)=> (b.wallet||0) - (a.wallet||0))
+    return arr
+  }, [drivers, driverStats, driverAcceptedSum, openAssignedByDriver, totalAssignedByDriver])
+  function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
 
   // live sockets
   useEffect(()=>{
@@ -120,6 +258,55 @@ export default function ManagerFinances(){
             <div className="page-title">Finances</div>
             <div className="page-subtitle">Manage Driver and Agent remittances</div>
           </div>
+        </div>
+      </div>
+
+      <div className="card" style={{display:'grid', gap:10}}>
+        <div className="card-header" style={{alignItems:'center', justifyContent:'space-between'}}>
+          <div className="card-title">Driver Wallet & Assigned (by Country)</div>
+          <div style={{display:'flex', gap:8, alignItems:'center'}}>
+            <select className="input" value={country} onChange={e=> setCountry(e.target.value)}>
+              <option value="">Select Country</option>
+              {managerCountries.map(c=> <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="section" style={{overflowX:'auto'}}>
+          {errStats && <div className="helper">{errStats}</div>}
+          {!country ? (
+            <div className="helper">Select a country to view driver stats</div>
+          ) : loadingStats ? (
+            <div className="helper">Loading…</div>
+          ) : rows.length===0 ? (
+            <div className="helper">No drivers found</div>
+          ) : (
+            <table style={{width:'100%', borderCollapse:'separate', borderSpacing:0, border:'1px solid var(--border)', borderRadius:8, overflow:'hidden'}}>
+              <thead>
+                <tr>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Driver</th>
+                  <th style={{textAlign:'right', padding:'8px 10px'}}>Assigned (Open)</th>
+                  <th style={{textAlign:'right', padding:'8px 10px'}}>Total Assigned</th>
+                  <th style={{textAlign:'right', padding:'8px 10px'}}>Delivered</th>
+                  <th style={{textAlign:'right', padding:'8px 10px'}}>Collected</th>
+                  <th style={{textAlign:'right', padding:'8px 10px'}}>Remitted</th>
+                  <th style={{textAlign:'right', padding:'8px 10px'}}>Wallet</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(r=> (
+                  <tr key={r.id} style={{borderTop:'1px solid var(--border)'}}>
+                    <td style={{padding:'8px 10px'}}>{`${r.driver.firstName||''} ${r.driver.lastName||''}`.trim() || (r.driver.email||'-')}</td>
+                    <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.openAssigned)}</td>
+                    <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.totalAssigned)}</td>
+                    <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.deliveredCount)}</td>
+                    <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.collectedSum)}</td>
+                    <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.remittedSum)}</td>
+                    <td style={{padding:'8px 10px', textAlign:'right', fontWeight:800}}>{num(r.wallet)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
