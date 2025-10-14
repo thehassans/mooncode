@@ -28,6 +28,10 @@ export default function Warehouse(){
   const inFlightRef = useRef(false)
   const debRef = useRef(0)
   const [showDescEditor, setShowDescEditor] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxImgs, setLightboxImgs] = useState([])
+  const [lightboxIdx, setLightboxIdx] = useState(0)
+  const lbTouch = useRef({ x:0, y:0 })
 
   useEffect(()=>{ load() },[])
   // Live refresh on order deliveries
@@ -231,6 +235,23 @@ export default function Warehouse(){
     const b = (parts[1]||'').charAt(0).toUpperCase()
     return (a + b) || 'P'
   }
+
+  function openLightboxById(id, idx=0){
+    const p = prodById[String(id)]
+    const imgs = Array.isArray(p?.images) ? p.images : (p?.imagePath ? [p.imagePath] : [])
+    if (!imgs || !imgs.length) return
+    setLightboxImgs(imgs)
+    setLightboxIdx(Math.max(0, Math.min(idx, imgs.length-1)))
+    setLightboxOpen(true)
+  }
+  function lbPrev(){ if (!lightboxImgs.length) return; setLightboxIdx(i => (i - 1 + lightboxImgs.length) % lightboxImgs.length) }
+  function lbNext(){ if (!lightboxImgs.length) return; setLightboxIdx(i => (i + 1) % lightboxImgs.length) }
+  useEffect(()=>{
+    if (!lightboxOpen) return
+    const onKey = (e)=>{ if (e.key==='ArrowLeft') lbPrev(); else if (e.key==='ArrowRight') lbNext(); else if (e.key==='Escape') setLightboxOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return ()=> window.removeEventListener('keydown', onKey)
+  }, [lightboxOpen, lightboxImgs.length])
 
   function onWhEditChange(e){
     const { name, value, type, checked, files } = e.target
@@ -463,7 +484,7 @@ export default function Warehouse(){
                           <div style={{display:'flex', alignItems:'center', gap:10}}>
                             <div style={{width:44, height:44, borderRadius:10, overflow:'hidden', background:'var(--panel-2)', border:'1px solid var(--border)', display:'grid', placeItems:'center'}}>
                               {img ? (
-                                <img src={imgUrl(img)} alt={it.name||'Product'} loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', cursor:'zoom-in'}} onClick={()=>{ try{ window.open(imgUrl(img), '_blank', 'noopener,noreferrer') }catch{} }} />
+                                <img src={imgUrl(img)} alt={it.name||'Product'} loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', cursor:'zoom-in'}} onClick={()=> openLightboxById(it._id, 0)} />
                               ) : (
                                 <div style={{fontWeight:800, fontSize:12, color:'var(--muted)'}}>{initials(it.name)}</div>
                               )}
@@ -503,7 +524,7 @@ export default function Warehouse(){
                                             alt={`${it.name} ${idx+1}`}
                                             title={`${it.name} ${idx+1}`}
                                             loading="lazy"
-                                            onClick={()=>{ try{ window.open(imgUrl(im), '_blank', 'noopener,noreferrer') }catch{} }}
+                                            onClick={()=> openLightboxById(it._id, idx)}
                                             style={{height:'40px', width:'40px', borderRadius:6, objectFit:'cover', border:'1px solid var(--border)', cursor:'zoom-in'}}
                                           />
                                           {isLast && extra > 0 && (
@@ -669,7 +690,7 @@ export default function Warehouse(){
                 <div style={{fontWeight:700, marginBottom:8}}>Images</div>
                 <div style={{display:'grid', gap:8, gridTemplateColumns:'repeat(auto-fill, minmax(96px, 1fr))'}}>
                   {imgs.map((im, i)=> (
-                    <img key={i} src={imgUrl(im)} alt={`img-${i+1}`} loading="lazy" style={{width:'100%', height:96, objectFit:'cover', borderRadius:8, border:'1px solid var(--border)', cursor:'zoom-in'}} onClick={()=>{ try{ window.open(imgUrl(im), '_blank', 'noopener,noreferrer') }catch{} }} />
+                    <img key={i} src={imgUrl(im)} alt={`img-${i+1}`} loading="lazy" style={{width:'100%', height:96, objectFit:'cover', borderRadius:8, border:'1px solid var(--border)', cursor:'zoom-in'}} onClick={()=> openLightboxById(detailsRow._id, i)} />
                   ))}
                 </div>
               </div>
@@ -704,6 +725,19 @@ export default function Warehouse(){
         </div>
       )}
     </Modal>
+    {lightboxOpen && (
+      <Modal title={`Photos ${lightboxImgs.length? `(${lightboxIdx+1}/${lightboxImgs.length})` : ''}`} open={lightboxOpen} onClose={()=> setLightboxOpen(false)} footer={null}>
+        <div
+          style={{position:'relative', width:'100%', height:'60vh', display:'grid', placeItems:'center'}}
+          onTouchStart={(e)=>{ try{ const t=e.touches[0]; lbTouch.current={x:t.clientX,y:t.clientY} }catch{} }}
+          onTouchEnd={(e)=>{ try{ const t=e.changedTouches[0]; const dx=t.clientX - lbTouch.current.x; if (dx>40) lbPrev(); else if (dx<-40) lbNext(); }catch{} }}
+        >
+          <img src={imgUrl(lightboxImgs[lightboxIdx])} alt="photo" style={{maxWidth:'100%', maxHeight:'100%', borderRadius:8, border:'1px solid var(--border)'}} />
+          <button className="btn" style={{position:'absolute', left:10, top:'50%', transform:'translateY(-50%)'}} onClick={lbPrev}>{'<'}</button>
+          <button className="btn" style={{position:'absolute', right:10, top:'50%', transform:'translateY(-50%)'}} onClick={lbNext}>{'>'}</button>
+        </div>
+      </Modal>
+    )}
     {/* Edit Modal */}
     <Modal title={editingProd ? `Edit ${editingProd.name}` : 'Edit'} open={editOpen} onClose={()=>{ setEditOpen(false); setEditingProd(null); setEditForm(null); setEditPreviews([]) }} footer={(
       <>
