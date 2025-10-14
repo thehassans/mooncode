@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { API_BASE, apiGet, apiUploadPatch } from '../../api'
 import { io } from 'socket.io-client'
 import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
@@ -25,6 +25,9 @@ export default function Warehouse(){
   const [editingProd, setEditingProd] = useState(null)
   const [editForm, setEditForm] = useState(null)
   const [editPreviews, setEditPreviews] = useState([])
+  const inFlightRef = useRef(false)
+  const debRef = useRef(0)
+  const [showDescEditor, setShowDescEditor] = useState(false)
 
   useEffect(()=>{ load() },[])
   // Live refresh on order deliveries
@@ -33,7 +36,14 @@ export default function Warehouse(){
     try{
       const token = localStorage.getItem('token')||''
       socket = io(API_BASE || undefined, { path:'/socket.io', transports:['polling'], upgrade:false, withCredentials:true, auth:{ token } })
-      const reload = ()=>{ try{ load() }catch{} }
+      const reload = ()=>{
+        try{
+          const now = Date.now()
+          if (now - debRef.current < 800) return
+          debRef.current = now
+          load()
+        }catch{}
+      }
       socket.on('orders.changed', reload)
     }catch{}
     return ()=>{ try{ socket && socket.off('orders.changed') }catch{}; try{ socket && socket.disconnect() }catch{} }
@@ -43,6 +53,8 @@ export default function Warehouse(){
   useEffect(()=>{ let alive=true; getCurrencyConfig().then(cfg=>{ if(alive) setCcyCfg(cfg) }).catch(()=>{}); return ()=>{ alive=false } },[])
 
   async function load(){
+    if (inFlightRef.current) return
+    inFlightRef.current = true
     setLoading(true)
     setMsg('')
     try{
@@ -151,7 +163,7 @@ export default function Warehouse(){
         setMsg('Showing fallback from products')
       }catch{ setMsg(err?.message || 'Failed to load summary') }
     }
-    finally{ setLoading(false) }
+    finally{ setLoading(false); inFlightRef.current = false }
   }
 
   const filtered = useMemo(()=>{
@@ -242,6 +254,7 @@ export default function Warehouse(){
       meta.append('baseCurrency', editForm.baseCurrency)
       meta.append('inStock', String(!!editForm.inStock))
       meta.append('displayOnWebsite', String(!!editForm.displayOnWebsite))
+      if (typeof editForm.description === 'string') meta.append('description', editForm.description)
       meta.append('stockUAE', String(editForm.stockUAE||0))
       meta.append('stockOman', String(editForm.stockOman||0))
       meta.append('stockKSA', String(editForm.stockKSA||0))
@@ -477,20 +490,28 @@ export default function Warehouse(){
                                     marginTop:6,
                                     maxWidth:'min(360px, 30vw)',
                                     gridAutoRows:'40px',
-                                    maxHeight: 40*3 + 6*2 + 'px',
+                                    maxHeight: (40*3 + 6*2) + 'px',
                                     overflow:'hidden'
                                   }}>
-                                    {imgs.map((im, idx) => (
-                                      <img
-                                        key={idx}
-                                        src={imgUrl(im)}
-                                        alt={`${it.name} ${idx+1}`}
-                                        title={`${it.name} ${idx+1}`}
-                                        loading="lazy"
-                                        onClick={()=>{ try{ window.open(imgUrl(im), '_blank', 'noopener,noreferrer') }catch{} }}
-                                        style={{height:'40px', width:'40px', borderRadius:6, objectFit:'cover', border:'1px solid var(--border)', cursor:'zoom-in'}}
-                                      />
-                                    ))}
+                                    {imgs.slice(0,9).map((im, idx) => {
+                                      const isLast = idx === Math.min(9, imgs.length) - 1
+                                      const extra = imgs.length - 9
+                                      return (
+                                        <div key={idx} style={{position:'relative', width:40, height:40}}>
+                                          <img
+                                            src={imgUrl(im)}
+                                            alt={`${it.name} ${idx+1}`}
+                                            title={`${it.name} ${idx+1}`}
+                                            loading="lazy"
+                                            onClick={()=>{ try{ window.open(imgUrl(im), '_blank', 'noopener,noreferrer') }catch{} }}
+                                            style={{height:'40px', width:'40px', borderRadius:6, objectFit:'cover', border:'1px solid var(--border)', cursor:'zoom-in'}}
+                                          />
+                                          {isLast && extra > 0 && (
+                                            <div title={`+${extra} more`} style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', color:'#fff', display:'grid', placeItems:'center', borderRadius:6, fontSize:12, fontWeight:700}}>+{extra}</div>
+                                          )}
+                                        </div>
+                                      )
+                                    })}
                                   </div>
                                 )
                               })()}
@@ -544,6 +565,7 @@ export default function Warehouse(){
                             baseCurrency: p.baseCurrency||'SAR',
                             inStock: !!p.inStock,
                             displayOnWebsite: !!p.displayOnWebsite,
+                            description: p.description || '',
                             stockUAE: p.stockByCountry?.UAE || 0,
                             stockOman: p.stockByCountry?.Oman || 0,
                             stockKSA: p.stockByCountry?.KSA || 0,
@@ -554,6 +576,7 @@ export default function Warehouse(){
                             images: []
                           })
                           setEditPreviews([])
+                          setShowDescEditor(Boolean(p.description))
                           setEditOpen(true)
                         }}>Edit</button>
                       </div>
@@ -728,6 +751,15 @@ export default function Warehouse(){
                 </label>
               ))}
             </div>
+          </div>
+          <div>
+            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+              <div className="label">Description</div>
+              <button type="button" className="btn secondary" onClick={()=> setShowDescEditor(s=>!s)}>{showDescEditor? 'Hide' : 'Edit'} Description</button>
+            </div>
+            {showDescEditor && (
+              <textarea className="input" name="description" value={editForm.description} onChange={onWhEditChange} rows={3} />
+            )}
           </div>
           <div>
             <div className="label">Replace Images (up to 5)</div>
