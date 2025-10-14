@@ -12,7 +12,22 @@ const router = express.Router()
 router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, res) => {
   try {
     const isAdmin = req.user.role === 'admin'
-    const productQuery = isAdmin ? {} : { createdBy: req.user.id }
+    let productQuery = {}
+    if (isAdmin) {
+      productQuery = {}
+    } else if (req.user.role === 'user') {
+      productQuery = { createdBy: req.user.id }
+    } else if (req.user.role === 'manager') {
+      try {
+        const mgrOwner = await User.findById(req.user.id).select('createdBy').lean()
+        const ownerId = String(mgrOwner?.createdBy || '')
+        productQuery = ownerId ? { createdBy: ownerId } : { createdBy: req.user.id }
+      } catch {
+        productQuery = { createdBy: req.user.id }
+      }
+    } else {
+      productQuery = { createdBy: req.user.id }
+    }
 
     const products = await Product.find(productQuery).sort({ name: 1 })
     const productIds = products.map(p => p._id)
