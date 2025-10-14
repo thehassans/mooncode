@@ -5,7 +5,7 @@ import { io } from 'socket.io-client'
 import Modal from '../../components/Modal.jsx'
 
 export default function Managers(){
-  const [form, setForm] = useState({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', assignedCountries:[], canCreateAgents:true, canManageProducts:false, canCreateOrders:false, canCreateDrivers:false })
+  const [form, setForm] = useState({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', assignedCountries:[] })
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [q, setQ] = useState('')
@@ -13,7 +13,7 @@ export default function Managers(){
   const [loadingList, setLoadingList] = useState(false)
   const [phoneError, setPhoneError] = useState('')
   const [delModal, setDelModal] = useState({ open:false, busy:false, error:'', confirm:'', manager:null })
-  const [editModal, setEditModal] = useState({ open:false, busy:false, error:'', manager:null, firstName:'', lastName:'', email:'', phone:'', password:'', country:'', assignedCountries:[], canCreateAgents:false, canManageProducts:false, canCreateOrders:false, canCreateDrivers:false })
+  const [editModal, setEditModal] = useState({ open:false, busy:false, error:'', manager:null, firstName:'', lastName:'', email:'', phone:'', password:'', country:'', assignedCountries:[] })
 
   function onChange(e){
     const { name, type, value, checked } = e.target
@@ -22,16 +22,11 @@ export default function Managers(){
 
   function openEdit(u){
     const arr = Array.isArray(u?.assignedCountries) && u.assignedCountries.length ? u.assignedCountries : (u?.assignedCountry ? [u.assignedCountry] : [])
-    const mp = u?.managerPermissions || {}
     setEditModal({
       open:true, busy:false, error:'', manager:u,
       firstName: u.firstName || '', lastName: u.lastName || '', email: u.email || '', phone: u.phone || '', password: '',
       country: u.country || '',
       assignedCountries: arr,
-      canCreateAgents: !!mp.canCreateAgents,
-      canManageProducts: !!mp.canManageProducts,
-      canCreateOrders: !!mp.canCreateOrders,
-      canCreateDrivers: !!mp.canCreateDrivers,
     })
   }
   function closeEdit(){ setEditModal(m=>({ ...m, open:false })) }
@@ -54,10 +49,6 @@ export default function Managers(){
         phone: editModal.phone,
         country: editModal.country,
         assignedCountries: Array.isArray(editModal.assignedCountries) ? editModal.assignedCountries : [],
-        canCreateAgents: !!editModal.canCreateAgents,
-        canManageProducts: !!editModal.canManageProducts,
-        canCreateOrders: !!editModal.canCreateOrders,
-        canCreateDrivers: !!editModal.canCreateDrivers,
       }
       if (payload.phone && !isValidPhoneNumber(payload.phone)){
         setEditModal(m=>({ ...m, busy:false, error:'Enter a valid phone number with country code' }))
@@ -130,14 +121,10 @@ export default function Managers(){
         country: form.country,
         assignedCountry: form.assignedCountry,
         assignedCountries: Array.isArray(form.assignedCountries) ? form.assignedCountries : [],
-        canCreateAgents: !!form.canCreateAgents,
-        canManageProducts: !!form.canManageProducts,
-        canCreateOrders: !!form.canCreateOrders,
-        canCreateDrivers: !!form.canCreateDrivers,
       }
       await apiPost('/api/users/managers', payload)
       setMsg('Manager created successfully')
-      setForm({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', assignedCountries:[], canCreateAgents:true, canManageProducts:false, canCreateOrders:false, canCreateDrivers:false })
+      setForm({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', assignedCountries:[] })
       setPhoneError('')
       loadManagers(q)
     }catch(err){ setMsg(err?.message || 'Failed to create manager') }
@@ -259,7 +246,7 @@ export default function Managers(){
       <div className="card">
         <div className="card-header">
           <div className="card-title modern">Create Manager</div>
-          <div className="card-subtitle">Grant permissions using the checkboxes</div>
+          <div className="card-subtitle">Select assigned countries for manager access.</div>
         </div>
         <form onSubmit={onSubmit} className="section" style={{display:'grid', gap:12}}>
           <div className="form-grid">
@@ -330,20 +317,7 @@ export default function Managers(){
             <div className="label">Password</div>
             <input className="input" type="password" name="password" value={form.password} onChange={onChange} placeholder="Minimum 6 characters" required autoComplete="new-password" />
           </div>
-          <div style={{display:'flex', gap:16, flexWrap:'wrap'}}>
-            <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
-              <input type="checkbox" name="canCreateAgents" checked={form.canCreateAgents} onChange={onChange} /> Can create agents
-            </label>
-            <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
-              <input type="checkbox" name="canManageProducts" checked={form.canManageProducts} onChange={onChange} /> Can manage inhouse products
-            </label>
-            <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
-              <input type="checkbox" name="canCreateOrders" checked={form.canCreateOrders} onChange={onChange} /> Can create orders
-            </label>
-            <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
-              <input type="checkbox" name="canCreateDrivers" checked={form.canCreateDrivers} onChange={onChange} /> Can create drivers
-            </label>
-          </div>
+          {/* Permissions are auto-granted for managers; no checkboxes */}
           <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
             <button className="btn" type="submit" disabled={loading}>{loading? 'Creating...' : 'Create Manager'}</button>
           </div>
@@ -380,15 +354,7 @@ export default function Managers(){
                   <tr key={u.id || u._id} style={{borderTop:'1px solid var(--border)'}}>
                     <td style={{padding:'10px 12px'}}>{u.firstName} {u.lastName}</td>
                     <td style={{padding:'10px 12px'}}>{u.email}</td>
-                    <td style={{padding:'10px 12px'}}>
-                      <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
-                        {u.managerPermissions?.canCreateAgents ? <span className="badge">Agents</span> : null}
-                        {u.managerPermissions?.canManageProducts ? <span className="badge">Products</span> : null}
-                        {u.managerPermissions?.canCreateOrders ? <span className="badge">Orders</span> : null}
-                        {u.managerPermissions?.canCreateDrivers ? <span className="badge">Drivers</span> : null}
-                        {(!u.managerPermissions || (!u.managerPermissions.canCreateAgents && !u.managerPermissions.canManageProducts && !u.managerPermissions.canCreateOrders && !u.managerPermissions.canCreateDrivers)) && <span className="badge warn">No Permissions</span>}
-                      </div>
-                    </td>
+                    <td style={{padding:'10px 12px'}}><span className="badge">Full Access</span></td>
                     <td style={{padding:'10px 12px'}}>
                       {u.country ? <span className="badge">{u.country}</span> : <span className="badge warn">N/A</span>}
                     </td>

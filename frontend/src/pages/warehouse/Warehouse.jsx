@@ -25,6 +25,7 @@ export default function Warehouse(){
   const [editingProd, setEditingProd] = useState(null)
   const [editForm, setEditForm] = useState(null)
   const [editPreviews, setEditPreviews] = useState([])
+  const [managerAllowed, setManagerAllowed] = useState(null)
   const inFlightRef = useRef(false)
   const debRef = useRef(0)
   const [showDescEditor, setShowDescEditor] = useState(false)
@@ -55,6 +56,25 @@ export default function Warehouse(){
 
   // Load currency configuration once for conversions
   useEffect(()=>{ let alive=true; getCurrencyConfig().then(cfg=>{ if(alive) setCcyCfg(cfg) }).catch(()=>{}); return ()=>{ alive=false } },[])
+
+  // If manager, restrict countries to assignedCountries/assignedCountry and default filter to the first assigned
+  useEffect(()=>{
+    let alive = true
+    ;(async()=>{
+      try{
+        const me = await apiGet('/api/users/me')
+        const role = String(me?.user?.role||'')
+        if (role !== 'manager') { if (alive) setManagerAllowed(null); return }
+        const norm = (c)=> c==='Saudi Arabia' ? 'KSA' : (c==='United Arab Emirates' ? 'UAE' : c)
+        const arr = Array.isArray(me?.user?.assignedCountries) && me.user.assignedCountries.length ? me.user.assignedCountries.map(norm) : (me?.user?.assignedCountry ? [norm(String(me.user.assignedCountry))] : [])
+        if (alive){
+          setManagerAllowed(arr)
+          if (arr && arr.length){ setCountryFilter(arr[0]) }
+        }
+      }catch{ if (alive) setManagerAllowed(null) }
+    })()
+    return ()=>{ alive=false }
+  },[])
 
   async function load(){
     if (inFlightRef.current) return
@@ -420,10 +440,14 @@ export default function Warehouse(){
             <option value="delivered_desc">Sort: Delivered (desc)</option>
           </select>
           <select className="input" value={countryFilter} onChange={e=>setCountryFilter(e.target.value)}>
-            <option value="All">All Countries</option>
-            {COUNTRY_KEYS.map(c => (
-              <option key={c} value={c}>{c}</option>
-            ))}
+            {Array.isArray(managerAllowed) && managerAllowed.length ? (
+              managerAllowed.map(c => (<option key={c} value={c}>{c}</option>))
+            ) : (
+              <>
+                <option value="All">All Countries</option>
+                {COUNTRY_KEYS.map(c => (<option key={c} value={c}>{c}</option>))}
+              </>
+            )}
           </select>
           <button className="btn" onClick={load} disabled={loading}>{loading? 'Refreshing...' : 'Refresh'}</button>
         </div>
@@ -734,28 +758,6 @@ export default function Warehouse(){
               <div>{num(conv(detailsRow.price, detailsRow.baseCurrency||detailsRow.currency||'SAR', selectedCcy||'SAR') * (countryFilter!=='All' ? Number(detailsRow?.stockLeft?.[countryFilter]||0) : Number(detailsRow?.stockLeft?.total||0)))}</div>
             </div>
           </div>
-          {(() => {
-            const b = detailsRow?.boughtByCountry || null
-            if (!b) return null
-            const entries = [
-              ['UAE', b.UAE||0], ['Oman', b.Oman||0], ['KSA', b.KSA||0], ['Bahrain', b.Bahrain||0], ['India', b.India||0], ['Kuwait', b.Kuwait||0], ['Qatar', b.Qatar||0]
-            ]
-            const any = entries.some(([,v])=> Number(v||0) > 0)
-            if (!any) return null
-            return (
-              <div>
-                <div style={{fontWeight:700}}>Bought by Country</div>
-                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))', gap:8}}>
-                  {entries.map(([k,v]) => (
-                    <div key={k} className="card" style={{padding:8}}>
-                      <div className="label" style={{color: colorForCountry(k)}}>{k}</div>
-                      <div style={{fontWeight:800}}>{num(v)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })()}
           <div>
             <div style={{fontWeight:700, color:'#6366f1'}}>Buy</div>
             <div style={{display:'flex', gap:10, flexWrap:'wrap'}}>
@@ -764,6 +766,16 @@ export default function Warehouse(){
               ))}
             </div>
           </div>
+          {detailsRow?.boughtByCountry && (
+            <div>
+              <div style={{fontWeight:700}}>Bought by Country</div>
+              <div style={{display:'flex', gap:10, flexWrap:'wrap'}}>
+                {['UAE','Oman','KSA','Bahrain','India','Kuwait','Qatar'].map(ct => (
+                  <div key={ct} style={{color: colorForCountry(ct)}}>{ct}: {num(detailsRow?.boughtByCountry?.[ct]||0)}</div>
+                ))}
+              </div>
+            </div>
+          )}
           <div>
             <div style={{fontWeight:700, color:'#22c55e'}}>Sell</div>
             <div style={{display:'flex', gap:10, flexWrap:'wrap'}}>

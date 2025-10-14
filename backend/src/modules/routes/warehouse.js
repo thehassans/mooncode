@@ -9,7 +9,7 @@ import mongoose from 'mongoose'
 const router = express.Router()
 
 // GET /api/warehouse/summary
-router.get('/summary', auth, allowRoles('admin','user'), async (req, res) => {
+router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, res) => {
   try {
     const isAdmin = req.user.role === 'admin'
     const productQuery = isAdmin ? {} : { createdBy: req.user.id }
@@ -20,16 +20,19 @@ router.get('/summary', auth, allowRoles('admin','user'), async (req, res) => {
     // Aggregate delivered quantities per product and country, supporting both single-product orders and multi-item orders
     const baseMatch = { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] }
 
-    // Workspace scoping for Orders: include owner + agents/managers
+    // Workspace scoping for Orders: include owner + agents/managers; capture manager's assigned countries
     let createdByScope = null
+    let managerAssigned = []
     if (!isAdmin){
       if (req.user.role === 'user'){
         const agents = await User.find({ role: 'agent', createdBy: req.user.id }, { _id: 1 }).lean()
         const managers = await User.find({ role: 'manager', createdBy: req.user.id }, { _id: 1 }).lean()
         createdByScope = [ req.user.id, ...agents.map(a=>String(a._id)), ...managers.map(m=>String(m._id)) ]
       } else if (req.user.role === 'manager') {
-        const mgr = await User.findById(req.user.id).select('createdBy').lean()
+        const mgr = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
         const ownerId = String(mgr?.createdBy || '')
+        const normalize = (c)=> c==='Saudi Arabia' ? 'KSA' : (c==='United Arab Emirates' ? 'UAE' : c)
+        managerAssigned = Array.isArray(mgr?.assignedCountries) && mgr.assignedCountries.length ? mgr.assignedCountries.map(normalize) : (mgr?.assignedCountry ? [normalize(String(mgr.assignedCountry))] : [])
         if (ownerId){
           const agents = await User.find({ role: 'agent', createdBy: ownerId }, { _id: 1 }).lean()
           const managers = await User.find({ role: 'manager', createdBy: ownerId }, { _id: 1 }).lean()
@@ -117,22 +120,35 @@ router.get('/summary', auth, allowRoles('admin','user'), async (req, res) => {
 
     const response = products.map(p => {
       const bought = p.stockByCountry || {}
-      const bUAE = bought.UAE || 0
-      const bOman = bought.Oman || 0
-      const bKSA = bought.KSA || 0
-      const bBahrain = bought.Bahrain || 0
-      const bIndia = bought.India || 0
-      const bKuwait = bought.Kuwait || 0
-      const bQatar = bought.Qatar || 0
+      let bUAE = bought.UAE || 0
+      let bOman = bought.Oman || 0
+      let bKSA = bought.KSA || 0
+      let bBahrain = bought.Bahrain || 0
+      let bIndia = bought.India || 0
+      let bKuwait = bought.Kuwait || 0
+      let bQatar = bought.Qatar || 0
 
       const dMap = deliveredMap.get(String(p._id)) || {}
-      const delUAE = dMap.UAE || 0
-      const delOman = dMap.Oman || 0
-      const delKSA = dMap.KSA || 0
-      const delBahrain = dMap.Bahrain || 0
-      const delIndia = dMap.India || 0
-      const delKuwait = dMap.Kuwait || 0
-      const delQatar = dMap.Qatar || 0
+      let delUAE = dMap.UAE || 0
+      let delOman = dMap.Oman || 0
+      let delKSA = dMap.KSA || 0
+      let delBahrain = dMap.Bahrain || 0
+      let delIndia = dMap.India || 0
+      let delKuwait = dMap.Kuwait || 0
+      let delQatar = dMap.Qatar || 0
+
+      // If manager with assigned countries, zero-out disallowed countries
+      if (Array.isArray(managerAssigned) && managerAssigned.length){
+        const allow = new Set(managerAssigned)
+        if (!allow.has('UAE')) { bUAE = 0; delUAE = 0 }
+        if (!allow.has('Oman')) { bOman = 0; delOman = 0 }
+        if (!allow.has('KSA')) { bKSA = 0; delKSA = 0 }
+        if (!allow.has('Bahrain')) { bBahrain = 0; delBahrain = 0 }
+        if (!allow.has('India')) { bIndia = 0; delIndia = 0 }
+        if (!allow.has('Kuwait')) { bKuwait = 0; delKuwait = 0 }
+        if (!allow.has('Qatar')) { bQatar = 0; delQatar = 0 }
+      }
+
       const totalDelivered = delUAE + delOman + delKSA + delBahrain + delIndia + delKuwait + delQatar
 
       // Stock left = bought - delivered (clamped to 0)
@@ -150,9 +166,9 @@ router.get('/summary', auth, allowRoles('admin','user'), async (req, res) => {
       const baseCur = ['AED','OMR','SAR','BHD','INR','KWD','QAR'].includes(String(p.baseCurrency)) ? String(p.baseCurrency) : 'SAR'
       const deliveredRevenueByCurrency = { AED: 0, OMR: 0, SAR: 0, BHD: 0, INR: 0, KWD: 0, QAR: 0 }
       const stockValueByCurrency = { AED: 0, OMR: 0, SAR: 0, BHD: 0, INR: 0, KWD: 0, QAR: 0 }
-      // Delivered revenue = delivered qty * sell price in base currency of product
+      // Delivered revenue = delivered qty (allowed only) * sell price in base currency of product
       deliveredRevenueByCurrency[baseCur] = totalDelivered * (p.price || 0)
-      // Stock value = stock left * buy price in base currency of product
+      // Stock value = stock left (allowed only) * buy price in base currency of product
       stockValueByCurrency[baseCur] = totalLeft * (p.purchasePrice || 0)
 
       return {
