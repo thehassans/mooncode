@@ -247,13 +247,7 @@ router.post('/', auth, allowRoles('admin','user','agent','manager'), async (req,
     }
   }
 
-  // Managers may be restricted by permission
-  if (req.user.role === 'manager'){
-    const mgr = await User.findById(req.user.id).select('managerPermissions')
-    if (!mgr || !mgr.managerPermissions?.canCreateOrders){
-      return res.status(403).json({ message: 'Manager not allowed to create orders' })
-    }
-  }
+  // Managers are allowed to create orders; scoped elsewhere by workspace/assigned countries
 
   // Duplicate guard: if same creator submits same phone+details in last 30s, return existing
   try{

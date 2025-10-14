@@ -291,7 +291,7 @@ router.get('/expenses', auth, allowRoles('admin','user','agent'), async (req, re
 })
 
 // Transactions: derive from orders and expenses
-router.get('/transactions', auth, allowRoles('admin','user'), async (req, res) => {
+router.get('/transactions', auth, allowRoles('admin','user','manager'), async (req, res) => {
   // Optional: ?start=ISO&end=ISO
   const start = req.query.start ? new Date(req.query.start) : null
   const end = req.query.end ? new Date(req.query.end) : null
@@ -304,6 +304,20 @@ router.get('/transactions', auth, allowRoles('admin','user'), async (req, res) =
     const agents = await User.find({ role:'agent', createdBy: req.user.id }, { _id:1 }).lean()
     const ids = agents.map(a=>a._id)
     matchOrders.createdBy = { $in: [req.user.id, ...ids] }
+  } else if (req.user.role === 'manager'){
+    const User = (await import('../models/User.js')).default
+    const me = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
+    const ownerId = String(me?.createdBy || '')
+    if (!ownerId) return res.json({ transactions: [], totals: { credits:0, debits:0, net:0 } })
+    const agents = await User.find({ role:'agent', createdBy: ownerId }, { _id:1 }).lean()
+    matchOrders.createdBy = { $in: [ownerId, ...agents.map(a=>a._id)] }
+    // Country scoping for manager
+    const assigned = Array.isArray(me?.assignedCountries) && me.assignedCountries.length ? me.assignedCountries : (me?.assignedCountry ? [me.assignedCountry] : [])
+    if (assigned.length){
+      const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
+      const set = new Set(); for (const c of assigned){ for (const x of expand(c)) set.add(x) }
+      matchOrders.orderCountry = { $in: Array.from(set) }
+    }
   }
   const orders = await Order.find(matchOrders).lean()
 
@@ -315,6 +329,12 @@ router.get('/transactions', auth, allowRoles('admin','user'), async (req, res) =
     const agents = await User.find({ role:'agent', createdBy: req.user.id }, { _id:1 }).lean()
     const ids = agents.map(a=>a._id)
     matchExp.createdBy = { $in: [req.user.id, ...ids] }
+  } else if (req.user.role === 'manager'){
+    const User = (await import('../models/User.js')).default
+    const me = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
+    const ownerId = String(me?.createdBy || '')
+    if (!ownerId) return res.json({ transactions: [], totals: { credits:0, debits:0, net:0 } })
+    matchExp.createdBy = ownerId
   }
   const expenses = await Expense.find(matchExp).lean()
 

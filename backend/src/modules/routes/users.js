@@ -68,12 +68,9 @@ router.post('/agents', auth, allowRoles('admin','user','manager'), async (req, r
   if (exists) return res.status(400).json({ message: 'Email already in use' })
   let createdBy = req.user?.id
   if (req.user.role === 'manager'){
-    const mgr = await User.findById(req.user.id).select('managerPermissions createdBy')
-    if (!mgr || !mgr.managerPermissions?.canCreateAgents){
-      return res.status(403).json({ message: 'Manager not allowed to create agents' })
-    }
+    const mgr = await User.findById(req.user.id).select('createdBy')
     // Attribute agents to the owner so they appear under the user workspace
-    createdBy = mgr.createdBy || req.user.id
+    createdBy = mgr?.createdBy || req.user.id
   }
   const agent = new User({ firstName, lastName, email, phone, password, role: 'agent', createdBy })
   await agent.save()
@@ -191,11 +188,8 @@ router.post('/agents/:id/resend-welcome', auth, allowRoles('admin','user','manag
     if (req.user.role !== 'admin'){
       let ownerId = req.user.id
       if (req.user.role === 'manager'){
-        const mgr = await User.findById(req.user.id).select('managerPermissions createdBy')
-        if (!mgr?.managerPermissions?.canCreateAgents){
-          return res.status(403).json({ message: 'Manager not allowed' })
-        }
-        ownerId = String(mgr.createdBy || req.user.id)
+        const mgr = await User.findById(req.user.id).select('createdBy')
+        ownerId = String(mgr?.createdBy || req.user.id)
       }
       if (String(agent.createdBy) !== String(ownerId)){
         return res.status(403).json({ message: 'Not allowed' })
@@ -239,9 +233,8 @@ router.patch('/agents/:id', auth, allowRoles('admin','user','manager'), async (r
     if (req.user.role !== 'admin'){
       let ownerId = req.user.id
       if (req.user.role === 'manager'){
-        const mgr = await User.findById(req.user.id).select('managerPermissions createdBy')
-        if (!mgr?.managerPermissions?.canCreateAgents) return res.status(403).json({ message: 'Manager not allowed' })
-        ownerId = String(mgr.createdBy || req.user.id)
+        const mgr = await User.findById(req.user.id).select('createdBy')
+        ownerId = String(mgr?.createdBy || req.user.id)
       }
       if (String(agent.createdBy) !== String(ownerId)){
         return res.status(403).json({ message: 'Not allowed' })

@@ -734,6 +734,28 @@ export default function Warehouse(){
               <div>{num(conv(detailsRow.price, detailsRow.baseCurrency||detailsRow.currency||'SAR', selectedCcy||'SAR') * (countryFilter!=='All' ? Number(detailsRow?.stockLeft?.[countryFilter]||0) : Number(detailsRow?.stockLeft?.total||0)))}</div>
             </div>
           </div>
+          {(() => {
+            const b = detailsRow?.boughtByCountry || null
+            if (!b) return null
+            const entries = [
+              ['UAE', b.UAE||0], ['Oman', b.Oman||0], ['KSA', b.KSA||0], ['Bahrain', b.Bahrain||0], ['India', b.India||0], ['Kuwait', b.Kuwait||0], ['Qatar', b.Qatar||0]
+            ]
+            const any = entries.some(([,v])=> Number(v||0) > 0)
+            if (!any) return null
+            return (
+              <div>
+                <div style={{fontWeight:700}}>Bought by Country</div>
+                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px, 1fr))', gap:8}}>
+                  {entries.map(([k,v]) => (
+                    <div key={k} className="card" style={{padding:8}}>
+                      <div className="label" style={{color: colorForCountry(k)}}>{k}</div>
+                      <div style={{fontWeight:800}}>{num(v)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
           <div>
             <div style={{fontWeight:700, color:'#6366f1'}}>Buy</div>
             <div style={{display:'flex', gap:10, flexWrap:'wrap'}}>
