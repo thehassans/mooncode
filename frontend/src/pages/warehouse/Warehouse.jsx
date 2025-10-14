@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { API_BASE, apiGet } from '../../api'
+import { API_BASE, apiGet, apiUploadPatch } from '../../api'
 import { io } from 'socket.io-client'
 import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
 import { useNavigate } from 'react-router-dom'
+import Modal from '../../components/Modal'
 
 export default function Warehouse(){
   const [items, setItems] = useState([])
@@ -13,10 +14,17 @@ export default function Warehouse(){
   const [ccyCfg, setCcyCfg] = useState(null)
   const navigate = useNavigate()
   const [prodMap, setProdMap] = useState({})
+  const [prodById, setProdById] = useState({})
   const [countryFilter, setCountryFilter] = useState('All')
   const COUNTRY_KEYS = ['UAE','Oman','KSA','Bahrain','India','Kuwait','Qatar']
   const CUR_KEY_ORDER = ['SAR','OMR','AED','BHD','INR','KWD','QAR']
   const [openRows, setOpenRows] = useState({})
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [detailsRow, setDetailsRow] = useState(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingProd, setEditingProd] = useState(null)
+  const [editForm, setEditForm] = useState(null)
+  const [editPreviews, setEditPreviews] = useState([])
 
   useEffect(()=>{ load() },[])
   // Live refresh on order deliveries
@@ -46,6 +54,9 @@ export default function Warehouse(){
           const pr = await apiGet('/api/products')
           const list = Array.isArray(pr?.products) ? pr.products : (Array.isArray(pr) ? pr : [])
           setProdMap(buildProductMap(list))
+          const idm = {}
+          for (const p of list){ const id = String(p?._id||p?.id||''); if (id) idm[id] = p }
+          setProdById(idm)
         }catch{}
       } else {
         // Fallback: build minimal summary from products
@@ -209,6 +220,45 @@ export default function Warehouse(){
     return (a + b) || 'P'
   }
 
+  function onWhEditChange(e){
+    const { name, value, type, checked, files } = e.target
+    if (!editForm) return
+    if (type === 'checkbox') setEditForm(f => ({ ...f, [name]: checked }))
+    else if (type === 'file'){
+      const all = Array.from(files||[])
+      const arr = all.slice(0, 5)
+      setEditForm(f => ({ ...f, images: arr }))
+      setEditPreviews(arr.map(f => ({ name: f.name, url: URL.createObjectURL(f) })))
+    } else setEditForm(f => ({ ...f, [name]: value }))
+  }
+
+  async function onWhEditSave(){
+    if (!editingProd || !editForm) { setEditOpen(false); return }
+    try{
+      const fd = new FormData()
+      fd.append('name', editForm.name)
+      fd.append('price', editForm.price)
+      if (editForm.purchasePrice !== '') fd.append('purchasePrice', editForm.purchasePrice)
+      fd.append('baseCurrency', editForm.baseCurrency)
+      fd.append('inStock', String(!!editForm.inStock))
+      fd.append('displayOnWebsite', String(!!editForm.displayOnWebsite))
+      fd.append('stockUAE', String(editForm.stockUAE||0))
+      fd.append('stockOman', String(editForm.stockOman||0))
+      fd.append('stockKSA', String(editForm.stockKSA||0))
+      fd.append('stockBahrain', String(editForm.stockBahrain||0))
+      fd.append('stockIndia', String(editForm.stockIndia||0))
+      fd.append('stockKuwait', String(editForm.stockKuwait||0))
+      fd.append('stockQatar', String(editForm.stockQatar||0))
+      for (const f of (editForm.images||[])) fd.append('images', f)
+      await apiUploadPatch(`/api/products/${editingProd._id}`, fd)
+      setEditOpen(false)
+      setEditingProd(null)
+      setEditForm(null)
+      setEditPreviews([])
+      await load()
+    }catch(err){ alert(err?.message||'Failed to update product') }
+  }
+
   function calcStockValueByCurrency(it, onlyCountry=null){
     const base = it?.baseCurrency || it?.currency || 'SAR'
     const p = Number(it?.purchasePrice||0)
@@ -284,6 +334,7 @@ export default function Warehouse(){
   }, [filtered, countryFilter, selectedCcy])
 
   return (
+    <>
     <div>
       <div className="card" style={{marginBottom:12}}>
         <div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
@@ -343,7 +394,7 @@ export default function Warehouse(){
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e', display: countryFilter!=='All' && selectedCcy!=='KWD' ? 'none' : undefined}}>Delivered Revenue KWD</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#22c55e', display: countryFilter!=='All' && selectedCcy!=='QAR' ? 'none' : undefined}}>Delivered Revenue QAR</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', display: countryFilter!=='All' ? undefined : 'none'}}>Bought</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1', display:'none'}}>Buy AED</th>
+                <th style={{textAlign:'left', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Actions</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1', display:'none'}}>Buy OMR</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1', display:'none'}}>Buy SAR</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1', display:'none'}}>Buy BHD</th>
@@ -393,9 +444,14 @@ export default function Warehouse(){
                             <div>
                               <div style={{fontWeight:800}}>{it.name}</div>
                               {cat ? <div className="helper" style={{fontSize:12}}>{cat}</div> : null}
-                              <div style={{marginTop:6}}>
-                                <button className="btn" onClick={()=> setOpenRows(prev => ({ ...prev, [it._id]: !prev[it._id] }))}>{openRows[it._id] ? 'Hide' : 'Details'}</button>
-                              </div>
+                              {(() => {
+                                const p = prodById[String(it._id)]
+                                if (p && String(p.createdByRole||'').toLowerCase()==='manager' && p.createdByActorName){
+                                  return <div className="helper" style={{fontSize:11, opacity:0.8}}>Created by {p.createdByActorName}</div>
+                                }
+                                return null
+                              })()}
+                              
                             </div>
                           </div>
                         )
@@ -432,7 +488,34 @@ export default function Warehouse(){
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e', display: countryFilter!=='All' && selectedCcy!=='KWD' ? 'none' : undefined}}>{num(calcDeliveredRevByCurrency(it, countryFilter!=='All'? countryFilter : null).KWD)}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e', display: countryFilter!=='All' && selectedCcy!=='QAR' ? 'none' : undefined}}>{num(calcDeliveredRevByCurrency(it, countryFilter!=='All'? countryFilter : null).QAR)}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', display: countryFilter!=='All' ? undefined : 'none'}}>{num(Number(it?.stockLeft?.[countryFilter]||0) + Number(it?.delivered?.[countryFilter]||0))}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1', display:'none'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'AED'))}</td>
+                    <td style={{padding:'10px 12px', borderRight:'1px solid var(--border)'}}>
+                      <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                        <button className="btn" onClick={()=>{ setDetailsRow(it); setDetailsOpen(true) }}>Details</button>
+                        <button className="btn secondary" onClick={()=>{
+                          const p = prodById[String(it._id)] || null
+                          if (!p) return
+                          setEditingProd(p)
+                          setEditForm({
+                            name: p.name||'',
+                            price: p.price||'',
+                            purchasePrice: p.purchasePrice||'',
+                            baseCurrency: p.baseCurrency||'SAR',
+                            inStock: !!p.inStock,
+                            displayOnWebsite: !!p.displayOnWebsite,
+                            stockUAE: p.stockByCountry?.UAE || 0,
+                            stockOman: p.stockByCountry?.Oman || 0,
+                            stockKSA: p.stockByCountry?.KSA || 0,
+                            stockBahrain: p.stockByCountry?.Bahrain || 0,
+                            stockIndia: p.stockByCountry?.India || 0,
+                            stockKuwait: p.stockByCountry?.Kuwait || 0,
+                            stockQatar: p.stockByCountry?.Qatar || 0,
+                            images: []
+                          })
+                          setEditPreviews([])
+                          setEditOpen(true)
+                        }}>Edit</button>
+                      </div>
+                    </td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1', display:'none'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'OMR'))}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1', display:'none'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'SAR'))}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1', display:'none'}}>{num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', 'BHD'))}</td>
@@ -448,38 +531,7 @@ export default function Warehouse(){
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e', display:'none'}}>{num(conv(it.price, it.baseCurrency||it.currency||'SAR', 'QAR'))}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', color:'#22c55e', display: countryFilter!=='All' ? undefined : 'none'}}>{num(conv(it.price, it.baseCurrency||it.currency||'SAR', selectedCcy || 'SAR') * Number(it?.stockLeft?.[countryFilter]||0))}</td>
                   </tr>
-                  {openRows[it._id] ? (
-                    <tr>
-                      <td colSpan={47} style={{padding:'12px', background:'var(--panel)'}}>
-                        <div style={{display:'flex', gap:20, flexWrap:'wrap', alignItems:'flex-start'}}>
-                          <div>
-                            <div style={{fontWeight:700}}>Total Bought</div>
-                            <div>{num(it.totalBought)}</div>
-                          </div>
-                          <div>
-                            <div style={{fontWeight:700}}>Potential Revenue (SAR)</div>
-                            <div>{num((conv(it.price, it.baseCurrency||it.currency||'SAR', 'SAR')) * (countryFilter!=='All' ? Number(it?.stockLeft?.[countryFilter]||0) : Number(it?.stockLeft?.total||0)))}</div>
-                          </div>
-                          <div>
-                            <div style={{fontWeight:700, color:'#6366f1'}}>Buy</div>
-                            <div style={{display:'flex', gap:10, flexWrap:'wrap'}}>
-                              {CUR_KEY_ORDER.map(k => (
-                                <div key={k}>{k}: {num(conv(it.purchasePrice, it.baseCurrency||it.currency||'SAR', k))}</div>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{fontWeight:700, color:'#22c55e'}}>Sell</div>
-                            <div style={{display:'flex', gap:10, flexWrap:'wrap'}}>
-                              {CUR_KEY_ORDER.map(k => (
-                                <div key={k}>{k}: {num(conv(it.price, it.baseCurrency||it.currency||'SAR', k))}</div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : null}
+                  
                   </React.Fragment>
                 ))
               )}
@@ -517,7 +569,7 @@ export default function Warehouse(){
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right', display: countryFilter!=='All' && selectedCcy!=='KWD' ? 'none' : undefined}}>{num(totals.deliveredRevByC.KWD)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right', display: countryFilter!=='All' && selectedCcy!=='QAR' ? 'none' : undefined}}>{num(totals.deliveredRevByC.QAR)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right', display: countryFilter!=='All' ? undefined : 'none'}}>{num(totals.totalBought)}</td>
-                  <td style={{padding:'10px 12px', display:'none'}}></td>
+                  <td style={{padding:'10px 12px'}}></td>
                   <td style={{padding:'10px 12px', display:'none'}}></td>
                   <td style={{padding:'10px 12px', display:'none'}}></td>
                   <td style={{padding:'10px 12px', display:'none'}}></td>
@@ -539,5 +591,101 @@ export default function Warehouse(){
         </div>
       </div>
     </div>
+    {/* Details Modal */}
+    <Modal title={detailsRow ? (detailsRow.name||'Details') : 'Details'} open={detailsOpen} onClose={()=>{ setDetailsOpen(false); setDetailsRow(null) }} footer={null}>
+      {detailsRow && (
+        <div style={{display:'grid', gap:12}}>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+            <div>
+              <div style={{fontWeight:700}}>Total Bought</div>
+              <div>{num(countryFilter!=='All' ? (Number(detailsRow?.stockLeft?.[countryFilter]||0) + Number(detailsRow?.delivered?.[countryFilter]||0)) : detailsRow.totalBought)}</div>
+            </div>
+            <div>
+              <div style={{fontWeight:700}}>Potential Revenue ({selectedCcy||'SAR'})</div>
+              <div>{num(conv(detailsRow.price, detailsRow.baseCurrency||detailsRow.currency||'SAR', selectedCcy||'SAR') * (countryFilter!=='All' ? Number(detailsRow?.stockLeft?.[countryFilter]||0) : Number(detailsRow?.stockLeft?.total||0)))}</div>
+            </div>
+          </div>
+          <div>
+            <div style={{fontWeight:700, color:'#6366f1'}}>Buy</div>
+            <div style={{display:'flex', gap:10, flexWrap:'wrap'}}>
+              {CUR_KEY_ORDER.map(k => (
+                <div key={k}>{k}: {num(conv(detailsRow.purchasePrice, detailsRow.baseCurrency||detailsRow.currency||'SAR', k))}</div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={{fontWeight:700, color:'#22c55e'}}>Sell</div>
+            <div style={{display:'flex', gap:10, flexWrap:'wrap'}}>
+              {CUR_KEY_ORDER.map(k => (
+                <div key={k}>{k}: {num(conv(detailsRow.price, detailsRow.baseCurrency||detailsRow.currency||'SAR', k))}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </Modal>
+    {/* Edit Modal */}
+    <Modal title={editingProd ? `Edit ${editingProd.name}` : 'Edit'} open={editOpen} onClose={()=>{ setEditOpen(false); setEditingProd(null); setEditForm(null); setEditPreviews([]) }} footer={(
+      <>
+        <button className="btn secondary" onClick={()=>{ setEditOpen(false); setEditingProd(null); setEditForm(null); setEditPreviews([]) }}>Cancel</button>
+        <button className="btn" onClick={onWhEditSave}>Save</button>
+      </>
+    )}>
+      {editForm && (
+        <div style={{display:'grid', gap:12}}>
+          <div style={{display:'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap:12}}>
+            <label className="field" style={{display:'contents'}}>
+              <div>Name</div>
+              <input name="name" className="input" value={editForm.name} onChange={onWhEditChange} />
+            </label>
+            <label className="field" style={{display:'contents'}}>
+              <div>Price</div>
+              <input type="number" min="0" step="0.01" name="price" className="input" value={editForm.price} onChange={onWhEditChange} />
+            </label>
+            <label className="field" style={{display:'contents'}}>
+              <div>Purchase</div>
+              <input type="number" min="0" step="0.01" name="purchasePrice" className="input" value={editForm.purchasePrice} onChange={onWhEditChange} />
+            </label>
+            <label className="field" style={{display:'contents'}}>
+              <div>Base CCY</div>
+              <select name="baseCurrency" className="input" value={editForm.baseCurrency} onChange={onWhEditChange}>
+                {['AED','OMR','SAR','BHD','INR','KWD','QAR','USD','CNY'].map(c => (<option key={c} value={c}>{c}</option>))}
+              </select>
+            </label>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12}}>
+            <label style={{display:'inline-flex', alignItems:'center', gap:8}}>
+              <input type="checkbox" name="inStock" checked={!!editForm.inStock} onChange={onWhEditChange} /> In Stock
+            </label>
+            <label style={{display:'inline-flex', alignItems:'center', gap:8}}>
+              <input type="checkbox" name="displayOnWebsite" checked={!!editForm.displayOnWebsite} onChange={onWhEditChange} /> Display on Website
+            </label>
+          </div>
+          <div>
+            <div className="label">Stock by Country</div>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12}}>
+              {['UAE','Oman','KSA','Bahrain','India','Kuwait','Qatar'].map(k => (
+                <label key={k} className="field" style={{display:'contents'}}>
+                  <div>{k}</div>
+                  <input type="number" min="0" name={`stock${k}`} value={editForm[`stock${k}`]} onChange={onWhEditChange} />
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="label">Replace Images (up to 5)</div>
+            <input className="input" type="file" accept="image/*" multiple name="images" onChange={onWhEditChange} />
+            {editPreviews.length > 0 && (
+              <div style={{display:'flex', gap:8, marginTop:8, flexWrap:'wrap'}}>
+                {editPreviews.map((p,i)=> (
+                  <img key={i} src={p.url} alt={p.name} style={{height:64, width:64, objectFit:'cover', borderRadius:6, border:'1px solid var(--border)'}} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </Modal>
+    </>
   )
 }
