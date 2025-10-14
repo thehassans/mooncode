@@ -2,6 +2,7 @@ import express from 'express'
 import { auth, allowRoles } from '../middleware/auth.js'
 import Product from '../models/Product.js'
 import Order from '../models/Order.js'
+import WebOrder from '../models/WebOrder.js'
 
 const router = express.Router()
 
@@ -18,6 +19,7 @@ router.get('/summary', auth, allowRoles('admin','user'), async (req, res) => {
     const baseMatch = { shipmentStatus: 'delivered' }
     if (!isAdmin) baseMatch.createdBy = req.user.id
 
+    // Internal Orders: delivered quantities
     const deliveredAgg = await Order.aggregate([
       { $match: { 
           ...baseMatch,
@@ -46,6 +48,18 @@ router.get('/summary', auth, allowRoles('admin','user'), async (req, res) => {
       },
     ])
 
+    // Web (E-commerce) Orders: delivered quantities
+    const webDeliveredAgg = await WebOrder.aggregate([
+      { $match: { shipmentStatus: 'delivered' } },
+      { $unwind: '$items' },
+      { $match: { 'items.productId': { $in: productIds } } },
+      { $group: {
+          _id: { productId: '$items.productId', country: '$orderCountry' },
+          deliveredQty: { $sum: { $ifNull: ['$items.quantity', 1] } },
+        } 
+      },
+    ])
+
     const deliveredMap = new Map()
     const normCountry = (c)=>{
       const s = String(c||'').trim()
@@ -64,6 +78,12 @@ router.get('/summary', auth, allowRoles('admin','user'), async (req, res) => {
       return s
     }
     for (const row of deliveredAgg) {
+      const pid = String(row._id.productId)
+      const country = normCountry(row._id.country)
+      if (!deliveredMap.has(pid)) deliveredMap.set(pid, {})
+      deliveredMap.get(pid)[country] = (deliveredMap.get(pid)[country] || 0) + row.deliveredQty
+    }
+    for (const row of webDeliveredAgg) {
       const pid = String(row._id.productId)
       const country = normCountry(row._id.country)
       if (!deliveredMap.has(pid)) deliveredMap.set(pid, {})
