@@ -307,6 +307,7 @@ export default function App() {
         <Route path="finances/history/drivers" element={<DriverRemitHistory />} />
         <Route path="finances/history/agents" element={<AgentRemitHistory />} />
         <Route path="transactions" element={<ManagerTransactions />} />
+        <Route path="warehouses" element={<Warehouse />} />
         <Route path="inhouse-products" element={<RequireManagerPerm perm="canManageProducts"><InhouseProducts /></RequireManagerPerm>} />
       </Route>
 
