@@ -76,8 +76,9 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
   
   let ownerId = req.user.id
   if (req.user.role === 'manager'){
-    const mgr = await User.findById(req.user.id).select('createdBy')
-    ownerId = String(mgr?.createdBy || req.user.id)
+    const mgr = await User.findById(req.user.id).select('managerPermissions createdBy')
+    if (!mgr || !mgr.managerPermissions?.canManageProducts){ return res.status(403).json({ message: 'Manager not allowed to manage products' }) }
+    ownerId = String(mgr.createdBy || req.user.id)
   }
   
   const files = Array.isArray(req.files) ? req.files : []
@@ -300,8 +301,9 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
   if (req.user.role !== 'admin'){
     let ownerId = req.user.id
     if (req.user.role === 'manager'){
-      const mgr = await User.findById(req.user.id).select('createdBy')
-      ownerId = String(mgr?.createdBy || req.user.id)
+      const mgr = await User.findById(req.user.id).select('managerPermissions createdBy')
+      if (!mgr || !mgr.managerPermissions?.canManageProducts){ return res.status(403).json({ message: 'Manager not allowed to manage products' }) }
+      ownerId = String(mgr.createdBy || req.user.id)
     }
     if (String(prod.createdBy) !== String(ownerId)) return res.status(403).json({ message: 'Not allowed' })
   }
@@ -370,8 +372,9 @@ router.post('/:id/images/ai', auth, allowRoles('admin','user','manager'), async 
     if (req.user.role !== 'admin'){
       let ownerId = req.user.id
       if (req.user.role === 'manager'){
-        const mgr = await User.findById(req.user.id).select('createdBy')
-        ownerId = String(mgr?.createdBy || req.user.id)
+        const mgr = await User.findById(req.user.id).select('managerPermissions createdBy')
+        if (!mgr || !mgr.managerPermissions?.canManageProducts){ return res.status(403).json({ message: 'Manager not allowed to manage products' }) }
+        ownerId = String(mgr.createdBy || req.user.id)
       }
       if (String(prod.createdBy) !== String(ownerId)) return res.status(403).json({ message: 'Not allowed' })
     }
@@ -401,8 +404,9 @@ router.delete('/:id', auth, allowRoles('admin','user','manager'), async (req, re
   if (req.user.role !== 'admin'){
     let ownerId = req.user.id
     if (req.user.role === 'manager'){
-      const mgr = await User.findById(req.user.id).select('createdBy')
-      ownerId = String(mgr?.createdBy || req.user.id)
+      const mgr = await User.findById(req.user.id).select('managerPermissions createdBy')
+      if (!mgr || !mgr.managerPermissions?.canManageProducts){ return res.status(403).json({ message: 'Manager not allowed to manage products' }) }
+      ownerId = String(mgr.createdBy || req.user.id)
     }
     if (String(prod.createdBy) !== String(ownerId)) return res.status(403).json({ message: 'Not allowed' })
   }
