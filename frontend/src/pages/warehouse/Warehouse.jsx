@@ -447,8 +447,8 @@ export default function Warehouse(){
                                 <div style={{fontWeight:800, fontSize:12, color:'var(--muted)'}}>{initials(it.name)}</div>
                               )}
                             </div>
-                            <div>
-                              <div style={{fontWeight:800}}>{it.name}</div>
+                            <div style={{minWidth:0}}>
+                              <div style={{fontWeight:800, lineHeight:1.2}}>{it.name}</div>
                               {cat ? <div className="helper" style={{fontSize:12}}>{cat}</div> : null}
                               {(() => {
                                 const p = prodById[String(it._id)]
@@ -457,7 +457,26 @@ export default function Warehouse(){
                                 }
                                 return null
                               })()}
-                              
+                              {(() => {
+                                const p = prodById[String(it._id)]
+                                const imgs = Array.isArray(p?.images) ? p.images : (p?.imagePath ? [p.imagePath] : [])
+                                if (!imgs || imgs.length === 0) return null
+                                return (
+                                  <div style={{display:'flex', gap:6, marginTop:6, overflowX:'auto', paddingBottom:4, maxWidth:'min(360px, 30vw)'}}>
+                                    {imgs.map((im, idx) => (
+                                      <img
+                                        key={idx}
+                                        src={imgUrl(im)}
+                                        alt={`${it.name} ${idx+1}`}
+                                        title={`${it.name} ${idx+1}`}
+                                        loading="lazy"
+                                        onClick={()=>{ try{ window.open(imgUrl(im), '_blank', 'noopener,noreferrer') }catch{} }}
+                                        style={{height:40, width:40, borderRadius:6, objectFit:'cover', border:'1px solid var(--border)', flex:'0 0 auto', cursor:'zoom-in'}}
+                                      />
+                                    ))}
+                                  </div>
+                                )
+                              })()}
                             </div>
                           </div>
                         )
@@ -601,6 +620,21 @@ export default function Warehouse(){
     <Modal title={detailsRow ? (detailsRow.name||'Details') : 'Details'} open={detailsOpen} onClose={()=>{ setDetailsOpen(false); setDetailsRow(null) }} footer={null}>
       {detailsRow && (
         <div style={{display:'grid', gap:12}}>
+          {(() => {
+            const p = prodById[String(detailsRow._id)]
+            const imgs = Array.isArray(p?.images) ? p.images : (p?.imagePath ? [p.imagePath] : [])
+            if (!imgs || imgs.length === 0) return null
+            return (
+              <div>
+                <div style={{fontWeight:700, marginBottom:8}}>Images</div>
+                <div style={{display:'grid', gap:8, gridTemplateColumns:'repeat(auto-fill, minmax(96px, 1fr))'}}>
+                  {imgs.map((im, i)=> (
+                    <img key={i} src={imgUrl(im)} alt={`img-${i+1}`} loading="lazy" style={{width:'100%', height:96, objectFit:'cover', borderRadius:8, border:'1px solid var(--border)', cursor:'zoom-in'}} onClick={()=>{ try{ window.open(imgUrl(im), '_blank', 'noopener,noreferrer') }catch{} }} />
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
             <div>
               <div style={{fontWeight:700}}>Total Bought</div>
