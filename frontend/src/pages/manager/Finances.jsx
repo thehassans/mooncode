@@ -235,6 +235,8 @@ export default function ManagerFinances(){
 
   // Actions
   async function setProof(id, ok){ try{ await apiPost(`/api/finance/remittances/${id}/proof`,{ ok }); await loadDriverRemitsPage(1) }catch(e){ alert(e?.message||'Failed to set proof') } }
+  async function acceptRemit(id){ try{ await apiPost(`/api/finance/remittances/${id}/accept`,{}); await loadDriverRemitsPage(1) }catch(e){ alert(e?.message||'Failed to accept remittance') } }
+  async function rejectRemit(id){ try{ await apiPost(`/api/finance/remittances/${id}/reject`,{}); await loadDriverRemitsPage(1) }catch(e){ alert(e?.message||'Failed to reject remittance') } }
   async function approveAgent(id){ try{ setAgt(a=>({ ...a, busyId:id })); await apiPost(`/api/finance/agent-remittances/${id}/approve`,{}); await loadAgentRemitsPage(1) }catch(e){ alert(e?.message||'Failed to approve') } finally{ setAgt(a=>({ ...a, busyId:'' })) } }
   async function sendAgent(id){ try{ setAgt(a=>({ ...a, busyId:id })); await apiPost(`/api/finance/agent-remittances/${id}/send`,{}); await loadAgentRemitsPage(1) }catch(e){ alert(e?.message||'Failed to mark as sent') } finally{ setAgt(a=>({ ...a, busyId:'' })) } }
 
@@ -266,7 +268,7 @@ export default function ManagerFinances(){
 
       <div className="card" style={{display:'grid', gap:10}}>
         <div className="card-header" style={{alignItems:'center', justifyContent:'space-between'}}>
-          <div className="card-title">Driver Wallet & Assigned (by Country)</div>
+          <div className="card-title">Driver Commission (by Country)</div>
           <div style={{display:'flex', gap:8, alignItems:'center'}}>
             <select className="input" value={country} onChange={e=> setCountry(e.target.value)}>
               <option value="">Select Country</option>
@@ -287,26 +289,18 @@ export default function ManagerFinances(){
               <thead>
                 <tr>
                   <th style={{textAlign:'left', padding:'8px 10px'}}>Driver</th>
-                  <th style={{textAlign:'right', padding:'8px 10px'}}>Assigned (Open)</th>
-                  <th style={{textAlign:'right', padding:'8px 10px'}}>Total Assigned</th>
                   <th style={{textAlign:'right', padding:'8px 10px'}}>Delivered</th>
-                  <th style={{textAlign:'right', padding:'8px 10px'}}>Commission</th>
-                  <th style={{textAlign:'right', padding:'8px 10px'}}>Collected</th>
-                  <th style={{textAlign:'right', padding:'8px 10px'}}>Remitted</th>
-                  <th style={{textAlign:'right', padding:'8px 10px'}}>Wallet</th>
+                  <th style={{textAlign:'right', padding:'8px 10px'}}>Per Order</th>
+                  <th style={{textAlign:'right', padding:'8px 10px'}}>Total Commission</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map(r=> (
                   <tr key={r.id} style={{borderTop:'1px solid var(--border)'}}>
                     <td style={{padding:'8px 10px'}}>{`${r.driver.firstName||''} ${r.driver.lastName||''}`.trim() || (r.driver.email||'-')}</td>
-                    <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.openAssigned)}</td>
-                    <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.totalAssigned)}</td>
                     <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.deliveredCount)}</td>
-                    <td style={{padding:'8px 10px', textAlign:'right'}}>{(r.commissionCurrency||'') + ' ' + num(r.commissionTotal)}</td>
-                    <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.collectedSum)}</td>
-                    <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.remittedSum)}</td>
-                    <td style={{padding:'8px 10px', textAlign:'right', fontWeight:800}}>{num(r.wallet)}</td>
+                    <td style={{padding:'8px 10px', textAlign:'right'}}>{(r.commissionCurrency||'') + ' ' + num(r.commissionPerOrder)}</td>
+                    <td style={{padding:'8px 10px', textAlign:'right', fontWeight:800}}>{(r.commissionCurrency||'') + ' ' + num(r.commissionTotal)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -354,6 +348,8 @@ export default function ManagerFinances(){
                     </div>
                   </div>
                   <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+                    <button className="btn" onClick={()=> acceptRemit(id)}>Accept</button>
+                    <button className="btn secondary" onClick={()=> rejectRemit(id)}>Reject</button>
                     <button className="btn secondary" onClick={()=> waShareDriver(r)}>WhatsApp</button>
                   </div>
                 </div>

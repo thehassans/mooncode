@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { API_BASE, apiGet } from '../../api'
+import { API_BASE, apiGet, apiPost } from '../../api'
 import { useNavigate } from 'react-router-dom'
 
 export default function Transactions(){
@@ -110,6 +110,17 @@ export default function Transactions(){
     })()
     return () => { alive = false }
   }, [country])
+
+  async function refreshRemittances(){
+    try{
+      const remitResp = await apiGet('/api/finance/remittances')
+      const allRemits = Array.isArray(remitResp?.remittances) ? remitResp.remittances : []
+      const filteredRemits = allRemits.filter(r => String(r?.country||'').trim().toLowerCase() === String(country).trim().toLowerCase())
+      setDriverRemits(filteredRemits)
+    }catch{}
+  }
+  async function acceptRemit(id){ try{ await apiPost(`/api/finance/remittances/${id}/accept`,{}); await refreshRemittances() }catch(e){ alert(e?.message||'Failed to accept') } }
+  async function rejectRemit(id){ try{ await apiPost(`/api/finance/remittances/${id}/reject`,{}); await refreshRemittances() }catch(e){ alert(e?.message||'Failed to reject') } }
   function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
   function userName(u){ if (!u) return '-'; return `${u.firstName||''} ${u.lastName||''}`.trim() || (u.email||'-') }
   function dateInRange(d, from, to){ try{ if (!d) return false; const t = new Date(d).getTime(); if (from){ const f = new Date(from).setHours(0,0,0,0); if (t < f) return false } if (to){ const tt = new Date(to).setHours(23,59,59,999); if (t > tt) return false } return true }catch{ return true } }
@@ -497,9 +508,11 @@ export default function Transactions(){
                         <th style={{ padding:'8px 10px', textAlign:'left' }}>Amount</th>
                         <th style={{ padding:'8px 10px', textAlign:'left' }}>Status</th>
                         <th style={{ padding:'8px 10px', textAlign:'left' }}>Method</th>
+                        <th style={{ padding:'8px 10px', textAlign:'left' }}>Manager</th>
                         <th style={{ padding:'8px 10px', textAlign:'left' }}>Accepted</th>
                         <th style={{ padding:'8px 10px', textAlign:'left' }}>Created</th>
                         <th style={{ padding:'8px 10px', textAlign:'left' }}>Receipt</th>
+                        <th style={{ padding:'8px 10px', textAlign:'left' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -508,11 +521,20 @@ export default function Transactions(){
                           <td style={{ padding:'8px 10px', fontWeight:700, color:'#22c55e' }}>{num(r.amount)} {r.currency||''}</td>
                           <td style={{ padding:'8px 10px' }}>{String(r.status||'').toUpperCase()}</td>
                           <td style={{ padding:'8px 10px' }}>{(String(r.method||'hand').toLowerCase()==='transfer') ? 'Transfer' : 'Hand'}</td>
+                          <td style={{ padding:'8px 10px' }}>{r?.manager ? ((r.manager.firstName||'') + ' ' + (r.manager.lastName||'')).trim() || (r.manager.email||'-') : '-'}</td>
                           <td style={{ padding:'8px 10px' }}>{r.acceptedAt? new Date(r.acceptedAt).toLocaleString(): '—'}</td>
                           <td style={{ padding:'8px 10px' }}>{r.createdAt? new Date(r.createdAt).toLocaleString(): '—'}</td>
                           <td style={{ padding:'8px 10px' }}>
                             {r.receiptPath ? (
                               <a href={`${API_BASE}${r.receiptPath}`} target="_blank" rel="noopener noreferrer">Download</a>
+                            ) : '—'}
+                          </td>
+                          <td style={{ padding:'8px 10px' }}>
+                            {String(r.status||'').toLowerCase()==='pending' ? (
+                              <div style={{display:'flex', gap:6}}>
+                                <button className="btn small" onClick={()=> acceptRemit(String(r._id||''))}>Accept</button>
+                                <button className="btn small secondary" onClick={()=> rejectRemit(String(r._id||''))}>Reject</button>
+                              </div>
                             ) : '—'}
                           </td>
                         </tr>
