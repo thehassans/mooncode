@@ -300,15 +300,16 @@ export default function App() {
       >
         <Route index element={<ManagerDashboard />} />
         <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
-        <Route path="agents" element={<RequireManagerPerm perm="canCreateAgents"><Agents /></RequireManagerPerm>} />
-        <Route path="orders" element={<RequireManagerPerm perm="canCreateOrders"><ManagerOrders /></RequireManagerPerm>} />
+        <Route path="agents" element={<Agents />} />
+        <Route path="orders" element={<ManagerOrders />} />
         <Route path="finances" element={<ManagerFinances />} />
-        <Route path="drivers/create" element={<RequireManagerPerm perm="canCreateDrivers"><ManagerCreateDriver /></RequireManagerPerm>} />
+        <Route path="drivers/create" element={<ManagerCreateDriver />} />
         <Route path="finances/history/drivers" element={<DriverRemitHistory />} />
         <Route path="finances/history/agents" element={<AgentRemitHistory />} />
         <Route path="transactions" element={<ManagerTransactions />} />
+        <Route path="transactions/drivers" element={<Transactions />} />
         <Route path="warehouses" element={<Warehouse />} />
-        <Route path="inhouse-products" element={<RequireManagerPerm perm="canManageProducts"><InhouseProducts /></RequireManagerPerm>} />
+        <Route path="inhouse-products" element={<InhouseProducts />} />
       </Route>
 
       <Route
