@@ -3,6 +3,8 @@ import { auth, allowRoles } from '../middleware/auth.js'
 import Product from '../models/Product.js'
 import Order from '../models/Order.js'
 import WebOrder from '../models/WebOrder.js'
+import User from '../models/User.js'
+import mongoose from 'mongoose'
 
 const router = express.Router()
 
@@ -16,13 +18,36 @@ router.get('/summary', auth, allowRoles('admin','user'), async (req, res) => {
     const productIds = products.map(p => p._id)
 
     // Aggregate delivered quantities per product and country, supporting both single-product orders and multi-item orders
-    const baseMatch = { shipmentStatus: 'delivered' }
-    if (!isAdmin) baseMatch.createdBy = req.user.id
+    const baseMatch = { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] }
+
+    // Workspace scoping for Orders: include owner + agents/managers
+    let createdByScope = null
+    if (!isAdmin){
+      if (req.user.role === 'user'){
+        const agents = await User.find({ role: 'agent', createdBy: req.user.id }, { _id: 1 }).lean()
+        const managers = await User.find({ role: 'manager', createdBy: req.user.id }, { _id: 1 }).lean()
+        createdByScope = [ req.user.id, ...agents.map(a=>String(a._id)), ...managers.map(m=>String(m._id)) ]
+      } else if (req.user.role === 'manager') {
+        const mgr = await User.findById(req.user.id).select('createdBy').lean()
+        const ownerId = String(mgr?.createdBy || '')
+        if (ownerId){
+          const agents = await User.find({ role: 'agent', createdBy: ownerId }, { _id: 1 }).lean()
+          const managers = await User.find({ role: 'manager', createdBy: ownerId }, { _id: 1 }).lean()
+          createdByScope = [ ownerId, ...agents.map(a=>String(a._id)), ...managers.map(m=>String(m._id)) ]
+        } else {
+          createdByScope = [ req.user.id ]
+        }
+      } else {
+        // agent
+        createdByScope = [ req.user.id ]
+      }
+    }
 
     // Internal Orders: delivered quantities
     const deliveredAgg = await Order.aggregate([
       { $match: { 
           ...baseMatch,
+          ...(createdByScope ? { createdBy: { $in: createdByScope.map(id => new mongoose.Types.ObjectId(id)) } } : {}),
           $or: [
             { productId: { $in: productIds } },
             { 'items.productId': { $in: productIds } },
@@ -50,7 +75,7 @@ router.get('/summary', auth, allowRoles('admin','user'), async (req, res) => {
 
     // Web (E-commerce) Orders: delivered quantities
     const webDeliveredAgg = await WebOrder.aggregate([
-      { $match: { shipmentStatus: 'delivered' } },
+      { $match: { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
       { $unwind: '$items' },
       { $match: { 'items.productId': { $in: productIds } } },
       { $group: {
@@ -91,15 +116,14 @@ router.get('/summary', auth, allowRoles('admin','user'), async (req, res) => {
     }
 
     const response = products.map(p => {
-      const byC = p.stockByCountry || {}
-      const leftUAE = byC.UAE || 0
-      const leftOman = byC.Oman || 0
-      const leftKSA = byC.KSA || 0
-      const leftBahrain = byC.Bahrain || 0
-      const leftIndia = byC.India || 0
-      const leftKuwait = byC.Kuwait || 0
-      const leftQatar = byC.Qatar || 0
-      const totalLeft = leftUAE + leftOman + leftKSA + leftBahrain + leftIndia + leftKuwait + leftQatar
+      const bought = p.stockByCountry || {}
+      const bUAE = bought.UAE || 0
+      const bOman = bought.Oman || 0
+      const bKSA = bought.KSA || 0
+      const bBahrain = bought.Bahrain || 0
+      const bIndia = bought.India || 0
+      const bKuwait = bought.Kuwait || 0
+      const bQatar = bought.Qatar || 0
 
       const dMap = deliveredMap.get(String(p._id)) || {}
       const delUAE = dMap.UAE || 0
@@ -111,7 +135,17 @@ router.get('/summary', auth, allowRoles('admin','user'), async (req, res) => {
       const delQatar = dMap.Qatar || 0
       const totalDelivered = delUAE + delOman + delKSA + delBahrain + delIndia + delKuwait + delQatar
 
-      const totalBought = totalLeft + totalDelivered
+      // Stock left = bought - delivered (clamped to 0)
+      const leftUAE = Math.max(0, bUAE - delUAE)
+      const leftOman = Math.max(0, bOman - delOman)
+      const leftKSA = Math.max(0, bKSA - delKSA)
+      const leftBahrain = Math.max(0, bBahrain - delBahrain)
+      const leftIndia = Math.max(0, bIndia - delIndia)
+      const leftKuwait = Math.max(0, bKuwait - delKuwait)
+      const leftQatar = Math.max(0, bQatar - delQatar)
+      const totalLeft = leftUAE + leftOman + leftKSA + leftBahrain + leftIndia + leftKuwait + leftQatar
+
+      const totalBought = bUAE + bOman + bKSA + bBahrain + bIndia + bKuwait + bQatar
 
       const baseCur = ['AED','OMR','SAR','BHD','INR','KWD','QAR'].includes(String(p.baseCurrency)) ? String(p.baseCurrency) : 'SAR'
       const deliveredRevenueByCurrency = { AED: 0, OMR: 0, SAR: 0, BHD: 0, INR: 0, KWD: 0, QAR: 0 }
@@ -128,6 +162,7 @@ router.get('/summary', auth, allowRoles('admin','user'), async (req, res) => {
         baseCurrency: baseCur,
         purchasePrice: p.purchasePrice || 0,
         stockLeft: { UAE: leftUAE, Oman: leftOman, KSA: leftKSA, Bahrain: leftBahrain, India: leftIndia, Kuwait: leftKuwait, Qatar: leftQatar, total: totalLeft },
+        boughtByCountry: { UAE: bUAE, Oman: bOman, KSA: bKSA, Bahrain: bBahrain, India: bIndia, Kuwait: bKuwait, Qatar: bQatar },
         delivered: { UAE: delUAE, Oman: delOman, KSA: delKSA, Bahrain: delBahrain, India: delIndia, Kuwait: delKuwait, Qatar: delQatar, total: totalDelivered },
         totalBought,
         stockValue: totalLeft * (p.purchasePrice || 0),
