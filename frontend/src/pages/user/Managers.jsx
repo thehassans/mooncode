@@ -223,20 +223,7 @@ export default function Managers(){
           <div className="label">Password</div>
           <input className="input" type="password" value={editModal.password} onChange={e=> setEditModal(m=>({ ...m, password: e.target.value }))} placeholder="Leave blank to keep unchanged" />
         </div>
-        <div style={{display:'flex', gap:16, flexWrap:'wrap'}}>
-          <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
-            <input type="checkbox" checked={editModal.canCreateAgents} onChange={e=> setEditModal(m=>({ ...m, canCreateAgents: e.target.checked }))} /> Can create agents
-          </label>
-          <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
-            <input type="checkbox" checked={editModal.canManageProducts} onChange={e=> setEditModal(m=>({ ...m, canManageProducts: e.target.checked }))} /> Can manage inhouse products
-          </label>
-          <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
-            <input type="checkbox" checked={editModal.canCreateOrders} onChange={e=> setEditModal(m=>({ ...m, canCreateOrders: e.target.checked }))} /> Can create orders
-          </label>
-          <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:8, cursor:'pointer'}}>
-            <input type="checkbox" checked={editModal.canCreateDrivers} onChange={e=> setEditModal(m=>({ ...m, canCreateDrivers: e.target.checked }))} /> Can create drivers
-          </label>
-        </div>
+        {/* Permissions are auto-granted; no per-permission toggles */}
         {editModal.error && <div className="helper-text error">{editModal.error}</div>}
       </div>
     </Modal>
