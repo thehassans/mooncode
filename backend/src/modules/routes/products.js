@@ -65,7 +65,8 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
   const files = Array.isArray(req.files) ? req.files : []
   // Accept any file with an image mimetype or fieldname starting with 'image'
   const imageFiles = files.filter(f => (String(f?.mimetype||'').startsWith('image/') || String(f?.fieldname||'').toLowerCase().startsWith('image')))
-  const imagePaths = imageFiles.map(f => `/uploads/${f.filename}`)
+  const limitedFiles = imageFiles.slice(0, 5)
+  const imagePaths = limitedFiles.map(f => `/uploads/${f.filename}`)
   
   // per-country stock
   const sbc = { UAE:0, Oman:0, KSA:0, Bahrain:0, India:0, Kuwait:0, Qatar:0 }
@@ -89,6 +90,11 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
   }catch{}
   const displayOnWebsite = String(req.body?.displayOnWebsite||'').toLowerCase() === 'true' || req.body?.displayOnWebsite === true
 
+  let actorName = ''
+  try{
+    const actor = await User.findById(req.user.id).select('firstName lastName role').lean()
+    if (actor){ actorName = [actor.firstName||'', actor.lastName||''].join(' ').trim() }
+  }catch{}
   const doc = new Product({
     name: String(name).trim(),
     price: Number(price),
@@ -103,6 +109,9 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
     availableCountries,
     displayOnWebsite,
     createdBy: ownerId,
+    createdByRole: String(req.user.role||''),
+    createdByActor: req.user.id,
+    createdByActorName: actorName,
   })
   await doc.save()
   
@@ -317,9 +326,17 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
   const files = Array.isArray(req.files) ? req.files : []
   const imageFiles = files.filter(f => (String(f?.mimetype||'').startsWith('image/') || String(f?.fieldname||'').toLowerCase().startsWith('image')))
   if (imageFiles.length){
-    const imagePaths = imageFiles.map(f => `/uploads/${f.filename}`)
-    prod.imagePath = imagePaths[0]
-    prod.images = imagePaths
+    const limitedFiles = imageFiles.slice(0, 5)
+    const imagePaths = limitedFiles.map(f => `/uploads/${f.filename}`)
+    const doAppend = (String(req.query.append||'').toLowerCase()==='true') || (String(req.body?.appendImages||'').toLowerCase()==='true')
+    if (doAppend){
+      const next = Array.from(new Set([...(prod.images||[]), ...imagePaths]))
+      prod.images = next
+      if (!prod.imagePath && next.length) prod.imagePath = next[0]
+    } else {
+      prod.imagePath = imagePaths[0]
+      prod.images = imagePaths
+    }
   }
   await prod.save()
   res.json({ message: 'Updated', product: prod })

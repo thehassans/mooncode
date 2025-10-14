@@ -196,7 +196,9 @@ export default function InhouseProducts(){
     const { name, value, type, checked, files } = e.target
     if (type === 'checkbox') setForm(f => ({ ...f, [name]: checked }))
     else if (type === 'file'){
-      const arr = Array.from(files||[])
+      const all = Array.from(files||[])
+      const arr = all.slice(0, 5)
+      if (all.length > 5) setMsg('You can upload up to 5 images')
       setForm(f => ({ ...f, images: arr }))
       setImagePreviews(arr.map(f => ({ name: f.name, url: URL.createObjectURL(f) })))
     } else setForm(f => ({ ...f, [name]: value }))
@@ -443,7 +445,9 @@ export default function InhouseProducts(){
     const { name, value, type, checked, files } = e.target
     if (type === 'checkbox') setEditForm(f => ({ ...f, [name]: checked }))
     else if (type === 'file'){
-      const arr = Array.from(files||[])
+      const all = Array.from(files||[])
+      const arr = all.slice(0, 5)
+      if (all.length > 5) setMsg('You can upload up to 5 images')
       setEditForm(f => ({ ...f, images: arr }))
       setEditPreviews(arr.map(f => ({ name: f.name, url: URL.createObjectURL(f) })))
     } else setEditForm(f => ({ ...f, [name]: value }))
@@ -671,6 +675,7 @@ export default function InhouseProducts(){
           <div>
             <div className="label">Images</div>
             <input className="input" type="file" accept="image/*" multiple name="images" onChange={onChange} />
+            <div className="helper" style={{marginTop:6}}>Up to 5 images</div>
             {imagePreviews.length > 0 && (
               <div style={{display:'flex', gap:8, marginTop:8, flexWrap:'wrap'}}>
                 {imagePreviews.map((p,i)=>(
@@ -876,7 +881,12 @@ export default function InhouseProducts(){
                       )
                     })()}
                   </td>
-                  <td style={{padding:'10px 12px'}}>{p.name}</td>
+                  <td style={{padding:'10px 12px'}}>
+                    <div style={{fontWeight:600}}>{p.name}</div>
+                    {String(p?.createdByRole||'').toLowerCase()==='manager' && p?.createdByActorName ? (
+                      <div className="helper" style={{fontSize:11, opacity:0.85}}>Created by {p.createdByActorName}</div>
+                    ) : null}
+                  </td>
                   <td style={{padding:'10px 12px', cursor:'pointer'}} onClick={(e)=>openPricePopup(e, p)} title="Edit price">
                     {(() => {
                       const COUNTRY_TO_CCY = { UAE:'AED', Oman:'OMR', KSA:'SAR', Bahrain:'BHD' }
@@ -1074,8 +1084,9 @@ export default function InhouseProducts(){
                 <textarea className="input" name="description" value={editForm.description} onChange={onEditChange} rows={3} />
               </div>
               <div>
-                <div className="label">Replace Images</div>
+                <div className="label">Replace Images (up to 5)</div>
                 <input className="input" type="file" accept="image/*" multiple onChange={onEditChange} name="images" />
+                <div className="helper" style={{marginTop:6}}>Up to 5 images</div>
                 {editPreviews.length > 0 && (
                   <div style={{display:'flex', gap:8, marginTop:8, flexWrap:'wrap'}}>
                     {editPreviews.map((p,i)=>(

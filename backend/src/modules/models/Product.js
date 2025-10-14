@@ -51,6 +51,9 @@ const ProductSchema = new mongoose.Schema({
   madeInCountry: { type: String, default: '' },
   description: { type: String, default: '' },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  createdByRole: { type: String, default: '' },
+  createdByActor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  createdByActorName: { type: String, default: '' },
 }, { timestamps: true })
 
 export default mongoose.model('Product', ProductSchema)
