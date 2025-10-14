@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { apiGet, apiPatch } from '../../api.js'
+import { API_BASE, apiGet, apiPatch } from '../../api.js'
+import { io } from 'socket.io-client'
 import { useNavigate } from 'react-router-dom'
 
 export default function DriverMe() {
@@ -9,6 +10,7 @@ export default function DriverMe() {
   })
   const [loading, setLoading] = useState(true)
   const [drvMetrics, setDrvMetrics] = useState(null)
+  const [payout, setPayout] = useState({ currency:'', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
   const [theme, setTheme] = useState(() => {
     try{
       const attr = document.documentElement.getAttribute('data-theme')
@@ -31,12 +33,63 @@ export default function DriverMe() {
 
   useEffect(() => {
     let alive = true
-    ;(async () => {
-      try { const r = await apiGet('/api/users/me'); if (alive) { setMe(r?.user || {}) } } catch {}
-      try { const m = await apiGet('/api/orders/driver/metrics'); if (alive) setDrvMetrics(m||null) } catch { if (alive) setDrvMetrics(null) }
-      if (alive) setLoading(false)
-    })()
+    const loadAll = async()=>{
+      setLoading(true)
+      try {
+        const [u, m, s] = await Promise.all([
+          apiGet('/api/users/me').catch(()=>({})),
+          apiGet('/api/orders/driver/metrics').catch(()=>null),
+          apiGet('/api/finance/remittances/summary').catch(()=>null),
+        ])
+        if (alive) setMe(u?.user || {})
+        if (alive) setDrvMetrics(m||null)
+        if (alive && s){
+          setPayout({
+            currency: s.currency||'',
+            totalCollectedAmount: Number(s?.totalCollectedAmount||0),
+            deliveredToCompany: Number(s?.deliveredToCompany||0),
+            pendingToCompany: Number(s?.pendingToCompany||0),
+          })
+        }
+      } finally {
+        if (alive) setLoading(false)
+      }
+    }
+    loadAll()
     return () => { alive = false }
+  }, [])
+
+  useEffect(()=>{
+    let socket
+    try{
+      const token = localStorage.getItem('token') || ''
+      socket = io(API_BASE || undefined, { path:'/socket.io', transports:['polling'], upgrade:false, withCredentials:true, auth:{ token } })
+      const refresh = async()=>{
+        try{
+          const [m, s] = await Promise.all([
+            apiGet('/api/orders/driver/metrics').catch(()=>null),
+            apiGet('/api/finance/remittances/summary').catch(()=>null),
+          ])
+          if (m) setDrvMetrics(m)
+          if (s) setPayout({ currency: s.currency||'', totalCollectedAmount: Number(s?.totalCollectedAmount||0), deliveredToCompany: Number(s?.deliveredToCompany||0), pendingToCompany: Number(s?.pendingToCompany||0) })
+        }catch{}
+      }
+      socket.on('order.assigned', refresh)
+      socket.on('order.updated', refresh)
+      socket.on('order.shipped', refresh)
+      socket.on('remittance.created', refresh)
+      socket.on('remittance.accepted', refresh)
+      socket.on('remittance.rejected', refresh)
+    }catch{}
+    return ()=>{
+      try{ socket && socket.off('order.assigned') }catch{}
+      try{ socket && socket.off('order.updated') }catch{}
+      try{ socket && socket.off('order.shipped') }catch{}
+      try{ socket && socket.off('remittance.created') }catch{}
+      try{ socket && socket.off('remittance.accepted') }catch{}
+      try{ socket && socket.off('remittance.rejected') }catch{}
+      try{ socket && socket.disconnect() }catch{}
+    }
   }, [])
 
   // Minimal page: no sockets/remittances/profile settings here
@@ -52,8 +105,8 @@ export default function DriverMe() {
   }
 
   const deliveredCount = Number(drvMetrics?.status?.delivered || 0)
-  const commissionPerOrder = Number(me?.commissionPerOrder || 0)
-  const commissionCurrency = String(me?.commissionCurrency || '').toUpperCase() || 'SAR'
+  const commissionPerOrder = Number((me?.driverProfile?.commissionPerOrder ?? me?.commissionPerOrder) || 0)
+  const commissionCurrency = (String((me?.driverProfile?.commissionCurrency ?? me?.commissionCurrency) || '').toUpperCase() || String(payout?.currency||'').toUpperCase() || 'SAR')
   const walletAmount = (commissionPerOrder > 0 && deliveredCount >= 0) ? (commissionPerOrder * deliveredCount) : 0
   // Driver achievement level by delivered count
   const levels = useMemo(()=>[
@@ -87,19 +140,35 @@ export default function DriverMe() {
       </div>
 
       <div className="card" style={{padding:16}}>
-        <div className="card-title" style={{marginBottom:6}}>Wallet Amount (Delivered)</div>
-        {loading ? (
-          <div className="helper">Loading…</div>
-        ) : (
-          <div style={{display:'grid', gap:8}}>
-            <div style={{fontSize:28, fontWeight:900, color:'var(--success)'}}>{commissionCurrency} {Number(walletAmount||0).toFixed(2)}</div>
-            <div className="helper">Commission per order: {commissionCurrency} {Number(commissionPerOrder||0).toFixed(2)}</div>
-            <div className="helper">Delivered orders counted: {deliveredCount}</div>
-            <div>
-              <a className="btn secondary" href="/driver/orders/delivered">View Delivered Orders</a>
-            </div>
-          </div>
-        )}
+        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px,1fr))', gap:12}}>
+          <button className="tile" onClick={()=> navigate('/driver/orders/delivered')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div style={{fontSize:12, color:'var(--muted)'}}>Wallet (Delivered Commission)</div>
+            <div style={{fontSize:28, fontWeight:800, color:'#22c55e'}}>{loading? '…' : `${commissionCurrency} ${Number(walletAmount||0).toFixed(2)}`}</div>
+          </button>
+          <button className="tile" onClick={()=> navigate('/driver/orders/delivered')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div style={{fontSize:12, color:'var(--muted)'}}>Total Collected (Delivered)</div>
+            <div style={{fontSize:28, fontWeight:800, color:'#0ea5e9'}}>{loading? '…' : `${payout.currency||''} ${Number(payout.totalCollectedAmount||0).toFixed(2)}`}</div>
+          </button>
+          <button className="tile" onClick={()=> navigate('/driver/payout#remittances')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div style={{fontSize:12, color:'var(--muted)'}}>Delivered to Company</div>
+            <div style={{fontSize:28, fontWeight:800, color:'#22c55e'}}>{loading? '…' : `${payout.currency||''} ${Number(payout.deliveredToCompany||0).toFixed(2)}`}</div>
+          </button>
+          <button className="tile" onClick={()=> navigate('/driver/payout#pay')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div style={{fontSize:12, color:'var(--muted)'}}>Pending Delivery to Company</div>
+            <div style={{fontSize:28, fontWeight:800, color:'#f59e0b'}}>{loading? '…' : `${payout.currency||''} ${Number(payout.pendingToCompany||0).toFixed(2)}`}</div>
+          </button>
+          <button className="tile" onClick={()=> navigate('/driver/orders/assigned')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div style={{fontSize:12, color:'var(--muted)'}}>Currently Assigned</div>
+            <div style={{fontSize:28, fontWeight:800, color:'#3b82f6'}}>{loading? '…' : Number(drvMetrics?.status?.assigned||0)}</div>
+          </button>
+          <button className="tile" onClick={()=> navigate('/driver/orders/delivered')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div style={{fontSize:12, color:'var(--muted)'}}>Delivered Orders</div>
+            <div style={{fontSize:28, fontWeight:800, color:'#10b981'}}>{loading? '…' : Number(drvMetrics?.status?.delivered||0)}</div>
+          </button>
+        </div>
+        <div className="section" style={{marginTop:8}}>
+          <div className="helper">Commission per order: {commissionCurrency} {Number(commissionPerOrder||0).toFixed(2)} • Delivered orders counted: {deliveredCount}</div>
+        </div>
       </div>
 
       {/* Achievements & Progress */}

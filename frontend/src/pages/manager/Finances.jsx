@@ -172,7 +172,10 @@ export default function ManagerFinances(){
       const variance = (s.collectedSum || 0) - (rem || 0)
       const openAssigned = openAssignedByDriver.get(id) || 0
       const totalAssigned = totalAssignedByDriver.get(id) || 0
-      return { id, driver:d, openAssigned, totalAssigned, deliveredCount:s.deliveredCount||0, collectedSum:s.collectedSum||0, remittedSum:rem||0, wallet:variance }
+      const perOrder = Number(d?.driverProfile?.commissionPerOrder||0)
+      const commCur = d?.driverProfile?.commissionCurrency || ''
+      const commissionTotal = (s.deliveredCount||0) * perOrder
+      return { id, driver:d, openAssigned, totalAssigned, deliveredCount:s.deliveredCount||0, collectedSum:s.collectedSum||0, remittedSum:rem||0, wallet:variance, commissionCurrency: commCur, commissionPerOrder: perOrder, commissionTotal }
     })
     arr.sort((a,b)=> (b.wallet||0) - (a.wallet||0))
     return arr
@@ -287,6 +290,7 @@ export default function ManagerFinances(){
                   <th style={{textAlign:'right', padding:'8px 10px'}}>Assigned (Open)</th>
                   <th style={{textAlign:'right', padding:'8px 10px'}}>Total Assigned</th>
                   <th style={{textAlign:'right', padding:'8px 10px'}}>Delivered</th>
+                  <th style={{textAlign:'right', padding:'8px 10px'}}>Commission</th>
                   <th style={{textAlign:'right', padding:'8px 10px'}}>Collected</th>
                   <th style={{textAlign:'right', padding:'8px 10px'}}>Remitted</th>
                   <th style={{textAlign:'right', padding:'8px 10px'}}>Wallet</th>
@@ -299,6 +303,7 @@ export default function ManagerFinances(){
                     <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.openAssigned)}</td>
                     <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.totalAssigned)}</td>
                     <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.deliveredCount)}</td>
+                    <td style={{padding:'8px 10px', textAlign:'right'}}>{(r.commissionCurrency||'') + ' ' + num(r.commissionTotal)}</td>
                     <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.collectedSum)}</td>
                     <td style={{padding:'8px 10px', textAlign:'right'}}>{num(r.remittedSum)}</td>
                     <td style={{padding:'8px 10px', textAlign:'right', fontWeight:800}}>{num(r.wallet)}</td>
