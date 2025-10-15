@@ -36,8 +36,16 @@ export default function ManagerOrders(){
 
   // Preserve scroll helper
   const preserveScroll = async (fn)=>{
-    const y = window.scrollY
-    try{ return await fn() } finally { try{ requestAnimationFrame(()=> window.scrollTo(0, y)) }catch{ window.scrollTo(0, y) } }
+    const y = typeof window !== 'undefined' ? window.scrollY : 0
+    try{ return await fn() }
+    finally {
+      try{
+        requestAnimationFrame(()=>{
+          try{ window.scrollTo(0, y) }catch{}
+          try{ setTimeout(()=> window.scrollTo(0, y), 0) }catch{}
+        })
+      }catch{ try{ window.scrollTo(0, y) }catch{} }
+    }
   }
 
   async function fetchMe(){ try{ const { user } = await apiGet('/api/users/me'); setMe(user||{}) }catch{} }
@@ -478,6 +486,14 @@ export default function ManagerOrders(){
             <option value="returned">Returned</option>
             <option value="cancelled">Cancelled</option>
           </select>
+          <label className="input" style={{display:'flex', gap:8, alignItems:'center'}}>
+            <input type="checkbox" checked={onlyUnassigned} onChange={e=>{ const v=e.target.checked; setOnlyUnassigned(v); if (v) setOnlyAssigned(false) }} />
+            <span>Unassigned only</span>
+          </label>
+          <label className="input" style={{display:'flex', gap:8, alignItems:'center'}}>
+            <input type="checkbox" checked={onlyAssigned} onChange={e=>{ const v=e.target.checked; setOnlyAssigned(v); if (v) setOnlyUnassigned(false) }} />
+            <span>Assigned only</span>
+          </label>
           <select className="input" value={agentFilter} onChange={e=> setAgentFilter(e.target.value)}>
             <option value=''>All Agents</option>
             {agentOptions.map(a => (
