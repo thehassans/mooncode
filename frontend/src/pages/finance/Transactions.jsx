@@ -2,9 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { API_BASE, apiGet, apiPost } from '../../api'
 import { io } from 'socket.io-client'
 import { useNavigate } from 'react-router-dom'
+import Modal from '../../components/Modal.jsx'
+import { useToast } from '../../ui/Toast.jsx'
 
 export default function Transactions(){
   const navigate = useNavigate()
+  const toast = useToast()
   const [me, setMe] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} } })
   const role = String(me?.role||'')
   const [driverRemits, setDriverRemits] = useState([])
@@ -22,6 +25,7 @@ export default function Transactions(){
   const [countryOrders, setCountryOrders] = useState([])
   const [detailModalFor, setDetailModalFor] = useState('')
   const [isMobile, setIsMobile] = useState(false)
+  const [acceptModal, setAcceptModal] = useState(null)
 
   useEffect(()=>{ /* initial no-op */ },[])
   useEffect(()=>{
@@ -151,8 +155,8 @@ export default function Transactions(){
       setDriverRemits(filteredRemits)
     }catch{}
   }
-  async function acceptRemit(id){ try{ await apiPost(`/api/finance/remittances/${id}/accept`,{}); await refreshRemittances() }catch(e){ alert(e?.message||'Failed to accept') } }
-  async function rejectRemit(id){ try{ await apiPost(`/api/finance/remittances/${id}/reject`,{}); await refreshRemittances() }catch(e){ alert(e?.message||'Failed to reject') } }
+  async function acceptRemit(id){ try{ await apiPost(`/api/finance/remittances/${id}/accept`,{}); await refreshRemittances(); toast.success('Remittance accepted') }catch(e){ toast.error(e?.message||'Failed to accept') } }
+  async function rejectRemit(id){ try{ await apiPost(`/api/finance/remittances/${id}/reject`,{}); await refreshRemittances(); toast.warn('Remittance rejected') }catch(e){ toast.error(e?.message||'Failed to reject') } }
   function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
   function userName(u){ if (!u) return '-'; return `${u.firstName||''} ${u.lastName||''}`.trim() || (u.email||'-') }
   function dateInRange(d, from, to){ try{ if (!d) return false; const t = new Date(d).getTime(); if (from){ const f = new Date(from).setHours(0,0,0,0); if (t < f) return false } if (to){ const tt = new Date(to).setHours(23,59,59,999); if (t > tt) return false } return true }catch{ return true } }
@@ -381,6 +385,42 @@ export default function Transactions(){
           <div className="page-title gradient heading-blue">Driver Finances</div>
           <div className="page-subtitle">Monitor drivers' delivered collections and remittances</div>
         </div>
+      {acceptModal && (
+        <Modal
+          title="Accept Driver Remittance"
+          open={!!acceptModal}
+          onClose={()=> setAcceptModal(null)}
+          footer={
+            <>
+              <button className="btn secondary" onClick={()=> setAcceptModal(null)}>Close</button>
+              {role!=='driver' && (
+                <>
+                  <button className="btn danger" onClick={async()=>{ const id=String(acceptModal?._id||''); await rejectRemit(id); setAcceptModal(null) }}>Reject</button>
+                  <button className="btn success" onClick={async()=>{ const id=String(acceptModal?._id||''); await acceptRemit(id); setAcceptModal(null) }}>Accept</button>
+                </>
+              )}
+            </>
+          }
+        >
+          <div style={{display:'grid', gap:8}}>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:8}}>
+              <Info label="Driver" value={`${acceptModal?.driver?.firstName||''} ${acceptModal?.driver?.lastName||''}`.trim() || (acceptModal?.driver?.email||'-')} />
+              <Info label="Approver" value={`${acceptModal?.manager?.firstName||''} ${acceptModal?.manager?.lastName||''}`.trim() || '—'} />
+              <Info label="Amount" value={`${acceptModal?.currency||''} ${Number(acceptModal?.amount||0).toFixed(2)}`} />
+              <Info label="Method" value={String(acceptModal?.method||'hand').toUpperCase()} />
+              {acceptModal?.paidToName ? <Info label="Paid To" value={acceptModal?.paidToName} /> : null}
+              {acceptModal?.note ? <Info label="Note" value={acceptModal?.note} /> : null}
+              <Info label="Created" value={acceptModal?.createdAt ? new Date(acceptModal.createdAt).toLocaleString() : '-'} />
+            </div>
+            {acceptModal?.receiptPath ? (
+              <div>
+                <div className="helper">Proof</div>
+                <img src={`${API_BASE}${acceptModal.receiptPath}`} alt="Proof" style={{maxWidth:'100%', borderRadius:8, border:'1px solid var(--border)'}} />
+              </div>
+            ) : null}
+          </div>
+        </Modal>
+      )}
       </div>
       {err && <div className="error">{err}</div>}
 
@@ -482,11 +522,13 @@ export default function Transactions(){
                         <button className="btn secondary" onClick={()=> { setDetailModalFor(''); setRemitModalFor(r.id) }}>History</button>
                       </td>
                       <td style={{ padding: '10px 12px' }}>
-                        {latestPendingRemitForDriver(r.id) ? (
-                          <button className="btn" onClick={()=> quickAcceptForDriver(r.id)}>Accept Pending</button>
-                        ) : (
-                          <span className="helper">—</span>
-                        )}
+                        {(()=>{
+                          const pending = latestPendingRemitForDriver(r.id)
+                          if (!pending) return <span className="helper">—</span>
+                          return (
+                            <button className="btn" onClick={()=> setAcceptModal(pending)}>Accept Pending</button>
+                          )
+                        })()}
                       </td>
                     </tr>
                   )
@@ -532,7 +574,7 @@ export default function Transactions(){
                       <div style={{ fontWeight:800 }}>{userName(r.driver)}</div>
                       <div style={{display:'flex', gap:6}}>
                         {latestPendingRemitForDriver(r.id) && (
-                          <button className="btn small" onClick={()=> quickAcceptForDriver(r.id)}>Accept</button>
+                          <button className="btn small" onClick={()=> setAcceptModal(latestPendingRemitForDriver(r.id))}>Accept</button>
                         )}
                         <button className="btn secondary" onClick={()=> setDetailModalFor(r.id)}>Details</button>
                       </div>
