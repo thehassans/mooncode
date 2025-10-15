@@ -40,7 +40,6 @@ export default function UserLayout(){
         { to: '/user/shipments', label: 'Shipments', icon: '🚚' },
         { to: '/user/expense', label: 'Expense Management', icon: '💸' },
         { to: '/user/transactions', label: 'Transactions', icon: '💳' },
-        { to: '/user/manager-finances', label: 'Manager Finances', icon: '🧑‍💼' },
         { to: '/user/currency', label: 'Currency Conversion', icon: '💱' },
       ]
     },

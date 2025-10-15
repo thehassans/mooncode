@@ -56,7 +56,7 @@ function defaultCurrencyConfig(){
 }
 
 // GET /api/settings/currency
-router.get('/currency', auth, allowRoles('admin','user','manager','driver','agent'), async (_req, res) => {
+router.get('/currency', auth, allowRoles('admin','user'), async (_req, res) => {
   try{
     const doc = await Setting.findOne({ key: 'currency' }).lean()
     const val = (doc && doc.value) || defaultCurrencyConfig()

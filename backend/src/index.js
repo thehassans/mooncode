@@ -74,7 +74,7 @@ const corsOptions = {
   },
   credentials: true,
 }
-app.use('/api', cors(corsOptions));
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '5mb' }));
 app.use(morgan('dev'));
 
@@ -184,46 +184,11 @@ try {
 
 // Serve PWA manifest and favicons directly from dist root if available
 app.get(['/manifest.webmanifest','/favicon.svg','/favicon.ico'], (req, res, next) => {
-  const isFav = req.path.endsWith('/favicon.ico') || req.path.endsWith('favicon.ico')
-  if (INDEX_HTML && CLIENT_DIST){
-    const f = path.join(CLIENT_DIST, req.path.replace('..',''))
-    if (fs.existsSync(f)) return res.sendFile(f)
-  }
-  if (isFav){
-    try{
-      // Tiny 1x1 transparent PNG as a safe fallback
-      const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=', 'base64')
-      res.setHeader('Content-Type','image/png')
-      res.setHeader('Cache-Control','public, max-age=86400')
-      return res.status(200).end(png)
-    }catch{}
-  }
-  return next()
-})
-
-// Explicit login route -> serve SPA index if present (prevents proxy 500s)
-app.get('/login', (req, res, next) => {
-  if (INDEX_HTML && fs.existsSync(INDEX_HTML)){
-    try{ res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate') }catch{}
-    return res.sendFile(INDEX_HTML)
-  }
-  return next()
-})
-
-// Safe fallback service worker (if not served by static)
-app.get('/sw.js', (req, res, next) => {
-  if (CLIENT_DIST && INDEX_HTML){
-    const f = path.join(CLIENT_DIST, 'sw.js')
-    if (fs.existsSync(f)) return res.sendFile(f)
-  }
-  try{
-    const js = `// minimal fallback sw\nself.addEventListener('install', e => self.skipWaiting());\nself.addEventListener('activate', e => self.clients && self.clients.claim && self.clients.claim());\nself.addEventListener('fetch', () => {});\n`;
-    res.setHeader('Content-Type','application/javascript; charset=utf-8')
-    res.setHeader('Service-Worker-Allowed', '/')
-    res.setHeader('Cache-Control','no-cache')
-    return res.status(200).send(js)
-  }catch{ return next() }
-})
+  if (!INDEX_HTML || !CLIENT_DIST) return next();
+  const f = path.join(CLIENT_DIST, req.path.replace('..',''));
+  if (fs.existsSync(f)) return res.sendFile(f);
+  return next();
+});
 
 // SPA fallback: let client router handle 404s (but do NOT intercept API, Socket.IO, or upload paths)
 app.get('*', (req, res, next) => {
@@ -259,21 +224,6 @@ app.get('*', (req, res, next) => {
     return next();
   }
 });
-
-// Global error handler: avoid leaking 500 on static routes
-app.use((err, req, res, _next) => {
-  try{ console.error('Unhandled error:', err?.message || err) }catch{}
-  const pathStr = String(req.path||'')
-  if (pathStr.startsWith('/api/')){
-    return res.status(err?.status || 500).json({ error: 'Internal Server Error' })
-  }
-  if (pathStr === '/favicon.ico') return res.status(204).end()
-  if (INDEX_HTML && fs.existsSync(INDEX_HTML)){
-    try{ res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate') }catch{}
-    return res.status(200).sendFile(INDEX_HTML)
-  }
-  return res.status(200).send('<!doctype html><title>App</title><div>Application is starting…</div>')
-})
 
 // Start HTTP server immediately; connect to DB in background so endpoints are reachable during DB spin-up
 server.listen(PORT, () => {
