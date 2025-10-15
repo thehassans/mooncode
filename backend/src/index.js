@@ -210,6 +210,21 @@ app.get('/login', (req, res, next) => {
   return next()
 })
 
+// Safe fallback service worker (if not served by static)
+app.get('/sw.js', (req, res, next) => {
+  if (CLIENT_DIST && INDEX_HTML){
+    const f = path.join(CLIENT_DIST, 'sw.js')
+    if (fs.existsSync(f)) return res.sendFile(f)
+  }
+  try{
+    const js = `// minimal fallback sw\nself.addEventListener('install', e => self.skipWaiting());\nself.addEventListener('activate', e => self.clients && self.clients.claim && self.clients.claim());\nself.addEventListener('fetch', () => {});\n`;
+    res.setHeader('Content-Type','application/javascript; charset=utf-8')
+    res.setHeader('Service-Worker-Allowed', '/')
+    res.setHeader('Cache-Control','no-cache')
+    return res.status(200).send(js)
+  }catch{ return next() }
+})
+
 // SPA fallback: let client router handle 404s (but do NOT intercept API, Socket.IO, or upload paths)
 app.get('*', (req, res, next) => {
   try {
