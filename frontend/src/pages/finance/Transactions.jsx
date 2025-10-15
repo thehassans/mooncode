@@ -125,6 +125,26 @@ export default function Transactions(){
   function userName(u){ if (!u) return '-'; return `${u.firstName||''} ${u.lastName||''}`.trim() || (u.email||'-') }
   function dateInRange(d, from, to){ try{ if (!d) return false; const t = new Date(d).getTime(); if (from){ const f = new Date(from).setHours(0,0,0,0); if (t < f) return false } if (to){ const tt = new Date(to).setHours(23,59,59,999); if (t > tt) return false } return true }catch{ return true } }
 
+  function latestPendingRemitForDriver(driverId){
+    try{
+      const list = driverRemits
+        .filter(r => String(r?.driver?._id || r?.driver || '') === String(driverId))
+        .filter(r => String(r?.country||'').trim().toLowerCase() === String(country||'').trim().toLowerCase())
+        .filter(r => String(r?.status||'').toLowerCase() === 'pending')
+        .filter(r => (fromDate || toDate) ? dateInRange(r?.createdAt || r?.acceptedAt, fromDate, toDate) : true)
+        .sort((a,b)=> new Date(b.createdAt||b.acceptedAt||0) - new Date(a.createdAt||a.acceptedAt||0))
+      return list[0] || null
+    }catch{ return null }
+  }
+  async function quickAcceptForDriver(driverId){
+    const r = latestPendingRemitForDriver(driverId)
+    if (!r){ alert('No pending remittance for this driver in the current filters'); return }
+    const amt = `${r.currency||''} ${Number(r.amount||0).toFixed(2)}`
+    const ok = window.confirm(`Accept pending remittance of ${amt}?`)
+    if (!ok) return
+    await acceptRemit(String(r._id||''))
+  }
+
   // Build per-driver metrics from deliveredOrders for selected country
   function orderNumericTotal(o){
     try{
@@ -377,7 +397,8 @@ export default function Transactions(){
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e' }}>Delivered to Company ({ccy})</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#ef4444' }}>Pending ({ccy})</th>
                 <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#3b82f6' }}>Details</th>
-                <th style={{ padding: '10px 12px', textAlign:'left', color:'#6366f1' }}>History</th>
+                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#6366f1' }}>History</th>
+                <th style={{ padding: '10px 12px', textAlign:'left' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -424,8 +445,15 @@ export default function Transactions(){
                       <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
                         <button className="btn" onClick={()=> { setRemitModalFor(''); setDetailModalFor(r.id) }}>Details</button>
                       </td>
-                      <td style={{ padding: '10px 12px' }}>
+                      <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
                         <button className="btn secondary" onClick={()=> { setDetailModalFor(''); setRemitModalFor(r.id) }}>History</button>
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        {latestPendingRemitForDriver(r.id) ? (
+                          <button className="btn" onClick={()=> quickAcceptForDriver(r.id)}>Accept Pending</button>
+                        ) : (
+                          <span className="helper">—</span>
+                        )}
                       </td>
                     </tr>
                   )
@@ -469,7 +497,12 @@ export default function Transactions(){
                   <div key={r.id} className="card" style={{ display:'grid', gap:8, padding:10 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                       <div style={{ fontWeight:800 }}>{userName(r.driver)}</div>
-                      <button className="btn secondary" onClick={()=> setDetailModalFor(r.id)}>Details</button>
+                      <div style={{display:'flex', gap:6}}>
+                        {latestPendingRemitForDriver(r.id) && (
+                          <button className="btn small" onClick={()=> quickAcceptForDriver(r.id)}>Accept</button>
+                        )}
+                        <button className="btn secondary" onClick={()=> setDetailModalFor(r.id)}>Details</button>
+                      </div>
                     </div>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8 }}>
                       <span onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} style={{ color:'#f59e0b', fontWeight:700, cursor:'pointer' }}>Open: {num(r.openAssigned)}</span>
