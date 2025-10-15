@@ -22,7 +22,6 @@ import ManagerFinances from './pages/manager/Finances.jsx'
 import ManagerCreateDriver from './pages/manager/CreateDriver.jsx'
 import DriverRemitHistory from './pages/manager/DriverRemitHistory.jsx'
 import AgentRemitHistory from './pages/manager/AgentRemitHistory.jsx'
-import ManagerTransactions from './pages/manager/Transactions.jsx'
 import AgentInhouseProducts from './pages/agent/AgentInhouseProducts.jsx'
 import InvestorDashboard from './pages/investor/Dashboard.jsx'
 import InvestorLayout from './layout/InvestorLayout.jsx'
@@ -306,7 +305,6 @@ export default function App() {
         <Route path="drivers/create" element={<ManagerCreateDriver />} />
         <Route path="finances/history/drivers" element={<DriverRemitHistory />} />
         <Route path="finances/history/agents" element={<AgentRemitHistory />} />
-        <Route path="transactions" element={<ManagerTransactions />} />
         <Route path="transactions/drivers" element={<Transactions />} />
         <Route path="warehouses" element={<Warehouse />} />
         <Route path="inhouse-products" element={<InhouseProducts />} />
