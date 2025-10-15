@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { apiGet, apiUpload } from '../../api.js'
+import Modal from '../../components/Modal.jsx'
+import { useToast } from '../../ui/Toast.jsx'
 
 export default function DriverPayout(){
+  const toast = useToast()
   const [company, setCompany] = useState({ method:'bank', accountName:'', bankName:'', iban:'', accountNumber:'', phoneNumber:'' })
   const [companyMsg, setCompanyMsg] = useState('')
   const [summary, setSummary] = useState({ totalDeliveredOrders: 0, totalCancelledOrders: 0, totalCollectedAmount: 0, deliveredToCompany: 0, pendingToCompany: 0, currency: '' })
@@ -10,6 +13,7 @@ export default function DriverPayout(){
   const [form, setForm] = useState({ method:'hand', amount:'', note:'', paidToName:'', paidToId:'', file:null })
   const [submitting, setSubmitting] = useState(false)
   const [showCompany, setShowCompany] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   
 
   useEffect(()=>{
@@ -109,29 +113,13 @@ export default function DriverPayout(){
             <textarea className="input" rows={2} value={form.note} onChange={e=> setForm(f=>({...f, note:e.target.value}))} />
           </div>
           <div>
-            <button className="btn" disabled={submitting} onClick={async()=>{
-              if (!form.amount) return alert('Enter amount')
+            <button className="btn" disabled={submitting} onClick={()=>{
               const amt = Number(form.amount)
-              if (Number.isNaN(amt) || amt<=0) return alert('Enter a valid amount')
-              if (amt > pendingToCompany) return alert('Amount exceeds pending to company')
-              if (form.method==='transfer' && !form.file) return alert('Please attach a proof image for transfer to company')
-              setSubmitting(true)
-              try{
-                const fd = new FormData()
-                fd.append('amount', String(amt))
-                fd.append('method', form.method)
-                if (form.method==='hand' && form.paidToName) fd.append('paidToName', form.paidToName)
-                if (form.method==='hand' && form.paidToId) fd.append('managerId', form.paidToId)
-                if (form.note) fd.append('note', form.note)
-                if (form.method==='transfer' && form.file) fd.append('receipt', form.file)
-                await apiUpload('/api/finance/remittances', fd)
-                // refresh summary and list
-                try{ const s = await apiGet('/api/finance/remittances/summary'); setSummary({ totalDeliveredOrders: Number(s?.totalDeliveredOrders||0), totalCancelledOrders: Number(s?.totalCancelledOrders||0), totalCollectedAmount: Number(s?.totalCollectedAmount||0), deliveredToCompany: Number(s?.deliveredToCompany||0), pendingToCompany: Number(s?.pendingToCompany||0), currency: s?.currency||'' }) }catch{}
-                try{ const rr = await apiGet('/api/finance/remittances'); setRemittances(Array.isArray(rr?.remittances)? rr.remittances:[]) }catch{}
-                setForm({ method:'hand', amount:'', note:'', paidToName:'', paidToId:'', file:null })
-                alert('Request sent to company. You will be notified when approved.')
-              }catch(e){ alert(e?.message || 'Failed to send request') }
-              finally{ setSubmitting(false) }
+              if (!form.amount){ toast.error('Enter amount'); return }
+              if (Number.isNaN(amt) || amt<=0){ toast.error('Enter a valid amount'); return }
+              if (amt > pendingToCompany){ toast.warn('Amount exceeds pending to company'); return }
+              if (form.method==='transfer' && !form.file){ toast.error('Please attach a proof image for transfer to company'); return }
+              setConfirmOpen(true)
             }}>Send Request</button>
           </div>
         </div>
@@ -200,6 +188,53 @@ export default function DriverPayout(){
           </div>
         )}
       </div>
+
+      {/* Confirm Submit Modal */}
+      <Modal
+        title="Confirm Remittance"
+        open={confirmOpen}
+        onClose={()=> setConfirmOpen(false)}
+        footer={
+          <>
+            <button className="btn secondary" onClick={()=> setConfirmOpen(false)} disabled={submitting}>Cancel</button>
+            <button className="btn success" disabled={submitting} onClick={async()=>{
+              const amt = Number(form.amount)
+              setSubmitting(true)
+              try{
+                const fd = new FormData()
+                fd.append('amount', String(amt))
+                fd.append('method', form.method)
+                if (form.method==='hand' && form.paidToName) fd.append('paidToName', form.paidToName)
+                if (form.method==='hand' && form.paidToId) fd.append('managerId', form.paidToId)
+                if (form.note) fd.append('note', form.note)
+                if (form.method==='transfer' && form.file) fd.append('receipt', form.file)
+                await apiUpload('/api/finance/remittances', fd)
+                // refresh summary and list
+                try{ const s = await apiGet('/api/finance/remittances/summary'); setSummary({ totalDeliveredOrders: Number(s?.totalDeliveredOrders||0), totalCancelledOrders: Number(s?.totalCancelledOrders||0), totalCollectedAmount: Number(s?.totalCollectedAmount||0), deliveredToCompany: Number(s?.deliveredToCompany||0), pendingToCompany: Number(s?.pendingToCompany||0), currency: s?.currency||'' }) }catch{}
+                try{ const rr = await apiGet('/api/finance/remittances'); setRemittances(Array.isArray(rr?.remittances)? rr.remittances:[]) }catch{}
+                setForm({ method:'hand', amount:'', note:'', paidToName:'', paidToId:'', file:null })
+                setConfirmOpen(false)
+                toast.success('Request sent. You will be notified when approved.')
+              }catch(e){ toast.error(e?.message || 'Failed to send request') }
+              finally{ setSubmitting(false) }
+            }}>Confirm & Send</button>
+          </>
+        }
+      >
+        <div style={{display:'grid', gap:8}}>
+          <div className="helper">Please confirm the details before sending:</div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:8}}>
+            <Info label="Amount" value={`${summary.currency||'SAR'} ${Number(form.amount||0).toFixed(2)}`} />
+            <Info label="Method" value={String(form.method||'hand').toUpperCase()} />
+            {form.method==='hand' ? (
+              <Info label="Paid To" value={form.paidToName || 'Company'} />
+            ) : (
+              <Info label="Proof" value={form.file ? (form.file.name || 'Attached') : 'No file'} />
+            )}
+            {form.note ? <Info label="Note" value={form.note} /> : null}
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
