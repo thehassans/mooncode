@@ -63,14 +63,6 @@ export default function Transactions(){
           if (!map.has(key)) map.set(key, raw.toUpperCase() === 'UAE' ? 'UAE' : raw)
         }
 
-        function Info({ label, value }){
-          return (
-            <div className="panel" style={{ padding:10, borderRadius:10 }}>
-              <div className="helper" style={{ fontSize:12 }}>{label}</div>
-              <div style={{ fontWeight:700 }}>{value}</div>
-            </div>
-          )
-        }
 
   // Manager summary for Pay to Company
   async function refreshMgrSummary(){
@@ -849,6 +841,15 @@ export default function Transactions(){
           </div>
         )
       })()}
+    </div>
+  )
+}
+
+function Info({ label, value }){
+  return (
+    <div className="panel" style={{ padding:10, borderRadius:10 }}>
+      <div className="helper" style={{ fontSize:12 }}>{label}</div>
+      <div style={{ fontWeight:700 }}>{value}</div>
     </div>
   )
 }
