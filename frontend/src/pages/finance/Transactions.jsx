@@ -26,10 +26,9 @@ export default function Transactions(){
   const [detailModalFor, setDetailModalFor] = useState('')
   const [isMobile, setIsMobile] = useState(false)
   const [acceptModal, setAcceptModal] = useState(null)
-  const [managerSummary, setManagerSummary] = useState({ totalCollected:0, deliveredToCompany:0, pendingToCompany:0, currency:'' })
-  const [payModal, setPayModal] = useState(false)
-  const [payForm, setPayForm] = useState({ method:'hand', amount:'', note:'', file:null })
-  const [submitting, setSubmitting] = useState(false)
+  const [managerRemits, setManagerRemits] = useState([])
+  const [payModalOpen, setPayModalOpen] = useState(false)
+  const [payForm, setPayForm] = useState({ amount:'', method:'hand', file:null, note:'' })
 
   useEffect(()=>{ /* initial no-op */ },[])
   useEffect(()=>{
@@ -90,6 +89,23 @@ export default function Transactions(){
             if (alive) setDriverRemits(filteredRemits)
           }).catch(()=> { if (alive) setDriverRemits([]) })
 
+        const loadMgrRemits = (async ()=>{
+          try{
+            if (role!=='manager' && role!=='user') { if (alive) setManagerRemits([]); return }
+            const q = new URLSearchParams(); if (country) q.set('country', country); q.set('limit','200');
+            let page=1, more=true, acc=[]
+            while(more && page<=10){
+              q.set('page', String(page))
+              const r = await apiGet(`/api/finance/manager-remittances?${q.toString()}`)
+              const arr = Array.isArray(r?.remittances) ? r.remittances : []
+              acc = acc.concat(arr)
+              more = !!r?.hasMore
+              page += 1
+            }
+            if (alive) setManagerRemits(acc)
+          }catch{ if (alive) setManagerRemits([]) }
+        })()
+
         const loadDelivered = (async ()=>{
           let page = 1, hasMore = true, acc = []
           while (hasMore && page <= 10) {
@@ -131,19 +147,6 @@ export default function Transactions(){
     return () => { alive = false }
   }, [country, role])
 
-  // Load manager summary if manager
-  useEffect(()=>{
-    if (role !== 'manager') return
-    let alive = true
-    ;(async()=>{
-      try{
-        const r = await apiGet('/api/finance/manager-remittances/summary')
-        if (alive) setManagerSummary({ totalCollected: Number(r?.totalCollected||0), deliveredToCompany: Number(r?.deliveredToCompany||0), pendingToCompany: Number(r?.pendingToCompany||0), currency: r?.currency||'' })
-      }catch{}
-    })()
-    return ()=>{ alive=false }
-  }, [role])
-
   // Live updates: refresh remittances on create/accept/reject
   useEffect(()=>{
     let socket
@@ -154,11 +157,18 @@ export default function Transactions(){
       socket.on('remittance.created', onRemit)
       socket.on('remittance.accepted', onRemit)
       socket.on('remittance.rejected', onRemit)
+      const onMgr = async ()=>{ try{ await refreshManagerRemits() }catch{} }
+      socket.on('mgrRemit.created', onMgr)
+      socket.on('mgrRemit.accepted', onMgr)
+      socket.on('mgrRemit.rejected', onMgr)
     }catch{}
     return ()=>{
       try{ socket && socket.off('remittance.created') }catch{}
       try{ socket && socket.off('remittance.accepted') }catch{}
       try{ socket && socket.off('remittance.rejected') }catch{}
+      try{ socket && socket.off('mgrRemit.created') }catch{}
+      try{ socket && socket.off('mgrRemit.accepted') }catch{}
+      try{ socket && socket.off('mgrRemit.rejected') }catch{}
       try{ socket && socket.disconnect() }catch{}
     }
   }, [])
@@ -170,6 +180,14 @@ export default function Transactions(){
       const allRemits = Array.isArray(remitResp?.remittances) ? remitResp.remittances : []
       const filteredRemits = allRemits.filter(r => String(r?.country||'').trim().toLowerCase() === String(country).trim().toLowerCase())
       setDriverRemits(filteredRemits)
+    }catch{}
+  }
+  async function refreshManagerRemits(){
+    try{
+      const q = new URLSearchParams(); if (country) q.set('country', country); q.set('limit','200'); q.set('page','1')
+      const r = await apiGet(`/api/finance/manager-remittances?${q.toString()}`)
+      const arr = Array.isArray(r?.remittances) ? r.remittances : []
+      setManagerRemits(arr)
     }catch{}
   }
   async function acceptRemit(id){ try{ await apiPost(`/api/finance/remittances/${id}/accept`,{}); await refreshRemittances(); toast.success('Remittance accepted') }catch(e){ toast.error(e?.message||'Failed to accept') } }
@@ -346,6 +364,45 @@ export default function Transactions(){
     return arr
   }, [drivers, driverStats, driverAcceptedSum, openAssignedByDriver, totalAssignedByDriver, returnedByDriver, cancelledByDriver, sortBy, sortDir])
 
+  // Manager pending to company (for current country)
+  const mgrFromDrivers = useMemo(()=>{
+    try{
+      const mine = driverRemits.filter(r => String(r?.status||'').toLowerCase()==='accepted')
+        .filter(r => String(r?.manager?._id || r?.manager || '') === String(me?._id||me?.id||''))
+        .filter(r => String(r?.country||'').trim().toLowerCase() === String(country||'').trim().toLowerCase())
+      return mine.reduce((s,r)=> s + Number(r?.amount||0), 0)
+    }catch{ return 0 }
+  }, [driverRemits, me, country])
+  const mgrSentToCompany = useMemo(()=>{
+    try{
+      const mine = managerRemits.filter(m => String(m?.status||'').toLowerCase()==='accepted')
+        .filter(m => String(m?.manager?._id || m?.manager || '') === String(me?._id||me?.id||''))
+        .filter(m => String(m?.country||'').trim().toLowerCase() === String(country||'').trim().toLowerCase())
+      return mine.reduce((s,m)=> s + Number(m?.amount||0), 0)
+    }catch{ return 0 }
+  }, [managerRemits, me, country])
+  const mgrPendingToCompany = Math.max(0, (mgrFromDrivers||0) - (mgrSentToCompany||0))
+
+  async function submitManagerRemit(){
+    try{
+      const amt = Number(payForm.amount)
+      if (!Number.isFinite(amt) || amt <= 0) { toast.error('Enter valid amount'); return }
+      if (amt > mgrPendingToCompany) { toast.warn('Amount exceeds pending to company'); return }
+      if (String(payForm.method||'hand').toLowerCase()==='transfer' && !payForm.file){ toast.error('Attach proof image for transfer'); return }
+      const fd = new FormData()
+      fd.append('amount', String(amt))
+      if (country) fd.append('country', country)
+      fd.append('method', String(payForm.method||'hand'))
+      if (payForm.note) fd.append('note', String(payForm.note))
+      if (payForm.file) fd.append('receipt', payForm.file)
+      await apiPost('/api/finance/manager-remittances', fd)
+      toast.success('Request sent to company')
+      setPayModalOpen(false)
+      setPayForm({ amount:'', method:'hand', file:null, note:'' })
+      await refreshManagerRemits()
+    }catch(e){ toast.error(e?.message||'Failed to send') }
+  }
+
   const totals = useMemo(()=>{
     let delivered=0, collected=0, remitted=0, pending=0, openA=0, totalA=0
     for (const r of rows){
@@ -416,6 +473,51 @@ export default function Transactions(){
                   <button className="btn success" onClick={async()=>{ const id=String(acceptModal?._id||''); await acceptRemit(id); setAcceptModal(null) }}>Accept</button>
                 </>
               )}
+
+      {payModalOpen && (
+        <Modal
+          title="Pay to Company"
+          open={payModalOpen}
+          onClose={()=> setPayModalOpen(false)}
+          footer={
+            <>
+              <button className="btn secondary" onClick={()=> setPayModalOpen(false)}>Cancel</button>
+              <button className="btn success" onClick={submitManagerRemit}>Confirm & Send</button>
+            </>
+          }
+        >
+          <div className="section" style={{ display:'grid', gap:10 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:10 }}>
+              <div>
+                <div className="label">Amount ({ccy})</div>
+                <input className="input" type="number" min="0" step="0.01" value={payForm.amount} onChange={e=> setPayForm(f=>({ ...f, amount: e.target.value }))} />
+              </div>
+              <div>
+                <div className="label">Method</div>
+                <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+                  <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer'}}>
+                    <input type="radio" name="mgr-method" value="hand" checked={payForm.method==='hand'} onChange={()=> setPayForm(f=>({ ...f, method:'hand' }))} /> Hand
+                  </label>
+                  <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer'}}>
+                    <input type="radio" name="mgr-method" value="transfer" checked={payForm.method==='transfer'} onChange={()=> setPayForm(f=>({ ...f, method:'transfer' }))} /> Transfer
+                  </label>
+                </div>
+              </div>
+              <div>
+                <div className="label">Note (optional)</div>
+                <input className="input" value={payForm.note} onChange={e=> setPayForm(f=>({ ...f, note:e.target.value }))} />
+              </div>
+              {payForm.method==='transfer' && (
+                <div>
+                  <div className="label">Upload Proof (image)</div>
+                  <input className="input" type="file" accept="image/*" onChange={e=> setPayForm(f=>({ ...f, file: (e.target.files && e.target.files[0]) || null }))} />
+                </div>
+              )}
+            </div>
+            <div className="helper">Pending to Company: {ccy} {num(mgrPendingToCompany)}</div>
+          </div>
+        </Modal>
+      )}
             </>
           }
         >
@@ -440,19 +542,6 @@ export default function Transactions(){
       )}
       </div>
       {err && <div className="error">{err}</div>}
-
-      {/* Manager Summary & Pay to Company */}
-      {role==='manager' && (
-        <div className="card" style={{ display:'grid', gap:10 }}>
-          <div className="card-header"><div className="card-title">Manager Summary</div></div>
-          <div className="section" style={{ display:'flex', gap:12, flexWrap:'wrap', alignItems:'center' }}>
-            <span className="badge">Total Collected from Drivers: {managerSummary.currency} {num(managerSummary.totalCollected)}</span>
-            <span className="badge success">Delivered to Company: {managerSummary.currency} {num(managerSummary.deliveredToCompany)}</span>
-            <span className="badge warning">Pending to Company: {managerSummary.currency} {num(managerSummary.pendingToCompany)}</span>
-            <button className="btn" onClick={()=>{ setPayForm({ method:'hand', amount:managerSummary.pendingToCompany.toFixed(2), note:'', file:null }); setPayModal(true) }} disabled={managerSummary.pendingToCompany<=0}>Pay to Company</button>
-          </div>
-        </div>
-      )}
 
       <div className="card" style={{ display: 'grid', gap: 10 }}>
         <div className="card-header"><div className="card-title">Filters</div></div>
@@ -479,6 +568,14 @@ export default function Transactions(){
           </select>
           <button className="btn" onClick={exportCsv}>Export CSV</button>
         </div>
+        {(role==='manager') && (
+          <div className="section" style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+            <span className="badge" title="Accepted from drivers" style={{ borderColor:'#22c55e', color:'#16a34a' }}>From Drivers: {ccy} {num(mgrFromDrivers)}</span>
+            <span className="badge" title="Sent to company" style={{ borderColor:'#22c55e', color:'#16a34a' }}>Sent to Company: {ccy} {num(mgrSentToCompany)}</span>
+            <span className="badge warning" title="Pending to company">Pending to Company: {ccy} {num(mgrPendingToCompany)}</span>
+            <button className="btn" disabled={!country || mgrPendingToCompany<=0} onClick={()=>{ setPayForm(f=>({ ...f, amount: mgrPendingToCompany.toFixed(2), method:'hand', note:'', file:null })); setPayModalOpen(true) }}>Pay to Company</button>
+          </div>
+        )}
       </div>
 
       {/* Drivers table */}
@@ -755,72 +852,6 @@ export default function Transactions(){
           </div>
         )
       })()}
-
-      {/* Pay to Company Modal (Manager) */}
-      {payModal && role==='manager' && (
-        <Modal
-          title="Pay to Company"
-          open={payModal}
-          onClose={()=> setPayModal(false)}
-          footer={
-            <>
-              <button className="btn secondary" onClick={()=> setPayModal(false)} disabled={submitting}>Cancel</button>
-              <button className="btn success" disabled={submitting} onClick={async()=>{
-                const amt = Number(payForm.amount)
-                if (!payForm.amount){ toast.error('Enter amount'); return }
-                if (Number.isNaN(amt) || amt<=0){ toast.error('Enter a valid amount'); return }
-                if (amt > managerSummary.pendingToCompany){ toast.warn('Amount exceeds pending to company'); return }
-                if (payForm.method==='transfer' && !payForm.file){ toast.error('Please attach a proof image for transfer method'); return }
-                setSubmitting(true)
-                try{
-                  const fd = new FormData()
-                  fd.append('amount', String(amt))
-                  fd.append('method', payForm.method)
-                  if (payForm.note) fd.append('note', payForm.note)
-                  if (payForm.method==='transfer' && payForm.file) fd.append('receipt', payForm.file)
-                  const r = await fetch(`${API_BASE}/api/finance/manager-remittances`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')||''}` },
-                    body: fd
-                  })
-                  if (!r.ok) throw new Error((await r.json())?.message || 'Failed')
-                  // Refresh summary
-                  try{ const s = await apiGet('/api/finance/manager-remittances/summary'); setManagerSummary({ totalCollected: Number(s?.totalCollected||0), deliveredToCompany: Number(s?.deliveredToCompany||0), pendingToCompany: Number(s?.pendingToCompany||0), currency: s?.currency||'' }) }catch{}
-                  setPayForm({ method:'hand', amount:'', note:'', file:null })
-                  setPayModal(false)
-                  toast.success('Request sent to company. You will be notified when approved.')
-                }catch(e){ toast.error(e?.message || 'Failed to send request') }
-                finally{ setSubmitting(false) }
-              }}>Confirm & Send</button>
-            </>
-          }
-        >
-          <div style={{display:'grid', gap:10}}>
-            <div style={{display:'flex', gap:12, flexWrap:'wrap'}}>
-              <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer'}}>
-                <input type="radio" name="payMethod" value="hand" checked={payForm.method==='hand'} onChange={()=> setPayForm(f=>({...f, method:'hand'}))} /> Pay by hand
-              </label>
-              <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer'}}>
-                <input type="radio" name="payMethod" value="transfer" checked={payForm.method==='transfer'} onChange={()=> setPayForm(f=>({...f, method:'transfer'}))} /> Transfer to company
-              </label>
-            </div>
-            <div>
-              <label className="input-label">Amount ({managerSummary.currency})</label>
-              <input className="input" type="number" min="0" step="0.01" value={payForm.amount} onChange={e=> setPayForm(f=>({...f, amount:e.target.value}))} placeholder={`Max ${managerSummary.pendingToCompany.toFixed(2)}`} />
-            </div>
-            {payForm.method==='transfer' && (
-              <div>
-                <label className="input-label">Upload Proof (image)</label>
-                <input className="input" type="file" accept="image/*" onChange={e=> setPayForm(f=>({...f, file: (e.target.files && e.target.files[0]) || null}))} />
-              </div>
-            )}
-            <div>
-              <label className="input-label">Note (optional)</label>
-              <textarea className="input" rows={2} value={payForm.note} onChange={e=> setPayForm(f=>({...f, note:e.target.value}))} />
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   )
 }

@@ -1,77 +1,72 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { API_BASE, apiGet, apiPost } from '../../api'
 import { io } from 'socket.io-client'
-import { useNavigate } from 'react-router-dom'
 import Modal from '../../components/Modal.jsx'
 import { useToast } from '../../ui/Toast.jsx'
 
 export default function ManagerFinances(){
-  const navigate = useNavigate()
   const toast = useToast()
-  const [me, setMe] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} } })
-  const [remittances, setRemittances] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [err, setErr] = useState('')
-  const [country, setCountry] = useState('')
   const [countryOptions, setCountryOptions] = useState([])
+  const [country, setCountry] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState('')
+
+  const [driverRemits, setDriverRemits] = useState([]) // accepted driver->manager
+  const [mgrRemits, setMgrRemits] = useState([]) // manager->owner requests of all statuses
   const [acceptModal, setAcceptModal] = useState(null)
-  const [isMobile, setIsMobile] = useState(false)
 
+  // Countries
   useEffect(()=>{
-    let alive = true
-    ;(async()=>{
-      try{ const r = await apiGet('/api/users/me'); if (alive){ setMe(r?.user||{}) } }
-      catch{}
-    })()
-    return ()=>{ alive=false }
-  },[])
-
-  useEffect(()=>{
-    try{
-      const onResize = ()=> setIsMobile(typeof window !== 'undefined' && window.innerWidth < 720)
-      onResize()
-      window.addEventListener('resize', onResize)
-      return ()=> window.removeEventListener('resize', onResize)
-    }catch{}
-  },[])
-
-  // Load country options
-  useEffect(() => {
-    (async () => {
-      try {
+    (async()=>{
+      try{
         const r = await apiGet('/api/orders/options')
         const arr = Array.isArray(r?.countries) ? r.countries : []
         const map = new Map()
-        for (const c of arr){
-          const raw = String(c||'').trim()
-          const key = raw.toLowerCase()
-          if (!map.has(key)) map.set(key, raw.toUpperCase() === 'UAE' ? 'UAE' : raw)
-        }
+        for (const c of arr){ const raw=String(c||'').trim(); const key=raw.toLowerCase(); if(!map.has(key)) map.set(key, raw.toUpperCase()==='UAE'?'UAE':raw) }
         setCountryOptions(Array.from(map.values()))
-      } catch {
-        setCountryOptions([])
-      }
+      }catch{ setCountryOptions([]) }
     })()
-  }, [])
+  },[])
 
-  // Load manager remittances
-  useEffect(() => {
-    let alive = true
-    ;(async () => {
-      try {
-        setLoading(true)
-        const r = await apiGet('/api/finance/manager-remittances?limit=200')
-        if (alive) setRemittances(Array.isArray(r?.remittances) ? r.remittances : [])
-        setErr('')
-      } catch (e) {
-        if (alive) setErr(e?.message || 'Failed to load manager remittances')
-      } finally { if (alive) setLoading(false) }
-    })()
-    return () => { alive = false }
-  }, [])
+  // Load remittances for country
+  async function loadAll(){
+    setLoading(true); setErr('')
+    try{
+      // Driver->Manager accepted remittances, owner scope
+      const dList = []
+      let page=1, hasMore=true
+      while(hasMore && page<=10){
+        const url = `/api/finance/remittances?workspace=1&page=${page}&limit=200`
+        const r = await apiGet(url)
+        const arr = Array.isArray(r?.remittances)? r.remittances: []
+        dList.push(...arr)
+        hasMore = !!r?.hasMore
+        page+=1
+      }
+      const filteredD = dList.filter(x=> String(x?.status||'').toLowerCase()==='accepted')
+        .filter(x=> country? String(x?.country||'').trim().toLowerCase()===String(country).trim().toLowerCase(): true)
+        .filter(x=> (fromDate||toDate) ? dateInRange(x?.acceptedAt||x?.createdAt, fromDate, toDate): true)
+      setDriverRemits(filteredD)
+
+      // Manager->Owner remittances
+      const mList = []
+      page=1; hasMore=true
+      while(hasMore && page<=10){
+        const q = new URLSearchParams(); if(country) q.set('country', country); q.set('page', String(page)); q.set('limit','200')
+        const r = await apiGet(`/api/finance/manager-remittances?${q.toString()}`)
+        const arr = Array.isArray(r?.remittances)? r.remittances: []
+        mList.push(...arr)
+        hasMore = !!r?.hasMore
+        page+=1
+      }
+      const filteredM = mList.filter(x=> (fromDate||toDate) ? dateInRange(x?.acceptedAt||x?.createdAt, fromDate, toDate): true)
+      setMgrRemits(filteredM)
+    }catch(e){ setErr(e?.message||'Failed to load data') }
+    finally{ setLoading(false) }
+  }
+  useEffect(()=>{ if(country) loadAll() }, [country, fromDate, toDate])
 
   // Live updates
   useEffect(()=>{
@@ -79,275 +74,133 @@ export default function ManagerFinances(){
     try{
       const token = localStorage.getItem('token')||''
       socket = io(API_BASE || undefined, { path:'/socket.io', transports:['polling'], upgrade:false, withCredentials:true, auth:{ token } })
-      const onRemit = async ()=>{ try{ await refreshRemittances() }catch{} }
-      socket.on('manager-remittance.created', onRemit)
-      socket.on('manager-remittance.accepted', onRemit)
-      socket.on('manager-remittance.rejected', onRemit)
+      const onChange = ()=>{ loadAll().catch(()=>{}) }
+      socket.on('remittance.accepted', onChange)
+      socket.on('mgrRemit.created', onChange)
+      socket.on('mgrRemit.accepted', onChange)
+      socket.on('mgrRemit.rejected', onChange)
     }catch{}
-    return ()=>{
-      try{ socket && socket.off('manager-remittance.created') }catch{}
-      try{ socket && socket.off('manager-remittance.accepted') }catch{}
-      try{ socket && socket.off('manager-remittance.rejected') }catch{}
-      try{ socket && socket.disconnect() }catch{}
+    return ()=>{ try{ socket && socket.disconnect() }catch{} }
+  }, [country, fromDate, toDate])
+
+  // Aggregations per manager
+  const rows = useMemo(()=>{
+    const by = new Map()
+    for(const r of driverRemits){
+      const mid = String(r?.manager?._id || r?.manager || '')
+      if(!mid) continue
+      if(!by.has(mid)) by.set(mid, { id: mid, manager: r.manager, country: r.country||country||'', fromDrivers:0, sentToCompany:0 })
+      by.get(mid).fromDrivers += Number(r?.amount||0)
     }
-  }, [])
-
-  async function refreshRemittances(){
-    try{
-      const r = await apiGet('/api/finance/manager-remittances?limit=200')
-      setRemittances(Array.isArray(r?.remittances) ? r.remittances : [])
-    }catch{}
-  }
-
-  async function acceptRemit(id){ 
-    try{ 
-      await apiPost(`/api/finance/manager-remittances/${id}/accept`,{}); 
-      await refreshRemittances(); 
-      toast.success('Manager remittance accepted') 
-    }catch(e){ toast.error(e?.message||'Failed to accept') } 
-  }
-  
-  async function rejectRemit(id){ 
-    try{ 
-      await apiPost(`/api/finance/manager-remittances/${id}/reject`,{}); 
-      await refreshRemittances(); 
-      toast.warn('Manager remittance rejected') 
-    }catch(e){ toast.error(e?.message||'Failed to reject') } 
-  }
+    for(const m of mgrRemits){
+      const mid = String(m?.manager?._id || m?.manager || '')
+      if(!mid) continue
+      if(!by.has(mid)) by.set(mid, { id: mid, manager: m.manager, country: m.country||country||'', fromDrivers:0, sentToCompany:0 })
+      if (String(m?.status||'').toLowerCase()==='accepted') by.get(mid).sentToCompany += Number(m?.amount||0)
+    }
+    const out = Array.from(by.values()).map(x=> ({ ...x, pendingToCompany: Math.max(0, (x.fromDrivers||0) - (x.sentToCompany||0)) }))
+    out.sort((a,b)=> (b.pendingToCompany||0) - (a.pendingToCompany||0))
+    return out
+  }, [driverRemits, mgrRemits, country])
 
   function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
   function userName(u){ if (!u) return '-'; return `${u.firstName||''} ${u.lastName||''}`.trim() || (u.email||'-') }
-  function dateInRange(d, from, to){ 
-    try{ 
-      if (!d) return false; 
-      const t = new Date(d).getTime(); 
-      if (from){ const f = new Date(from).setHours(0,0,0,0); if (t < f) return false } 
-      if (to){ const tt = new Date(to).setHours(23,59,59,999); if (t > tt) return false } 
-      return true 
-    }catch{ return true } 
-  }
+  function dateInRange(d, from, to){ try{ if (!d) return false; const t = new Date(d).getTime(); if (from){ const f = new Date(from).setHours(0,0,0,0); if (t < f) return false } if (to){ const tt = new Date(to).setHours(23,59,59,999); if (t > tt) return false } return true }catch{ return true } }
 
-  const filteredRows = useMemo(()=>{
-    let arr = remittances
-    if (country) arr = arr.filter(r => String(r?.country||'').trim().toLowerCase() === String(country).trim().toLowerCase())
-    if (statusFilter) arr = arr.filter(r => String(r?.status||'').toLowerCase() === statusFilter.toLowerCase())
-    if (fromDate || toDate) arr = arr.filter(r => dateInRange(r?.createdAt, fromDate, toDate))
-    return arr
-  }, [remittances, country, statusFilter, fromDate, toDate])
+  async function acceptManagerRemit(id){ try{ await apiPost(`/api/finance/manager-remittances/${id}/accept`,{}); toast.success('Accepted'); await loadAll() }catch(e){ toast.error(e?.message||'Failed to accept') } }
+  async function rejectManagerRemit(id){ try{ await apiPost(`/api/finance/manager-remittances/${id}/reject`,{}); toast.warn('Rejected'); await loadAll() }catch(e){ toast.error(e?.message||'Failed to reject') } }
 
-  const totals = useMemo(()=>{
-    let total=0, pending=0, accepted=0, rejected=0
-    for (const r of filteredRows){
-      const amt = Number(r.amount||0)
-      total += amt
-      if (String(r.status||'').toLowerCase() === 'pending') pending += amt
-      if (String(r.status||'').toLowerCase() === 'accepted') accepted += amt
-      if (String(r.status||'').toLowerCase() === 'rejected') rejected += amt
-    }
-    return { total, pending, accepted, rejected }
-  }, [filteredRows])
-
-  function exportCsv(){
-    try{
-      const header = ['Manager','Country','Amount','Currency','Status','Method','Created','Accepted']
-      const lines = [header.join(',')]
-      for (const r of filteredRows){
-        lines.push([
-          userName(r.manager),
-          r.country||'',
-          r.amount||0,
-          r.currency||'',
-          r.status||'',
-          r.method||'',
-          r.createdAt ? new Date(r.createdAt).toLocaleString() : '',
-          r.acceptedAt ? new Date(r.acceptedAt).toLocaleString() : '',
-        ].map(v => typeof v==='string' && v.includes(',') ? `"${v.replace(/"/g,'""')}"` : v).join(','))
-      }
-      const blob = new Blob([lines.join('\n')], { type:'text/csv;charset=utf-8;' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `manager-finances-${country||'all'}.csv`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
-    }catch{}
-  }
+  const pendingList = useMemo(()=> mgrRemits.filter(m=> String(m?.status||'').toLowerCase()==='pending'), [mgrRemits])
 
   return (
-    <div className="section" style={{ display: 'grid', gap: 12 }}>
-      <div className="page-header">
-        <div>
-          <div className="page-title gradient heading-purple">Manager Finances</div>
-          <div className="page-subtitle">Monitor manager remittances to company</div>
-        </div>
-      </div>
-      {err && <div className="error">{err}</div>}
-
-      <div className="card" style={{ display: 'grid', gap: 10 }}>
-        <div className="card-header"><div className="card-title">Filters</div></div>
-        <div className="section" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
-          <select className="input" value={country} onChange={(e)=> setCountry(e.target.value)}>
-            <option value="">All Countries</option>
-            {countryOptions.map(c => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-          <select className="input" value={statusFilter} onChange={(e)=> setStatusFilter(e.target.value)}>
-            <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="accepted">Accepted</option>
-            <option value="rejected">Rejected</option>
-          </select>
-          <input className="input" type="date" value={fromDate} onChange={e=> setFromDate(e.target.value)} placeholder="From Date" />
-          <input className="input" type="date" value={toDate} onChange={e=> setToDate(e.target.value)} placeholder="To Date" />
-          <button className="btn" onClick={exportCsv}>Export CSV</button>
-        </div>
+    <div className="content" style={{ display:'grid', gap:16, padding:16 }}>
+      <div style={{ display:'grid', gap:6 }}>
+        <div className="page-title gradient heading-blue">Manager Finances</div>
+        <div className="page-subtitle">Total received from drivers and manager remittances to company</div>
       </div>
 
-      {/* Summary */}
       <div className="card" style={{ display:'grid', gap:10 }}>
-        <div className="card-header"><div className="card-title">Summary</div></div>
-        <div className="section" style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-          <span className="badge">Total: {num(totals.total)}</span>
-          <span className="badge warning">Pending: {num(totals.pending)}</span>
-          <span className="badge success">Accepted: {num(totals.accepted)}</span>
-          <span className="badge danger">Rejected: {num(totals.rejected)}</span>
+        <div className="card-header"><div className="card-title">Filters</div></div>
+        <div className="section" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:8 }}>
+          <select className="input" value={country} onChange={e=> setCountry(e.target.value)}>
+            <option value=''>Select Country</option>
+            {countryOptions.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <input className="input" type="date" value={fromDate} onChange={e=> setFromDate(e.target.value)} />
+          <input className="input" type="date" value={toDate} onChange={e=> setToDate(e.target.value)} />
         </div>
       </div>
 
-      {/* Table */}
       <div className="card">
-        <div style={{ overflowX: 'auto' }}>
-          {!isMobile && (
-          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-            <thead>
-              <tr>
-                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)' }}>Manager</th>
-                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#6366f1' }}>Country</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e' }}>Amount</th>
-                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#f59e0b' }}>Status</th>
-                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)' }}>Method</th>
-                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)' }}>Created</th>
-                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)' }}>Accepted</th>
-                <th style={{ padding: '10px 12px', textAlign:'left' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                Array.from({length:5}).map((_,i)=> (
-                  <tr key={`sk${i}`}>
-                    <td colSpan={8} style={{ padding:'10px 12px' }}>
-                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+          <div style={{ fontWeight: 700 }}>Managers {country ? `in ${country}` : ''}</div>
+        </div>
+        <div style={{ overflowX:'auto' }}>
+          {loading ? (
+            <div className="section">Loading…</div>
+          ) : err ? (
+            <div className="section error">{err}</div>
+          ) : rows.length===0 ? (
+            <div className="section">No data</div>
+          ) : (
+            <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:0, border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
+              <thead>
+                <tr>
+                  <th style={{ padding:'10px 12px', textAlign:'left' }}>Manager</th>
+                  <th style={{ padding:'10px 12px', textAlign:'left' }}>Country</th>
+                  <th style={{ padding:'10px 12px', textAlign:'right', color:'#22c55e' }}>From Drivers</th>
+                  <th style={{ padding:'10px 12px', textAlign:'right', color:'#22c55e' }}>Sent to Company</th>
+                  <th style={{ padding:'10px 12px', textAlign:'right', color:'#ef4444' }}>Pending to Company</th>
+                  <th style={{ padding:'10px 12px', textAlign:'left' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, idx)=> (
+                  <tr key={r.id} style={{ borderTop:'1px solid var(--border)', background: idx % 2 ? 'transparent' : 'var(--panel)' }}>
+                    <td style={{ padding:'10px 12px' }}>
+                      <div style={{ fontWeight:700 }}>{userName(r.manager)}</div>
+                      <div className="helper">{r.manager?.email||''}</div>
+                    </td>
+                    <td style={{ padding:'10px 12px' }}>{r.country||country||'-'}</td>
+                    <td style={{ padding:'10px 12px', textAlign:'right', color:'#22c55e', fontWeight:800 }}>{num(r.fromDrivers)}</td>
+                    <td style={{ padding:'10px 12px', textAlign:'right', color:'#22c55e', fontWeight:800 }}>{num(r.sentToCompany)}</td>
+                    <td style={{ padding:'10px 12px', textAlign:'right', color:'#ef4444', fontWeight:800 }}>{num(r.pendingToCompany)}</td>
+                    <td style={{ padding:'10px 12px' }}>
+                      {(()=>{
+                        const p = pendingList.find(x=> String(x?.manager?._id||x?.manager||'')===r.id)
+                        if (!p) return <span className="helper">—</span>
+                        return <button className="btn" onClick={()=> setAcceptModal(p)}>Accept Pending</button>
+                      })()}
                     </td>
                   </tr>
-                ))
-              ) : filteredRows.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: '10px 12px', opacity: 0.7 }}>No manager remittances found</td></tr>
-              ) : (
-                filteredRows.map((r, idx) => {
-                  const statusColor = r.status==='accepted' ? '#22c55e' : r.status==='rejected' ? '#ef4444' : '#f59e0b'
-                  return (
-                    <tr key={String(r._id)} style={{ borderTop: '1px solid var(--border)', background: idx % 2 ? 'transparent' : 'var(--panel)' }}>
-                      <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
-                        <span style={{ fontWeight:700 }}>{userName(r.manager)}</span>
-                        <div className="helper">{r.manager?.email || ''}</div>
-                      </td>
-                      <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1', fontWeight:700 }}>{r.country||'-'}</td>
-                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e', fontWeight:800 }}>
-                        {r.currency||''} {num(r.amount)}
-                      </td>
-                      <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
-                        <span className="chip" style={{border:`1px solid ${statusColor}`, color:statusColor, background:'transparent'}}>{String(r.status||'').toUpperCase()}</span>
-                      </td>
-                      <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>{String(r.method||'hand').toUpperCase()}</td>
-                      <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>{r.createdAt ? new Date(r.createdAt).toLocaleString() : '-'}</td>
-                      <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>{r.acceptedAt ? new Date(r.acceptedAt).toLocaleString() : '-'}</td>
-                      <td style={{ padding: '10px 12px' }}>
-                        {r.status==='pending' ? (
-                          <button className="btn small" onClick={()=> setAcceptModal(r)}>Accept</button>
-                        ) : (
-                          <button className="btn secondary small" onClick={()=> setAcceptModal(r)}>Details</button>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-            <tfoot>
-              <tr style={{ borderTop:'2px solid var(--border)', background:'var(--panel)' }}>
-                <td style={{ padding:'10px 12px', fontWeight:800 }} colSpan={2}>Totals</td>
-                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#22c55e' }}>{num(totals.total)}</td>
-                <td colSpan={5}></td>
-              </tr>
-            </tfoot>
-          </table>
-          )}
-          {isMobile && (
-            <div style={{ display:'grid', gap:8 }}>
-              {loading ? (
-                <div className="helper">Loading…</div>
-              ) : filteredRows.length===0 ? (
-                <div className="helper">No manager remittances found</div>
-              ) : filteredRows.map(r => {
-                const statusColor = r.status==='accepted' ? '#22c55e' : r.status==='rejected' ? '#ef4444' : '#f59e0b'
-                return (
-                  <div key={String(r._id)} className="card" style={{ display:'grid', gap:8, padding:10 }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                      <div style={{ fontWeight:800 }}>{userName(r.manager)}</div>
-                      <span className="chip" style={{border:`1px solid ${statusColor}`, color:statusColor, background:'transparent'}}>{String(r.status||'').toUpperCase()}</span>
-                    </div>
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8 }}>
-                      <span style={{ color:'#6366f1', fontWeight:700 }}>Country: {r.country||'-'}</span>
-                      <span style={{ color:'#22c55e', fontWeight:800 }}>Amount: {r.currency||''} {num(r.amount)}</span>
-                      <span>Method: {String(r.method||'hand').toUpperCase()}</span>
-                      <span>Created: {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '-'}</span>
-                    </div>
-                    <div style={{display:'flex', gap:6}}>
-                      {r.status==='pending' && (
-                        <button className="btn small" onClick={()=> setAcceptModal(r)}>Accept</button>
-                      )}
-                      <button className="btn secondary small" onClick={()=> setAcceptModal(r)}>Details</button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       </div>
 
-      {/* Accept/Details Modal */}
       {acceptModal && (
         <Modal
-          title={acceptModal.status==='pending' ? 'Accept Manager Remittance' : 'Manager Remittance Details'}
+          title="Accept Manager Remittance"
           open={!!acceptModal}
           onClose={()=> setAcceptModal(null)}
           footer={
             <>
               <button className="btn secondary" onClick={()=> setAcceptModal(null)}>Close</button>
-              {acceptModal.status==='pending' && (
-                <>
-                  <button className="btn danger" onClick={async()=>{ const id=String(acceptModal?._id||''); await rejectRemit(id); setAcceptModal(null) }}>Reject</button>
-                  <button className="btn success" onClick={async()=>{ const id=String(acceptModal?._id||''); await acceptRemit(id); setAcceptModal(null) }}>Accept</button>
-                </>
-              )}
+              <button className="btn danger" onClick={async()=>{ const id=String(acceptModal?._id||''); await rejectManagerRemit(id); setAcceptModal(null) }}>Reject</button>
+              <button className="btn success" onClick={async()=>{ const id=String(acceptModal?._id||''); await acceptManagerRemit(id); setAcceptModal(null) }}>Accept</button>
             </>
           }
         >
           <div style={{display:'grid', gap:8}}>
             <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:8}}>
               <Info label="Manager" value={userName(acceptModal?.manager)} />
-              <Info label="Country" value={acceptModal?.country||'-'} />
+              <Info label="Country" value={acceptModal?.country||country||'-'} />
               <Info label="Amount" value={`${acceptModal?.currency||''} ${Number(acceptModal?.amount||0).toFixed(2)}`} />
               <Info label="Method" value={String(acceptModal?.method||'hand').toUpperCase()} />
-              {acceptModal?.paidToName ? <Info label="Paid To" value={acceptModal?.paidToName} /> : null}
               {acceptModal?.note ? <Info label="Note" value={acceptModal?.note} /> : null}
-              <Info label="Status" value={String(acceptModal?.status||'').toUpperCase()} />
               <Info label="Created" value={acceptModal?.createdAt ? new Date(acceptModal.createdAt).toLocaleString() : '-'} />
-              {acceptModal?.acceptedAt ? <Info label="Accepted" value={new Date(acceptModal.acceptedAt).toLocaleString()} /> : null}
             </div>
             {acceptModal?.receiptPath ? (
               <div>

@@ -54,7 +54,6 @@ import Shipments from './pages/shipments/Shipments.jsx'
 import Reports from './pages/user/Reports.jsx'
 import Expenses from './pages/finance/Expenses.jsx'
 import Transactions from './pages/finance/Transactions.jsx'
-import ManagerFinances from './pages/user/ManagerFinances.jsx'
 import Support from './pages/support/Support.jsx'
 import AgentMe from './pages/agent/Me.jsx'
 import PrintLabel from './pages/orders/PrintLabel.jsx'
@@ -69,6 +68,7 @@ import SiteAbout from './pages/site/About.jsx'
 import SiteContact from './pages/site/Contact.jsx'
 import SiteCategories from './pages/site/Categories.jsx'
 import UserFinances from './pages/user/Finances.jsx'
+import ManagerFinancesPage from './pages/user/ManagerFinances.jsx'
 import CurrencySettings from './pages/user/CurrencySettings.jsx'
 
 import AnalyticsDashboard from './components/analytics/AnalyticsDashboard'
@@ -339,8 +339,8 @@ export default function App() {
         <Route path="insights" element={<AnalyticsDashboard />} />
         <Route path="expense" element={<Expenses />} />
         <Route path="transactions" element={<Transactions />} />
-        <Route path="manager-finances" element={<ManagerFinances />} />
         <Route path="finances" element={<UserFinances />} />
+        <Route path="manager-finances" element={<ManagerFinancesPage />} />
         <Route path="currency" element={<CurrencySettings />} />
         <Route path="api-setup" element={<UserAPISetup />} />
         <Route path="error-logs" element={<ErrorLogs />} />
