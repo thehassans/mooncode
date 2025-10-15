@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
-import mongoose from 'mongoose';
 import User from '../models/User.js';
 import rateLimit from '../middleware/rateLimit.js';
 
@@ -33,14 +32,6 @@ router.post('/seed-admin-login', async (req, res) => {
 
 router.post('/login', rateLimit({ windowMs: 60000, max: 20 }), async (req, res) => {
   try{
-    // Return a clearer error if DB is not available instead of a generic 500
-    try{
-      const rs = mongoose.connection?.readyState ?? 0 // 0=disconnected,1=connected,2=connecting,3=disconnecting
-      if (rs !== 1){
-        return res.status(503).json({ message: 'Service temporarily unavailable. Please try again shortly.' })
-      }
-    }catch{}
-
     let { email, password, loginType } = req.body || {};
     const e = String(email || '').trim().toLowerCase();
     const p = String(password || '').trim();

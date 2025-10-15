@@ -32,7 +32,6 @@ console.log('[api] ENV', {
   ENABLE_WA: process.env.ENABLE_WA,
   MONGO_URI_SET: Boolean(process.env.MONGO_URI),
 })
-try{ console.log('[api] Runtime', { node: process.versions?.node, platform: process.platform, arch: process.arch }) }catch{}
 
 // Prevent process exit on unexpected async errors
 process.on('uncaughtException', (err) => {
@@ -66,14 +65,12 @@ const envOrigins = (process.env.CORS_ORIGIN || '*')
   .filter(Boolean)
 const corsOptions = {
   origin: (origin, cb) => {
-    // allow server-to-server or same-origin (no Origin header)
-    if (!origin) return cb(null, true)
+    if (!origin) return cb(null, true) // allow non-browser clients
     const allowed = envOrigins
     const isWildcard = allowed.includes('*')
     const isListed = allowed.includes(origin)
     if (isWildcard || isListed) return cb(null, true)
-    // Do not error (which becomes HTTP 500). Deny CORS gracefully.
-    return cb(null, false)
+    return cb(new Error('Not allowed by CORS'))
   },
   credentials: true,
 }
@@ -192,19 +189,6 @@ app.get(['/manifest.webmanifest','/favicon.svg','/favicon.ico'], (req, res, next
   if (fs.existsSync(f)) return res.sendFile(f);
   return next();
 });
-
-// Safe favicon fallback to avoid 500s in environments without built frontend
-app.get('/favicon.ico', (req, res) => {
-  try{
-    if (INDEX_HTML && CLIENT_DIST){
-      const f = path.join(CLIENT_DIST, 'favicon.ico')
-      if (fs.existsSync(f)) return res.sendFile(f)
-    }
-  }catch{}
-  // No favicon available; respond with 204 No Content
-  try{ res.setHeader('Cache-Control', 'public, max-age=86400') }catch{}
-  return res.status(204).end()
-})
 
 // SPA fallback: let client router handle 404s (but do NOT intercept API, Socket.IO, or upload paths)
 app.get('*', (req, res, next) => {
