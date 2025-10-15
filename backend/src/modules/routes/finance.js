@@ -44,26 +44,29 @@ const storage = multer.diskStorage({
   }
 })
 
-// --- Manager Remittances (Manager -> Company/Owner) ---
-// List manager remittances in scope
+// --- Manager Remittances (Manager -> Company Owner) ---
+// List manager remittances (manager: own; owner: workspace)
 router.get('/manager-remittances', auth, allowRoles('user','manager'), async (req, res) => {
   try{
-    const { country = '', manager = '' } = req.query || {}
-    let match = {}
-    if (req.user.role === 'manager') match.manager = req.user.id
-    if (req.user.role === 'user') match.owner = req.user.id
-    if (manager) match.manager = manager
-    if (country) match.country = country
     const page = Math.max(1, Number(req.query.page||1))
     const limit = Math.min(100, Math.max(1, Number(req.query.limit||20)))
     const skip = (page-1) * limit
+    const status = String(req.query.status||'')
+    const country = String(req.query.country||'')
+    const managerParam = String(req.query.manager||'')
+    const start = req.query.start ? new Date(req.query.start) : null
+    const end = req.query.end ? new Date(req.query.end) : null
+    let match = {}
+    if (req.user.role === 'manager') match.manager = req.user.id
+    if (req.user.role === 'user'){
+      match.owner = req.user.id
+      if (managerParam) match.manager = managerParam
+    }
+    if (status) match.status = status
+    if (country) match.country = country
+    if (start || end){ match.createdAt = {}; if (start) match.createdAt.$gte = start; if (end) match.createdAt.$lte = end }
     const total = await ManagerRemit.countDocuments(match)
-    const items = await ManagerRemit
-      .find(match)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate('manager','firstName lastName email country')
+    const items = await ManagerRemit.find(match).sort({ createdAt: -1 }).skip(skip).limit(limit).populate('manager','firstName lastName email country').lean()
     const hasMore = skip + items.length < total
     return res.json({ remittances: items, page, limit, total, hasMore })
   }catch(err){
@@ -71,78 +74,53 @@ router.get('/manager-remittances', auth, allowRoles('user','manager'), async (re
   }
 })
 
-// Manager summary: how much received from drivers vs sent to company (per country)
-router.get('/manager-remittances/summary', auth, allowRoles('manager'), async (req, res) => {
-  try{
-    const { country = '' } = req.query || {}
-    const me = await User.findById(req.user.id).select('createdBy country')
-    const cur = currencyFromCountry(country || me?.country || '')
-    const M = (await import('mongoose')).default
-    const remitRows = await Remittance.aggregate([
-      { $match: { manager: new M.Types.ObjectId(req.user.id), status: 'accepted', ...(country? { country } : {}) } },
-      { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } } } }
-    ])
-    const fromDriversAccepted = remitRows && remitRows[0] ? Number(remitRows[0].total||0) : 0
-    const mgrRows = await ManagerRemit.aggregate([
-      { $match: { manager: new M.Types.ObjectId(req.user.id), status: 'accepted', ...(country? { country } : {}) } },
-      { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } } } }
-    ])
-    const deliveredToCompany = mgrRows && mgrRows[0] ? Number(mgrRows[0].total||0) : 0
-    const pendingToCompany = Math.max(0, fromDriversAccepted - deliveredToCompany)
-    return res.json({ currency: cur, fromDriversAccepted, deliveredToCompany, pendingToCompany })
-  }catch(err){
-    return res.status(500).json({ message: 'Failed to load manager summary' })
-  }
-})
-
 // Create manager remittance (manager -> owner)
 router.post('/manager-remittances', auth, allowRoles('manager'), upload.any(), async (req, res) => {
   try{
-    const { amount, method = 'hand', note = '', paidToName = 'Company', country = '' } = req.body || {}
+    const { amount, method = 'hand', note = '' } = req.body || {}
+    if (amount == null) return res.status(400).json({ message: 'amount is required' })
     const me = await User.findById(req.user.id).select('createdBy country')
-    const ownerId = String(me?.createdBy || '')
+    const ownerId = String(me?.createdBy||'')
     if (!ownerId) return res.status(400).json({ message: 'No workspace owner' })
-    const ctry = String(country||me?.country||'')
-    if (!ctry) return res.status(400).json({ message: 'Country is required' })
-    const currency = currencyFromCountry(ctry)
+    // Compute available: sum(driver->manager accepted) - sum(manager->owner accepted)
     const M = (await import('mongoose')).default
-    const remitRows = await Remittance.aggregate([
-      { $match: { manager: new M.Types.ObjectId(req.user.id), status: 'accepted', country: ctry } },
+    const drvRows = await Remittance.aggregate([
+      { $match: { manager: new M.Types.ObjectId(req.user.id), status: 'accepted' } },
       { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } } } }
     ])
-    const fromDriversAccepted = remitRows && remitRows[0] ? Number(remitRows[0].total||0) : 0
-    const mgrRows = await ManagerRemit.aggregate([
-      { $match: { manager: new M.Types.ObjectId(req.user.id), status: 'accepted', country: ctry } },
+    const fromDrivers = drvRows && drvRows[0] ? Number(drvRows[0].total||0) : 0
+    const manRows = await ManagerRemit.aggregate([
+      { $match: { manager: new M.Types.ObjectId(req.user.id), status: 'accepted' } },
       { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } } } }
     ])
-    const deliveredToCompany = mgrRows && mgrRows[0] ? Number(mgrRows[0].total||0) : 0
-    const pendingToCompany = Math.max(0, fromDriversAccepted - deliveredToCompany)
+    const toCompany = manRows && manRows[0] ? Number(manRows[0].total||0) : 0
+    const pendingToCompany = Math.max(0, fromDrivers - toCompany)
     const amt = Math.max(0, Number(amount||0))
     if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ message: 'Invalid amount' })
     if (amt > pendingToCompany) return res.status(400).json({ message: `Amount exceeds pending. Pending: ${pendingToCompany.toFixed(2)}` })
+    // Proof file (for transfer)
     const files = Array.isArray(req.files) ? req.files : []
     const receiptFile = files.find(f=> ['receipt','proof','screenshot','file','image'].includes(String(f.fieldname||'').toLowerCase())) || files[0]
     const receiptPath = receiptFile ? `/uploads/${receiptFile.filename}` : ''
-    if (String(method||'').toLowerCase() === 'transfer' && !receiptPath){
+    if (String(method||'').toLowerCase()==='transfer' && !receiptPath){
       return res.status(400).json({ message: 'Proof image is required for transfer method' })
     }
     const doc = new ManagerRemit({
       manager: req.user.id,
       owner: ownerId,
-      country: ctry,
-      currency,
+      country: me?.country || '',
+      currency: currencyFromCountry(me?.country || ''),
       amount: amt,
       method: (String(method||'hand').toLowerCase()==='transfer' ? 'transfer' : 'hand'),
-      paidToName: String(paidToName||'Company'),
+      note: note || '',
       receiptPath,
-      note: note||'',
       status: 'pending',
     })
     await doc.save()
     try{ const io = getIO(); io.to(`user:${String(ownerId)}`).emit('managerRemit.created', { id: String(doc._id) }) }catch{}
     return res.status(201).json({ message: 'Remittance submitted', remittance: doc })
   }catch(err){
-    return res.status(500).json({ message: 'Failed to submit manager remittance' })
+    return res.status(500).json({ message: 'Failed to submit remittance' })
   }
 })
 
@@ -161,7 +139,7 @@ router.post('/manager-remittances/:id/accept', auth, allowRoles('user'), async (
     try{ const io = getIO(); io.to(`user:${String(r.manager)}`).emit('managerRemit.accepted', { id: String(r._id) }) }catch{}
     return res.json({ message: 'Remittance accepted', remittance: r })
   }catch(err){
-    return res.status(500).json({ message: 'Failed to accept remittance' })
+    return res.status(500).json({ message: 'Failed to accept manager remittance' })
   }
 })
 
@@ -180,10 +158,39 @@ router.post('/manager-remittances/:id/reject', auth, allowRoles('user'), async (
     try{ const io = getIO(); io.to(`user:${String(r.manager)}`).emit('managerRemit.rejected', { id: String(r._id) }) }catch{}
     return res.json({ message: 'Remittance rejected', remittance: r })
   }catch(err){
-    return res.status(500).json({ message: 'Failed to reject remittance' })
+    return res.status(500).json({ message: 'Failed to reject manager remittance' })
   }
 })
 
+// Summary for manager: received from drivers vs paid to company
+router.get('/manager-remittances/summary', auth, allowRoles('manager'), async (req, res) => {
+  try{
+    const M = (await import('mongoose')).default
+    const country = String(req.query.country||'')
+    // Sum accepted driver->manager remittances
+    const drvMatch = { manager: new M.Types.ObjectId(req.user.id), status: 'accepted' }
+    if (country) drvMatch.country = country
+    const drvRows = await Remittance.aggregate([
+      { $match: drvMatch },
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } } } }
+    ])
+    const fromDrivers = drvRows && drvRows[0] ? Number(drvRows[0].total||0) : 0
+    // Sum accepted manager->owner remittances
+    const manMatch = { manager: new M.Types.ObjectId(req.user.id), status: 'accepted' }
+    if (country) manMatch.country = country
+    const manRows = await ManagerRemit.aggregate([
+      { $match: manMatch },
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } } } }
+    ])
+    const toCompany = manRows && manRows[0] ? Number(manRows[0].total||0) : 0
+    const pendingToCompany = Math.max(0, fromDrivers - toCompany)
+    const me = await User.findById(req.user.id).select('country')
+    const currency = currencyFromCountry(me?.country || '')
+    return res.json({ currency, receivedFromDrivers: fromDrivers, paidToCompany: toCompany, pendingToCompany })
+  }catch(err){
+    return res.status(500).json({ message: 'Failed to load summary' })
+  }
+})
 // Reject remittance (manager)
 router.post('/remittances/:id/reject', auth, allowRoles('user','manager'), async (req, res) => {
   try{
