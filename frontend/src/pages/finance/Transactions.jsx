@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { API_BASE, apiGet, apiPost } from '../../api'
+import { API_BASE, apiGet, apiPost, apiUpload } from '../../api'
 import { io } from 'socket.io-client'
 import { useNavigate } from 'react-router-dom'
 import Modal from '../../components/Modal.jsx'
@@ -26,6 +26,10 @@ export default function Transactions(){
   const [detailModalFor, setDetailModalFor] = useState('')
   const [isMobile, setIsMobile] = useState(false)
   const [acceptModal, setAcceptModal] = useState(null)
+  const [mgrSummary, setMgrSummary] = useState({ currency:'', fromDriversAccepted:0, deliveredToCompany:0, pendingToCompany:0 })
+  const [mgrPayOpen, setMgrPayOpen] = useState(false)
+  const [mgrForm, setMgrForm] = useState({ method:'hand', amount:'', note:'', file:null })
+  const [mgrSubmitting, setMgrSubmitting] = useState(false)
 
   useEffect(()=>{ /* initial no-op */ },[])
   useEffect(()=>{
@@ -58,6 +62,41 @@ export default function Transactions(){
           const key = raw.toLowerCase()
           if (!map.has(key)) map.set(key, raw.toUpperCase() === 'UAE' ? 'UAE' : raw)
         }
+
+        function Info({ label, value }){
+          return (
+            <div className="panel" style={{ padding:10, borderRadius:10 }}>
+              <div className="helper" style={{ fontSize:12 }}>{label}</div>
+              <div style={{ fontWeight:700 }}>{value}</div>
+            </div>
+          )
+        }
+
+  // Manager summary for Pay to Company
+  async function refreshMgrSummary(){
+    if (role !== 'manager' || !country) { setMgrSummary({ currency:'', fromDriversAccepted:0, deliveredToCompany:0, pendingToCompany:0 }); return }
+    try{
+      const s = await apiGet(`/api/finance/manager-remittances/summary?country=${encodeURIComponent(country)}`)
+      setMgrSummary({
+        currency: s?.currency||'',
+        fromDriversAccepted: Number(s?.fromDriversAccepted||0),
+        deliveredToCompany: Number(s?.deliveredToCompany||0),
+        pendingToCompany: Number(s?.pendingToCompany||0),
+      })
+      // Prefill amount if not set
+      setMgrForm(f=>{
+        const curr = Number(f.amount||0)
+        if (!f.amount || !Number.isFinite(curr) || curr <= 0){
+          return { ...f, amount: String(Number(s?.pendingToCompany||0).toFixed(2)) }
+        }
+        return f
+      })
+    }catch{
+      setMgrSummary({ currency:'', fromDriversAccepted:0, deliveredToCompany:0, pendingToCompany:0 })
+    }
+  }
+
+  useEffect(()=>{ refreshMgrSummary() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [country, role])
         setCountryOptions(Array.from(map.values()))
       } catch {
         setCountryOptions([])
@@ -137,11 +176,18 @@ export default function Transactions(){
       socket.on('remittance.created', onRemit)
       socket.on('remittance.accepted', onRemit)
       socket.on('remittance.rejected', onRemit)
+      const onMgr = async ()=>{ try{ await refreshMgrSummary() }catch{} }
+      socket.on('managerRemit.created', onMgr)
+      socket.on('managerRemit.accepted', onMgr)
+      socket.on('managerRemit.rejected', onMgr)
     }catch{}
     return ()=>{
       try{ socket && socket.off('remittance.created') }catch{}
       try{ socket && socket.off('remittance.accepted') }catch{}
       try{ socket && socket.off('remittance.rejected') }catch{}
+      try{ socket && socket.off('managerRemit.created') }catch{}
+      try{ socket && socket.off('managerRemit.accepted') }catch{}
+      try{ socket && socket.off('managerRemit.rejected') }catch{}
       try{ socket && socket.disconnect() }catch{}
     }
   }, [])
@@ -385,6 +431,70 @@ export default function Transactions(){
           <div className="page-title gradient heading-blue">Driver Finances</div>
           <div className="page-subtitle">Monitor drivers' delivered collections and remittances</div>
         </div>
+
+      {/* Manager Pay to Company Modal */}
+      <Modal
+        title="Pay to Company"
+        open={mgrPayOpen}
+        onClose={()=> setMgrPayOpen(false)}
+        footer={
+          <>
+            <button className="btn secondary" onClick={()=> setMgrPayOpen(false)} disabled={mgrSubmitting}>Cancel</button>
+            <button className="btn success" disabled={mgrSubmitting} onClick={async()=>{
+              const amt = Number(mgrForm.amount)
+              if (!country){ toast.error('Select a country first'); return }
+              if (!mgrForm.amount){ toast.error('Enter amount'); return }
+              if (!Number.isFinite(amt) || amt<=0){ toast.error('Enter a valid amount'); return }
+              if (amt > Number(mgrSummary.pendingToCompany||0)){ toast.warn('Amount exceeds pending to company'); return }
+              if (mgrForm.method==='transfer' && !mgrForm.file){ toast.error('Please attach a proof image for transfer'); return }
+              setMgrSubmitting(true)
+              try{
+                const fd = new FormData()
+                fd.append('country', String(country))
+                fd.append('amount', String(amt))
+                fd.append('method', mgrForm.method)
+                fd.append('paidToName', 'Company')
+                if (mgrForm.note) fd.append('note', mgrForm.note)
+                if (mgrForm.method==='transfer' && mgrForm.file) fd.append('receipt', mgrForm.file)
+                await apiUpload('/api/finance/manager-remittances', fd)
+                toast.success('Sent to company. Awaiting approval.')
+                setMgrPayOpen(false)
+                setMgrForm({ method:'hand', amount:'', note:'', file:null })
+                await refreshMgrSummary()
+              }catch(e){ toast.error(e?.message||'Failed to send') }
+              finally{ setMgrSubmitting(false) }
+            }}>Confirm & Send</button>
+          </>
+        }
+      >
+        <div style={{display:'grid', gap:12}}>
+          <div className="helper">Country: <strong>{country}</strong> • Pending: <strong>{mgrSummary.currency||''} {num(mgrSummary.pendingToCompany)}</strong></div>
+          <div style={{display:'flex', gap:12, flexWrap:'wrap'}}>
+            <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer'}}>
+              <input type="radio" name="mgr-method" value="hand" checked={mgrForm.method==='hand'} onChange={()=> setMgrForm(f=>({...f, method:'hand'}))} /> Pay by hand
+            </label>
+            <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer'}}>
+              <input type="radio" name="mgr-method" value="transfer" checked={mgrForm.method==='transfer'} onChange={()=> setMgrForm(f=>({...f, method:'transfer'}))} /> Transfer to company
+            </label>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:10 }}>
+            <div>
+              <label className="input-label">Amount ({mgrSummary.currency||''})</label>
+              <input className="input" type="number" min="0" step="0.01" value={mgrForm.amount} onChange={e=> setMgrForm(f=>({...f, amount:e.target.value}))} placeholder={`Max ${Number(mgrSummary.pendingToCompany||0).toFixed(2)}`} />
+            </div>
+            {mgrForm.method==='transfer' && (
+              <div>
+                <label className="input-label">Upload Proof (image)</label>
+                <input className="input" type="file" accept="image/*" onChange={e=> setMgrForm(f=>({...f, file: (e.target.files && e.target.files[0]) || null}))} />
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="input-label">Note (optional)</label>
+            <textarea className="input" rows={2} value={mgrForm.note} onChange={e=> setMgrForm(f=>({...f, note:e.target.value}))} />
+          </div>
+        </div>
+      </Modal>
       {acceptModal && (
         <Modal
           title="Accept Driver Remittance"
@@ -450,6 +560,20 @@ export default function Transactions(){
           <button className="btn" onClick={exportCsv}>Export CSV</button>
         </div>
       </div>
+
+      {role==='manager' && country && (
+        <div className="card" style={{display:'grid', gap:10}}>
+          <div className="card-header" style={{alignItems:'center', justifyContent:'space-between'}}>
+            <div className="card-title">Pay to Company</div>
+            <div style={{display:'flex', gap:8, alignItems:'center'}}>
+              <span className="badge" title="From Drivers Accepted" style={{color:'#22c55e'}}>From Drivers: {mgrSummary.currency||''} {num(mgrSummary.fromDriversAccepted)}</span>
+              <span className="badge" title="Already Sent to Company" style={{color:'#22c55e'}}>Delivered: {mgrSummary.currency||''} {num(mgrSummary.deliveredToCompany)}</span>
+              <span className="badge warning" title="Pending to Company">Pending: {mgrSummary.currency||''} {num(mgrSummary.pendingToCompany)}</span>
+              <button className="btn" disabled={Number(mgrSummary.pendingToCompany||0) <= 0} onClick={()=> setMgrPayOpen(true)}>Pay to Company</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Drivers table */}
       <div className="card">

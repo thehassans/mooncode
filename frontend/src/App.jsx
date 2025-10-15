@@ -54,6 +54,7 @@ import Shipments from './pages/shipments/Shipments.jsx'
 import Reports from './pages/user/Reports.jsx'
 import Expenses from './pages/finance/Expenses.jsx'
 import Transactions from './pages/finance/Transactions.jsx'
+import ManagerFinances from './pages/user/ManagerFinances.jsx'
 import Support from './pages/support/Support.jsx'
 import AgentMe from './pages/agent/Me.jsx'
 import PrintLabel from './pages/orders/PrintLabel.jsx'
@@ -338,6 +339,7 @@ export default function App() {
         <Route path="insights" element={<AnalyticsDashboard />} />
         <Route path="expense" element={<Expenses />} />
         <Route path="transactions" element={<Transactions />} />
+        <Route path="manager-finances" element={<ManagerFinances />} />
         <Route path="finances" element={<UserFinances />} />
         <Route path="currency" element={<CurrencySettings />} />
         <Route path="api-setup" element={<UserAPISetup />} />
