@@ -16,6 +16,8 @@ export default function ManagerFinances(){
   const [driverRemits, setDriverRemits] = useState([]) // accepted driver->manager
   const [mgrRemits, setMgrRemits] = useState([]) // manager->owner requests of all statuses
   const [acceptModal, setAcceptModal] = useState(null)
+  const [detailFor, setDetailFor] = useState('')
+  const [historyFor, setHistoryFor] = useState('')
 
   // Countries
   useEffect(()=>{
@@ -166,11 +168,15 @@ export default function ManagerFinances(){
                     <td style={{ padding:'10px 12px', textAlign:'right', color:'#22c55e', fontWeight:800 }}>{num(r.sentToCompany)}</td>
                     <td style={{ padding:'10px 12px', textAlign:'right', color:'#ef4444', fontWeight:800 }}>{num(r.pendingToCompany)}</td>
                     <td style={{ padding:'10px 12px' }}>
-                      {(()=>{
-                        const p = pendingList.find(x=> String(x?.manager?._id||x?.manager||'')===r.id)
-                        if (!p) return <span className="helper">—</span>
-                        return <button className="btn" onClick={()=> setAcceptModal(p)}>Accept Pending</button>
-                      })()}
+                      <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                        <button className="btn secondary" onClick={()=> setDetailFor(r.id)}>Details</button>
+                        <button className="btn secondary" onClick={()=> setHistoryFor(r.id)}>History</button>
+                        {(()=>{
+                          const p = pendingList.find(x=> String(x?.manager?._id||x?.manager||'')===r.id)
+                          if (!p) return <span className="helper">—</span>
+                          return <button className="btn" onClick={()=> setAcceptModal(p)}>Accept Pending</button>
+                        })()}
+                      </div>
                     </td>
                   </tr>
                 ))}
