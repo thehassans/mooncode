@@ -46,6 +46,17 @@ export default function DriverPayout(){
     })
   }, [pendingToCompany])
 
+  // Default approver: first manager if available (applies to both methods)
+  useEffect(()=>{
+    if (!Array.isArray(managers) || managers.length===0) return
+    setForm(f => {
+      if (f.paidToId) return f
+      const m = managers[0]
+      const full = `${m.firstName||''} ${m.lastName||''}`.trim() || 'Manager'
+      return { ...f, paidToId: String(m._id||m.id||''), paidToName: full }
+    })
+  }, [managers])
+
   return (
     <div className="content" style={{ display:'grid', gap:16, padding:16, maxWidth: 1000, margin: '0 auto' }}>
       <div style={{ display:'grid', gap:6 }}>
@@ -204,8 +215,8 @@ export default function DriverPayout(){
                 const fd = new FormData()
                 fd.append('amount', String(amt))
                 fd.append('method', form.method)
-                if (form.method==='hand' && form.paidToName) fd.append('paidToName', form.paidToName)
-                if (form.method==='hand' && form.paidToId) fd.append('managerId', form.paidToId)
+                if (form.paidToName) fd.append('paidToName', form.paidToName)
+                if (form.paidToId) fd.append('managerId', form.paidToId)
                 if (form.note) fd.append('note', form.note)
                 if (form.method==='transfer' && form.file) fd.append('receipt', form.file)
                 await apiUpload('/api/finance/remittances', fd)
@@ -214,7 +225,7 @@ export default function DriverPayout(){
                 try{ const rr = await apiGet('/api/finance/remittances'); setRemittances(Array.isArray(rr?.remittances)? rr.remittances:[]) }catch{}
                 setForm({ method:'hand', amount:'', note:'', paidToName:'', paidToId:'', file:null })
                 setConfirmOpen(false)
-                toast.success('Request sent. You will be notified when approved.')
+                toast.success(`Request sent to ${form.paidToName ? ('Manager ' + form.paidToName) : 'Company'}. You will be notified when approved.`)
               }catch(e){ toast.error(e?.message || 'Failed to send request') }
               finally{ setSubmitting(false) }
             }}>Confirm & Send</button>

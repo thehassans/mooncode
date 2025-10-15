@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { API_BASE, apiGet, apiPost } from '../../api'
+import { io } from 'socket.io-client'
 import { useNavigate } from 'react-router-dom'
 
 export default function Transactions(){
@@ -121,6 +122,25 @@ export default function Transactions(){
     })()
     return () => { alive = false }
   }, [country, role])
+
+  // Live updates: refresh remittances on create/accept/reject
+  useEffect(()=>{
+    let socket
+    try{
+      const token = localStorage.getItem('token')||''
+      socket = io(API_BASE || undefined, { path:'/socket.io', transports:['polling'], upgrade:false, withCredentials:true, auth:{ token } })
+      const onRemit = async ()=>{ try{ await refreshRemittances() }catch{} }
+      socket.on('remittance.created', onRemit)
+      socket.on('remittance.accepted', onRemit)
+      socket.on('remittance.rejected', onRemit)
+    }catch{}
+    return ()=>{
+      try{ socket && socket.off('remittance.created') }catch{}
+      try{ socket && socket.off('remittance.accepted') }catch{}
+      try{ socket && socket.off('remittance.rejected') }catch{}
+      try{ socket && socket.disconnect() }catch{}
+    }
+  }, [])
 
   async function refreshRemittances(){
     try{
