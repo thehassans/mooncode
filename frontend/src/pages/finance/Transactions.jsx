@@ -729,4 +729,13 @@ export default function Transactions(){
   )
 }
 
+function Info({ label, value }){
+  return (
+    <div className="panel" style={{ padding:10, borderRadius:10 }}>
+      <div className="helper" style={{ fontSize:12 }}>{label}</div>
+      <div style={{ fontWeight:700 }}>{value}</div>
+    </div>
+  )
+}
+
 // old helpers removed with ledger
