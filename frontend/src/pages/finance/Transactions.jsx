@@ -480,45 +480,6 @@ export default function Transactions(){
                   <button className="btn success" onClick={async()=>{ const id=String(acceptModal?._id||''); await acceptRemit(id); setAcceptModal(null) }}>Accept</button>
                 </>
               )}
-
-      {payOpen && (
-        <Modal
-          title="Send Payment to Company"
-          open={payOpen}
-          onClose={()=> setPayOpen(false)}
-          footer={(
-            <>
-              <button className="btn secondary" onClick={()=> setPayOpen(false)} disabled={payBusy}>Close</button>
-              <button className="btn success" onClick={submitPay} disabled={payBusy}>{payBusy? 'Sending…':'Submit'}</button>
-            </>
-          )}
-        >
-          <div style={{ display:'grid', gap:10 }}>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px,1fr))', gap:8 }}>
-              <Info label="Country" value={country||'-'} />
-              <Info label="Currency" value={ccy} />
-              <Info label="Outstanding" value={`${ccy} ${outstanding.toFixed(2)}`} />
-            </div>
-            <div style={{ display:'grid', gap:8 }}>
-              <label className="label">Amount ({ccy})</label>
-              <input className="input" type="number" min="0" step="0.01" value={payForm.amount} onChange={e=> setPayForm(f=> ({ ...f, amount: e.target.value }))} />
-              <label className="label">Method</label>
-              <select className="input" value={payForm.method} onChange={e=> setPayForm(f=> ({ ...f, method: e.target.value }))}>
-                <option value="hand">HAND</option>
-                <option value="transfer">TRANSFER</option>
-              </select>
-              <label className="label">Note</label>
-              <input className="input" type="text" value={payForm.note} onChange={e=> setPayForm(f=> ({ ...f, note: e.target.value }))} placeholder="Optional" />
-              {String(payForm.method||'').toLowerCase()==='transfer' && (
-                <>
-                  <label className="label">Proof Image</label>
-                  <input className="input" type="file" accept="image/*" onChange={e=> setPayForm(f=> ({ ...f, file: (e.target.files && e.target.files[0]) || null }))} />
-                </>
-              )}
-            </div>
-          </div>
-        </Modal>
-      )}
             </>
           }
         >
