@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom'
 
 export default function Transactions(){
   const navigate = useNavigate()
+  const [me, setMe] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} } })
+  const role = String(me?.role||'')
   const [driverRemits, setDriverRemits] = useState([])
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
@@ -21,6 +23,14 @@ export default function Transactions(){
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(()=>{ /* initial no-op */ },[])
+  useEffect(()=>{
+    let alive = true
+    ;(async()=>{
+      try{ const r = await apiGet('/api/users/me'); if (alive){ setMe(r?.user||{}) } }
+      catch{}
+    })()
+    return ()=>{ alive=false }
+  },[])
   useEffect(()=>{
     try{
       const onResize = ()=> setIsMobile(typeof window !== 'undefined' && window.innerWidth < 720)
@@ -63,7 +73,8 @@ export default function Transactions(){
           .then(d => { if (alive) setDrivers(Array.isArray(d?.users) ? d.users : []) })
           .catch(()=> { if (alive) setDrivers([]) })
 
-        const loadRemits = apiGet('/api/finance/remittances')
+        const remitsUrl = (role==='manager') ? '/api/finance/remittances?workspace=1' : '/api/finance/remittances'
+        const loadRemits = apiGet(remitsUrl)
           .then(remitResp => {
             const allRemits = Array.isArray(remitResp?.remittances) ? remitResp.remittances : []
             const filteredRemits = allRemits.filter(r => String(r?.country||'').trim().toLowerCase() === String(country).trim().toLowerCase())
@@ -109,11 +120,12 @@ export default function Transactions(){
       } finally { if (alive) setLoading(false) }
     })()
     return () => { alive = false }
-  }, [country])
+  }, [country, role])
 
   async function refreshRemittances(){
     try{
-      const remitResp = await apiGet('/api/finance/remittances')
+      const remitsUrl = (role==='manager') ? '/api/finance/remittances?workspace=1' : '/api/finance/remittances'
+      const remitResp = await apiGet(remitsUrl)
       const allRemits = Array.isArray(remitResp?.remittances) ? remitResp.remittances : []
       const filteredRemits = allRemits.filter(r => String(r?.country||'').trim().toLowerCase() === String(country).trim().toLowerCase())
       setDriverRemits(filteredRemits)
@@ -131,6 +143,7 @@ export default function Transactions(){
         .filter(r => String(r?.driver?._id || r?.driver || '') === String(driverId))
         .filter(r => String(r?.country||'').trim().toLowerCase() === String(country||'').trim().toLowerCase())
         .filter(r => String(r?.status||'').toLowerCase() === 'pending')
+        .filter(r => role==='manager' ? (String(r?.manager?._id || r?.manager || '') === String(me?._id||me?.id||'')) : true)
         .filter(r => (fromDate || toDate) ? dateInRange(r?.createdAt || r?.acceptedAt, fromDate, toDate) : true)
         .sort((a,b)=> new Date(b.createdAt||b.acceptedAt||0) - new Date(a.createdAt||a.acceptedAt||0))
       return list[0] || null

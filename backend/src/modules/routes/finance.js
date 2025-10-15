@@ -370,7 +370,17 @@ router.get('/remittances', auth, allowRoles('admin','user','manager','driver'), 
     } else if (req.user.role === 'user'){
       match.owner = req.user.id
     } else if (req.user.role === 'manager'){
-      match.manager = req.user.id
+      // Option: when workspace=1, include all remittances in the manager's workspace (owner scope)
+      const wantWorkspace = String(req.query.workspace||'').toLowerCase()
+      if (wantWorkspace === '1' || wantWorkspace === 'true' || wantWorkspace === 'yes'){
+        try{
+          const me = await User.findById(req.user.id).select('createdBy').lean()
+          const ownerId = String(me?.createdBy||'')
+          if (ownerId){ match.owner = ownerId } else { match.manager = req.user.id }
+        }catch{ match.manager = req.user.id }
+      } else {
+        match.manager = req.user.id
+      }
     } else if (req.user.role === 'driver'){
       match.driver = req.user.id
     }
