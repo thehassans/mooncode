@@ -89,12 +89,16 @@ export default function ManagerOrders(){
     try{
       const res = await apiGet('/api/orders?ship=cancelled,returned&limit=200')
       const allOrders = res?.orders || []
+      console.log('All cancelled/returned orders:', allOrders.length)
+      console.log('Orders with returnSubmittedToCompany:', allOrders.filter(o => o.returnSubmittedToCompany))
+      
       // Filter only submitted returns that need verification
       const submitted = allOrders.filter(o => 
-        o.returnSubmittedToCompany && 
-        !o.returnVerified &&
+        o.returnSubmittedToCompany === true && 
+        o.returnVerified !== true &&
         ['cancelled', 'returned'].includes(String(o.shipmentStatus || '').toLowerCase())
       )
+      console.log('Pending returns to verify:', submitted)
       setPendingReturns(submitted)
     }catch(e){
       console.error('Failed to load pending returns:', e)
@@ -545,14 +549,19 @@ export default function ManagerOrders(){
         </div>
       </div>
 
-      {/* Pending Returns Verification Section */}
-      {pendingReturns.length > 0 && (
-        <div className="card" style={{border:'2px solid #ef4444', background:'rgba(239, 68, 68, 0.05)', marginTop:12}}>
-          <div className="card-header">
-            <div className="card-title" style={{color:'#ef4444'}}>
-              ⚠️ Cancelled/Returned Orders to Verify ({pendingReturns.length})
-            </div>
+      {/* Pending Returns Verification Section - Always show to indicate feature is active */}
+      <div className="card" style={{border: pendingReturns.length > 0 ? '2px solid #ef4444' : '1px solid var(--border)', background: pendingReturns.length > 0 ? 'rgba(239, 68, 68, 0.05)' : 'transparent', marginTop:12}}>
+        <div className="card-header" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <div className="card-title" style={{color: pendingReturns.length > 0 ? '#ef4444' : 'inherit'}}>
+            {pendingReturns.length > 0 
+              ? `⚠️ Cancelled/Returned Orders to Verify (${pendingReturns.length})` 
+              : '✅ No Cancelled/Returned Orders Pending Verification'}
           </div>
+          <button className="btn secondary" onClick={loadPendingReturns} style={{padding:'6px 12px', fontSize:'13px'}}>
+            🔄 Refresh
+          </button>
+        </div>
+        {pendingReturns.length > 0 && (
           <div style={{display:'grid', gap:10}}>
             {pendingReturns.map(order => {
               const isVerifying = verifying === String(order._id)
@@ -610,8 +619,8 @@ export default function ManagerOrders(){
               )
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div style={{display:'grid', gap:12, marginTop:12}}>
         {loading ? (
