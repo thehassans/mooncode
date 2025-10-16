@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost } from '../../api'
 import { useNavigate, useLocation } from 'react-router-dom'
 import DateRangeChips from '../../ui/DateRangeChips.jsx'
+import { useToast } from '../../ui/Toast.jsx'
 
 export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false, withFilters=false, withRange=false, showSubmitReturn=false }){
   const nav = useNavigate()
   const location = useLocation()
+  const toast = useToast()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -139,13 +141,14 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
 
   async function submitReturn(o){
     const id = String(o._id || o.id)
+    const invoiceNum = o.invoiceNumber || String(id).slice(-6)
     try{
       setSubmitting(id)
       await apiPost(`/api/orders/${id}/return/submit`, {})
-      alert('Order submitted to company for verification')
+      toast.success(`Order #${invoiceNum} submitted to company for verification`)
       load()
     }catch(e){
-      alert(e?.message || 'Failed to submit order')
+      toast.error(e?.message || 'Failed to submit order')
     }finally{
       setSubmitting(null)
     }
@@ -206,15 +209,23 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
           <div className="section" style={{display:'grid', gap:10}}>
             {filteredRows.map(o => {
               const isSubmitting = submitting === String(o._id || o.id)
-              const canSubmit = showSubmitReturn && !o.returnSubmittedToCompany && !o.returnVerified
+              const status = String(o.shipmentStatus || '').toLowerCase()
+              const isCancelledOrReturned = ['cancelled', 'returned'].includes(status)
+              const canSubmit = showSubmitReturn && isCancelledOrReturned && !o.returnSubmittedToCompany && !o.returnVerified
               const isVerified = o.returnVerified
               const isSubmitted = o.returnSubmittedToCompany && !isVerified
-              const status = String(o.shipmentStatus || '').toLowerCase()
               
               return (
-                <div key={String(o._id||o.id)} className="panel" style={{display:'grid', gap:8, border:'1px solid var(--border)', borderRadius:10, padding:12}}>
+                <div key={String(o._id||o.id)} className="panel" style={{display:'grid', gap:8, border:`1px solid ${isCancelledOrReturned ? '#ef4444' : 'var(--border)'}`, borderRadius:10, padding:12, background: isCancelledOrReturned ? 'rgba(239, 68, 68, 0.05)' : 'transparent'}}>
                   <div style={{display:'flex', justifyContent:'space-between', gap:8, alignItems:'center'}}>
-                    <div style={{fontWeight:800}}>#{o.invoiceNumber || String(o._id||'').slice(-6)}</div>
+                    <div style={{display:'flex', gap:8, alignItems:'center'}}>
+                      <div style={{fontWeight:800}}>#{o.invoiceNumber || String(o._id||'').slice(-6)}</div>
+                      {isCancelledOrReturned && (
+                        <span className="badge" style={{background:'#fecaca', color:'#991b1b', textTransform:'capitalize'}}>
+                          {status}
+                        </span>
+                      )}
+                    </div>
                     <div style={{display:'flex', gap:6, alignItems:'center'}}>
                       {o.orderCountry ? <span className="badge">{o.orderCountry}</span> : null}
                       {o.city ? <span className="chip">{o.city}</span> : null}
@@ -226,8 +237,8 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
                   ) : null}
                   <div className="helper" style={{whiteSpace:'pre-wrap'}}>{o.customerAddress || o.customerLocation || '-'}</div>
                   
-                  {/* Return/Cancel Verification Status */}
-                  {showSubmitReturn && (
+                  {/* Return/Cancel Verification Status - Only for cancelled/returned orders */}
+                  {showSubmitReturn && isCancelledOrReturned && (
                     <div style={{marginTop:4}}>
                       {isVerified && (
                         <div style={{color:'#10b981', fontWeight:700, fontSize:14}}>
@@ -237,6 +248,11 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
                       {isSubmitted && (
                         <div style={{color:'#f59e0b', fontWeight:700, fontSize:14}}>
                           ⏳ Submitted - Awaiting Verification
+                        </div>
+                      )}
+                      {!isSubmitted && !isVerified && (
+                        <div style={{color:'#6b7280', fontWeight:600, fontSize:13}}>
+                          ℹ️ Ready to submit to company for verification
                         </div>
                       )}
                     </div>
