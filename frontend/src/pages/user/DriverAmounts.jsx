@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost } from '../../api'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../ui/Toast.jsx'
+import Modal from '../../components/Modal.jsx'
 
 export default function DriverAmounts(){
   const navigate = useNavigate()
@@ -13,6 +14,7 @@ export default function DriverAmounts(){
   const [country, setCountry] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [payingDriver, setPayingDriver] = useState(null)
+  const [payModal, setPayModal] = useState(null)
 
   // Load country options
   useEffect(() => {
@@ -249,23 +251,9 @@ export default function DriverAmounts(){
                           className="btn success" 
                           style={{fontSize:12, padding:'6px 12px'}}
                           disabled={payingDriver === d.id}
-                          onClick={async()=>{
-                            if (!window.confirm(`Send ${d.currency} ${num(d.pendingCommission)} commission to ${d.name}?`)) return
-                            setPayingDriver(d.id)
-                            try{
-                              await apiPost(`/api/finance/drivers/${d.id}/pay-commission`, { amount: d.pendingCommission })
-                              toast.success('Commission payment sent successfully')
-                              // Refresh data
-                              const r = await apiGet('/api/finance/drivers/summary?limit=100')
-                              setDrivers(Array.isArray(r?.drivers) ? r.drivers : [])
-                            }catch(e){
-                              toast.error(e?.message || 'Failed to send payment')
-                            }finally{
-                              setPayingDriver(null)
-                            }
-                          }}
+                          onClick={()=> setPayModal({ driver: d, amount: d.pendingCommission })}
                         >
-                          {payingDriver === d.id ? 'Sending...' : 'Pay Commission'}
+                          Pay Commission
                         </button>
                       ) : (
                         <span style={{color:'var(--text-muted)', fontSize:12}}>No pending</span>
@@ -278,6 +266,65 @@ export default function DriverAmounts(){
           </table>
         </div>
       </div>
+
+      {/* Pay Commission Modal */}
+      <Modal
+        title="Pay Driver Commission"
+        open={!!payModal}
+        onClose={()=> setPayModal(null)}
+        footer={
+          <>
+            <button className="btn secondary" onClick={()=> setPayModal(null)} disabled={!!payingDriver}>Cancel</button>
+            <button 
+              className="btn success" 
+              disabled={!!payingDriver}
+              onClick={async()=>{
+                setPayingDriver(payModal.driver.id)
+                try{
+                  await apiPost(`/api/finance/drivers/${payModal.driver.id}/pay-commission`, { amount: payModal.amount })
+                  toast.success('Commission payment sent successfully')
+                  setPayModal(null)
+                  // Refresh data
+                  const r = await apiGet('/api/finance/drivers/summary?limit=100')
+                  setDrivers(Array.isArray(r?.drivers) ? r.drivers : [])
+                }catch(e){
+                  toast.error(e?.message || 'Failed to send payment')
+                }finally{
+                  setPayingDriver(null)
+                }
+              }}
+            >
+              {payingDriver ? 'Sending...' : 'Confirm Payment'}
+            </button>
+          </>
+        }
+      >
+        {payModal && (
+          <div style={{ padding: '16px 0' }}>
+            <div style={{ fontSize: 16, marginBottom: 24, textAlign: 'center' }}>
+              Send <strong style={{ color: '#10b981', fontSize: 20 }}>{payModal.driver.currency} {num(payModal.amount)}</strong> commission to <strong style={{ color: '#8b5cf6' }}>{payModal.driver.name}</strong>?
+            </div>
+            <div style={{ background: 'var(--panel)', padding: 12, borderRadius: 8, fontSize: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ opacity: 0.7 }}>Driver:</span>
+                <strong>{payModal.driver.name}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ opacity: 0.7 }}>Phone:</span>
+                <strong>{payModal.driver.phone}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ opacity: 0.7 }}>Country:</span>
+                <strong>{payModal.driver.country}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ opacity: 0.7 }}>Amount:</span>
+                <strong style={{ color: '#10b981' }}>{payModal.driver.currency} {num(payModal.amount)}</strong>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

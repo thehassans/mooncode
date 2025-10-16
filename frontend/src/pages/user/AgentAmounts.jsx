@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost } from '../../api'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../ui/Toast.jsx'
+import Modal from '../../components/Modal.jsx'
 
 export default function AgentAmounts(){
   const navigate = useNavigate()
@@ -11,6 +12,7 @@ export default function AgentAmounts(){
   const [err, setErr] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [payingAgent, setPayingAgent] = useState(null)
+  const [payModal, setPayModal] = useState(null)
 
   useEffect(() => {
     let alive = true
@@ -173,23 +175,9 @@ export default function AgentAmounts(){
                             className="btn success" 
                             style={{fontSize:12, padding:'6px 12px'}}
                             disabled={payingAgent === a.id}
-                            onClick={async()=>{
-                              if (!window.confirm(`Send PKR ${num(balance)} commission to ${a.name}?`)) return
-                              setPayingAgent(a.id)
-                              try{
-                                await apiPost(`/api/finance/agents/${a.id}/pay-commission`, { amount: balance })
-                                toast.success('Commission payment sent successfully')
-                                // Refresh data
-                                const r = await apiGet('/api/finance/agents/commission')
-                                setAgents(Array.isArray(r?.agents) ? r.agents : [])
-                              }catch(e){
-                                toast.error(e?.message || 'Failed to send payment')
-                              }finally{
-                                setPayingAgent(null)
-                              }
-                            }}
+                            onClick={()=> setPayModal({ agent: a, balance })}
                           >
-                            {payingAgent === a.id ? 'Sending...' : 'Pay Commission'}
+                            Pay Commission
                           </button>
                         ) : (
                           <span style={{color:'var(--text-muted)', fontSize:12}}>No balance</span>
@@ -203,6 +191,61 @@ export default function AgentAmounts(){
           </table>
         </div>
       </div>
+
+      {/* Pay Commission Modal */}
+      <Modal
+        title="Pay Agent Commission"
+        open={!!payModal}
+        onClose={()=> setPayModal(null)}
+        footer={
+          <>
+            <button className="btn secondary" onClick={()=> setPayModal(null)} disabled={!!payingAgent}>Cancel</button>
+            <button 
+              className="btn success" 
+              disabled={!!payingAgent}
+              onClick={async()=>{
+                setPayingAgent(payModal.agent.id)
+                try{
+                  await apiPost(`/api/finance/agents/${payModal.agent.id}/pay-commission`, { amount: payModal.balance })
+                  toast.success('Commission payment sent successfully')
+                  setPayModal(null)
+                  // Refresh data
+                  const r = await apiGet('/api/finance/agents/commission')
+                  setAgents(Array.isArray(r?.agents) ? r.agents : [])
+                }catch(e){
+                  toast.error(e?.message || 'Failed to send payment')
+                }finally{
+                  setPayingAgent(null)
+                }
+              }}
+            >
+              {payingAgent ? 'Sending...' : 'Confirm Payment'}
+            </button>
+          </>
+        }
+      >
+        {payModal && (
+          <div style={{ padding: '16px 0' }}>
+            <div style={{ fontSize: 16, marginBottom: 24, textAlign: 'center' }}>
+              Send <strong style={{ color: '#10b981', fontSize: 20 }}>PKR {num(payModal.balance)}</strong> commission to <strong style={{ color: '#8b5cf6' }}>{payModal.agent.name}</strong>?
+            </div>
+            <div style={{ background: 'var(--panel)', padding: 12, borderRadius: 8, fontSize: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ opacity: 0.7 }}>Agent:</span>
+                <strong>{payModal.agent.name}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ opacity: 0.7 }}>Phone:</span>
+                <strong>{payModal.agent.phone}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ opacity: 0.7 }}>Amount:</span>
+                <strong style={{ color: '#10b981' }}>PKR {num(payModal.balance)}</strong>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
