@@ -56,7 +56,7 @@ function defaultCurrencyConfig(){
 }
 
 // GET /api/settings/currency
-router.get('/currency', auth, allowRoles('admin','user'), async (_req, res) => {
+router.get('/currency', auth, allowRoles('admin','user','manager'), async (_req, res) => {
   try{
     const doc = await Setting.findOne({ key: 'currency' }).lean()
     const val = (doc && doc.value) || defaultCurrencyConfig()
@@ -67,7 +67,7 @@ router.get('/currency', auth, allowRoles('admin','user'), async (_req, res) => {
 })
 
 // POST /api/settings/currency
-router.post('/currency', auth, allowRoles('admin','user'), async (req, res) => {
+router.post('/currency', auth, allowRoles('admin','user','manager'), async (req, res) => {
   try{
     const body = req.body || {}
     let doc = await Setting.findOne({ key: 'currency' })
