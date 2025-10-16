@@ -146,13 +146,13 @@ export default function ManagerFinances(){
     for (const r of filteredRemittances){
       const amount = Number(r.amount||0)
       const currency = r.currency || 'SAR'
-      // Get country from remittance or manager, fallback to currency name
+      // Get country from remittance or manager, fallback to currency code
       let countryKey = r.country || r.manager?.country || r.manager?.assignedCountry
       if (Array.isArray(r.manager?.assignedCountries) && r.manager.assignedCountries.length > 0) {
         countryKey = countryKey || r.manager.assignedCountries[0]
       }
-      // If still no country, use currency as the grouping key
-      countryKey = countryKey || `${currency} Region`
+      // If still no country, use currency code as the grouping key
+      countryKey = countryKey || currency
       
       // Convert to AED
       const amountAED = curCfg ? convert(amount, currency, 'AED', curCfg) : amount
@@ -334,7 +334,7 @@ export default function ManagerFinances(){
                       <span style={{color:'#6366f1', fontWeight:700}}>
                         {r.country || r.manager?.country || r.manager?.assignedCountry || 
                          (Array.isArray(r.manager?.assignedCountries) && r.manager.assignedCountries.length > 0 ? r.manager.assignedCountries[0] : null) || 
-                         `${r.currency} Region`}
+                         r.currency || 'SAR'}
                       </span>
                     </td>
                     <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
@@ -390,7 +390,7 @@ export default function ManagerFinances(){
                 acceptModal?.manager?.country || 
                 acceptModal?.manager?.assignedCountry || 
                 (Array.isArray(acceptModal?.manager?.assignedCountries) && acceptModal?.manager?.assignedCountries.length > 0 ? acceptModal?.manager?.assignedCountries[0] : null) || 
-                `${acceptModal?.currency || 'SAR'} Region`
+                acceptModal?.currency || 'SAR'
               } />
               <Info label="Amount" value={`${acceptModal?.currency||''} ${Number(acceptModal?.amount||0).toFixed(2)}`} />
               <Info label="Method" value={String(acceptModal?.method||'hand').toUpperCase()} />
