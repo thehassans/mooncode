@@ -425,6 +425,7 @@ export default function Transactions(){
       const fd = new FormData()
       fd.append('amount', String(amt))
       fd.append('method', payForm.method)
+      if (country) fd.append('country', country)
       if (payForm.note) fd.append('note', payForm.note)
       if (payForm.method === 'transfer' && payForm.file) fd.append('receipt', payForm.file)
       await apiUpload('/api/finance/manager-remittances', fd)
