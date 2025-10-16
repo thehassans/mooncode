@@ -31,6 +31,7 @@ export default function AgentLayout() {
       return 'dark'
     }
   })
+  const [navColors, setNavColors] = useState(null)
   useEffect(() => {
     try {
       localStorage.setItem('theme', theme)
@@ -39,6 +40,18 @@ export default function AgentLayout() {
     if (theme === 'dark') root.setAttribute('data-theme', 'dark')
     else root.removeAttribute('data-theme')
   }, [theme])
+  // Initialize nav colors from localStorage
+  useEffect(() => {
+    try {
+      const savedColors = JSON.parse(localStorage.getItem('navColors') || 'null')
+      if (savedColors) {
+        setNavColors(savedColors)
+        Object.entries(savedColors).forEach(([k, v]) => {
+          document.documentElement.style.setProperty(`--${k}`, v)
+        })
+      }
+    } catch {}
+  }, [])
   useEffect(() => {
     function onResize() {
       setIsMobile(window.innerWidth <= 768)
@@ -296,11 +309,13 @@ export default function AgentLayout() {
       try {
         localStorage.removeItem('navColors')
       } catch {}
+      setNavColors(null)
     } else {
       Object.entries(vars).forEach(([k, v]) => {
         document.documentElement.style.setProperty(`--${k}`, v)
       })
       localStorage.setItem('navColors', JSON.stringify(vars))
+      setNavColors(vars)
     }
     if (__theme) {
       localStorage.setItem('theme', __theme)
@@ -508,15 +523,18 @@ export default function AgentLayout() {
               {/* Swatches left of theme toggle (desktop only) */}
               {!isMobile && (
                 <div role="group" aria-label="Theme colors" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {navPresets.map((p) => (
-                    <button
-                      key={p.title}
-                      title={p.title}
-                      className={`swatch ${navColors === p.cfg ? 'active' : ''}`}
-                      onClick={() => applyNavColors(p.cfg)}
-                      style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--border)', background: p.sample }}
-                    />
-                  ))}
+                  {navPresets.map((p) => {
+                    const isActive = p.cfg.__reset ? !navColors : (navColors && JSON.stringify(navColors) === JSON.stringify(p.cfg))
+                    return (
+                      <button
+                        key={p.title}
+                        title={p.title}
+                        className={`swatch ${isActive ? 'active' : ''}`}
+                        onClick={() => applyNavColors(p.cfg)}
+                        style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--border)', background: p.sample }}
+                      />
+                    )
+                  })}
                 </div>
               )}
               <button
