@@ -146,7 +146,8 @@ export default function ManagerFinances(){
     for (const r of filteredRemittances){
       const amount = Number(r.amount||0)
       const currency = r.currency || 'SAR'
-      const countryKey = r.country || 'Unknown'
+      // Get country from remittance or manager, fallback to 'All'
+      const countryKey = r.country || r.manager?.country || 'All'
       
       // Convert to AED
       const amountAED = curCfg ? convert(amount, currency, 'AED', curCfg) : amount
@@ -325,7 +326,7 @@ export default function ManagerFinances(){
                       <div className="helper">{r.manager?.email || ''}</div>
                     </td>
                     <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
-                      <span style={{color:'#6366f1', fontWeight:700}}>{r.country || r.manager?.country || '-'}</span>
+                      <span style={{color:'#6366f1', fontWeight:700}}>{r.country || r.manager?.country || 'All'}</span>
                     </td>
                     <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
                       <span style={{color:'#22c55e', fontWeight:800}}>{r.currency} {num(r.amount)}</span>
@@ -375,7 +376,7 @@ export default function ManagerFinances(){
           <div style={{display:'grid', gap:8}}>
             <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:8}}>
               <Info label="Manager" value={userName(acceptModal?.manager)} />
-              <Info label="Country" value={acceptModal?.country || acceptModal?.manager?.country || '-'} />
+              <Info label="Country" value={acceptModal?.country || acceptModal?.manager?.country || 'All'} />
               <Info label="Amount" value={`${acceptModal?.currency||''} ${Number(acceptModal?.amount||0).toFixed(2)}`} />
               <Info label="Method" value={String(acceptModal?.method||'hand').toUpperCase()} />
               <Info label="Status" value={String(acceptModal?.status||'').toUpperCase()} />
