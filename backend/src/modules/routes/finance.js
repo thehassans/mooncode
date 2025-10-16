@@ -846,7 +846,7 @@ router.post('/manager-remittances', auth, allowRoles('manager'), upload.any(), a
     if (!ownerId) return res.status(400).json({ message: 'Manager has no owner' })
     
     const country = String(me.country || '').trim()
-    const currency = guessCurrency(country)
+    const currency = currencyFromCountry(country)
     
     let receiptPath = ''
     if (method === 'transfer' && req.files && req.files.length > 0) {
@@ -962,7 +962,7 @@ router.get('/manager-remittances/summary', auth, allowRoles('manager'), async (r
     // Use the country from query param for currency, fallback to manager's country
     const currencyCountry = country || ''
     const me = await User.findById(req.user.id).select('country').lean()
-    const currency = guessCurrency(currencyCountry || String(me?.country||''))
+    const currency = currencyFromCountry(currencyCountry || String(me?.country||''))
     return res.json({ totalSent, totalAccepted, totalPending, currency })
   }catch(err){
     console.error('Manager remittance summary error:', err)

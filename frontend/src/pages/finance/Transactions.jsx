@@ -491,7 +491,7 @@ export default function Transactions(){
               <div className="card-title">Manager Payable to Company</div>
               <div className="card-subtitle">Total amount collected from drivers</div>
             </div>
-            <button className="btn" onClick={()=>{ setPayForm({ amount: totals.pending.toFixed(2), method:'hand', note:'', file:null }); setPayModal(true) }}>Pay to Company</button>
+            <button className="btn" onClick={()=>{ const toPay = Math.max(0, totals.remitted - managerSummary.totalSent); setPayForm({ amount: toPay.toFixed(2), method:'hand', note:'', file:null }); setPayModal(true) }}>Pay to Company</button>
           </div>
           <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px,1fr))', gap:12}}>
             <div style={{background:'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color:'#fff', padding:'16px', borderRadius:10}}>
