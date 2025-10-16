@@ -38,10 +38,14 @@ export default function Transactions(){
     if (role !== 'manager') return
     let alive = true
     ;(async()=>{
-      try{ const r = await apiGet('/api/finance/manager-remittances/summary'); if (alive) setManagerSummary({ totalSent: Number(r?.totalSent||0), totalAccepted: Number(r?.totalAccepted||0), totalPending: Number(r?.totalPending||0), currency: r?.currency||'' }) }catch{}
+      try{ 
+        const url = country ? `/api/finance/manager-remittances/summary?country=${encodeURIComponent(country)}` : '/api/finance/manager-remittances/summary'
+        const r = await apiGet(url)
+        if (alive) setManagerSummary({ totalSent: Number(r?.totalSent||0), totalAccepted: Number(r?.totalAccepted||0), totalPending: Number(r?.totalPending||0), currency: r?.currency||'' }) 
+      }catch(err){ console.error('Failed to load manager summary:', err) }
     })()
     return ()=>{ alive=false }
-  },[role])
+  },[role, country])
   useEffect(()=>{
     let alive = true
     ;(async()=>{
@@ -167,7 +171,7 @@ export default function Transactions(){
     try{
       const token = localStorage.getItem('token')||''
       socket = io(API_BASE || undefined, { path:'/socket.io', transports:['polling'], upgrade:false, withCredentials:true, auth:{ token } })
-      const onMgrRemit = async ()=>{ try{ const r = await apiGet('/api/finance/manager-remittances/summary'); setManagerSummary({ totalSent: Number(r?.totalSent||0), totalAccepted: Number(r?.totalAccepted||0), totalPending: Number(r?.totalPending||0), currency: r?.currency||'' }) }catch{} }
+      const onMgrRemit = async ()=>{ try{ const url = country ? `/api/finance/manager-remittances/summary?country=${encodeURIComponent(country)}` : '/api/finance/manager-remittances/summary'; const r = await apiGet(url); setManagerSummary({ totalSent: Number(r?.totalSent||0), totalAccepted: Number(r?.totalAccepted||0), totalPending: Number(r?.totalPending||0), currency: r?.currency||'' }) }catch{} }
       socket.on('manager-remittance.accepted', onMgrRemit)
       socket.on('manager-remittance.rejected', onMgrRemit)
     }catch{}
@@ -176,7 +180,7 @@ export default function Transactions(){
       try{ socket && socket.off('manager-remittance.rejected') }catch{}
       try{ socket && socket.disconnect() }catch{}
     }
-  }, [role])
+  }, [role, country])
 
   async function refreshRemittances(){
     try{
@@ -425,7 +429,7 @@ export default function Transactions(){
       if (payForm.method === 'transfer' && payForm.file) fd.append('receipt', payForm.file)
       await apiUpload('/api/finance/manager-remittances', fd)
       // Refresh summary
-      try{ const r = await apiGet('/api/finance/manager-remittances/summary'); setManagerSummary({ totalSent: Number(r?.totalSent||0), totalAccepted: Number(r?.totalAccepted||0), totalPending: Number(r?.totalPending||0), currency: r?.currency||'' }) }catch{}
+      try{ const url = country ? `/api/finance/manager-remittances/summary?country=${encodeURIComponent(country)}` : '/api/finance/manager-remittances/summary'; const r = await apiGet(url); setManagerSummary({ totalSent: Number(r?.totalSent||0), totalAccepted: Number(r?.totalAccepted||0), totalPending: Number(r?.totalPending||0), currency: r?.currency||'' }) }catch{}
       setPayForm({ amount:'', method:'hand', note:'', file:null })
       setPayModal(false)
       toast.success('Payment sent to company. You will be notified when approved.')

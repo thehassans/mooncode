@@ -949,7 +949,9 @@ router.post('/manager-remittances/:id/reject', auth, allowRoles('user'), async (
 // Manager remittance summary
 router.get('/manager-remittances/summary', auth, allowRoles('manager'), async (req, res) => {
   try{
+    const { country } = req.query
     const match = { manager: req.user.id }
+    if (country) match.country = country
     const all = await ManagerRemittance.find(match).lean()
     let totalSent = 0, totalAccepted = 0, totalPending = 0
     for (const r of all){
@@ -957,10 +959,13 @@ router.get('/manager-remittances/summary', auth, allowRoles('manager'), async (r
       else if (r.status === 'pending') totalPending += Number(r.amount||0)
       totalSent += Number(r.amount||0)
     }
+    // Use the country from query param for currency, fallback to manager's country
+    const currencyCountry = country || ''
     const me = await User.findById(req.user.id).select('country').lean()
-    const currency = guessCurrency(String(me?.country||''))
+    const currency = guessCurrency(currencyCountry || String(me?.country||''))
     return res.json({ totalSent, totalAccepted, totalPending, currency })
   }catch(err){
-    return res.status(500).json({ message: 'Failed to get manager remittance summary' })
+    console.error('Manager remittance summary error:', err)
+    return res.status(500).json({ message: 'Failed to get manager remittance summary', error: err.message })
   }
 })
