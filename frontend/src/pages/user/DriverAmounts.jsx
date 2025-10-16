@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { apiGet } from '../../api'
+import { apiGet, apiPost } from '../../api'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 
 export default function DriverAmounts(){
   const navigate = useNavigate()
@@ -10,6 +11,7 @@ export default function DriverAmounts(){
   const [countryOptions, setCountryOptions] = useState([])
   const [country, setCountry] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [payingDriver, setPayingDriver] = useState(null)
 
   // Load country options
   useEffect(() => {
@@ -184,20 +186,21 @@ export default function DriverAmounts(){
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#8b5cf6' }}>Withdrawn</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b' }}>Pending</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#14b8a6' }}>Sent</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', color:'#ef4444' }}>To Remit</th>
+                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#ef4444' }}>To Remit</th>
+                <th style={{ padding: '10px 12px', textAlign:'center', color:'#8b5cf6' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({length:5}).map((_,i)=> (
                   <tr key={`sk${i}`}>
-                    <td colSpan={11} style={{ padding:'10px 12px' }}>
+                    <td colSpan={12} style={{ padding:'10px 12px' }}>
                       <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
                     </td>
                   </tr>
                 ))
               ) : filteredDrivers.length === 0 ? (
-                <tr><td colSpan={11} style={{ padding: '10px 12px', opacity: 0.7, textAlign:'center' }}>No drivers found</td></tr>
+                <tr><td colSpan={12} style={{ padding: '10px 12px', opacity: 0.7, textAlign:'center' }}>No drivers found</td></tr>
               ) : (
                 filteredDrivers.map((d, idx) => (
                   <tr key={String(d.id)} style={{ borderTop: '1px solid var(--border)', background: idx % 2 ? 'transparent' : 'var(--panel)' }}>
@@ -218,7 +221,11 @@ export default function DriverAmounts(){
                       <span style={{color:'#22c55e', fontWeight:800}}>{d.currency} {num(d.collected)}</span>
                     </td>
                     <td style={{ padding: '10px 12px', textAlign:'center', borderRight:'1px solid var(--border)' }}>
-                      <span style={{color:'#a855f7', fontWeight:700}}>{num(d.commissionRate||8)}%</span>
+                      {d.commissionRate && d.commissionRate > 0 ? (
+                        <span style={{color:'#a855f7', fontWeight:700}}>{num(d.commissionRate)}%</span>
+                      ) : (
+                        <span style={{color:'#ef4444', fontWeight:600, fontSize:12}}>Not Set</span>
+                      )}
                     </td>
                     <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
                       <span style={{color:'#06b6d4', fontWeight:800}}>{d.currency} {num(d.driverCommission||0)}</span>
@@ -232,8 +239,36 @@ export default function DriverAmounts(){
                     <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
                       <span style={{color:'#14b8a6', fontWeight:800}}>{d.currency} {num(d.deliveredToCompany)}</span>
                     </td>
-                    <td style={{ padding: '10px 12px', textAlign:'right' }}>
+                    <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
                       <span style={{color:'#ef4444', fontWeight:800}}>{d.currency} {num(d.pendingToCompany)}</span>
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign:'center' }}>
+                      {d.pendingCommission && d.pendingCommission > 0 ? (
+                        <button 
+                          className="btn success" 
+                          style={{fontSize:12, padding:'6px 12px'}}
+                          disabled={payingDriver === d.id}
+                          onClick={async()=>{
+                            if (!window.confirm(`Send ${d.currency} ${num(d.pendingCommission)} commission to ${d.name}?`)) return
+                            setPayingDriver(d.id)
+                            try{
+                              await apiPost(`/api/finance/drivers/${d.id}/pay-commission`, { amount: d.pendingCommission })
+                              toast.success('Commission payment sent successfully')
+                              // Refresh data
+                              const r = await apiGet('/api/finance/drivers/summary?limit=100')
+                              setDrivers(Array.isArray(r?.drivers) ? r.drivers : [])
+                            }catch(e){
+                              toast.error(e?.message || 'Failed to send payment')
+                            }finally{
+                              setPayingDriver(null)
+                            }
+                          }}
+                        >
+                          {payingDriver === d.id ? 'Sending...' : 'Pay Commission'}
+                        </button>
+                      ) : (
+                        <span style={{color:'var(--text-muted)', fontSize:12}}>No pending</span>
+                      )}
                     </td>
                   </tr>
                 ))

@@ -778,6 +778,45 @@ router.get('/drivers/summary', auth, allowRoles('admin','user','manager'), async
   }
 })
 
+// Pay commission to driver (admin/user)
+router.post('/drivers/:id/pay-commission', auth, allowRoles('admin','user'), async (req, res) => {
+  try{
+    const { id } = req.params
+    const { amount } = req.body || {}
+    const amt = Number(amount)
+    if (Number.isNaN(amt) || amt <= 0) return res.status(400).json({ message: 'Invalid amount' })
+    
+    const driver = await User.findOne({ _id: id, role: 'driver' }).lean()
+    if (!driver) return res.status(404).json({ message: 'Driver not found' })
+    if (req.user.role !== 'admin' && String(driver.createdBy) !== String(req.user.id)){
+      return res.status(403).json({ message: 'Not allowed' })
+    }
+    
+    // Create a remittance record marking commission payment to driver
+    const remit = new Remittance({
+      driver: id,
+      owner: req.user.id,
+      manager: driver.createdBy,
+      amount: amt,
+      driverCommission: amt,
+      method: 'transfer',
+      note: 'Commission payment',
+      status: 'accepted',
+      paidToId: id,
+      paidAt: new Date(),
+    })
+    await remit.save()
+    
+    // Notify driver
+    try{ const io = getIO(); io.to(`user:${id}`).emit('commission.paid', { amount: amt }) }catch{}
+    
+    return res.json({ ok: true, message: 'Commission paid successfully' })
+  }catch(err){
+    console.error('Pay commission error:', err)
+    return res.status(500).json({ message: 'Failed to pay commission' })
+  }
+})
+
 // GET /api/finance/driver-remittances — alias to remittances list within scope
 router.get('/driver-remittances', auth, allowRoles('admin','user','manager','driver'), async (req, res) => {
   try{
