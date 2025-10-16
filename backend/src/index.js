@@ -183,7 +183,7 @@ try {
 }
 
 // Serve PWA manifest and favicons directly from dist root if available
-app.get(['/manifest.webmanifest','/favicon.svg','/favicon.ico','/sw.js','/service-worker.js'], (req, res, next) => {
+app.get(['/manifest.webmanifest','/favicon.svg','/favicon.ico'], (req, res, next) => {
   if (!INDEX_HTML || !CLIENT_DIST) return next();
   const f = path.join(CLIENT_DIST, req.path.replace('..',''));
   if (fs.existsSync(f)) return res.sendFile(f);

@@ -1,7 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-// Lazy-load pdfkit only when generating a receipt to avoid startup crashes
-// on environments where native modules or fonts cannot initialize during boot.
+import PDFDocument from 'pdfkit'
 
 function ensureDir(p){ if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive:true }) }
 
@@ -17,7 +16,6 @@ function getLogoPath(){
 }
 
 export async function generatePayoutReceiptPDF(agent, amountPKR){
-  const { default: PDFDocument } = await import('pdfkit')
   const uploadsRoot = path.resolve(process.cwd(), 'uploads')
   const outDir = path.join(uploadsRoot, 'payouts')
   ensureDir(outDir)
