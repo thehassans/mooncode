@@ -3,7 +3,7 @@ import { apiGet, apiPost } from '../../api'
 import { useNavigate, useLocation } from 'react-router-dom'
 import DateRangeChips from '../../ui/DateRangeChips.jsx'
 
-export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false, withFilters=false, withRange=false }){
+export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false, withFilters=false, withRange=false, showSubmitReturn=false }){
   const nav = useNavigate()
   const location = useLocation()
   const [rows, setRows] = useState([])
@@ -135,6 +135,15 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
       load()
     }catch(e){ alert(e?.message || 'Failed to cancel') }
   }
+  
+  async function submitReturn(o){
+    try{
+      if (!window.confirm('Submit this cancelled/returned order back to company?')) return
+      await apiPost(`/api/orders/${o._id||o.id}/submit-return`, {})
+      alert('Return submitted successfully! Waiting for verification.')
+      load()
+    }catch(e){ alert(e?.message || 'Failed to submit return') }
+  }
 
   return (
     <div className="section" style={{display:'grid', gap:12}}>
@@ -203,6 +212,15 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
                   <div className="helper"><strong>Collected:</strong> {Number(o.collectedAmount).toFixed(2)}</div>
                 ) : null}
                 <div className="helper" style={{whiteSpace:'pre-wrap'}}>{o.customerAddress || o.customerLocation || '-'}</div>
+                {o.driverSubmittedReturn && (
+                  <div style={{padding:8, background: o.returnVerified ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', borderRadius:6, fontSize:13}}>
+                    {o.returnVerified ? (
+                      <span style={{color:'#10b981', fontWeight:700}}>✓ {String(o.shipmentStatus||'').toLowerCase() === 'returned' ? 'Return' : 'Cancelled'} order verified</span>
+                    ) : (
+                      <span style={{color:'#f59e0b', fontWeight:600}}>⏳ Waiting for verification</span>
+                    )}
+                  </div>
+                )}
                 <div style={{display:'flex', gap:8, justifyContent:'flex-end', flexWrap:'wrap'}}>
                   {showMap ? <button className="btn secondary" onClick={()=> openMaps(o)}>Map</button> : null}
                   {showDeliverCancel && (
@@ -210,6 +228,9 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
                       <button className="btn" onClick={()=> markDelivered(o)}>Mark Delivered</button>
                       <button className="btn danger" onClick={()=> cancel(o)}>Cancel</button>
                     </>
+                  )}
+                  {showSubmitReturn && !o.driverSubmittedReturn && (
+                    <button className="btn warning" onClick={()=> submitReturn(o)}>Submit to Company</button>
                   )}
                 </div>
               </div>

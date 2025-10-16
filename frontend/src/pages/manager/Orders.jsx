@@ -315,6 +315,24 @@ export default function ManagerOrders(){
     }catch(err){ alert(err?.message || 'Failed to save') }
     finally{ setUpdating(prev => ({ ...prev, [key]: false })) }
   }
+  
+  async function verifyReturn(orderId){
+    const key = `verify-${orderId}`
+    setUpdating(prev => ({ ...prev, [key]: true }))
+    try{
+      await preserveScroll(async ()=>{
+        const r = await apiPost(`/api/orders/${orderId}/verify-return`, {})
+        const updated = r?.order
+        if (updated){
+          setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
+        } else {
+          await loadOrders(false)
+        }
+      })
+      alert('Return verified successfully')
+    }catch(e){ alert(e?.message || 'Failed to verify return') }
+    finally{ setUpdating(prev => ({ ...prev, [key]: false })) }
+  }
 
   function statusBadge(st){
     const s = String(st||'').toLowerCase()
@@ -385,9 +403,19 @@ export default function ManagerOrders(){
               <div className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}} title={driverName}>Driver: <strong style={{marginLeft:6}}>{driverName}</strong></div>
             )}
           </div>
-          <div style={{display:'flex', alignItems:'center', gap:8}}>
+          <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
             {o.invoiceNumber ? <div style={{fontWeight:800}}>#{o.invoiceNumber}</div> : null}
             <button className="btn secondary" onClick={()=> window.open(`/label/${id}`, '_blank', 'noopener,noreferrer')}>Print Label</button>
+            {o.driverSubmittedReturn && !o.returnVerified && (
+              <button className="btn success" onClick={()=> verifyReturn(id)} disabled={updating[`verify-${id}`]}>
+                {updating[`verify-${id}`] ? 'Verifying...' : 'Verify Return'}
+              </button>
+            )}
+            {o.returnVerified && (
+              <div style={{padding:'4px 10px', background:'rgba(16,185,129,0.1)', borderRadius:6, fontSize:13, fontWeight:700, color:'#10b981'}}>
+                ✓ {String(o.shipmentStatus||'').toLowerCase() === 'returned' ? 'Return' : 'Cancelled'} order verified
+              </div>
+            )}
           </div>
         </div>
         <div className="section" style={{padding:'10px 12px 0', borderTop:'1px solid var(--border)'}}>

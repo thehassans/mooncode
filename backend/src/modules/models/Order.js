@@ -55,6 +55,13 @@ const OrderSchema = new mongoose.Schema({
   // Returns / delivery info
   deliveryNotes: { type: String },
   returnReason: { type: String },
+  
+  // Driver return submission tracking
+  driverSubmittedReturn: { type: Boolean, default: false },
+  driverSubmittedReturnAt: { type: Date },
+  returnVerified: { type: Boolean, default: false },
+  returnVerifiedAt: { type: Date },
+  returnVerifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
   // Settlements
   receivedFromCourier: { type: Number, default: 0 },
