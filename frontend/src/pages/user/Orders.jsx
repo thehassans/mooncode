@@ -809,6 +809,34 @@ export default function UserOrders(){
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Return Verification Action */}
+                      {isReturnSubmitted && (
+                        <div className="section" style={{padding:12, background:'#fef3c7', border:'1px solid #fbbf24', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                          <div>
+                            <div style={{fontWeight:700, color:'#92400e', marginBottom:4}}>
+                              ⚠️ Driver has submitted this {status} order for verification
+                            </div>
+                            <div className="helper" style={{color:'#92400e'}}>
+                              Submitted: {o.returnSubmittedAt ? new Date(o.returnSubmittedAt).toLocaleString() : '-'}
+                            </div>
+                            {o.returnReason && (
+                              <div className="helper" style={{color:'#92400e', marginTop:4}}>
+                                Reason: {o.returnReason}
+                              </div>
+                            )}
+                          </div>
+                          <button 
+                            className="btn success"
+                            onClick={() => verifyReturn(o._id)}
+                            disabled={verifying === String(o._id)}
+                            style={{minWidth:150, whiteSpace:'nowrap'}}
+                          >
+                            {verifying === String(o._id) ? 'Verifying...' : '✓ Accept & Verify'}
+                          </button>
+                        </div>
+                      )}
+                      
                       <div className="section" style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                         <div className="helper">Created by: {agentName}</div>
                         <div className="helper">Created: {o.createdAt ? new Date(o.createdAt).toLocaleString() : ''}</div>
