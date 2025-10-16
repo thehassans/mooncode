@@ -739,9 +739,9 @@ router.get('/drivers/summary', auth, allowRoles('admin','user','manager'), async
       const deliveredToCompany = remitRows && remitRows[0] ? Number(remitRows[0].total||0) : 0
       const pendingToCompany = Math.max(0, collected - deliveredToCompany)
       
-      // Driver commission calculation: use individual driver's commission rate (default 8%)
-      const commissionRate = Number(d.driverProfile?.commissionRate ?? 8) / 100
-      const driverCommission = Math.round(collected * commissionRate)
+      // Driver commission calculation: commission per order × number of delivered orders
+      const commissionPerOrder = Number(d.driverProfile?.commissionPerOrder ?? 0)
+      const driverCommission = Math.round(deliveredCount * commissionPerOrder)
       
       // Calculate withdrawn commission (from accepted payout requests to driver)
       const withdrawnRows = await Remittance.aggregate([
