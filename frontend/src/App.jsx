@@ -73,6 +73,8 @@ import UserManagerFinances from './pages/user/ManagerFinances.jsx'
 import AgentAmounts from './pages/user/AgentAmounts.jsx'
 import DriverAmounts from './pages/user/DriverAmounts.jsx'
 import CurrencySettings from './pages/user/CurrencySettings.jsx'
+import UserReturnedOrders from './pages/user/ReturnedOrders.jsx'
+import ManagerReturnedOrders from './pages/manager/ReturnedOrders.jsx'
 
 import AnalyticsDashboard from './components/analytics/AnalyticsDashboard'
 
@@ -305,6 +307,7 @@ export default function App() {
         <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
         <Route path="agents" element={<Agents />} />
         <Route path="orders" element={<ManagerOrders />} />
+        <Route path="orders/returned" element={<ManagerReturnedOrders />} />
         <Route path="finances" element={<ManagerFinances />} />
         <Route path="drivers/create" element={<ManagerCreateDriver />} />
         <Route path="finances/history/drivers" element={<DriverRemitHistory />} />
@@ -334,6 +337,7 @@ export default function App() {
         <Route path="notifications" element={<Notifications />} />
         <Route path="campaigns" element={<Campaign />} />
         <Route path="orders" element={<UserOrders />} />
+        <Route path="orders/returned" element={<UserReturnedOrders />} />
         <Route path="online-orders" element={<OnlineOrders />} />
         <Route path="inhouse-products" element={<InhouseProducts />} />
         <Route path="warehouses" element={<Warehouse />} />

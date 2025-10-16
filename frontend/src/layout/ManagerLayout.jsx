@@ -33,6 +33,7 @@ export default function ManagerLayout(){
     { to: '/manager', label: 'Dashboard' },
     { to: '/manager/agents', label: 'Agents' },
     { to: '/manager/orders', label: 'Orders' },
+    { to: '/manager/orders/returned', label: 'Returned Orders' },
     { to: '/manager/drivers/create', label: 'Create Driver' },
     { to: '/manager/finances', label: 'Finances' },
     { to: '/manager/transactions/drivers', label: 'Driver Finances' },

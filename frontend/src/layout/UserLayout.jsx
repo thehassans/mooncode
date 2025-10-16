@@ -35,6 +35,7 @@ export default function UserLayout(){
       label: 'Commerce', icon: '🛍️',
       children: [
         { to: '/user/orders', label: 'Orders', icon: '🧾' },
+        { to: '/user/orders/returned', label: 'Returned Orders', icon: '↩️' },
         { to: '/user/online-orders', label: 'Online Orders', icon: '🌐' },
         { to: '/user/inhouse-products', label: 'Inhouse Products', icon: '🏷️' },
         { to: '/user/warehouses', label: 'Warehouses', icon: '🏬' },

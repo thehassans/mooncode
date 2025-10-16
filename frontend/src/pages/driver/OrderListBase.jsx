@@ -3,7 +3,7 @@ import { apiGet, apiPost } from '../../api'
 import { useNavigate, useLocation } from 'react-router-dom'
 import DateRangeChips from '../../ui/DateRangeChips.jsx'
 
-export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false, withFilters=false, withRange=false }){
+export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false, withFilters=false, withRange=false, showSubmitReturn=false }){
   const nav = useNavigate()
   const location = useLocation()
   const [rows, setRows] = useState([])
@@ -14,6 +14,7 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
   const [range, setRange] = useState('last7') // today | last7 | last30 | custom
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
+  const [submitting, setSubmitting] = useState(null)
   // Initialize filters from URL on mount and when URL changes
   useEffect(()=>{
     try{
@@ -135,14 +136,19 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
       load()
     }catch(e){ alert(e?.message || 'Failed to cancel') }
   }
-  
+
   async function submitReturn(o){
+    const id = String(o._id || o.id)
     try{
-      if (!window.confirm(`Submit this ${o.shipmentStatus} order back to company?`)) return
-      await apiPost(`/api/orders/${o._id||o.id}/submit-return`, {})
-      alert('Order submitted to company successfully')
+      setSubmitting(id)
+      await apiPost(`/api/orders/${id}/return/submit`, {})
+      alert('Order submitted to company for verification')
       load()
-    }catch(e){ alert(e?.message || 'Failed to submit order') }
+    }catch(e){
+      alert(e?.message || 'Failed to submit order')
+    }finally{
+      setSubmitting(null)
+    }
   }
 
   return (
@@ -198,51 +204,66 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
           <div className="section">No orders</div>
         ) : (
           <div className="section" style={{display:'grid', gap:10}}>
-            {filteredRows.map(o => (
-              <div key={String(o._id||o.id)} className="panel" style={{display:'grid', gap:8, border:'1px solid var(--border)', borderRadius:10, padding:12}}>
-                <div style={{display:'flex', justifyContent:'space-between', gap:8, alignItems:'center'}}>
-                  <div style={{fontWeight:800}}>#{o.invoiceNumber || String(o._id||'').slice(-6)}</div>
-                  <div style={{display:'flex', gap:6, alignItems:'center'}}>
-                    {o.orderCountry ? <span className="badge">{o.orderCountry}</span> : null}
-                    {o.city ? <span className="chip">{o.city}</span> : null}
+            {filteredRows.map(o => {
+              const isSubmitting = submitting === String(o._id || o.id)
+              const canSubmit = showSubmitReturn && !o.returnSubmittedToCompany && !o.returnVerified
+              const isVerified = o.returnVerified
+              const isSubmitted = o.returnSubmittedToCompany && !isVerified
+              const status = String(o.shipmentStatus || '').toLowerCase()
+              
+              return (
+                <div key={String(o._id||o.id)} className="panel" style={{display:'grid', gap:8, border:'1px solid var(--border)', borderRadius:10, padding:12}}>
+                  <div style={{display:'flex', justifyContent:'space-between', gap:8, alignItems:'center'}}>
+                    <div style={{fontWeight:800}}>#{o.invoiceNumber || String(o._id||'').slice(-6)}</div>
+                    <div style={{display:'flex', gap:6, alignItems:'center'}}>
+                      {o.orderCountry ? <span className="badge">{o.orderCountry}</span> : null}
+                      {o.city ? <span className="chip">{o.city}</span> : null}
+                    </div>
+                  </div>
+                  <div className="helper">{o.customerName || '-'} • {o.customerPhone || '-'}</div>
+                  {o.collectedAmount != null && Number(o.collectedAmount) > 0 ? (
+                    <div className="helper"><strong>Collected:</strong> {Number(o.collectedAmount).toFixed(2)}</div>
+                  ) : null}
+                  <div className="helper" style={{whiteSpace:'pre-wrap'}}>{o.customerAddress || o.customerLocation || '-'}</div>
+                  
+                  {/* Return/Cancel Verification Status */}
+                  {showSubmitReturn && (
+                    <div style={{marginTop:4}}>
+                      {isVerified && (
+                        <div style={{color:'#10b981', fontWeight:700, fontSize:14}}>
+                          ✅ {status.charAt(0).toUpperCase() + status.slice(1)} Order Verified
+                        </div>
+                      )}
+                      {isSubmitted && (
+                        <div style={{color:'#f59e0b', fontWeight:700, fontSize:14}}>
+                          ⏳ Submitted - Awaiting Verification
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div style={{display:'flex', gap:8, justifyContent:'flex-end', flexWrap:'wrap'}}>
+                    {showMap ? <button className="btn secondary" onClick={()=> openMaps(o)}>Map</button> : null}
+                    {showDeliverCancel && (
+                      <>
+                        <button className="btn" onClick={()=> markDelivered(o)}>Mark Delivered</button>
+                        <button className="btn danger" onClick={()=> cancel(o)}>Cancel</button>
+                      </>
+                    )}
+                    {canSubmit && (
+                      <button 
+                        className="btn success" 
+                        onClick={()=> submitReturn(o)}
+                        disabled={isSubmitting}
+                        style={{minWidth:180}}
+                      >
+                        {isSubmitting ? 'Submitting...' : 'Submit to Company'}
+                      </button>
+                    )}
                   </div>
                 </div>
-                <div className="helper">{o.customerName || '-'} • {o.customerPhone || '-'}</div>
-                {o.collectedAmount != null && Number(o.collectedAmount) > 0 ? (
-                  <div className="helper"><strong>Collected:</strong> {Number(o.collectedAmount).toFixed(2)}</div>
-                ) : null}
-                <div className="helper" style={{whiteSpace:'pre-wrap'}}>{o.customerAddress || o.customerLocation || '-'}</div>
-                {/* Status badge with verification */}
-                {['cancelled','returned'].includes(String(o.shipmentStatus||'').toLowerCase()) && (
-                  <div style={{display:'flex', alignItems:'center', gap:8}}>
-                    <span className="badge" style={{background: o.verifiedByCompany ? '#10b98122' : '#f59e0b22', color: o.verifiedByCompany ? '#065f46' : '#b45309'}}>
-                      {o.shipmentStatus.toUpperCase()}
-                    </span>
-                    {o.verifiedByCompany && (
-                      <span style={{color:'#10b981', fontSize:14, fontWeight:700}}>✓ Order Verified</span>
-                    )}
-                    {o.returnedToCompany && !o.verifiedByCompany && (
-                      <span style={{color:'#f59e0b', fontSize:13}}>Submitted - Awaiting Verification</span>
-                    )}
-                  </div>
-                )}
-                <div style={{display:'flex', gap:8, justifyContent:'flex-end', flexWrap:'wrap'}}>
-                  {showMap ? <button className="btn secondary" onClick={()=> openMaps(o)}>Map</button> : null}
-                  {showDeliverCancel && (
-                    <>
-                      <button className="btn" onClick={()=> markDelivered(o)}>Mark Delivered</button>
-                      <button className="btn danger" onClick={()=> cancel(o)}>Cancel</button>
-                    </>
-                  )}
-                  {/* Submit button for cancelled/returned orders */}
-                  {['cancelled','returned'].includes(String(o.shipmentStatus||'').toLowerCase()) && !o.returnedToCompany && (
-                    <button className="btn" style={{background:'#8b5cf6', color:'#fff'}} onClick={()=> submitReturn(o)}>
-                      Submit to Company
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

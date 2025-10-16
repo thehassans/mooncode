@@ -5,12 +5,12 @@ export default function DriverHistory(){
   return (
     <OrderListBase
       title="Order History"
-      subtitle="Delivered orders archive"
+      subtitle="All your delivered and cancelled orders"
       endpoint="/api/orders/driver/history"
-      showTotalCollected
-      showMap={false}
+      showTotalCollected={true}
+      showSubmitReturn={true}
       withFilters
-      withRange
+      withRange={true}
     />
   )
 }

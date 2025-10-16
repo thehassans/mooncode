@@ -1792,6 +1792,133 @@ _VITALBLAZE Commerce_
 ${order.createdBy ? `Agent: ${order.createdBy.firstName} ${order.createdBy.lastName}` : ''}`
 }
 
+// Submit cancelled/returned order to company (Driver)
+router.post('/:id/return/submit', auth, allowRoles('driver'), async (req, res) => {
+  try {
+    const { id } = req.params
+    const order = await Order.findById(id)
+    
+    if (!order) return res.status(404).json({ message: 'Order not found' })
+    
+    // Verify driver owns this order
+    if (String(order.deliveryBoy) !== String(req.user.id)) {
+      return res.status(403).json({ message: 'Not allowed' })
+    }
+    
+    // Check if order is cancelled or returned
+    const status = String(order.shipmentStatus || '').toLowerCase()
+    if (!['cancelled', 'returned'].includes(status)) {
+      return res.status(400).json({ message: 'Only cancelled or returned orders can be submitted' })
+    }
+    
+    // Check if already submitted
+    if (order.returnSubmittedToCompany) {
+      return res.status(400).json({ message: 'Order already submitted to company' })
+    }
+    
+    // Mark as submitted
+    order.returnSubmittedToCompany = true
+    order.returnSubmittedAt = new Date()
+    await order.save()
+    
+    emitOrderChange(order, 'return_submitted').catch(() => {})
+    
+    // Notify owner/manager
+    try {
+      const io = getIO()
+      const ownerId = await User.findById(order.createdBy).select('createdBy role').lean()
+      const targetId = ownerId?.role === 'user' ? String(ownerId._id) : String(ownerId?.createdBy)
+      if (targetId) {
+        io.to(`user:${targetId}`).emit('order.return_submitted', { orderId: String(order._id) })
+      }
+    } catch {}
+    
+    res.json({ message: 'Order submitted to company for verification', order })
+  } catch (err) {
+    console.error('Submit return error:', err)
+    res.status(500).json({ message: 'Failed to submit order', error: err?.message })
+  }
+})
+
+// Verify returned/cancelled order (User/Manager)
+router.post('/:id/return/verify', auth, allowRoles('user', 'manager'), async (req, res) => {
+  try {
+    const { id } = req.params
+    const order = await Order.findById(id).populate('createdBy', 'role createdBy')
+    
+    if (!order) return res.status(404).json({ message: 'Order not found' })
+    
+    // Permission check
+    if (req.user.role === 'user') {
+      // Owner can verify any order in their workspace
+      const agents = await User.find({ role: 'agent', createdBy: req.user.id }).select('_id').lean()
+      const managers = await User.find({ role: 'manager', createdBy: req.user.id }).select('_id').lean()
+      const allowedCreators = new Set([req.user.id, ...agents.map(a => String(a._id)), ...managers.map(m => String(m._id))])
+      
+      if (!allowedCreators.has(String(order.createdBy._id || order.createdBy))) {
+        return res.status(403).json({ message: 'Not allowed' })
+      }
+    } else if (req.user.role === 'manager') {
+      // Manager can verify orders they created or in their assigned countries
+      const me = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
+      const ownerId = String(me?.createdBy)
+      
+      const agents = await User.find({ role: 'agent', createdBy: ownerId }).select('_id').lean()
+      const managers = await User.find({ role: 'manager', createdBy: ownerId }).select('_id').lean()
+      const allowedCreators = new Set([ownerId, ...agents.map(a => String(a._id)), ...managers.map(m => String(m._id))])
+      
+      if (!allowedCreators.has(String(order.createdBy._id || order.createdBy))) {
+        return res.status(403).json({ message: 'Not allowed' })
+      }
+      
+      // Check country assignment
+      const expand = (c) => (c === 'KSA' || c === 'Saudi Arabia') ? ['KSA', 'Saudi Arabia'] : (c === 'UAE' || c === 'United Arab Emirates') ? ['UAE', 'United Arab Emirates'] : [c]
+      const arr = (Array.isArray(me?.assignedCountries) && me.assignedCountries.length) ? me.assignedCountries : (me?.assignedCountry ? [me.assignedCountry] : [])
+      
+      if (arr.length) {
+        const set = new Set()
+        for (const c of arr) {
+          for (const x of expand(c)) set.add(x)
+        }
+        if (!set.has(String(order.orderCountry || ''))) {
+          return res.status(403).json({ message: 'Manager not allowed to verify orders outside assigned countries' })
+        }
+      }
+    }
+    
+    // Check if order is submitted
+    if (!order.returnSubmittedToCompany) {
+      return res.status(400).json({ message: 'Order has not been submitted by driver yet' })
+    }
+    
+    // Check if already verified
+    if (order.returnVerified) {
+      return res.status(400).json({ message: 'Order already verified' })
+    }
+    
+    // Mark as verified
+    order.returnVerified = true
+    order.returnVerifiedAt = new Date()
+    order.returnVerifiedBy = req.user.id
+    await order.save()
+    
+    emitOrderChange(order, 'return_verified').catch(() => {})
+    
+    // Notify driver
+    try {
+      const io = getIO()
+      if (order.deliveryBoy) {
+        io.to(`user:${String(order.deliveryBoy)}`).emit('order.return_verified', { orderId: String(order._id) })
+      }
+    } catch {}
+    
+    res.json({ message: 'Order verified successfully', order })
+  } catch (err) {
+    console.error('Verify return error:', err)
+    res.status(500).json({ message: 'Failed to verify order', error: err?.message })
+  }
+})
+
 export default router
 
 // Analytics: last 7 days sales by country
@@ -1846,71 +1973,3 @@ router.get('/analytics/last7days', auth, allowRoles('admin','user'), async (req,
     res.status(500).json({ message: 'Failed to load analytics', error: err?.message })
   }
 })
-
-// Submit cancelled/returned order back to company (driver)
-router.post('/:id/submit-return', auth, allowRoles('driver'), async (req, res) => {
-  try{
-    const { id } = req.params
-    const ord = await Order.findById(id)
-    if (!ord) return res.status(404).json({ message: 'Order not found' })
-    
-    // Only driver assigned to this order can submit
-    if (String(ord.deliveryBoy || '') !== String(req.user.id)){
-      return res.status(403).json({ message: 'Not allowed' })
-    }
-    
-    // Only cancelled or returned orders can be submitted
-    const status = String(ord.shipmentStatus || '').toLowerCase()
-    if (!['cancelled', 'returned'].includes(status)){
-      return res.status(400).json({ message: 'Only cancelled or returned orders can be submitted' })
-    }
-    
-    // Mark as returned to company
-    ord.returnedToCompany = true
-    ord.returnedToCompanyAt = new Date()
-    ord.returnedToCompanyBy = req.user.id
-    await ord.save()
-    
-    emitOrderChange(ord, 'return_submitted').catch(()=>{})
-    
-    res.json({ message: 'Order submitted to company', order: ord })
-  }catch(err){
-    console.error('Submit return error:', err)
-    res.status(500).json({ message: 'Failed to submit order', error: err.message })
-  }
-})
-
-// Verify returned/cancelled order submission (user, manager)
-router.post('/:id/verify-return', auth, allowRoles('admin','user','manager'), async (req, res) => {
-  try{
-    const { id } = req.params
-    const ord = await Order.findById(id)
-    if (!ord) return res.status(404).json({ message: 'Order not found' })
-    
-    // Check if order was submitted by driver
-    if (!ord.returnedToCompany){
-      return res.status(400).json({ message: 'Order has not been submitted by driver yet' })
-    }
-    
-    // Only cancelled or returned orders can be verified
-    const status = String(ord.shipmentStatus || '').toLowerCase()
-    if (!['cancelled', 'returned'].includes(status)){
-      return res.status(400).json({ message: 'Only cancelled or returned orders can be verified' })
-    }
-    
-    // Mark as verified
-    ord.verifiedByCompany = true
-    ord.verifiedByCompanyAt = new Date()
-    ord.verifiedBy = req.user.id
-    await ord.save()
-    
-    emitOrderChange(ord, 'return_verified').catch(()=>{})
-    
-    res.json({ message: 'Order return verified', order: ord })
-  }catch(err){
-    console.error('Verify return error:', err)
-    res.status(500).json({ message: 'Failed to verify order', error: err.message })
-  }
-})
-
-export default router
