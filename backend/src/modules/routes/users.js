@@ -786,7 +786,8 @@ router.post('/investors', auth, allowRoles('admin','user'), async (req, res) => 
       const prod = await Product.findById(pid).select('_id')
       if (!prod) continue
       const ppu = Number(it?.profitPerUnit || 0)
-      assignedProducts.push({ product: prod._id, profitPerUnit: Math.max(0, ppu) })
+      const country = String(it?.country || '').trim()
+      assignedProducts.push({ product: prod._id, country, profitPerUnit: Math.max(0, ppu) })
     }
   }
   const createdBy = req.user?.id

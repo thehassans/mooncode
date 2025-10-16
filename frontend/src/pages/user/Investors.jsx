@@ -6,7 +6,8 @@ import Modal from '../../components/Modal.jsx'
 
 export default function Investors(){
   const [form, setForm] = useState({ firstName:'', lastName:'', email:'', password:'', phone:'', investmentAmount:'', currency:'SAR' })
-  const [assignments, setAssignments] = useState([{ productId:'', profitPerUnit:'' }])
+  const [assignments, setAssignments] = useState([{ productId:'', country:'', profitPerUnit:'' }])
+  const [countries, setCountries] = useState([])
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [q, setQ] = useState('')
@@ -32,7 +33,7 @@ export default function Investors(){
     setAssignments(arr => arr.map((row, i) => i===idx ? { ...row, [key]: value } : row))
   }
 
-  function addAssignment(){ setAssignments(arr => [...arr, { productId:'', profitPerUnit:'' }]) }
+  function addAssignment(){ setAssignments(arr => [...arr, { productId:'', country:'', profitPerUnit:'' }]) }
   function removeAssignment(idx){ setAssignments(arr => arr.filter((_r, i) => i !== idx)) }
 
   async function loadManagers(query=''){
@@ -58,7 +59,21 @@ export default function Investors(){
     try{ const data = await apiGet('/api/products'); setProducts(data.products||[]) }catch(_e){ setProducts([]) }
   }
 
-  useEffect(()=>{ loadManagers(''); loadProducts() },[])
+  async function loadCountries(){
+    try{ 
+      const data = await apiGet('/api/orders/options')
+      const arr = Array.isArray(data?.countries) ? data.countries : []
+      const map = new Map()
+      for (const c of arr){
+        const raw = String(c||'').trim()
+        const key = raw.toLowerCase()
+        if (!map.has(key)) map.set(key, raw.toUpperCase() === 'UAE' ? 'UAE' : raw)
+      }
+      setCountries(Array.from(map.values()))
+    }catch{ setCountries([]) }
+  }
+
+  useEffect(()=>{ loadManagers(''); loadProducts(); loadCountries() },[])
 
   // small debounce for search
   useEffect(()=>{
@@ -100,13 +115,17 @@ export default function Investors(){
         investmentAmount: Number(form.investmentAmount || 0),
         assignments: assignments
           .filter(a => a.productId && a.profitPerUnit !== '')
-          .map(a => ({ productId: a.productId, profitPerUnit: Number(a.profitPerUnit||0) }))
+          .map(a => ({ 
+            productId: a.productId, 
+            country: a.country || '',
+            profitPerUnit: Number(a.profitPerUnit||0) 
+          }))
       }
       await apiPost('/api/users/investors', payload)
       setMsg('Investor created successfully')
       setForm({ firstName:'', lastName:'', email:'', password:'', phone:'', investmentAmount:'', currency:'SAR' })
       setPhoneError('')
-      setAssignments([{ productId:'', profitPerUnit:'' }])
+      setAssignments([{ productId:'', country:'', profitPerUnit:'' }])
       loadManagers(q)
     }catch(err){ setMsg(err?.message || 'Failed to create investor') }
     finally{ setLoading(false) }
@@ -197,26 +216,53 @@ export default function Investors(){
 
           <div>
             <div className="label">Assigned Products</div>
-            <div style={{display:'grid', gap:10}}>
-              {assignments.map((row, idx) => (
-                <div key={idx} style={{display:'grid', gridTemplateColumns:'1fr 180px auto', gap:8, alignItems:'center'}}>
-                  <select className="input" value={row.productId} onChange={e=>onAssignChange(idx, 'productId', e.target.value)}>
-                    <option value="">-- Select Product --</option>
-                    {products.map(p => (<option key={p._id} value={p._id}>{p.name}</option>))}
-                  </select>
-                  <input className="input" type="number" min="0" step="0.01" value={row.profitPerUnit} onChange={e=>onAssignChange(idx,'profitPerUnit', e.target.value)} placeholder="Profit / unit" />
-                  <div style={{display:'flex', gap:6}}>
-                    {assignments.length > 1 && (
-                      <button type="button" className="btn danger" onClick={()=>removeAssignment(idx)} title="Remove" aria-label="Remove">🗑️</button>
-                    )}
-                    {idx === assignments.length-1 && (
-                      <button type="button" className="btn secondary" onClick={addAssignment} title="Add another" aria-label="Add">＋</button>
+            <div style={{display:'grid', gap:16}}>
+              {assignments.map((row, idx) => {
+                const selectedProduct = products.find(p => p._id === row.productId)
+                const showInfo = selectedProduct && row.country
+                const estimatedRevenue = selectedProduct ? (selectedProduct.stock || 0) * (selectedProduct.price || 0) : 0
+                return (
+                  <div key={idx} style={{padding:12, background:'var(--panel)', borderRadius:8, border:'1px solid var(--border)'}}>
+                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 140px auto', gap:8, alignItems:'center', marginBottom: showInfo ? 12 : 0}}>
+                      <select className="input" value={row.productId} onChange={e=>onAssignChange(idx, 'productId', e.target.value)}>
+                        <option value="">-- Select Product --</option>
+                        {products.map(p => (<option key={p._id} value={p._id}>{p.name}</option>))}
+                      </select>
+                      <select className="input" value={row.country} onChange={e=>onAssignChange(idx, 'country', e.target.value)}>
+                        <option value="">-- Select Country --</option>
+                        {countries.map(c => (<option key={c} value={c}>{c}</option>))}
+                      </select>
+                      <input className="input" type="number" min="0" step="0.01" value={row.profitPerUnit} onChange={e=>onAssignChange(idx,'profitPerUnit', e.target.value)} placeholder="Profit/unit" />
+                      <div style={{display:'flex', gap:6}}>
+                        {assignments.length > 1 && (
+                          <button type="button" className="btn danger" onClick={()=>removeAssignment(idx)} title="Remove" aria-label="Remove">🗑️</button>
+                        )}
+                        {idx === assignments.length-1 && (
+                          <button type="button" className="btn secondary" onClick={addAssignment} title="Add another" aria-label="Add">＋</button>
+                        )}
+                      </div>
+                    </div>
+                    {showInfo && (
+                      <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8, paddingTop:12, borderTop:'1px solid var(--border)'}}>
+                        <div style={{padding:8, background:'var(--panel-2)', borderRadius:6}}>
+                          <div className="helper" style={{fontSize:11}}>Stock</div>
+                          <div style={{fontWeight:700, color:'#f59e0b'}}>{selectedProduct.stock || 0} units</div>
+                        </div>
+                        <div style={{padding:8, background:'var(--panel-2)', borderRadius:6}}>
+                          <div className="helper" style={{fontSize:11}}>Price/Unit</div>
+                          <div style={{fontWeight:700, color:'#10b981'}}>{form.currency} {Number(selectedProduct.price || 0).toFixed(2)}</div>
+                        </div>
+                        <div style={{padding:8, background:'var(--panel-2)', borderRadius:6}}>
+                          <div className="helper" style={{fontSize:11}}>Est. Revenue</div>
+                          <div style={{fontWeight:700, color:'#3b82f6'}}>{form.currency} {estimatedRevenue.toFixed(2)}</div>
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
-            <div className="helper" style={{marginTop:6}}>Add as many products as needed. Profit per unit is used to compute investor profit.</div>
+            <div className="helper" style={{marginTop:6}}>Select product, country, and profit per unit. Stock and revenue are shown for reference.</div>
           </div>
 
           <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
