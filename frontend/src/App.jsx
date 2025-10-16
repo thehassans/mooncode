@@ -24,6 +24,7 @@ import DriverRemitHistory from './pages/manager/DriverRemitHistory.jsx'
 import AgentRemitHistory from './pages/manager/AgentRemitHistory.jsx'
 import AgentInhouseProducts from './pages/agent/AgentInhouseProducts.jsx'
 import InvestorDashboard from './pages/investor/Dashboard.jsx'
+import InvestorMe from './pages/investor/Me.jsx'
 import InvestorLayout from './layout/InvestorLayout.jsx'
 import DriverLayout from './layout/DriverLayout.jsx'
 import AgentOrdersHistory from './pages/agent/OrdersHistory.jsx'
@@ -70,6 +71,7 @@ import SiteCategories from './pages/site/Categories.jsx'
 import UserFinances from './pages/user/Finances.jsx'
 import UserManagerFinances from './pages/user/ManagerFinances.jsx'
 import AgentAmounts from './pages/user/AgentAmounts.jsx'
+import InvestorAmounts from './pages/user/InvestorAmounts.jsx'
 import DriverAmounts from './pages/user/DriverAmounts.jsx'
 import CurrencySettings from './pages/user/CurrencySettings.jsx'
 import UserReturnedOrders from './pages/user/ReturnedOrders.jsx'
@@ -290,6 +292,7 @@ export default function App() {
         }
       >
         <Route index element={<InvestorDashboard />} />
+        <Route path="me" element={<InvestorMe />} />
       </Route>
 
       <Route
@@ -346,6 +349,7 @@ export default function App() {
         <Route path="transactions" element={<Transactions />} />
         <Route path="manager-finances" element={<UserManagerFinances />} />
         <Route path="agent-amounts" element={<AgentAmounts />} />
+        <Route path="investor-amounts" element={<InvestorAmounts />} />
         <Route path="driver-amounts" element={<DriverAmounts />} />
         <Route path="finances" element={<UserFinances />} />
         <Route path="currency" element={<CurrencySettings />} />

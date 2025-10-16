@@ -50,6 +50,7 @@ export default function UserLayout(){
         { to: '/user/transactions', label: 'Driver Settlement', icon: '💳' },
         { to: '/user/manager-finances', label: 'Manager Finances', icon: '📊' },
         { to: '/user/agent-amounts', label: 'Agent Amounts', icon: '💰' },
+        { to: '/user/investor-amounts', label: 'Investor Amounts', icon: '💼' },
         { to: '/user/driver-amounts', label: 'Driver Amounts', icon: '🚗' },
       ]
     },

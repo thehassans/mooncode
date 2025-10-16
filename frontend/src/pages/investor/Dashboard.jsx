@@ -1,11 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { API_BASE, apiGet } from '../../api'
 import { io } from 'socket.io-client'
+import { useNavigate } from 'react-router-dom'
 
 export default function InvestorDashboard(){
+  const navigate = useNavigate()
   const [isMobile, setIsMobile] = useState(()=> (typeof window!=='undefined' ? window.innerWidth <= 768 : false))
-  const [me, setMe] = useState(null)
-  const [metrics, setMetrics] = useState({ currency:'SAR', investmentAmount:0, unitsSold:0, totalProfit:0, totalSaleValue:0, breakdown:[] })
+  const [data, setData] = useState({
+    totalInvestment: 0,
+    currency: 'SAR',
+    totalProfit: 0,
+    totalDeliveredUnits: 0,
+    totalUnits: 0,
+    products: []
+  })
   const [loading, setLoading] = useState(false)
 
   useEffect(()=>{
@@ -16,20 +24,22 @@ export default function InvestorDashboard(){
 
   useEffect(()=>{
     async function load(){
-      try{ const { user } = await apiGet('/api/users/me'); setMe(user||null) }catch{ setMe(null) }
       try{
         setLoading(true)
-        const m = await apiGet('/api/users/investors/me/metrics')
-        setMetrics({
-          currency: m.currency || 'SAR',
-          investmentAmount: Number(m.investmentAmount||0),
-          unitsSold: Number(m.unitsSold||0),
-          totalProfit: Number(m.totalProfit||0),
-          totalSaleValue: Number(m.totalSaleValue||0),
-          breakdown: Array.isArray(m.breakdown) ? m.breakdown : []
+        const res = await apiGet('/api/finance/investor/dashboard')
+        setData({
+          totalInvestment: res.totalInvestment || 0,
+          currency: res.currency || 'SAR',
+          totalProfit: res.totalProfit || 0,
+          totalDeliveredUnits: res.totalDeliveredUnits || 0,
+          totalUnits: res.totalUnits || 0,
+          products: Array.isArray(res.products) ? res.products : []
         })
-      }catch{ setMetrics({ currency:'SAR', investmentAmount:0, unitsSold:0, totalProfit:0, totalSaleValue:0, breakdown:[] }) }
-      finally{ setLoading(false) }
+      }catch(e){
+        console.error('Failed to load dashboard:', e)
+      }finally{
+        setLoading(false)
+      }
     }
     load()
     // Socket live updates
@@ -38,86 +48,131 @@ export default function InvestorDashboard(){
       const token = localStorage.getItem('token') || ''
       socket = io(API_BASE || undefined, { path: '/socket.io', transports: ['polling'], upgrade:false, auth: { token }, withCredentials: true })
       const refresh = ()=>{ load() }
-      // Orders in the workspace changed (ship/deliver/return/settle/created)
       socket.on('orders.changed', refresh)
-      // Direct investor updates (profile/assignment changed)
-      socket.on('investor.updated', refresh)
+      socket.on('investor-remittance.approved', refresh)
+      socket.on('investor-remittance.sent', refresh)
     }catch{}
     return ()=>{
       try{ socket && socket.off('orders.changed') }catch{}
-      try{ socket && socket.off('investor.updated') }catch{}
+      try{ socket && socket.off('investor-remittance.approved') }catch{}
+      try{ socket && socket.off('investor-remittance.sent') }catch{}
       try{ socket && socket.disconnect() }catch{}
     }
   }, [])
 
   // Formatting helpers
-  function fmtNum(n){ try{ return Number(n||0).toLocaleString() }catch{ return String(n||0) } }
-  function fmtAmt(n){ try{ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }catch{ return String(n||0) } }
-  const currencyLabel = useMemo(()=> String(metrics?.currency||'SAR'), [metrics?.currency])
+  function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
 
   return (
     <div className="section" style={{display:'grid', gap:12}}>
-      {/* KPI Tiles */}
-      {(function(){
-        const items = [
-          { title: 'Total Investment', color: '#0ea5e9', value: `${currencyLabel} ${fmtAmt(metrics.investmentAmount)}` },
-          { title: 'Units Sold', color: '#10b981', value: fmtNum(metrics.unitsSold) },
-          { title: 'Total Sale Value', color: '#0ea5e9', value: `${currencyLabel} ${fmtAmt(metrics.totalSaleValue)}` },
-          { title: 'Total Profit', color: '#f59e0b', value: `${currencyLabel} ${fmtAmt(metrics.totalProfit)}` },
-        ]
-        const Tile = ({ title, value, color }) => (
-          <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:12, padding:'12px', background:'var(--panel)'}}>
-            <div className="helper">{title}</div>
-            <div style={{fontSize:24, fontWeight:900, color:color||'inherit'}}>{value}</div>
-          </div>
-        )
-        return (
-          <div className="card">
-            <div className="section" style={{display:'grid', gap:12}}>
-              <div>
-                <div style={{fontWeight:800, fontSize:16}}>Overview</div>
-                <div className="helper">Live metrics for your assigned products</div>
-              </div>
-              <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                {items.map((it, i)=> (<Tile key={i} title={it.title} value={it.value} color={it.color} />))}
-              </div>
-            </div>
-          </div>
-        )
-      })()}
+      <div className="page-header">
+        <div>
+          <div className="page-title gradient heading-purple">Investment Dashboard</div>
+          <div className="page-subtitle">Track your portfolio performance and earnings</div>
+        </div>
+        <button className="btn" onClick={()=> navigate('/investor/me')}>💰 Request Payment</button>
+      </div>
 
-      {/* Breakdown */}
+      {/* Summary Cards */}
+      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:12}}>
+        <div className="card" style={{background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color:'#fff'}}>
+          <div style={{padding:'16px'}}>
+            <div style={{fontSize:14, opacity:0.9}}>💼 Total Investment</div>
+            <div style={{fontSize:28, fontWeight:800}}>{data.currency} {num(data.totalInvestment)}</div>
+          </div>
+        </div>
+        <div className="card" style={{background:'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color:'#fff'}}>
+          <div style={{padding:'16px'}}>
+            <div style={{fontSize:14, opacity:0.9}}>📦 Total Units</div>
+            <div style={{fontSize:28, fontWeight:800}}>{num(data.totalUnits)}</div>
+          </div>
+        </div>
+        <div className="card" style={{background:'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color:'#fff'}}>
+          <div style={{padding:'16px'}}>
+            <div style={{fontSize:14, opacity:0.9}}>✅ Delivered Units</div>
+            <div style={{fontSize:28, fontWeight:800}}>{num(data.totalDeliveredUnits)}</div>
+          </div>
+        </div>
+        <div className="card" style={{background:'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color:'#fff'}}>
+          <div style={{padding:'16px'}}>
+            <div style={{fontSize:14, opacity:0.9}}>💰 Total Profit</div>
+            <div style={{fontSize:28, fontWeight:800}}>{data.currency} {num(data.totalProfit)}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Product Cards */}
       <div className="card">
         <div className="card-header">
-          <div className="card-title">Per-Product Breakdown</div>
-          <div className="helper">Only shipped or delivered orders are counted</div>
+          <div className="card-title">📦 Your Investment Products</div>
         </div>
-        <div style={{overflow:'auto'}}>
-          <table style={{width:'100%', borderCollapse:'separate', borderSpacing:0}}>
-            <thead>
-              <tr>
-                <th style={{textAlign:'left', padding:'10px 12px'}}>Product</th>
-                <th style={{textAlign:'left', padding:'10px 12px'}}>Units Sold</th>
-                <th style={{textAlign:'left', padding:'10px 12px'}}>Sale Value</th>
-                <th style={{textAlign:'left', padding:'10px 12px'}}>Profit</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={4} style={{padding:'10px 12px', opacity:0.7}}>Loading…</td></tr>
-              ) : metrics.breakdown.length === 0 ? (
-                <tr><td colSpan={4} style={{padding:'10px 12px', opacity:0.7}}>No data</td></tr>
-              ) : metrics.breakdown.map((row, idx) => (
-                <tr key={idx} style={{borderTop:'1px solid var(--border)'}}>
-                  <td style={{padding:'10px 12px'}}>{row.productName || '-'}</td>
-                  <td style={{padding:'10px 12px'}}>{fmtNum(row.unitsSold || 0)}</td>
-                  <td style={{padding:'10px 12px'}}>{currencyLabel} {fmtAmt(row.saleValue||0)}</td>
-                  <td style={{padding:'10px 12px'}}>{currencyLabel} {fmtAmt(row.profit||0)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {loading ? (
+          <div style={{padding:20, textAlign:'center', opacity:0.7}}>Loading...</div>
+        ) : data.products.length === 0 ? (
+          <div style={{padding:20, textAlign:'center', opacity:0.7}}>No products assigned yet</div>
+        ) : (
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(320px, 1fr))', gap:16}}>
+            {data.products.map((p, idx) => (
+              <div key={idx} className="card" style={{border:'1px solid var(--border)', padding:0, overflow:'hidden'}}>
+                {/* Product Image */}
+                {p.product?.image && (
+                  <div style={{width:'100%', height:200, overflow:'hidden', background:'var(--panel)'}}>
+                    <img 
+                      src={`${API_BASE}${p.product.image}`} 
+                      alt={p.product.name}
+                      style={{width:'100%', height:'100%', objectFit:'cover'}}
+                      onError={(e)=> e.target.style.display='none'}
+                    />
+                  </div>
+                )}
+                
+                {/* Product Info */}
+                <div style={{padding:16}}>
+                  <div style={{fontSize:18, fontWeight:700, marginBottom:8, color:'#8b5cf6'}}>{p.product?.name || 'Product'}</div>
+                  {p.product?.description && (
+                    <div style={{fontSize:13, opacity:0.7, marginBottom:12, lineHeight:1.5}}>{p.product.description}</div>
+                  )}
+                  
+                  {/* Stats Grid */}
+                  <div style={{display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:10, marginBottom:12}}>
+                    <div style={{background:'var(--panel)', padding:10, borderRadius:6}}>
+                      <div className="helper" style={{fontSize:11}}>Country</div>
+                      <div style={{fontWeight:700, color:'#3b82f6'}}>{p.country}</div>
+                    </div>
+                    <div style={{background:'var(--panel)', padding:10, borderRadius:6}}>
+                      <div className="helper" style={{fontSize:11}}>Stock</div>
+                      <div style={{fontWeight:700, color:'#f59e0b'}}>{num(p.stock)}</div>
+                    </div>
+                    <div style={{background:'var(--panel)', padding:10, borderRadius:6}}>
+                      <div className="helper" style={{fontSize:11}}>Price</div>
+                      <div style={{fontWeight:700, color:'#10b981'}}>{data.currency} {num(p.product?.price || 0)}</div>
+                    </div>
+                    <div style={{background:'var(--panel)', padding:10, borderRadius:6}}>
+                      <div className="helper" style={{fontSize:11}}>Profit/Unit</div>
+                      <div style={{fontWeight:700, color:'#10b981'}}>{data.currency} {num(p.profitPerUnit)}</div>
+                    </div>
+                  </div>
+
+                  {/* Performance */}
+                  <div style={{padding:12, background:'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)', borderRadius:8, marginBottom:10}}>
+                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:6}}>
+                      <span style={{fontSize:12, opacity:0.8}}>Total Units</span>
+                      <strong style={{color:'#8b5cf6'}}>{num(p.totalUnits)}</strong>
+                    </div>
+                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:6}}>
+                      <span style={{fontSize:12, opacity:0.8}}>Delivered</span>
+                      <strong style={{color:'#3b82f6'}}>{num(p.deliveredUnits)}</strong>
+                    </div>
+                    <div style={{display:'flex', justifyContent:'space-between', paddingTop:8, borderTop:'1px solid var(--border)'}}>
+                      <span style={{fontSize:12, opacity:0.8}}>Your Profit</span>
+                      <strong style={{color:'#10b981', fontSize:16}}>{data.currency} {num(p.totalProfit)}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -8,7 +8,9 @@ import Order from "../models/Order.js";
 import Remittance from "../models/Remittance.js";
 import ManagerRemittance from "../models/ManagerRemittance.js";
 import AgentRemit from "../models/AgentRemit.js";
+import InvestorRemittance from "../models/InvestorRemittance.js";
 import User from "../models/User.js";
+import Product from "../models/Product.js";
 import { getIO } from "../config/socket.js";
 import Setting from "../models/Setting.js";
 import { generatePayoutReceiptPDF } from "../utils/payoutReceipt.js";
@@ -1880,3 +1882,196 @@ router.get(
     }
   }
 );
+
+// ====== INVESTOR REMITTANCES ======
+
+// Create investor remittance (investor requests payment)
+router.post("/investor-remittances", auth, allowRoles("investor"), async (req, res) => {
+  try {
+    const { amount, note = "", productId = "", country = "" } = req.body || {};
+    if (amount == null) return res.status(400).json({ message: "amount is required" });
+    const amt = Number(amount);
+    if (Number.isNaN(amt) || amt <= 0) return res.status(400).json({ message: "Invalid amount" });
+
+    const me = await User.findById(req.user.id).select("createdBy investorProfile").lean();
+    if (!me) return res.status(404).json({ message: "Investor not found" });
+    const ownerId = String(me.createdBy || "");
+    if (!ownerId) return res.status(400).json({ message: "Investor has no owner" });
+
+    const currency = me.investorProfile?.currency || "SAR";
+
+    const doc = new InvestorRemittance({
+      investor: req.user.id,
+      owner: ownerId,
+      amount: amt,
+      currency,
+      product: productId || null,
+      country: country || "",
+      note,
+      status: "pending",
+    });
+    await doc.save();
+
+    try {
+      const io = getIO();
+      io.to(`user:${ownerId}`).emit("investor-remittance.created", { id: String(doc._id) });
+    } catch {}
+    return res.status(201).json({ message: "Payment request created", remittance: doc });
+  } catch (err) {
+    console.error("Create investor remittance error:", err);
+    return res.status(500).json({ message: "Failed to create payment request" });
+  }
+});
+
+// List investor remittances (for user/owner)
+router.get("/investor-remittances", auth, allowRoles("admin", "user", "investor"), async (req, res) => {
+  try {
+    let match = {};
+    if (req.user.role === "investor") {
+      match.investor = req.user.id;
+    } else {
+      match.owner = req.user.id;
+    }
+    const remittances = await InvestorRemittance.find(match)
+      .populate("investor", "firstName lastName email investorProfile")
+      .populate("product", "name image price")
+      .sort({ createdAt: -1 })
+      .lean();
+    return res.json({ remittances });
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to load investor remittances" });
+  }
+});
+
+// Approve investor remittance
+router.post("/investor-remittances/:id/approve", auth, allowRoles("user"), async (req, res) => {
+  try {
+    const r = await InvestorRemittance.findById(req.params.id);
+    if (!r) return res.status(404).json({ message: "Remittance not found" });
+    if (String(r.owner) !== String(req.user.id)) return res.status(403).json({ message: "Forbidden" });
+    if (r.status !== "pending") return res.status(400).json({ message: "Already processed" });
+
+    r.status = "approved";
+    r.approvedAt = new Date();
+    r.approvedBy = req.user.id;
+    await r.save();
+
+    try {
+      const io = getIO();
+      io.to(`user:${String(r.investor)}`).emit("investor-remittance.approved", { id: String(r._id) });
+    } catch {}
+    return res.json({ message: "Remittance approved", remittance: r });
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to approve remittance" });
+  }
+});
+
+// Mark as sent
+router.post("/investor-remittances/:id/send", auth, allowRoles("user"), async (req, res) => {
+  try {
+    const r = await InvestorRemittance.findById(req.params.id);
+    if (!r) return res.status(404).json({ message: "Remittance not found" });
+    if (String(r.owner) !== String(req.user.id)) return res.status(403).json({ message: "Forbidden" });
+    if (r.status !== "approved") return res.status(400).json({ message: "Must be approved first" });
+
+    r.status = "sent";
+    r.sentAt = new Date();
+    r.sentBy = req.user.id;
+    await r.save();
+
+    try {
+      const io = getIO();
+      io.to(`user:${String(r.investor)}`).emit("investor-remittance.sent", { id: String(r._id) });
+    } catch {}
+    return res.json({ message: "Remittance marked as sent", remittance: r });
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to send remittance" });
+  }
+});
+
+// Investor dashboard stats
+router.get("/investor/dashboard", auth, allowRoles("investor"), async (req, res) => {
+  try {
+    const me = await User.findById(req.user.id)
+      .select("investorProfile createdBy")
+      .populate("investorProfile.assignedProducts.product", "name image description price")
+      .lean();
+    
+    if (!me) return res.status(404).json({ message: "Investor not found" });
+
+    const assignedProducts = me.investorProfile?.assignedProducts || [];
+    const totalInvestment = me.investorProfile?.investmentAmount || 0;
+    const currency = me.investorProfile?.currency || "SAR";
+
+    // Get sales data for each product
+    const productStats = [];
+    for (const ap of assignedProducts) {
+      if (!ap.product) continue;
+      
+      const productId = ap.product._id;
+      const country = ap.country || "";
+      const profitPerUnit = ap.profitPerUnit || 0;
+
+      // Get orders for this product in this country
+      const match = {
+        productId: productId,
+        shipmentStatus: { $in: ["delivered", "in_transit", "picked_up", "pending"] }
+      };
+      if (country) match.country = country;
+
+      const orders = await Order.find(match).select("quantity shipmentStatus total").lean();
+      
+      let totalUnits = 0;
+      let deliveredUnits = 0;
+      let totalRevenue = 0;
+      let totalProfit = 0;
+
+      for (const order of orders) {
+        const qty = Number(order.quantity || 1);
+        totalUnits += qty;
+        if (order.shipmentStatus === "delivered") {
+          deliveredUnits += qty;
+          totalProfit += qty * profitPerUnit;
+        }
+        totalRevenue += Number(order.total || 0);
+      }
+
+      // Get product stock
+      const product = await Product.findById(productId).select("stock name image description price").lean();
+      
+      productStats.push({
+        product: {
+          _id: product._id,
+          name: product.name,
+          image: product.image,
+          description: product.description,
+          price: product.price
+        },
+        country: country || "All",
+        stock: product.stock || 0,
+        profitPerUnit,
+        totalUnits,
+        deliveredUnits,
+        totalRevenue,
+        totalProfit
+      });
+    }
+
+    // Calculate summary
+    const totalProfit = productStats.reduce((sum, p) => sum + p.totalProfit, 0);
+    const totalDeliveredUnits = productStats.reduce((sum, p) => sum + p.deliveredUnits, 0);
+    const totalUnits = productStats.reduce((sum, p) => sum + p.totalUnits, 0);
+
+    return res.json({
+      totalInvestment,
+      currency,
+      totalProfit,
+      totalDeliveredUnits,
+      totalUnits,
+      products: productStats
+    });
+  } catch (err) {
+    console.error("Investor dashboard error:", err);
+    return res.status(500).json({ message: "Failed to load dashboard data" });
+  }
+});

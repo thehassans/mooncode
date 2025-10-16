@@ -35,6 +35,7 @@ const UserSchema = new mongoose.Schema({
     currency: { type: String, enum: ['AED','SAR','OMR','BHD','INR','KWD','QAR'], default: 'SAR' },
     assignedProducts: [{
       product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+      country: { type: String, default: '' },
       profitPerUnit: { type: Number, default: 0 },
     }],
   },
