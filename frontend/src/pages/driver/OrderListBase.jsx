@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost } from '../../api'
 import { useNavigate, useLocation } from 'react-router-dom'
 import DateRangeChips from '../../ui/DateRangeChips.jsx'
+import { useToast } from '../../ui/Toast.jsx'
 
-export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false, withFilters=false, withRange=false }){
+export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false, withFilters=false, withRange=false, showSubmitReturn=false }){
   const nav = useNavigate()
   const location = useLocation()
+  const toast = useToast()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -136,6 +138,22 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
     }catch(e){ alert(e?.message || 'Failed to cancel') }
   }
 
+  async function submitReturn(o){
+    try{
+      const status = String(o?.shipmentStatus||'').toLowerCase()
+      if (!['cancelled','returned'].includes(status)){
+        toast.error('Only cancelled or returned orders can be submitted')
+        return
+      }
+      if (!window.confirm(`Submit this ${status} order back to company?`)) return
+      await apiPost(`/api/orders/${o._id||o.id}/submit-return`, {})
+      toast.success('Order submitted to company successfully')
+      load()
+    }catch(e){ 
+      toast.error(e?.message || 'Failed to submit order')
+    }
+  }
+
   return (
     <div className="section" style={{display:'grid', gap:12}}>
       <div className="page-header" style={{alignItems:'center', gap:8}}>
@@ -210,6 +228,16 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
                       <button className="btn" onClick={()=> markDelivered(o)}>Mark Delivered</button>
                       <button className="btn danger" onClick={()=> cancel(o)}>Cancel</button>
                     </>
+                  )}
+                  {showSubmitReturn && !o.submittedToCompany && (
+                    <button className="btn warning" onClick={()=> submitReturn(o)} style={{fontSize:12, padding:'6px 12px'}}>
+                      Submit to Company
+                    </button>
+                  )}
+                  {showSubmitReturn && o.submittedToCompany && (
+                    <span className="badge" style={{background:'var(--success)', color:'white', padding:'6px 12px', fontSize:12}}>
+                      {o.returnVerified ? '✓ Verified' : '✓ Submitted'}
+                    </span>
                   )}
                 </div>
               </div>

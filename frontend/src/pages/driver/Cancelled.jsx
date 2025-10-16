@@ -7,6 +7,7 @@ export default function DriverCancelled(){
       title="Cancelled Orders"
       subtitle="Orders cancelled by you or the customer"
       endpoint="/api/orders/driver/cancelled"
+      showSubmitReturn
     />
   )
 }
