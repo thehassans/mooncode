@@ -39,13 +39,16 @@ export default function ManagerLayout(){
     { to: '/manager/warehouses', label: 'Warehouses' },
     { to: '/manager/inhouse-products', label: 'Products' },
   ]
-  // Mobile tabs (prioritize core screens)
+  // Mobile tabs - ALL desktop sidebar links
   const mobileTabs = [
-    { to: '/manager', label: 'Home', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+    { to: '/manager', label: 'Dashboard', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+    { to: '/manager/agents', label: 'Agents', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
     { to: '/manager/orders', label: 'Orders', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> },
+    { to: '/manager/drivers/create', label: 'Create Driver', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> },
+    { to: '/manager/finances', label: 'Finances', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> },
+    { to: '/manager/transactions/drivers', label: 'Driver Fin.', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
     { to: '/manager/warehouses', label: 'Warehouse', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-5 9 5v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> },
     { to: '/manager/inhouse-products', label: 'Products', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> },
-    { to: '/manager/finances', label: 'Finances', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> },
   ]
 
   const tabsVisible = isMobile
@@ -154,7 +157,7 @@ export default function ManagerLayout(){
         <div className={`container ${isMobile ? '' : ''}`} style={{ maxWidth: 1280, margin: '0 auto', paddingBottom: isMobile ? '80px' : '0' }}>
           <Outlet />
         </div>
-        {/* Mobile Bottom Navigation */}
+        {/* Mobile Bottom Navigation - Horizontally Scrollable */}
         {tabsVisible && (
           <nav 
             className="mobile-tabs" 
@@ -167,12 +170,21 @@ export default function ManagerLayout(){
               right:0,
               background:'var(--sidebar-bg)',
               borderTop:'1px solid var(--sidebar-border)',
-              display:'grid',
-              gridTemplateColumns:`repeat(${mobileTabs.length}, 1fr)`,
+              display:'flex',
+              overflowX:'auto',
+              overflowY:'hidden',
+              WebkitOverflowScrolling:'touch',
+              scrollbarWidth:'none',
+              msOverflowStyle:'none',
               zIndex:1000,
               boxShadow:'0 -2px 10px rgba(0,0,0,0.1)'
             }}
           >
+            <style>{`
+              .mobile-tabs::-webkit-scrollbar {
+                display: none;
+              }
+            `}</style>
             {mobileTabs.map(tab => (
               <NavLink 
                 key={tab.to} 
@@ -184,14 +196,17 @@ export default function ManagerLayout(){
                   flexDirection:'column',
                   alignItems:'center',
                   justifyContent:'center',
-                  padding:'8px 4px',
+                  padding:'10px 12px',
                   gap:4,
                   textDecoration:'none',
-                  transition:'all 0.2s ease'
+                  transition:'all 0.2s ease',
+                  minWidth:'80px',
+                  flex:'0 0 auto',
+                  whiteSpace:'nowrap'
                 }}
               >
                 <span className="icon" style={{display:'flex', alignItems:'center', justifyContent:'center'}}>{tab.icon}</span>
-                <span style={{fontSize:11, fontWeight:600, textAlign:'center'}}>{tab.label}</span>
+                <span style={{fontSize:10, fontWeight:600, textAlign:'center', lineHeight:1.2}}>{tab.label}</span>
               </NavLink>
             ))}
           </nav>
