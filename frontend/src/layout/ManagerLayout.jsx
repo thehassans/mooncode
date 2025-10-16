@@ -152,7 +152,7 @@ export default function ManagerLayout(){
             </div>
           </div>
         )}
-        <div className={`container ${isMobile ? '' : ''}`} style={{ maxWidth: 1280, margin: '0 auto', paddingBottom: isMobile ? '80px' : '0' }}>
+        <div className={`container ${isMobile ? '' : ''}`} style={{ maxWidth: 1280, margin: '0 auto', paddingBottom: isMobile ? '90px' : '0', minHeight: isMobile ? 'calc(100vh - 146px)' : 'auto' }}>
           <Outlet />
         </div>
         {/* Mobile Bottom Navigation - Horizontally Scrollable */}
@@ -174,11 +174,25 @@ export default function ManagerLayout(){
               WebkitOverflowScrolling:'touch',
               scrollbarWidth:'none',
               msOverflowStyle:'none',
-              zIndex:1000,
-              boxShadow:'0 -2px 10px rgba(0,0,0,0.1)'
+              zIndex:9999,
+              boxShadow:'0 -2px 10px rgba(0,0,0,0.1)',
+              pointerEvents:'auto',
+              visibility:'visible',
+              opacity:1
             }}
           >
             <style>{`
+              .mobile-tabs {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                z-index: 9999 !important;
+                display: flex !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+              }
               .mobile-tabs::-webkit-scrollbar {
                 display: none;
               }
