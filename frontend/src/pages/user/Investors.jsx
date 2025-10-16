@@ -268,7 +268,7 @@ export default function Investors(){
                       </div>
                     </div>
                     {showInfo && (
-                      <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8, paddingTop:12, borderTop:'1px solid var(--border)'}}>
+                      <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:8, paddingTop:12, borderTop:'1px solid var(--border)'}}>
                         <div style={{padding:8, background:'var(--panel-2)', borderRadius:6}}>
                           <div className="helper" style={{fontSize:11}}>Stock in {row.country}</div>
                           <div style={{fontWeight:700, color:'#f59e0b'}}>{countryStock} units</div>
@@ -280,6 +280,12 @@ export default function Investors(){
                         <div style={{padding:8, background:'var(--panel-2)', borderRadius:6}}>
                           <div className="helper" style={{fontSize:11}}>Est. Revenue</div>
                           <div style={{fontWeight:700, color:'#3b82f6'}}>{form.currency} {estimatedRevenue.toFixed(2)}</div>
+                        </div>
+                        <div style={{padding:8, background:'var(--panel-2)', borderRadius:6, border:'2px solid #8b5cf6'}}>
+                          <div className="helper" style={{fontSize:11}}>Est. Profit</div>
+                          <div style={{fontWeight:800, color:'#8b5cf6', fontSize:15}}>
+                            {form.currency} {(countryStock * Number(row.profitPerUnit || 0)).toFixed(2)}
+                          </div>
                         </div>
                       </div>
                     )}
