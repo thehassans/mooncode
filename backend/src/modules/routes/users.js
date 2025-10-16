@@ -949,9 +949,12 @@ router.post('/drivers', auth, allowRoles('admin','user','manager'), async (req, 
   const commissionPerOrder = Number(req.body?.commissionPerOrder)
   const cpo = (Number.isFinite(commissionPerOrder) && commissionPerOrder > 0) ? commissionPerOrder : 0
   const commissionCurrency = (req.body?.commissionCurrency && String(req.body.commissionCurrency).toUpperCase()) || COUNTRY_TO_CCY[String(country)] || 'SAR'
+  // Commission rate as percentage (e.g., 8 for 8%)
+  const commissionRate = Number(req.body?.commissionRate)
+  const cRate = (Number.isFinite(commissionRate) && commissionRate >= 0 && commissionRate <= 100) ? commissionRate : 8
   const driver = new User({ 
     firstName, lastName, email, password, phone, country, city, role: 'driver', createdBy,
-    driverProfile: { commissionPerOrder: cpo, commissionCurrency }
+    driverProfile: { commissionPerOrder: cpo, commissionCurrency, commissionRate: cRate }
   })
   await driver.save()
   // Broadcast to workspace so managers/owners can see the new driver immediately
@@ -1022,9 +1025,13 @@ router.patch('/drivers/:id', auth, allowRoles('admin','user'), async (req, res) 
       const cpo = (cpoRaw !== undefined) ? (Number.isFinite(Number(cpoRaw)) && Number(cpoRaw) > 0 ? Number(cpoRaw) : 0) : (driver.driverProfile?.commissionPerOrder ?? 0)
       const curRaw = req.body?.commissionCurrency
       const cur = curRaw ? String(curRaw).toUpperCase() : (COUNTRY_TO_CCY[String(country || driver.country)] || driver.driverProfile?.commissionCurrency || 'SAR')
+      // Commission rate as percentage (e.g., 8 for 8%)
+      const cRateRaw = req.body?.commissionRate
+      const cRate = (cRateRaw !== undefined) ? (Number.isFinite(Number(cRateRaw)) && Number(cRateRaw) >= 0 && Number(cRateRaw) <= 100 ? Number(cRateRaw) : 8) : (driver.driverProfile?.commissionRate ?? 8)
       driver.driverProfile = {
         commissionPerOrder: cpo,
         commissionCurrency: cur,
+        commissionRate: cRate,
       }
     }
     await driver.save()

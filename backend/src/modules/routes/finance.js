@@ -699,7 +699,7 @@ router.get('/drivers/summary', auth, allowRoles('admin','user','manager'), async
     const limit = Math.min(100, Math.max(1, Number(req.query.limit||20)))
     const skip = (page-1) * limit
     const total = await User.countDocuments(driverCond)
-    const drivers = await User.find(driverCond, 'firstName lastName phone _id country').skip(skip).limit(limit).lean()
+    const drivers = await User.find(driverCond, 'firstName lastName phone _id country driverProfile').skip(skip).limit(limit).lean()
 
     // Aggregate basic stats from orders and remittances per driver in their local currency
     const out = []
@@ -739,8 +739,9 @@ router.get('/drivers/summary', auth, allowRoles('admin','user','manager'), async
       const deliveredToCompany = remitRows && remitRows[0] ? Number(remitRows[0].total||0) : 0
       const pendingToCompany = Math.max(0, collected - deliveredToCompany)
       
-      // Driver commission calculation: 8% of collected amount from delivered orders
-      const driverCommission = Math.round(collected * 0.08)
+      // Driver commission calculation: use individual driver's commission rate (default 8%)
+      const commissionRate = Number(d.driverProfile?.commissionRate ?? 8) / 100
+      const driverCommission = Math.round(collected * commissionRate)
       
       // Calculate withdrawn commission (from accepted payout requests to driver)
       const withdrawnRows = await Remittance.aggregate([
@@ -758,6 +759,7 @@ router.get('/drivers/summary', auth, allowRoles('admin','user','manager'), async
         phone: d.phone||'',
         country: d.country || '',
         currency,
+        commissionRate: Number(d.driverProfile?.commissionRate ?? 8),
         assigned,
         canceled,
         deliveredCount,
