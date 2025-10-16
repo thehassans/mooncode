@@ -17,6 +17,7 @@ export default function DriverFinances(){
   const [payModal, setPayModal] = useState(null)
   const [paying, setPaying] = useState(false)
   const [accepting, setAccepting] = useState(null)
+  const [confirmAcceptModal, setConfirmAcceptModal] = useState(null)
 
   // Load manager's assigned countries
   useEffect(()=>{
@@ -137,12 +138,18 @@ export default function DriverFinances(){
     }
   }
 
-  async function acceptDriverPayment(remittanceId, driverName, amount){
-    if (!window.confirm(`Accept payment of ${currency} ${num(amount)} from ${driverName}?`)) return
+  function openAcceptModal(remittanceId, driverName, amount){
+    setConfirmAcceptModal({ remittanceId, driverName, amount })
+  }
+
+  async function confirmAcceptPayment(){
+    if (!confirmAcceptModal) return
+    const { remittanceId, driverName } = confirmAcceptModal
     setAccepting(remittanceId)
     try{
       await apiPost(`/api/finance/driver-remittances/${remittanceId}/send`, {})
       toast.success(`Payment accepted from ${driverName}`)
+      setConfirmAcceptModal(null)
       await loadData()
     }catch(e){
       toast.error(e?.message || 'Failed to accept payment')
@@ -272,7 +279,7 @@ export default function DriverFinances(){
                         {pendingRemit ? (
                           <button 
                             className="btn success"
-                            onClick={()=> acceptDriverPayment(pendingRemit._id, d.name, pendingRemit.amount)}
+                            onClick={()=> openAcceptModal(pendingRemit._id, d.name, pendingRemit.amount)}
                             disabled={accepting === pendingRemit._id}
                             style={{padding:'6px 12px', fontSize:13, whiteSpace:'nowrap'}}
                           >
@@ -331,6 +338,56 @@ export default function DriverFinances(){
             </div>
             <div style={{marginTop:16, padding:12, background:'rgba(59, 130, 246, 0.1)', borderRadius:8, fontSize:13}}>
               <strong>Note:</strong> This will create a remittance request that needs to be approved by the company.
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Accept Payment Modal */}
+      <Modal
+        title="Accept Payment from Driver"
+        open={!!confirmAcceptModal}
+        onClose={()=> setConfirmAcceptModal(null)}
+        footer={
+          <>
+            <button 
+              className="btn secondary" 
+              onClick={()=> setConfirmAcceptModal(null)} 
+              disabled={!!accepting}
+            >
+              Cancel
+            </button>
+            <button 
+              className="btn success" 
+              disabled={!!accepting}
+              onClick={confirmAcceptPayment}
+            >
+              {accepting ? '⏳ Accepting...' : '✓ Accept Payment'}
+            </button>
+          </>
+        }
+      >
+        {confirmAcceptModal && (
+          <div style={{padding:'16px 0'}}>
+            <div style={{fontSize:16, marginBottom:24, textAlign:'center'}}>
+              Accept payment of <strong style={{color:'#10b981', fontSize:20}}>{currency} {num(confirmAcceptModal.amount)}</strong> from <strong>{confirmAcceptModal.driverName}</strong>?
+            </div>
+            <div style={{background:'var(--panel)', padding:16, borderRadius:8, fontSize:14}}>
+              <div style={{display:'flex', justifyContent:'space-between', marginBottom:12}}>
+                <span style={{opacity:0.7}}>Driver:</span>
+                <strong>{confirmAcceptModal.driverName}</strong>
+              </div>
+              <div style={{display:'flex', justifyContent:'space-between', marginBottom:12}}>
+                <span style={{opacity:0.7}}>Currency:</span>
+                <strong>{currency}</strong>
+              </div>
+              <div style={{display:'flex', justifyContent:'space-between', paddingTop:12, borderTop:'1px solid var(--border)'}}>
+                <span style={{opacity:0.7}}>Amount:</span>
+                <strong style={{color:'#10b981', fontSize:18}}>{currency} {num(confirmAcceptModal.amount)}</strong>
+              </div>
+            </div>
+            <div style={{marginTop:16, padding:12, background:'rgba(16, 185, 129, 0.1)', borderRadius:8, fontSize:13, borderLeft:'3px solid #10b981'}}>
+              <strong>✓ Action:</strong> This will mark the driver's payment as received and update the balance.
             </div>
           </div>
         )}
