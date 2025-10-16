@@ -417,90 +417,123 @@ export default function ManagerOrders(){
     const isReturnVerified = o.returnVerified
     
     return (
-      <div className="card" style={{display:'grid', gap:10, border: isReturnSubmitted ? '2px solid #f59e0b' : undefined, background: isReturnSubmitted ? 'rgba(251, 146, 60, 0.05)' : undefined}}>
-        <div className="card-header" style={{alignItems:'center'}}>
-          <div style={{display:'flex', alignItems:'center', gap:8}}>
-            <div className="badge">{o.orderCountry || '-'}</div>
-            <div className="chip" style={{background:'transparent'}}>{o.city || '-'}</div>
+      <div className="card" style={{display:'grid', gap:12, border: isReturnSubmitted ? '2px solid #f59e0b' : undefined, background: isReturnSubmitted ? 'rgba(251, 146, 60, 0.05)' : undefined}}>
+        <div className="card-header" style={{alignItems:'center', flexWrap:'wrap', gap:10}}>
+          <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', flex:1}}>
+            <div className="badge" style={{fontSize:14}}>{o.orderCountry || '-'}</div>
+            <div className="chip" style={{background:'transparent', fontSize:14}}>{o.city || '-'}</div>
             <div>{statusBadge(o.shipmentStatus || o.status)}</div>
             {isReturnSubmitted && (
-              <span className="badge" style={{background:'#fef3c7', color:'#92400e', border:'1px solid #fbbf24', fontWeight:700, animation:'pulse 2s infinite'}}>
+              <span className="badge" style={{background:'#fef3c7', color:'#92400e', border:'1px solid #fbbf24', fontWeight:700, animation:'pulse 2s infinite', fontSize:13}}>
                 ⚠️ Awaiting Verification
               </span>
             )}
             {isReturnVerified && (
-              <span className="badge" style={{background:'#d1fae5', color:'#065f46', border:'1px solid #10b981', fontWeight:700}}>
+              <span className="badge" style={{background:'#d1fae5', color:'#065f46', border:'1px solid #10b981', fontWeight:700, fontSize:13}}>
                 ✅ Return Verified
               </span>
             )}
             {driverName && (
-              <div className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)'}} title={driverName}>Driver: <strong style={{marginLeft:6}}>{driverName}</strong></div>
+              <div className="chip" style={{background:'var(--panel)', border:'1px solid var(--border)', fontSize:13}} title={driverName}>
+                🚛 <strong style={{marginLeft:4}}>{driverName}</strong>
+              </div>
             )}
           </div>
-          <div style={{display:'flex', alignItems:'center', gap:8}}>
-            {o.invoiceNumber ? <div style={{fontWeight:800}}>#{o.invoiceNumber}</div> : null}
-            <button className="btn secondary" onClick={()=> window.open(`/label/${id}`, '_blank', 'noopener,noreferrer')}>Print Label</button>
+          <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
+            {o.invoiceNumber ? <div style={{fontWeight:800, fontSize:16}}>#{o.invoiceNumber}</div> : null}
+            <button 
+              className="btn secondary" 
+              onClick={()=> window.open(`/label/${id}`, '_blank', 'noopener,noreferrer')}
+              style={{whiteSpace:'nowrap', padding:'8px 16px'}}
+            >
+              🖨️ Print Label
+            </button>
           </div>
         </div>
         <div className="section" style={{padding:'10px 12px 0', borderTop:'1px solid var(--border)'}}>
           <OrderStatusTrack order={o} />
         </div>
-        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
-          <div>
-            <div className="label">Customer</div>
-            <div style={{fontWeight:700}}>{o.customerName || '-'}</div>
-            <div className="helper" style={{whiteSpace:'nowrap'}}>{`${o.phoneCountryCode||''} ${o.customerPhone||''}`.trim()}</div>
-            <div className="helper" title={fullAddress} style={{overflow:'hidden', textOverflow:'ellipsis'}}>{fullAddress || '-'}</div>
-          </div>
-          <div>
-            <div className="label">Product</div>
-            <div style={{fontWeight:700}}>{o.productId?.name || '-'}</div>
-            <div className="helper">Qty: {qty}</div>
-            <div className="helper">Total: {targetCode} {totalConv.toFixed(2)}</div>
-          </div>
-          <div>
-            <div className="label">Assign Driver</div>
-            <div style={{display:'grid', gap:8}}>
-              <select className="input" value={editingDriver[id] !== undefined ? editingDriver[id] : driverId} onChange={(e)=> setEditingDriver(prev => ({...prev, [id]: e.target.value}))} disabled={updating[`save-${id}`]}>
-                <option value="">-- Select Driver --</option>
-                {countryDrivers.map(d => (
-                  <option key={String(d._id)} value={String(d._id)}>{`${d.firstName||''} ${d.lastName||''}${d.city? ' • '+d.city:''}`}</option>
-                ))}
-                {countryDrivers.length === 0 && <option disabled>No drivers in {o.orderCountry}</option>}
-              </select>
-              <div style={{display:'flex', gap:8}}>
-                <select className="input" value={editingStatus[id] || (o.shipmentStatus || 'pending')} onChange={(e)=> setEditingStatus(prev => ({...prev, [id]: e.target.value}))} disabled={updating[`save-${id}`]}>
-                  <option value="pending">Pending</option>
-                  <option value="assigned">Assigned</option>
-                  <option value="picked_up">Picked Up</option>
-                  <option value="in_transit">In Transit</option>
-                  <option value="out_for_delivery">Out for Delivery</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="no_response">No Response</option>
-                  <option value="returned">Returned</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-                {(editingDriver[id] !== undefined || editingStatus[id] !== undefined) && (
-                  <button className="btn success" onClick={()=> saveOrder(id)} disabled={updating[`save-${id}`]}>💾 Save</button>
-                )}
-              </div>
+        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(250px, 1fr))', gap:16}}>
+          <div style={{display:'grid', gap:6}}>
+            <div className="label" style={{display:'flex', alignItems:'center', gap:6}}>
+              <span>👤</span> Customer
             </div>
+            <div style={{fontWeight:700, fontSize:15}}>{o.customerName || '-'}</div>
+            <div className="helper">{`${o.phoneCountryCode||''} ${o.customerPhone||''}`.trim()}</div>
+            <div className="helper" title={fullAddress} style={{wordBreak:'break-word', lineHeight:1.4}}>
+              {fullAddress || '-'}
+            </div>
+          </div>
+          <div style={{display:'grid', gap:6}}>
+            <div className="label" style={{display:'flex', alignItems:'center', gap:6}}>
+              <span>📦</span> Product
+            </div>
+            <div style={{fontWeight:700, fontSize:15}}>{o.productId?.name || '-'}</div>
+            <div className="helper">Qty: {qty}</div>
+            <div className="helper" style={{fontSize:15, fontWeight:600, color:'var(--primary)'}}>
+              Total: {targetCode} {totalConv.toFixed(2)}
+            </div>
+          </div>
+          <div style={{display:'grid', gap:8, alignContent:'start'}}>
+            <div className="label" style={{display:'flex', alignItems:'center', gap:6}}>
+              <span>🚛</span> Assign Driver & Status
+            </div>
+            <select 
+              className="input" 
+              value={editingDriver[id] !== undefined ? editingDriver[id] : driverId} 
+              onChange={(e)=> setEditingDriver(prev => ({...prev, [id]: e.target.value}))} 
+              disabled={updating[`save-${id}`]}
+              style={{fontSize:14}}
+            >
+              <option value="">-- Select Driver --</option>
+              {countryDrivers.map(d => (
+                <option key={String(d._id)} value={String(d._id)}>{`${d.firstName||''} ${d.lastName||''}${d.city? ' • '+d.city:''}`}</option>
+              ))}
+              {countryDrivers.length === 0 && <option disabled>No drivers in {o.orderCountry}</option>}
+            </select>
+            <select 
+              className="input" 
+              value={editingStatus[id] || (o.shipmentStatus || 'pending')} 
+              onChange={(e)=> setEditingStatus(prev => ({...prev, [id]: e.target.value}))} 
+              disabled={updating[`save-${id}`]}
+              style={{fontSize:14}}
+            >
+              <option value="pending">Pending</option>
+              <option value="assigned">Assigned</option>
+              <option value="picked_up">Picked Up</option>
+              <option value="in_transit">In Transit</option>
+              <option value="out_for_delivery">Out for Delivery</option>
+              <option value="delivered">Delivered</option>
+              <option value="no_response">No Response</option>
+              <option value="returned">Returned</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            {(editingDriver[id] !== undefined || editingStatus[id] !== undefined) && (
+              <button 
+                className="btn success" 
+                onClick={()=> saveOrder(id)} 
+                disabled={updating[`save-${id}`]}
+                style={{width:'100%', padding:'10px', fontWeight:600}}
+              >
+                💾 Save Changes
+              </button>
+            )}
           </div>
         </div>
         
         {/* Return Verification Action */}
         {isReturnSubmitted && (
-          <div className="section" style={{padding:12, background:'#fef3c7', border:'1px solid #fbbf24', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+          <div className="section" style={{padding:16, background:'#fef3c7', border:'1px solid #fbbf24', borderRadius:8, display:'grid', gap:12}}>
             <div>
-              <div style={{fontWeight:700, color:'#92400e', marginBottom:4}}>
+              <div style={{fontWeight:700, color:'#92400e', marginBottom:6, fontSize:15}}>
                 ⚠️ Driver has submitted this {status} order for verification
               </div>
               <div className="helper" style={{color:'#92400e'}}>
-                Submitted: {o.returnSubmittedAt ? new Date(o.returnSubmittedAt).toLocaleString() : '-'}
+                📅 Submitted: {o.returnSubmittedAt ? new Date(o.returnSubmittedAt).toLocaleString() : '-'}
               </div>
               {o.returnReason && (
                 <div className="helper" style={{color:'#92400e', marginTop:4}}>
-                  Reason: {o.returnReason}
+                  ❓ Reason: {o.returnReason}
                 </div>
               )}
             </div>
@@ -508,16 +541,20 @@ export default function ManagerOrders(){
               className="btn success"
               onClick={() => verifyReturn(o._id)}
               disabled={verifying === String(o._id)}
-              style={{minWidth:150, whiteSpace:'nowrap'}}
+              style={{width:'100%', padding:'12px 20px', fontSize:15, fontWeight:600}}
             >
-              {verifying === String(o._id) ? 'Verifying...' : '✓ Accept & Verify'}
+              {verifying === String(o._id) ? '⏳ Verifying...' : '✓ Accept & Verify'}
             </button>
           </div>
         )}
         
-        <div className="section" style={{display:'flex', gap:12, alignItems:'center', justifyContent:'space-between'}}>
-          <div className="helper">Created by: {(o.createdBy?.firstName||'') + ' ' + (o.createdBy?.lastName||'')}</div>
-          <div className="helper">Created: {o.createdAt ? new Date(o.createdAt).toLocaleString() : ''}</div>
+        <div className="section" style={{display:'flex', gap:12, alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', paddingTop:12, borderTop:'1px solid var(--border-light)'}}>
+          <div className="helper" style={{display:'flex', alignItems:'center', gap:6}}>
+            <span>👤</span> Created by: <strong>{(o.createdBy?.firstName||'') + ' ' + (o.createdBy?.lastName||'')}</strong>
+          </div>
+          <div className="helper" style={{display:'flex', alignItems:'center', gap:6}}>
+            <span>📅</span> {o.createdAt ? new Date(o.createdAt).toLocaleString() : ''}
+          </div>
         </div>
       </div>
     )
@@ -540,53 +577,72 @@ export default function ManagerOrders(){
           <div className="page-subtitle">Assign drivers and print labels</div>
         </div>
       </div>
-      <div className="card" style={{display:'grid', gap:10}}>
+      <div className="card" style={{display:'grid', gap:12}}>
         <div className="card-header">
-          <div className="card-title">Filters</div>
+          <div className="card-title">🔍 Filters</div>
         </div>
-        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:8}}>
-          <input className="input" placeholder="Search invoice, product, driver, agent, city, phone, details" value={q} onChange={e=> setQ(e.target.value)} />
-          <select className="input" value={country} onChange={e=> { setCountry(e.target.value); setDriverFilter('') }}>
-            <option value=''>All Countries</option>
-            {countries.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select className="input" value={city} onChange={e=> setCity(e.target.value)}>
-            <option value=''>All Cities</option>
-            {cities.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select className="input" value={ship} onChange={e=> setShip(e.target.value)}>
-            <option value="">Total Orders</option>
-            <option value="pending">Pending</option>
-            <option value="assigned">Assigned</option>
-            <option value="picked_up">Picked Up</option>
-            <option value="in_transit">In Transit</option>
-            <option value="out_for_delivery">Out for Delivery</option>
-            <option value="delivered">Delivered</option>
-            <option value="no_response">No Response</option>
-            <option value="returned">Returned</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <label className="input" style={{display:'flex', gap:8, alignItems:'center'}}>
-            <input type="checkbox" checked={onlyUnassigned} onChange={e=>{ const v=e.target.checked; setOnlyUnassigned(v); if (v) setOnlyAssigned(false) }} />
-            <span>Unassigned only</span>
-          </label>
-          <label className="input" style={{display:'flex', gap:8, alignItems:'center'}}>
-            <input type="checkbox" checked={onlyAssigned} onChange={e=>{ const v=e.target.checked; setOnlyAssigned(v); if (v) setOnlyUnassigned(false) }} />
-            <span>Assigned only</span>
-          </label>
-          <select className="input" value={agentFilter} onChange={e=> setAgentFilter(e.target.value)}>
-            <option value=''>All Agents</option>
-            {agentOptions.map(a => (
-              <option key={String(a._id)} value={String(a._id)}>{`${a.firstName||''} ${a.lastName||''} (${a.email||''})`}</option>
-            ))}
-          </select>
-          <select className="input" value={driverFilter} onChange={e=> setDriverFilter(e.target.value)} disabled={!country}>
-            <option value=''>{country? `All Drivers in ${country}` : 'Select Country to filter Drivers'}</option>
-            {(driversByCountry[country] || []).map(d => (
-              <option key={String(d._id)} value={String(d._id)}>{`${d.firstName||''} ${d.lastName||''}${d.city? ' • '+d.city:''}`}</option>
-            ))}
-          </select>
-          <button className="btn" onClick={exportCsv}>Export CSV</button>
+        <div className="section" style={{display:'grid', gap:10}}>
+          {/* Search Bar - Full Width */}
+          <input 
+            className="input" 
+            placeholder="🔎 Search invoice, product, driver, agent, city, phone, details..." 
+            value={q} 
+            onChange={e=> setQ(e.target.value)}
+            style={{fontSize:15, padding:'12px 16px'}}
+          />
+          
+          {/* Location & Status Filters */}
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:8}}>
+            <select className="input" value={country} onChange={e=> { setCountry(e.target.value); setDriverFilter('') }}>
+              <option value=''>📍 All Countries</option>
+              {countries.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select className="input" value={city} onChange={e=> setCity(e.target.value)}>
+              <option value=''>🏙️ All Cities</option>
+              {cities.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select className="input" value={ship} onChange={e=> setShip(e.target.value)}>
+              <option value="">📦 All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="assigned">Assigned</option>
+              <option value="picked_up">Picked Up</option>
+              <option value="in_transit">In Transit</option>
+              <option value="out_for_delivery">Out for Delivery</option>
+              <option value="delivered">Delivered</option>
+              <option value="no_response">No Response</option>
+              <option value="returned">Returned</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          
+          {/* Quick Filters - Checkboxes */}
+          <div style={{display:'flex', gap:12, flexWrap:'wrap', padding:'8px 0'}}>
+            <label className="input" style={{display:'flex', gap:8, alignItems:'center', padding:'8px 12px', minWidth:'auto', cursor:'pointer'}}>
+              <input type="checkbox" checked={onlyUnassigned} onChange={e=>{ const v=e.target.checked; setOnlyUnassigned(v); if (v) setOnlyAssigned(false) }} />
+              <span style={{whiteSpace:'nowrap'}}>📋 Unassigned only</span>
+            </label>
+            <label className="input" style={{display:'flex', gap:8, alignItems:'center', padding:'8px 12px', minWidth:'auto', cursor:'pointer'}}>
+              <input type="checkbox" checked={onlyAssigned} onChange={e=>{ const v=e.target.checked; setOnlyAssigned(v); if (v) setOnlyUnassigned(false) }} />
+              <span style={{whiteSpace:'nowrap'}}>✅ Assigned only</span>
+            </label>
+          </div>
+          
+          {/* Advanced Filters */}
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:8}}>
+            <select className="input" value={agentFilter} onChange={e=> setAgentFilter(e.target.value)}>
+              <option value=''>👥 All Agents</option>
+              {agentOptions.map(a => (
+                <option key={String(a._id)} value={String(a._id)}>{`${a.firstName||''} ${a.lastName||''} (${a.email||''})`}</option>
+              ))}
+            </select>
+            <select className="input" value={driverFilter} onChange={e=> setDriverFilter(e.target.value)} disabled={!country}>
+              <option value=''>{country? `🚛 All Drivers in ${country}` : '🚛 Select Country to filter Drivers'}</option>
+              {(driversByCountry[country] || []).map(d => (
+                <option key={String(d._id)} value={String(d._id)}>{`${d.firstName||''} ${d.lastName||''}${d.city? ' • '+d.city:''}`}</option>
+              ))}
+            </select>
+            <button className="btn primary" onClick={exportCsv} style={{whiteSpace:'nowrap'}}>📥 Export CSV</button>
+          </div>
         </div>
       </div>
 
@@ -607,50 +663,49 @@ export default function ManagerOrders(){
                 : '-'
               
               return (
-                <div key={order._id} className="panel" style={{display:'grid', gap:10, padding:16, border:'1px solid #fca5a5', borderRadius:8, background:'white'}}>
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'start', gap:12}}>
-                    <div style={{flex:1}}>
-                      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
-                        <div style={{fontWeight:800, fontSize:16}}>
-                          #{order.invoiceNumber || String(order._id).slice(-6)}
-                        </div>
-                        <span className="badge" style={{background:'#fee2e2', color:'#991b1b', textTransform:'capitalize'}}>
-                          {status}
-                        </span>
-                        {order.orderCountry && <span className="badge">{order.orderCountry}</span>}
-                        {order.city && <span className="chip">{order.city}</span>}
-                      </div>
-                      
-                      <div style={{display:'grid', gap:4, fontSize:14}}>
-                        <div className="helper">
-                          <strong>Customer:</strong> {order.customerName || '-'} • {order.customerPhone || '-'}
-                        </div>
-                        <div className="helper">
-                          <strong>Address:</strong> {order.customerAddress || order.customerLocation || '-'}
-                        </div>
-                        {order.returnReason && (
-                          <div className="helper">
-                            <strong>Reason:</strong> {order.returnReason}
-                          </div>
-                        )}
-                        <div className="helper">
-                          <strong>Driver:</strong> {driverName}
-                        </div>
-                        <div className="helper" style={{color:'#f59e0b'}}>
-                          <strong>Submitted:</strong> {order.returnSubmittedAt ? new Date(order.returnSubmittedAt).toLocaleString() : '-'}
-                        </div>
-                      </div>
+                <div key={order._id} className="panel" style={{display:'grid', gap:12, padding:16, border:'1px solid #fca5a5', borderRadius:8, background:'white'}}>
+                  {/* Header with Invoice and Status */}
+                  <div style={{display:'flex', flexWrap:'wrap', alignItems:'center', gap:8}}>
+                    <div style={{fontWeight:800, fontSize:16}}>
+                      #{order.invoiceNumber || String(order._id).slice(-6)}
                     </div>
-                    
-                    <button 
-                      className="btn success"
-                      onClick={() => verifyReturn(order._id)}
-                      disabled={isVerifying}
-                      style={{minWidth:150, whiteSpace:'nowrap'}}
-                    >
-                      {isVerifying ? 'Verifying...' : '✓ Accept & Verify'}
-                    </button>
+                    <span className="badge" style={{background:'#fee2e2', color:'#991b1b', textTransform:'capitalize'}}>
+                      {status}
+                    </span>
+                    {order.orderCountry && <span className="badge">{order.orderCountry}</span>}
+                    {order.city && <span className="chip">{order.city}</span>}
                   </div>
+                  
+                  {/* Order Details */}
+                  <div style={{display:'grid', gap:6, fontSize:14}}>
+                    <div className="helper">
+                      <strong>👤 Customer:</strong> {order.customerName || '-'} • {order.customerPhone || '-'}
+                    </div>
+                    <div className="helper" style={{wordBreak:'break-word'}}>
+                      <strong>📍 Address:</strong> {order.customerAddress || order.customerLocation || '-'}
+                    </div>
+                    {order.returnReason && (
+                      <div className="helper">
+                        <strong>❓ Reason:</strong> {order.returnReason}
+                      </div>
+                    )}
+                    <div className="helper">
+                      <strong>🚛 Driver:</strong> {driverName}
+                    </div>
+                    <div className="helper" style={{color:'#f59e0b'}}>
+                      <strong>📅 Submitted:</strong> {order.returnSubmittedAt ? new Date(order.returnSubmittedAt).toLocaleString() : '-'}
+                    </div>
+                  </div>
+                  
+                  {/* Action Button */}
+                  <button 
+                    className="btn success"
+                    onClick={() => verifyReturn(order._id)}
+                    disabled={isVerifying}
+                    style={{width:'100%', padding:'12px 20px', fontSize:15, fontWeight:600}}
+                  >
+                    {isVerifying ? '⏳ Verifying...' : '✓ Accept & Verify'}
+                  </button>
                 </div>
               )
             })}
