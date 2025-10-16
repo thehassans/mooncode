@@ -346,9 +346,9 @@ export default function DriverPanel() {
             const code = order?.invoiceNumber ? `#${order.invoiceNumber}` : `#${String(id).slice(-5)}`
             toast.warn(`Order cancelled (${code})`)
           }catch{ toast.warn(`Order cancelled (#${String(id).slice(-5)})`) }
-        } else if (status === 'no_response' || status === 'attempted' || status === 'contacted' || status === 'picked_up') {
+        } else if (status === 'no_response' || status === 'attempted' || status === 'contacted' || status === 'picked_up' || status === 'out_for_delivery') {
           await apiPost(`/api/orders/${id}/shipment/update`, { shipmentStatus: status, deliveryNotes: note || '' })
-          const label = status === 'picked_up' ? 'picked up' : (status.replace('_',' '))
+          const label = status === 'picked_up' ? 'picked up' : (status === 'out_for_delivery' ? 'out for delivery' : (status.replace('_',' ')))
           try{
             const code = order?.invoiceNumber ? `#${order.invoiceNumber}` : `#${String(id).slice(-5)}`
             toast.info(`Shipment ${label} (${code})`)
@@ -515,6 +515,7 @@ export default function DriverPanel() {
                 >
                   <option value="">Select status…</option>
                   <option value="picked_up">Picked Up</option>
+                  <option value="out_for_delivery">Out for Delivery</option>
                   <option value="delivered">Delivered</option>
                   <option value="attempted">Attempted</option>
                   <option value="no_response">No Response</option>

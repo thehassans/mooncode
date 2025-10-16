@@ -489,27 +489,6 @@ export default function UserOrders(){
       setUpdating(prev => ({ ...prev, [key]: false }))
     }
   }
-  
-  async function verifyReturn(orderId){
-    const key = `verify-${orderId}`
-    setUpdating(prev => ({ ...prev, [key]: true }))
-    try{
-      await preserveScroll(async ()=>{
-        const r = await apiPost(`/api/orders/${orderId}/verify-return`, {})
-        const updated = r?.order
-        if (updated){
-          setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
-        } else {
-          await loadOrders(false)
-        }
-      })
-      toast.success('Return verified successfully')
-    }catch(e){
-      toast.error(e?.message || 'Failed to verify return')
-    }finally{
-      setUpdating(prev => ({ ...prev, [key]: false }))
-    }
-  }
 
   function openEditPopout(order){
     // Open edit page in new window
@@ -663,20 +642,10 @@ export default function UserOrders(){
                           <div className="chip" style={{background:'transparent'}}>{o.city || '-'}</div>
                           <StatusBadge kind="shipment" status={o.shipmentStatus || o.status} />
                         </div>
-                        <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
+                        <div style={{display:'flex', alignItems:'center', gap:8}}>
                           {o.invoiceNumber ? <div style={{fontWeight:800}}>{ordNo}</div> : null}
                           <button className="btn primary" onClick={()=> openEditPopout(o)}>✏️ Edit</button>
                           <button className="btn secondary" onClick={()=> window.open(`/label/${id}`, '_blank', 'noopener,noreferrer')}>Print Label</button>
-                          {o.driverSubmittedReturn && !o.returnVerified && (
-                            <button className="btn success" onClick={()=> verifyReturn(id)} disabled={updating[`verify-${id}`]}>
-                              {updating[`verify-${id}`] ? 'Verifying...' : 'Verify Return'}
-                            </button>
-                          )}
-                          {o.returnVerified && (
-                            <div style={{padding:'4px 10px', background:'rgba(16,185,129,0.1)', borderRadius:6, fontSize:13, fontWeight:700, color:'#10b981'}}>
-                              ✓ {String(o.shipmentStatus||'').toLowerCase() === 'returned' ? 'Return' : 'Cancelled'} order verified
-                            </div>
-                          )}
                         </div>
                       </div>
                       <div className="section" style={{padding:'10px 12px 0', borderTop:'1px solid var(--border)'}}>
