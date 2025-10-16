@@ -26,7 +26,7 @@ export default function InvestorLayout(){
 
   const mobileTabs = [
     { to: '/investor', label: 'Dashboard', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
-    { to: '/investor/me', label: 'Payments', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
+    { to: '/investor/me', label: 'Payments', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> },
   ]
 
   const tabsVisible = isMobile
@@ -45,6 +45,33 @@ export default function InvestorLayout(){
   return (
     <div>
       <div className={`main ${hideSidebar ? 'full-mobile' : (closed ? 'full' : '')} ${tabsVisible ? 'with-mobile-tabs' : ''}`}>
+        {!isMobile && !closed && (
+          <aside className="sidebar">
+            <div style={{padding:'16px 12px', borderBottom:'1px solid var(--border)'}}>
+              {(()=>{
+                const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
+                const src = me.headerLogo ? `${API_BASE}${me.headerLogo}` : fallback
+                return <img src={src} alt="BuySial" style={{height:32, width:'auto', objectFit:'contain'}} />
+              })()}
+            </div>
+            <nav style={{padding:'8px'}}>
+              <NavLink to="/investor" end className={({isActive})=>`nav-item ${isActive?'active':''}`}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span>Dashboard</span>
+              </NavLink>
+              <NavLink to="/investor/me" className={({isActive})=>`nav-item ${isActive?'active':''}`}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span>Payment Requests</span>
+              </NavLink>
+            </nav>
+            <div style={{marginTop:'auto', padding:'12px', borderTop:'1px solid var(--border)'}}>
+              <button className="btn secondary" onClick={()=> setTheme(t=> t==='light' ? 'dark' : 'light')} style={{width:'100%', marginBottom:8}}>
+                {theme==='light' ? '🌙 Dark Mode' : '🌞 Light Mode'}
+              </button>
+              <button type="button" className="btn danger" onClick={doLogout} style={{width:'100%'}}>Logout</button>
+            </div>
+          </aside>
+        )}
         {!isMobile && (
         <div className="topbar" style={{background:'var(--sidebar-bg)', borderBottom:'1px solid var(--sidebar-border)'}}>
           <div style={{display:'flex', alignItems:'center', gap:12, minHeight:48}}>
@@ -57,7 +84,7 @@ export default function InvestorLayout(){
             >
               ☰
             </button>
-            {(()=>{
+            {closed && (()=>{
               const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
               const src = me.headerLogo ? `${API_BASE}${me.headerLogo}` : fallback
               return <img src={src} alt="BuySial" style={{height:28, width:'auto', objectFit:'contain'}} />
@@ -75,10 +102,14 @@ export default function InvestorLayout(){
             </div>
           </div>
           <div style={{display:'flex', alignItems:'center', gap:8}}>
-            <button className="btn secondary" onClick={()=> setTheme(t=> t==='light' ? 'dark' : 'light')} title="Toggle theme">
-              {theme==='light' ? '🌙 Dark' : '🌞 Light'}
-            </button>
-            <button type="button" className="btn danger" onClick={doLogout}>Logout</button>
+            {closed && (
+              <>
+                <button className="btn secondary" onClick={()=> setTheme(t=> t==='light' ? 'dark' : 'light')} title="Toggle theme">
+                  {theme==='light' ? '🌙 Dark' : '🌞 Light'}
+                </button>
+                <button type="button" className="btn danger" onClick={doLogout}>Logout</button>
+              </>
+            )}
           </div>
         </div>
         )}

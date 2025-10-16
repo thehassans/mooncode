@@ -32,7 +32,7 @@ const UserSchema = new mongoose.Schema({
   // Investor specific profile (only applicable when role === 'investor')
   investorProfile: {
     investmentAmount: { type: Number, default: 0 },
-    currency: { type: String, enum: ['AED','SAR','OMR','BHD','INR','KWD','QAR'], default: 'SAR' },
+    currency: { type: String, enum: ['AED','SAR','OMR','BHD','INR','KWD','QAR','USD','CNY'], default: 'SAR' },
     assignedProducts: [{
       product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
       country: { type: String, default: '' },

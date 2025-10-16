@@ -26,6 +26,11 @@ export default function Investors(){
     { key:'SAR', label:'SAR (Saudi Riyal)' },
     { key:'OMR', label:'OMR (Omani Rial)' },
     { key:'BHD', label:'BHD (Bahraini Dinar)' },
+    { key:'INR', label:'INR (Indian Rupee)' },
+    { key:'KWD', label:'KWD (Kuwaiti Dinar)' },
+    { key:'QAR', label:'QAR (Qatari Riyal)' },
+    { key:'USD', label:'USD (US Dollar)' },
+    { key:'CNY', label:'CNY (Chinese Yuan)' },
   ]
 
   function onChange(e){
@@ -72,13 +77,8 @@ export default function Investors(){
     try{ 
       const data = await apiGet('/api/orders/options')
       const arr = Array.isArray(data?.countries) ? data.countries : []
-      const map = new Map()
-      for (const c of arr){
-        const raw = String(c||'').trim()
-        const key = raw.toLowerCase()
-        if (!map.has(key)) map.set(key, raw.toUpperCase() === 'UAE' ? 'UAE' : raw)
-      }
-      setCountries(Array.from(map.values()))
+      const uniqueCountries = [...new Set(arr.map(c => String(c||'').trim()).filter(c => c))]
+      setCountries(uniqueCountries)
     }catch{ setCountries([]) }
   }
 

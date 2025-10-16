@@ -775,7 +775,7 @@ router.post('/investors', auth, allowRoles('admin','user'), async (req, res) => 
   const exists = await User.findOne({ email })
   if (exists) return res.status(400).json({ message: 'Email already in use' })
   // Validate currency
-  const CUR = ['AED','SAR','OMR','BHD']
+  const CUR = ['AED','SAR','OMR','BHD','INR','KWD','QAR','USD','CNY']
   const cur = CUR.includes(currency) ? currency : 'SAR'
   // Validate products list
   const assignedProducts = []
@@ -841,7 +841,7 @@ router.post('/investors/:id', auth, allowRoles('admin','user'), async (req, res)
   }
   
   // Validate and update currency
-  const CUR = ['AED','SAR','OMR','BHD']
+  const CUR = ['AED','SAR','OMR','BHD','INR','KWD','QAR','USD','CNY']
   if (currency && CUR.includes(currency)) {
     investor.investorProfile.currency = currency
   }
