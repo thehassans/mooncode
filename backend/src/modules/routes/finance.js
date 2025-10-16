@@ -947,7 +947,7 @@ router.post('/company/payout-profile', auth, allowRoles('admin','user'), async (
 // Create manager→company remittance
 router.post('/manager-remittances', auth, allowRoles('manager'), upload.any(), async (req, res) => {
   try{
-    const { amount, note = '', method = 'hand' } = req.body || {}
+    const { amount, note = '', method = 'hand', country: reqCountry } = req.body || {}
     if (amount == null) return res.status(400).json({ message: 'amount is required' })
     const amt = Number(amount)
     if (Number.isNaN(amt) || amt <= 0) return res.status(400).json({ message: 'Invalid amount' })
@@ -957,7 +957,8 @@ router.post('/manager-remittances', auth, allowRoles('manager'), upload.any(), a
     const ownerId = String(me.createdBy || '')
     if (!ownerId) return res.status(400).json({ message: 'Manager has no owner' })
     
-    const country = String(me.country || '').trim()
+    // Use country from request if provided, otherwise use manager's country
+    const country = reqCountry ? String(reqCountry).trim() : String(me.country || '').trim()
     const currency = currencyFromCountry(country)
     
     let receiptPath = ''

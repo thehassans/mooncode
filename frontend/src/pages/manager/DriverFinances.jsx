@@ -50,8 +50,15 @@ export default function DriverFinances(){
       ])
       setDrivers(Array.isArray(driversRes?.drivers) ? driversRes.drivers : [])
       const allRemits = Array.isArray(managerRemitsRes?.remittances) ? managerRemitsRes.remittances : []
-      // Filter manager remittances by country
-      const filtered = allRemits.filter(r => String(r?.country||'').toLowerCase() === String(country).toLowerCase())
+      // Filter manager remittances by country (handle variations like KSA/Saudi Arabia, UAE/United Arab Emirates)
+      const normalizeCountry = (c) => {
+        const s = String(c||'').trim().toLowerCase()
+        if (s === 'ksa' || s === 'saudi arabia') return 'ksa'
+        if (s === 'uae' || s === 'united arab emirates') return 'uae'
+        return s
+      }
+      const normalizedCountry = normalizeCountry(country)
+      const filtered = allRemits.filter(r => normalizeCountry(r?.country) === normalizedCountry)
       setManagerRemits(filtered)
       // Set currency based on country
       const cur = country === 'KSA' ? 'SAR' : (country === 'UAE' ? 'AED' : (country === 'OMN' ? 'OMR' : (country === 'BHR' ? 'BHD' : (country === 'KWT' ? 'KWD' : (country === 'QAT' ? 'QAR' : 'SAR')))))
@@ -69,9 +76,10 @@ export default function DriverFinances(){
     let sentToCompany = 0
     let pendingApproval = 0
 
-    // Total collected from all drivers
+    // Total collected = Sum of what drivers have delivered to manager (deliveredToCompany)
+    // This represents money the manager has received from drivers
     for (const d of drivers){
-      totalCollected += Number(d.collected || 0)
+      totalCollected += Number(d.deliveredToCompany || 0)
     }
 
     // Manager remittances to company
@@ -83,6 +91,7 @@ export default function DriverFinances(){
       }
     }
 
+    // To Pay = What manager received from drivers minus what was sent/is pending to company
     const toPayCompany = Math.max(0, totalCollected - sentToCompany - pendingApproval)
 
     return {
@@ -108,7 +117,8 @@ export default function DriverFinances(){
       await apiPost('/api/finance/manager-remittances', {
         amount: payModal.amount,
         method: 'hand',
-        note: `Payment to company for ${country} - ${new Date().toLocaleDateString()}`
+        country: payModal.country,
+        note: `Payment to company for ${payModal.country} - ${new Date().toLocaleDateString()}`
       })
       toast.success('Payment request submitted successfully')
       setPayModal(null)
