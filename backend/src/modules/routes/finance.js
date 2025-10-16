@@ -738,6 +738,20 @@ router.get('/drivers/summary', auth, allowRoles('admin','user','manager'), async
       ])
       const deliveredToCompany = remitRows && remitRows[0] ? Number(remitRows[0].total||0) : 0
       const pendingToCompany = Math.max(0, collected - deliveredToCompany)
+      
+      // Driver commission calculation: 8% of collected amount from delivered orders
+      const driverCommission = Math.round(collected * 0.08)
+      
+      // Calculate withdrawn commission (from accepted payout requests to driver)
+      const withdrawnRows = await Remittance.aggregate([
+        { $match: { driver: new M.Types.ObjectId(d._id), status: 'accepted', paidToId: { $exists: true, $ne: null } } },
+        { $group: { _id: null, total: { $sum: { $ifNull: ['$driverCommission', 0] } } } }
+      ])
+      const withdrawnCommission = withdrawnRows && withdrawnRows[0] ? Number(withdrawnRows[0].total||0) : 0
+      
+      // Pending commission: earned commission minus withdrawn
+      const pendingCommission = Math.max(0, driverCommission - withdrawnCommission)
+      
       out.push({
         id: String(d._id),
         name: `${d.firstName||''} ${d.lastName||''}`.trim(),
@@ -750,6 +764,9 @@ router.get('/drivers/summary', auth, allowRoles('admin','user','manager'), async
         collected: Math.round(collected),
         deliveredToCompany: Math.round(deliveredToCompany),
         pendingToCompany: Math.round(pendingToCompany),
+        driverCommission: Math.round(driverCommission),
+        withdrawnCommission: Math.round(withdrawnCommission),
+        pendingCommission: Math.round(pendingCommission),
       })
     }
     const hasMore = skip + drivers.length < total
