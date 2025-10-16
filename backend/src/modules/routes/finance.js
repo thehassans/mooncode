@@ -585,6 +585,8 @@ router.get('/agents/commission', auth, allowRoles('admin','user'), async (req, r
     const agents = await User.find(agentCond, 'firstName lastName phone _id payoutProfile').lean()
     const cfg = await getCurrencyConfig()
     const fx = cfg.pkrPerUnit || {}
+    // Use same hardcoded rates as order delivery for consistency
+    const FX_PKR = { AED: 76, OMR: 726, SAR: 72, BHD: 830, KWD: 880, QAR: 79, INR: 3.3 }
     const out = []
     for (const a of agents){
       const orders = await Order.find({ createdBy: a._id }).populate('productId','price baseCurrency quantity')
@@ -592,7 +594,7 @@ router.get('/agents/commission', auth, allowRoles('admin','user'), async (req, r
       let upcomingCommissionPKR = 0
       let ordersSubmitted = 0
       let totalOrderValueAED = 0
-      const aedRate = fx['AED'] || 1
+      const aedRate = FX_PKR['AED'] || 76
       for (const o of orders){
         const isDelivered = String(o?.shipmentStatus||'').toLowerCase() === 'delivered'
         const isCancelled = ['cancelled','returned'].includes(String(o?.shipmentStatus||'').toLowerCase())
@@ -601,16 +603,18 @@ router.get('/agents/commission', auth, allowRoles('admin','user'), async (req, r
         // Calculate order value in AED
         const totalVal = (o.total!=null ? Number(o.total) : (Number(o?.productId?.price||0) * Math.max(1, Number(o?.quantity||1))))
         const cur = ['AED','OMR','SAR','BHD','KWD','QAR','INR','USD','CNY'].includes(String(o?.productId?.baseCurrency)) ? o.productId.baseCurrency : 'SAR'
-        const curRate = fx[cur] || 0
+        const curRate = FX_PKR[cur] || FX_PKR['SAR'] || 72
         // Convert to PKR then to AED
         const valInPKR = totalVal * curRate
         const valInAED = aedRate > 0 ? valInPKR / aedRate : 0
         totalOrderValueAED += valInAED
         let pkr = 0
+        // For delivered orders, always use stored commission if available
         if (isDelivered && o?.agentCommissionPKR && Number(o.agentCommissionPKR) > 0){
           pkr = Number(o.agentCommissionPKR)
         } else {
-          pkr = totalVal * 0.12 * curRate
+          // For non-delivered or orders without stored commission, calculate with same hardcoded rates
+          pkr = Math.round(totalVal * 0.12 * curRate)
         }
         if (isDelivered) deliveredCommissionPKR += pkr; else upcomingCommissionPKR += pkr
       }
