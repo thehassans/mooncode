@@ -4,10 +4,12 @@ import { getCurrencyConfig, convert } from '../../util/currency'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import OrderStatusTrack from '../../ui/OrderStatusTrack.jsx'
+import { useToast } from '../../ui/Toast.jsx'
 
 export default function ManagerOrders(){
   const location = useLocation()
   const navigate = useNavigate()
+  const toast = useToast()
   const [me, setMe] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} } })
   const [orders, setOrders] = useState([])
   const [error, setError] = useState('')
@@ -31,6 +33,8 @@ export default function ManagerOrders(){
   const [driverFilter, setDriverFilter] = useState('')
   const [agentOptions, setAgentOptions] = useState([])
   const [curCfg, setCurCfg] = useState(null)
+  const [pendingReturns, setPendingReturns] = useState([])
+  const [verifying, setVerifying] = useState(null)
 
   const perms = me?.managerPermissions || {}
 
@@ -80,6 +84,37 @@ export default function ManagerOrders(){
     finally{ setLoading(false); loadingMoreRef.current = false }
   }
 
+  // Load pending returns for verification
+  async function loadPendingReturns(){
+    try{
+      const res = await apiGet('/api/orders?ship=cancelled,returned&limit=200')
+      const allOrders = res?.orders || []
+      // Filter only submitted returns that need verification
+      const submitted = allOrders.filter(o => 
+        o.returnSubmittedToCompany && 
+        !o.returnVerified &&
+        ['cancelled', 'returned'].includes(String(o.shipmentStatus || '').toLowerCase())
+      )
+      setPendingReturns(submitted)
+    }catch(e){
+      console.error('Failed to load pending returns:', e)
+    }
+  }
+
+  async function verifyReturn(orderId){
+    setVerifying(orderId)
+    try{
+      await apiPost(`/api/orders/${orderId}/return/verify`, {})
+      toast.success('Order verified successfully')
+      loadPendingReturns() // Reload pending returns
+      loadOrders(true) // Refresh main orders list
+    }catch(e){
+      toast.error(e?.message || 'Failed to verify order')
+    }finally{
+      setVerifying(null)
+    }
+  }
+
   // Fetch drivers by country (with caching)
   async function fetchDriversByCountry(country){
     if (!country) return []
@@ -105,7 +140,7 @@ export default function ManagerOrders(){
     countries.forEach(country => fetchDriversByCountry(country))
   }, [orders])
 
-  useEffect(()=>{ fetchMe(); loadOrders(true) },[])
+  useEffect(()=>{ fetchMe(); loadOrders(true); loadPendingReturns() },[])
   useEffect(()=>{ let alive=true; getCurrencyConfig().then(c=>{ if(alive) setCurCfg(c) }).catch(()=>{}); return ()=>{ alive=false } },[])
   // Load agents for workspace (owner scope handled server-side)
   useEffect(()=>{
@@ -509,6 +544,74 @@ export default function ManagerOrders(){
           <button className="btn" onClick={exportCsv}>Export CSV</button>
         </div>
       </div>
+
+      {/* Pending Returns Verification Section */}
+      {pendingReturns.length > 0 && (
+        <div className="card" style={{border:'2px solid #ef4444', background:'rgba(239, 68, 68, 0.05)', marginTop:12}}>
+          <div className="card-header">
+            <div className="card-title" style={{color:'#ef4444'}}>
+              ⚠️ Cancelled/Returned Orders to Verify ({pendingReturns.length})
+            </div>
+          </div>
+          <div style={{display:'grid', gap:10}}>
+            {pendingReturns.map(order => {
+              const isVerifying = verifying === String(order._id)
+              const status = String(order.shipmentStatus || '').toLowerCase()
+              const driverName = order.deliveryBoy 
+                ? `${order.deliveryBoy.firstName || ''} ${order.deliveryBoy.lastName || ''}`.trim() || '-'
+                : '-'
+              
+              return (
+                <div key={order._id} className="panel" style={{display:'grid', gap:10, padding:16, border:'1px solid #fca5a5', borderRadius:8, background:'white'}}>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'start', gap:12}}>
+                    <div style={{flex:1}}>
+                      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
+                        <div style={{fontWeight:800, fontSize:16}}>
+                          #{order.invoiceNumber || String(order._id).slice(-6)}
+                        </div>
+                        <span className="badge" style={{background:'#fee2e2', color:'#991b1b', textTransform:'capitalize'}}>
+                          {status}
+                        </span>
+                        {order.orderCountry && <span className="badge">{order.orderCountry}</span>}
+                        {order.city && <span className="chip">{order.city}</span>}
+                      </div>
+                      
+                      <div style={{display:'grid', gap:4, fontSize:14}}>
+                        <div className="helper">
+                          <strong>Customer:</strong> {order.customerName || '-'} • {order.customerPhone || '-'}
+                        </div>
+                        <div className="helper">
+                          <strong>Address:</strong> {order.customerAddress || order.customerLocation || '-'}
+                        </div>
+                        {order.returnReason && (
+                          <div className="helper">
+                            <strong>Reason:</strong> {order.returnReason}
+                          </div>
+                        )}
+                        <div className="helper">
+                          <strong>Driver:</strong> {driverName}
+                        </div>
+                        <div className="helper" style={{color:'#f59e0b'}}>
+                          <strong>Submitted:</strong> {order.returnSubmittedAt ? new Date(order.returnSubmittedAt).toLocaleString() : '-'}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <button 
+                      className="btn success"
+                      onClick={() => verifyReturn(order._id)}
+                      disabled={isVerifying}
+                      style={{minWidth:150, whiteSpace:'nowrap'}}
+                    >
+                      {isVerifying ? 'Verifying...' : '✓ Accept & Verify'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div style={{display:'grid', gap:12, marginTop:12}}>
         {loading ? (

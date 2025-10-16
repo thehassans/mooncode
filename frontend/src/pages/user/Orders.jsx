@@ -85,6 +85,8 @@ export default function UserOrders(){
   const [agentFilter, setAgentFilter] = useState('')
   const [driverFilter, setDriverFilter] = useState('')
   const [selected, setSelected] = useState(null)
+  const [pendingReturns, setPendingReturns] = useState([])
+  const [verifying, setVerifying] = useState(null)
   const [driversByCountry, setDriversByCountry] = useState({}) // Cache drivers by country
   const [updating, setUpdating] = useState({})
   const [editingDriver, setEditingDriver] = useState({}) // Track edited driver per order
@@ -242,8 +244,39 @@ export default function UserOrders(){
     finally{ setLoading(false); loadingMoreRef.current = false }
   }
 
+  // Load pending returns for verification
+  async function loadPendingReturns(){
+    try{
+      const res = await apiGet('/api/orders?ship=cancelled,returned&limit=200')
+      const allOrders = res?.orders || []
+      // Filter only submitted returns that need verification
+      const submitted = allOrders.filter(o => 
+        o.returnSubmittedToCompany && 
+        !o.returnVerified &&
+        ['cancelled', 'returned'].includes(String(o.shipmentStatus || '').toLowerCase())
+      )
+      setPendingReturns(submitted)
+    }catch(e){
+      console.error('Failed to load pending returns:', e)
+    }
+  }
+
+  async function verifyReturn(orderId){
+    setVerifying(orderId)
+    try{
+      await apiPost(`/api/orders/${orderId}/return/verify`, {})
+      toast.success('Order verified successfully')
+      loadPendingReturns() // Reload pending returns
+      loadOrders(true) // Refresh main orders list
+    }catch(e){
+      toast.error(e?.message || 'Failed to verify order')
+    }finally{
+      setVerifying(null)
+    }
+  }
+
   // Initial load
-  useEffect(()=>{ loadOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
+  useEffect(()=>{ loadOrders(true); loadPendingReturns() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
   useEffect(()=>{ let alive=true; getCurrencyConfig().then(c=>{ if(alive) setCurCfg(c) }).catch(()=>{}); return ()=>{ alive=false } },[])
   // Reload on filter changes (except productQuery which is client-side)
   useEffect(()=>{ loadOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [buildQuery])
@@ -565,6 +598,74 @@ export default function UserOrders(){
           <button className="btn" onClick={exportCsv}>Export CSV</button>
         </div>
       </div>
+
+      {/* Pending Returns Verification Section */}
+      {pendingReturns.length > 0 && (
+        <div className="card" style={{border:'2px solid #ef4444', background:'rgba(239, 68, 68, 0.05)'}}>
+          <div className="card-header">
+            <div className="card-title" style={{color:'#ef4444'}}>
+              ⚠️ Cancelled/Returned Orders to Verify ({pendingReturns.length})
+            </div>
+          </div>
+          <div style={{display:'grid', gap:10}}>
+            {pendingReturns.map(order => {
+              const isVerifying = verifying === String(order._id)
+              const status = String(order.shipmentStatus || '').toLowerCase()
+              const driverName = order.deliveryBoy 
+                ? `${order.deliveryBoy.firstName || ''} ${order.deliveryBoy.lastName || ''}`.trim() || '-'
+                : '-'
+              
+              return (
+                <div key={order._id} className="panel" style={{display:'grid', gap:10, padding:16, border:'1px solid #fca5a5', borderRadius:8, background:'white'}}>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'start', gap:12}}>
+                    <div style={{flex:1}}>
+                      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
+                        <div style={{fontWeight:800, fontSize:16}}>
+                          #{order.invoiceNumber || String(order._id).slice(-6)}
+                        </div>
+                        <span className="badge" style={{background:'#fee2e2', color:'#991b1b', textTransform:'capitalize'}}>
+                          {status}
+                        </span>
+                        {order.orderCountry && <span className="badge">{order.orderCountry}</span>}
+                        {order.city && <span className="chip">{order.city}</span>}
+                      </div>
+                      
+                      <div style={{display:'grid', gap:4, fontSize:14}}>
+                        <div className="helper">
+                          <strong>Customer:</strong> {order.customerName || '-'} • {order.customerPhone || '-'}
+                        </div>
+                        <div className="helper">
+                          <strong>Address:</strong> {order.customerAddress || order.customerLocation || '-'}
+                        </div>
+                        {order.returnReason && (
+                          <div className="helper">
+                            <strong>Reason:</strong> {order.returnReason}
+                          </div>
+                        )}
+                        <div className="helper">
+                          <strong>Driver:</strong> {driverName}
+                        </div>
+                        <div className="helper" style={{color:'#f59e0b'}}>
+                          <strong>Submitted:</strong> {order.returnSubmittedAt ? new Date(order.returnSubmittedAt).toLocaleString() : '-'}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <button 
+                      className="btn success"
+                      onClick={() => verifyReturn(order._id)}
+                      disabled={isVerifying}
+                      style={{minWidth:150, whiteSpace:'nowrap'}}
+                    >
+                      {isVerifying ? 'Verifying...' : '✓ Accept & Verify'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Cards list */}
       <div style={{display:'grid', gap:12}}>
