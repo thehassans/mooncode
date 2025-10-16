@@ -35,6 +35,7 @@ export default function UserLayout(){
       label: 'Commerce', icon: '🛍️',
       children: [
         { to: '/user/orders', label: 'Orders', icon: '🧾' },
+        { to: '/user/online-orders', label: 'Online Orders', icon: '🌐' },
         { to: '/user/inhouse-products', label: 'Inhouse Products', icon: '🏷️' },
         { to: '/user/warehouses', label: 'Warehouses', icon: '🏬' },
         { to: '/user/shipments', label: 'Shipments', icon: '🚚' },
@@ -49,12 +50,6 @@ export default function UserLayout(){
         { to: '/user/manager-finances', label: 'Manager Finances', icon: '💼' },
         { to: '/user/agent-amounts', label: 'Agent Amounts', icon: '💰' },
         { to: '/user/driver-amounts', label: 'Driver Amounts', icon: '🚗' },
-      ]
-    },
-    {
-      label: 'E-Commerce', icon: '🛒',
-      children: [
-        { to: '/user/online-orders', label: 'Online Orders', icon: '🌐' },
       ]
     },
     { 
