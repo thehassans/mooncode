@@ -9,12 +9,14 @@ export default function DriverFinances(){
   const toast = useToast()
   const [drivers, setDrivers] = useState([])
   const [managerRemits, setManagerRemits] = useState([])
+  const [driverRemits, setDriverRemits] = useState([])
   const [loading, setLoading] = useState(false)
   const [country, setCountry] = useState('')
   const [managerCountries, setManagerCountries] = useState([])
   const [currency, setCurrency] = useState('SAR')
   const [payModal, setPayModal] = useState(null)
   const [paying, setPaying] = useState(false)
+  const [accepting, setAccepting] = useState(null)
 
   // Load manager's assigned countries
   useEffect(()=>{
@@ -44,12 +46,14 @@ export default function DriverFinances(){
     if (!country) return
     setLoading(true)
     try{
-      const [driversRes, managerRemitsRes] = await Promise.all([
+      const [driversRes, managerRemitsRes, driverRemitsRes] = await Promise.all([
         apiGet(`/api/finance/drivers/summary?country=${encodeURIComponent(country)}&limit=200`),
-        apiGet('/api/finance/manager-remittances')
+        apiGet('/api/finance/manager-remittances'),
+        apiGet('/api/finance/driver-remittances?limit=200')
       ])
       setDrivers(Array.isArray(driversRes?.drivers) ? driversRes.drivers : [])
       const allRemits = Array.isArray(managerRemitsRes?.remittances) ? managerRemitsRes.remittances : []
+      const allDriverRemits = Array.isArray(driverRemitsRes?.remittances) ? driverRemitsRes.remittances : []
       // Filter manager remittances by country (handle variations like KSA/Saudi Arabia, UAE/United Arab Emirates)
       const normalizeCountry = (c) => {
         const s = String(c||'').trim().toLowerCase()
@@ -60,6 +64,9 @@ export default function DriverFinances(){
       const normalizedCountry = normalizeCountry(country)
       const filtered = allRemits.filter(r => normalizeCountry(r?.country) === normalizedCountry)
       setManagerRemits(filtered)
+      // Filter pending driver remittances
+      const pendingDriverRemits = allDriverRemits.filter(r => r.status === 'pending')
+      setDriverRemits(pendingDriverRemits)
       // Set currency based on country
       const cur = country === 'KSA' ? 'SAR' : (country === 'UAE' ? 'AED' : (country === 'OMN' ? 'OMR' : (country === 'BHR' ? 'BHD' : (country === 'KWT' ? 'KWD' : (country === 'QAT' ? 'QAR' : 'SAR')))))
       setCurrency(cur)
@@ -127,6 +134,20 @@ export default function DriverFinances(){
       toast.error(e?.message || 'Failed to submit payment')
     }finally{
       setPaying(false)
+    }
+  }
+
+  async function acceptDriverPayment(remittanceId, driverName, amount){
+    if (!window.confirm(`Accept payment of ${currency} ${num(amount)} from ${driverName}?`)) return
+    setAccepting(remittanceId)
+    try{
+      await apiPost(`/api/finance/driver-remittances/${remittanceId}/send`, {})
+      toast.success(`Payment accepted from ${driverName}`)
+      await loadData()
+    }catch(e){
+      toast.error(e?.message || 'Failed to accept payment')
+    }finally{
+      setAccepting(null)
     }
   }
 
@@ -204,22 +225,26 @@ export default function DriverFinances(){
                   <th style={{padding:'10px 12px', textAlign:'center', borderRight:'1px solid var(--border)', color:'#10b981'}}>Delivered Orders</th>
                   <th style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#10b981'}}>Total Collected ({currency})</th>
                   <th style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#8b5cf6'}}>Delivered to Company ({currency})</th>
-                  <th style={{padding:'10px 12px', textAlign:'right', color:'#ef4444'}}>Pending ({currency})</th>
+                  <th style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#ef4444'}}>Pending ({currency})</th>
+                  <th style={{padding:'10px 12px', textAlign:'center', color:'#3b82f6'}}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   Array.from({length:5}).map((_,i)=> (
                     <tr key={`sk${i}`}>
-                      <td colSpan={7} style={{padding:'10px 12px'}}>
+                      <td colSpan={8} style={{padding:'10px 12px'}}>
                         <div style={{height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite'}} />
                       </td>
                     </tr>
                   ))
                 ) : drivers.length === 0 ? (
-                  <tr><td colSpan={7} style={{padding:'10px 12px', opacity:0.7, textAlign:'center'}}>No drivers found</td></tr>
+                  <tr><td colSpan={8} style={{padding:'10px 12px', opacity:0.7, textAlign:'center'}}>No drivers found</td></tr>
                 ) : (
-                  drivers.map((d, idx)=> (
+                  drivers.map((d, idx)=> {
+                    // Find pending remittance for this driver
+                    const pendingRemit = driverRemits.find(r => String(r.driver?._id) === String(d.id))
+                    return (
                     <tr key={d.id} style={{borderTop:'1px solid var(--border)', background: idx%2? 'transparent':'var(--panel)'}}>
                       <td style={{padding:'10px 12px', borderRight:'1px solid var(--border)'}}>
                         <div style={{fontWeight:700, color:'#8b5cf6'}}>{d.name || 'Unnamed'}</div>
@@ -240,11 +265,26 @@ export default function DriverFinances(){
                       <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)'}}>
                         <span style={{color:'#8b5cf6', fontWeight:800}}>{currency} {num(d.deliveredToCompany||0)}</span>
                       </td>
-                      <td style={{padding:'10px 12px', textAlign:'right'}}>
+                      <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)'}}>
                         <span style={{color:'#ef4444', fontWeight:800}}>{currency} {num(d.pendingToCompany||0)}</span>
                       </td>
+                      <td style={{padding:'10px 12px', textAlign:'center'}}>
+                        {pendingRemit ? (
+                          <button 
+                            className="btn success"
+                            onClick={()=> acceptDriverPayment(pendingRemit._id, d.name, pendingRemit.amount)}
+                            disabled={accepting === pendingRemit._id}
+                            style={{padding:'6px 12px', fontSize:13, whiteSpace:'nowrap'}}
+                          >
+                            {accepting === pendingRemit._id ? '⏳ Accepting...' : `✓ Accept ${currency} ${num(pendingRemit.amount)}`}
+                          </button>
+                        ) : (
+                          <span style={{opacity:0.5, fontSize:13}}>—</span>
+                        )}
+                      </td>
                     </tr>
-                  ))
+                    )
+                  })
                 )}
               </tbody>
             </table>
