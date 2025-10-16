@@ -47,6 +47,7 @@ const OrderSchema = new mongoose.Schema({
   shipmentStatus: { type: String, default: 'pending' },
   shippedAt: { type: Date },
   pickedUpAt: { type: Date },
+  outForDeliveryAt: { type: Date },
   deliveredAt: { type: Date },
   // Inventory adjustment bookkeeping (decrement stock once upon delivery)
   inventoryAdjusted: { type: Boolean, default: false },

@@ -364,7 +364,9 @@ export default function DriverPanel() {
       }
     }
 
-    const isPickedUp = String(order.shipmentStatus || order.status || '').toLowerCase() === 'picked_up'
+    const shipStatus = String(order.shipmentStatus || order.status || '').toLowerCase()
+    const isPickedUp = shipStatus === 'picked_up'
+    const isOutForDelivery = shipStatus === 'out_for_delivery'
 
     return (
       <div className="driver-order-card" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{position:'relative'}}>
@@ -374,8 +376,11 @@ export default function DriverPanel() {
             {order.invoiceNumber ? `#${order.invoiceNumber}` : `Order #${order._id?.slice(-5) || 'N/A'}`}
           </div>
         </div>
-        {/* Corner small banner for Picked Up */}
-        {isPickedUp && (
+        {/* Corner small banner for status */}
+        {isOutForDelivery && (
+          <div className="chip" style={{position:'absolute', top:8, right:8, background:'#3b82f622', color:'#1d4ed8', fontWeight:800}}>OUT FOR DELIVERY</div>
+        )}
+        {isPickedUp && !isOutForDelivery && (
           <div className="chip" style={{position:'absolute', top:8, right:8, background:'#f59e0b22', color:'#b45309', fontWeight:800}}>PICKED UP</div>
         )}
 

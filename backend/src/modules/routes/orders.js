@@ -1187,13 +1187,16 @@ router.post('/:id/shipment/update', auth, allowRoles('admin','user','agent','dri
     }
     const { shipmentStatus, deliveryNotes, note } = req.body || {}
     if (shipmentStatus) {
-      const allowed = new Set(['no_response', 'attempted', 'contacted', 'picked_up'])
+      const allowed = new Set(['no_response', 'attempted', 'contacted', 'picked_up', 'out_for_delivery'])
       if (!allowed.has(String(shipmentStatus))) {
         return res.status(400).json({ message: 'Invalid status' })
       }
       ord.shipmentStatus = shipmentStatus
       if (shipmentStatus === 'picked_up') {
         try{ ord.pickedUpAt = new Date() }catch{}
+      }
+      if (shipmentStatus === 'out_for_delivery') {
+        try{ ord.outForDeliveryAt = new Date() }catch{}
       }
     }
     if (deliveryNotes != null || note != null) ord.deliveryNotes = (note != null ? note : deliveryNotes)
@@ -1306,6 +1309,9 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), async (req, res
       }
       if (shipmentStatus === 'picked_up' && !ord.pickedUpAt) {
         ord.pickedUpAt = new Date()
+      }
+      if (shipmentStatus === 'out_for_delivery' && !ord.outForDeliveryAt) {
+        ord.outForDeliveryAt = new Date()
       }
       if (['in_transit', 'shipped'].includes(shipmentStatus) && !ord.shippedAt) {
         ord.shippedAt = new Date()
