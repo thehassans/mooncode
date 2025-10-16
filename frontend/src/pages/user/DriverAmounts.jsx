@@ -182,7 +182,7 @@ export default function DriverAmounts(){
                 <th style={{ padding: '10px 12px', textAlign:'center', borderRight:'1px solid var(--border)', color:'#3b82f6' }}>Assigned</th>
                 <th style={{ padding: '10px 12px', textAlign:'center', borderRight:'1px solid var(--border)', color:'#10b981' }}>Delivered</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e' }}>Collected</th>
-                <th style={{ padding: '10px 12px', textAlign:'center', borderRight:'1px solid var(--border)', color:'#a855f7' }}>Rate %</th>
+                <th style={{ padding: '10px 12px', textAlign:'center', borderRight:'1px solid var(--border)', color:'#a855f7' }}>Commission/Order</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#06b6d4' }}>Commission</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#8b5cf6' }}>Withdrawn</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b' }}>Pending</th>
@@ -222,8 +222,8 @@ export default function DriverAmounts(){
                       <span style={{color:'#22c55e', fontWeight:800}}>{d.currency} {num(d.collected)}</span>
                     </td>
                     <td style={{ padding: '10px 12px', textAlign:'center', borderRight:'1px solid var(--border)' }}>
-                      {d.commissionRate && d.commissionRate > 0 ? (
-                        <span style={{color:'#a855f7', fontWeight:700}}>{num(d.commissionRate)}%</span>
+                      {d.commissionPerOrder && d.commissionPerOrder > 0 ? (
+                        <span style={{color:'#a855f7', fontWeight:700}}>{d.commissionCurrency || d.currency} {num(d.commissionPerOrder)}</span>
                       ) : (
                         <span style={{color:'#ef4444', fontWeight:600, fontSize:12}}>Not Set</span>
                       )}

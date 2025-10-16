@@ -760,6 +760,8 @@ router.get('/drivers/summary', auth, allowRoles('admin','user','manager'), async
         country: d.country || '',
         currency,
         commissionRate: Number(d.driverProfile?.commissionRate ?? 8),
+        commissionPerOrder: Number(d.driverProfile?.commissionPerOrder ?? 0),
+        commissionCurrency: d.driverProfile?.commissionCurrency || currency,
         assigned,
         canceled,
         deliveredCount,
