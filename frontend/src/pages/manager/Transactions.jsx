@@ -100,7 +100,7 @@ export default function Transactions(){
 
   return (
     <div className="section" style={{display:'grid', gap:12}}>
-      <div className="page-header"><div className="page-title">Transactions</div><div className="page-subtitle">Agent and Driver remittance requests with integrated metrics</div></div>
+      <div className="page-header"><div className="page-title">Driver Settlement</div><div className="page-subtitle">Agent and Driver remittance requests with integrated metrics</div></div>
       {err && <div className="error">{err}</div>}
 
       {/* Agent Remittances */}

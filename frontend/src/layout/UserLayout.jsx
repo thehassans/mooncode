@@ -44,10 +44,10 @@ export default function UserLayout(){
       ]
     },
     {
-      label: 'Amount Office', icon: '💵',
+      label: 'Amount Office', icon: '💼',
       children: [
-        { to: '/user/transactions', label: 'Transactions', icon: '💳' },
-        { to: '/user/manager-finances', label: 'Manager Finances', icon: '💼' },
+        { to: '/user/transactions', label: 'Driver Settlement', icon: '💳' },
+        { to: '/user/manager-finances', label: 'Manager Finances', icon: '📊' },
         { to: '/user/agent-amounts', label: 'Agent Amounts', icon: '💰' },
         { to: '/user/driver-amounts', label: 'Driver Amounts', icon: '🚗' },
       ]
