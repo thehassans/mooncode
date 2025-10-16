@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost } from '../../api'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'react-hot-toast'
+import { useToast } from '../../ui/Toast.jsx'
 
 export default function DriverAmounts(){
   const navigate = useNavigate()
+  const toast = useToast()
   const [drivers, setDrivers] = useState([])
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
