@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { apiGet } from '../../api'
+import { apiGet, apiPost } from '../../api'
 import { useNavigate } from 'react-router-dom'
+import { useToast } from '../../ui/Toast.jsx'
 
 export default function AgentAmounts(){
   const navigate = useNavigate()
+  const toast = useToast()
   const [agents, setAgents] = useState([])
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [payingAgent, setPayingAgent] = useState(null)
 
   useEffect(() => {
     let alive = true
@@ -36,14 +39,16 @@ export default function AgentAmounts(){
   }, [agents, searchTerm])
 
   const totals = useMemo(()=>{
-    let deliveredCommission = 0, upcomingCommission = 0, withdrawn = 0, pending = 0
+    let deliveredCommission = 0, upcomingCommission = 0, withdrawn = 0, pending = 0, ordersSubmitted = 0, totalOrderValueAED = 0
     for (const a of filteredAgents){
       deliveredCommission += Number(a.deliveredCommissionPKR||0)
       upcomingCommission += Number(a.upcomingCommissionPKR||0)
       withdrawn += Number(a.withdrawnPKR||0)
       pending += Number(a.pendingPKR||0)
+      ordersSubmitted += Number(a.ordersSubmitted||0)
+      totalOrderValueAED += Number(a.totalOrderValueAED||0)
     }
-    return { deliveredCommission, upcomingCommission, withdrawn, pending }
+    return { deliveredCommission, upcomingCommission, withdrawn, pending, ordersSubmitted, totalOrderValueAED }
   }, [filteredAgents])
 
   return (
@@ -111,24 +116,27 @@ export default function AgentAmounts(){
             <thead>
               <tr>
                 <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#8b5cf6' }}>Agent</th>
+                <th style={{ padding: '10px 12px', textAlign:'center', borderRight:'1px solid var(--border)', color:'#6366f1' }}>Orders Submitted</th>
+                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#06b6d4' }}>Total Value (AED)</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#10b981' }}>Delivered Comm.</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6' }}>Upcoming Comm.</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#8b5cf6' }}>Withdrawn</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b' }}>Pending</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', color:'#ef4444' }}>Balance</th>
+                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#ef4444' }}>Balance</th>
+                <th style={{ padding: '10px 12px', textAlign:'center', color:'#8b5cf6' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({length:5}).map((_,i)=> (
                   <tr key={`sk${i}`}>
-                    <td colSpan={6} style={{ padding:'10px 12px' }}>
+                    <td colSpan={9} style={{ padding:'10px 12px' }}>
                       <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
                     </td>
                   </tr>
                 ))
               ) : filteredAgents.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: '10px 12px', opacity: 0.7, textAlign:'center' }}>No agents found</td></tr>
+                <tr><td colSpan={9} style={{ padding: '10px 12px', opacity: 0.7, textAlign:'center' }}>No agents found</td></tr>
               ) : (
                 filteredAgents.map((a, idx) => {
                   const balance = Number(a.deliveredCommissionPKR||0) - Number(a.withdrawnPKR||0) - Number(a.pendingPKR||0)
@@ -137,6 +145,12 @@ export default function AgentAmounts(){
                       <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
                         <div style={{fontWeight:700, color:'#8b5cf6'}}>{a.name || 'Unnamed'}</div>
                         <div className="helper">{a.phone || ''}</div>
+                      </td>
+                      <td style={{ padding: '10px 12px', textAlign:'center', borderRight:'1px solid var(--border)' }}>
+                        <span style={{color:'#6366f1', fontWeight:700}}>{num(a.ordersSubmitted||0)}</span>
+                      </td>
+                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
+                        <span style={{color:'#06b6d4', fontWeight:800}}>AED {num(a.totalOrderValueAED||0)}</span>
                       </td>
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
                         <span style={{color:'#10b981', fontWeight:800}}>PKR {num(a.deliveredCommissionPKR)}</span>
@@ -150,8 +164,36 @@ export default function AgentAmounts(){
                       <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
                         <span style={{color:'#f59e0b', fontWeight:800}}>PKR {num(a.pendingPKR)}</span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right' }}>
+                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
                         <span style={{color: balance < 0 ? '#ef4444' : '#10b981', fontWeight:800}}>PKR {num(balance)}</span>
+                      </td>
+                      <td style={{ padding: '10px 12px', textAlign:'center' }}>
+                        {balance > 0 ? (
+                          <button 
+                            className="btn success" 
+                            style={{fontSize:12, padding:'6px 12px'}}
+                            disabled={payingAgent === a.id}
+                            onClick={async()=>{
+                              if (!window.confirm(`Send PKR ${num(balance)} commission to ${a.name}?`)) return
+                              setPayingAgent(a.id)
+                              try{
+                                await apiPost(`/api/finance/agents/${a.id}/pay-commission`, { amount: balance })
+                                toast.success('Commission payment sent successfully')
+                                // Refresh data
+                                const r = await apiGet('/api/finance/agents/commission')
+                                setAgents(Array.isArray(r?.agents) ? r.agents : [])
+                              }catch(e){
+                                toast.error(e?.message || 'Failed to send payment')
+                              }finally{
+                                setPayingAgent(null)
+                              }
+                            }}
+                          >
+                            {payingAgent === a.id ? 'Sending...' : 'Pay Commission'}
+                          </button>
+                        ) : (
+                          <span style={{color:'var(--text-muted)', fontSize:12}}>No balance</span>
+                        )}
                       </td>
                     </tr>
                   )

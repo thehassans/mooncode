@@ -590,23 +590,33 @@ router.get('/agents/commission', auth, allowRoles('admin','user'), async (req, r
       const orders = await Order.find({ createdBy: a._id }).populate('productId','price baseCurrency quantity')
       let deliveredCommissionPKR = 0
       let upcomingCommissionPKR = 0
+      let ordersSubmitted = 0
+      let totalOrderValueAED = 0
+      const aedRate = fx['AED'] || 1
       for (const o of orders){
         const isDelivered = String(o?.shipmentStatus||'').toLowerCase() === 'delivered'
         const isCancelled = ['cancelled','returned'].includes(String(o?.shipmentStatus||'').toLowerCase())
         if (isCancelled) continue
+        ordersSubmitted++
+        // Calculate order value in AED
+        const totalVal = (o.total!=null ? Number(o.total) : (Number(o?.productId?.price||0) * Math.max(1, Number(o?.quantity||1))))
+        const cur = ['AED','OMR','SAR','BHD','KWD','QAR','INR','USD','CNY'].includes(String(o?.productId?.baseCurrency)) ? o.productId.baseCurrency : 'SAR'
+        const curRate = fx[cur] || 0
+        // Convert to PKR then to AED
+        const valInPKR = totalVal * curRate
+        const valInAED = aedRate > 0 ? valInPKR / aedRate : 0
+        totalOrderValueAED += valInAED
         let pkr = 0
         if (isDelivered && o?.agentCommissionPKR && Number(o.agentCommissionPKR) > 0){
           pkr = Number(o.agentCommissionPKR)
         } else {
-          const totalVal = (o.total!=null ? Number(o.total) : (Number(o?.productId?.price||0) * Math.max(1, Number(o?.quantity||1))))
-          const cur = ['AED','OMR','SAR','BHD','KWD','QAR','INR','USD','CNY'].includes(String(o?.productId?.baseCurrency)) ? o.productId.baseCurrency : 'SAR'
-          const rate = fx[cur] || 0
-          pkr = totalVal * 0.12 * rate
+          pkr = totalVal * 0.12 * curRate
         }
         if (isDelivered) deliveredCommissionPKR += pkr; else upcomingCommissionPKR += pkr
       }
       deliveredCommissionPKR = Math.round(deliveredCommissionPKR)
       upcomingCommissionPKR = Math.round(upcomingCommissionPKR)
+      totalOrderValueAED = Math.round(totalOrderValueAED)
       // Sent (withdrawn)
       const sentRows = await AgentRemit.aggregate([
         { $match: { agent: new (await import('mongoose')).default.Types.ObjectId(a._id), status: 'sent' } },
@@ -624,6 +634,8 @@ router.get('/agents/commission', auth, allowRoles('admin','user'), async (req, r
         name: `${a.firstName||''} ${a.lastName||''}`.trim(),
         phone: a.phone||'',
         payoutProfile: a.payoutProfile || {},
+        ordersSubmitted,
+        totalOrderValueAED,
         deliveredCommissionPKR,
         upcomingCommissionPKR,
         withdrawnPKR,
@@ -633,6 +645,42 @@ router.get('/agents/commission', auth, allowRoles('admin','user'), async (req, r
     return res.json({ agents: out })
   }catch(err){
     return res.status(500).json({ message: 'Failed to compute commission' })
+  }
+})
+
+// Pay commission to agent (admin/user)
+router.post('/agents/:id/pay-commission', auth, allowRoles('admin','user'), async (req, res) => {
+  try{
+    const { id } = req.params
+    const { amount } = req.body || {}
+    const amt = Number(amount)
+    if (Number.isNaN(amt) || amt <= 0) return res.status(400).json({ message: 'Invalid amount' })
+    
+    const agent = await User.findOne({ _id: id, role: 'agent' }).lean()
+    if (!agent) return res.status(404).json({ message: 'Agent not found' })
+    if (req.user.role !== 'admin' && String(agent.createdBy) !== String(req.user.id)){
+      return res.status(403).json({ message: 'Not allowed' })
+    }
+    
+    // Create an agent remittance record marking commission payment
+    const remit = new AgentRemit({
+      agent: id,
+      approver: req.user.id,
+      amount: amt,
+      currency: 'PKR',
+      method: 'transfer',
+      note: 'Commission payment',
+      status: 'sent',
+    })
+    await remit.save()
+    
+    // Notify agent
+    try{ const io = getIO(); io.to(`user:${id}`).emit('commission.paid', { amount: amt }) }catch{}
+    
+    return res.json({ ok: true, message: 'Commission paid successfully' })
+  }catch(err){
+    console.error('Pay agent commission error:', err)
+    return res.status(500).json({ message: 'Failed to pay commission' })
   }
 })
 
