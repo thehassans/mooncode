@@ -1844,7 +1844,10 @@ router.post('/:id/return/submit', auth, allowRoles('driver'), async (req, res) =
 router.post('/:id/return/verify', auth, allowRoles('user', 'manager'), async (req, res) => {
   try {
     const { id } = req.params
-    const order = await Order.findById(id).populate('createdBy', 'role createdBy')
+    const order = await Order.findById(id)
+      .populate('createdBy', 'role createdBy')
+      .populate('productId')
+      .populate('items.productId')
     
     if (!order) return res.status(404).json({ message: 'Order not found' })
     
@@ -1900,6 +1903,37 @@ router.post('/:id/return/verify', auth, allowRoles('user', 'manager'), async (re
     order.returnVerified = true
     order.returnVerifiedAt = new Date()
     order.returnVerifiedBy = req.user.id
+    
+    // Refill stock for cancelled/returned products
+    try {
+      if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+        // Multi-item order: refill stock for each item
+        for (const item of order.items) {
+          if (item.productId && item.productId._id) {
+            const quantity = Math.max(1, Number(item.quantity || 1))
+            const product = await Product.findById(item.productId._id)
+            if (product) {
+              product.stock = (product.stock || 0) + quantity
+              await product.save()
+              console.log(`Refilled stock for product ${product._id}: +${quantity} (new stock: ${product.stock})`)
+            }
+          }
+        }
+      } else if (order.productId && order.productId._id) {
+        // Single product order: refill stock
+        const quantity = Math.max(1, Number(order.quantity || 1))
+        const product = await Product.findById(order.productId._id)
+        if (product) {
+          product.stock = (product.stock || 0) + quantity
+          await product.save()
+          console.log(`Refilled stock for product ${product._id}: +${quantity} (new stock: ${product.stock})`)
+        }
+      }
+    } catch (stockError) {
+      console.error('Error refilling stock:', stockError)
+      // Continue with verification even if stock refill fails
+    }
+    
     await order.save()
     
     emitOrderChange(order, 'return_verified').catch(() => {})
@@ -1912,7 +1946,10 @@ router.post('/:id/return/verify', auth, allowRoles('user', 'manager'), async (re
       }
     } catch {}
     
-    res.json({ message: 'Order verified successfully', order })
+    res.json({ 
+      message: 'Order verified successfully and stock refilled', 
+      order 
+    })
   } catch (err) {
     console.error('Verify return error:', err)
     res.status(500).json({ message: 'Failed to verify order', error: err?.message })

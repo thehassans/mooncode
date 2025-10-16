@@ -264,8 +264,8 @@ export default function UserOrders(){
   async function verifyReturn(orderId){
     setVerifying(orderId)
     try{
-      await apiPost(`/api/orders/${orderId}/return/verify`, {})
-      toast.success('Order verified successfully')
+      const response = await apiPost(`/api/orders/${orderId}/return/verify`, {})
+      toast.success(response?.message || 'Order verified successfully and stock refilled')
       loadPendingReturns() // Reload pending returns
       loadOrders(true) // Refresh main orders list
     }catch(e){
