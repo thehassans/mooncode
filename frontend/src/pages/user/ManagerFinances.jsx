@@ -4,6 +4,7 @@ import { io } from 'socket.io-client'
 import { useNavigate } from 'react-router-dom'
 import Modal from '../../components/Modal.jsx'
 import { useToast } from '../../ui/Toast.jsx'
+import { getCurrencyConfig, convert } from '../../util/currency'
 
 export default function ManagerFinances(){
   const navigate = useNavigate()
@@ -18,12 +19,21 @@ export default function ManagerFinances(){
   const [toDate, setToDate] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [acceptModal, setAcceptModal] = useState(null)
+  const [curCfg, setCurCfg] = useState(null)
 
   useEffect(()=>{
     let alive = true
     ;(async()=>{
-      try{ const r = await apiGet('/api/users/me'); if (alive){ setMe(r?.user||{}) } }
-      catch{}
+      try{ 
+        const [userRes, curRes] = await Promise.all([
+          apiGet('/api/users/me'),
+          getCurrencyConfig()
+        ])
+        if (alive){ 
+          setMe(userRes?.user||{})
+          setCurCfg(curRes || null)
+        }
+      }catch{}
     })()
     return ()=>{ alive=false }
   },[])
@@ -129,15 +139,43 @@ export default function ManagerFinances(){
   }, [remittances, country, statusFilter, fromDate, toDate])
 
   const totals = useMemo(()=>{
-    let totalAmount = 0, accepted = 0, pending = 0, rejected = 0
+    let totalAmountAED = 0, acceptedAED = 0, pendingAED = 0, rejectedAED = 0
+    const byCountry = {}
+    const byCurrency = {}
+    
     for (const r of filteredRemittances){
-      totalAmount += Number(r.amount||0)
-      if (r.status === 'accepted') accepted += Number(r.amount||0)
-      else if (r.status === 'pending') pending += Number(r.amount||0)
-      else if (r.status === 'rejected') rejected += Number(r.amount||0)
+      const amount = Number(r.amount||0)
+      const currency = r.currency || 'SAR'
+      const countryKey = r.country || 'Unknown'
+      
+      // Convert to AED
+      const amountAED = curCfg ? convert(amount, currency, 'AED', curCfg) : amount
+      
+      totalAmountAED += amountAED
+      if (r.status === 'accepted') acceptedAED += amountAED
+      else if (r.status === 'pending') pendingAED += amountAED
+      else if (r.status === 'rejected') rejectedAED += amountAED
+      
+      // Track by country
+      if (!byCountry[countryKey]) byCountry[countryKey] = { count: 0, amount: 0, currency }
+      byCountry[countryKey].count++
+      byCountry[countryKey].amount += amount
+      
+      // Track by currency
+      if (!byCurrency[currency]) byCurrency[currency] = { count: 0, amount: 0 }
+      byCurrency[currency].count++
+      byCurrency[currency].amount += amount
     }
-    return { totalAmount, accepted, pending, rejected }
-  }, [filteredRemittances])
+    
+    return { 
+      totalAmountAED, 
+      acceptedAED, 
+      pendingAED, 
+      rejectedAED,
+      byCountry: Object.entries(byCountry).map(([k,v])=> ({country:k, ...v})),
+      byCurrency: Object.entries(byCurrency).map(([k,v])=> ({currency:k, ...v}))
+    }
+  }, [filteredRemittances, curCfg])
 
   function statusBadge(st){
     const s = String(st||'').toLowerCase()
@@ -181,29 +219,74 @@ export default function ManagerFinances(){
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px,1fr))', gap:12 }}>
         <div className="card" style={{background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color:'#fff'}}>
           <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Total Amount</div>
-            <div style={{fontSize:28, fontWeight:800}}>{num(totals.totalAmount)}</div>
+            <div style={{fontSize:14, opacity:0.9}}>Total Amount (AED)</div>
+            <div style={{fontSize:28, fontWeight:800}}>AED {num(totals.totalAmountAED)}</div>
           </div>
         </div>
         <div className="card" style={{background:'linear-gradient(135deg, #10b981 0%, #059669 100%)', color:'#fff'}}>
           <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Accepted</div>
-            <div style={{fontSize:28, fontWeight:800}}>{num(totals.accepted)}</div>
+            <div style={{fontSize:14, opacity:0.9}}>Accepted (AED)</div>
+            <div style={{fontSize:28, fontWeight:800}}>AED {num(totals.acceptedAED)}</div>
           </div>
         </div>
         <div className="card" style={{background:'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color:'#fff'}}>
           <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Pending</div>
-            <div style={{fontSize:28, fontWeight:800}}>{num(totals.pending)}</div>
+            <div style={{fontSize:14, opacity:0.9}}>Pending (AED)</div>
+            <div style={{fontSize:28, fontWeight:800}}>AED {num(totals.pendingAED)}</div>
           </div>
         </div>
         <div className="card" style={{background:'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color:'#fff'}}>
           <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Rejected</div>
-            <div style={{fontSize:28, fontWeight:800}}>{num(totals.rejected)}</div>
+            <div style={{fontSize:14, opacity:0.9}}>Rejected (AED)</div>
+            <div style={{fontSize:28, fontWeight:800}}>AED {num(totals.rejectedAED)}</div>
           </div>
         </div>
       </div>
+
+      {/* Breakdown by Country and Currency */}
+      {(totals.byCountry.length > 0 || totals.byCurrency.length > 0) && (
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(300px, 1fr))', gap:12}}>
+          {/* By Country */}
+          {totals.byCountry.length > 0 && (
+            <div className="card">
+              <div className="card-header">
+                <div className="card-title">📍 By Country</div>
+              </div>
+              <div style={{display:'grid', gap:6}}>
+                {totals.byCountry.map(item => (
+                  <div key={item.country} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 12px', background:'var(--panel)', borderRadius:6}}>
+                    <div>
+                      <div style={{fontWeight:700, color:'#6366f1'}}>{item.country}</div>
+                      <div className="helper" style={{fontSize:12}}>{item.count} remittance{item.count !== 1 ? 's' : ''}</div>
+                    </div>
+                    <div style={{fontWeight:800, color:'#10b981'}}>{item.currency} {num(item.amount)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* By Currency */}
+          {totals.byCurrency.length > 0 && (
+            <div className="card">
+              <div className="card-header">
+                <div className="card-title">💰 By Currency</div>
+              </div>
+              <div style={{display:'grid', gap:6}}>
+                {totals.byCurrency.map(item => (
+                  <div key={item.currency} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 12px', background:'var(--panel)', borderRadius:6}}>
+                    <div>
+                      <div style={{fontWeight:700, color:'#f59e0b'}}>{item.currency}</div>
+                      <div className="helper" style={{fontSize:12}}>{item.count} remittance{item.count !== 1 ? 's' : ''}</div>
+                    </div>
+                    <div style={{fontWeight:800, color:'#10b981'}}>{item.currency} {num(item.amount)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Remittances Table */}
       <div className="card">

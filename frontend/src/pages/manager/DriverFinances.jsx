@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost } from '../../api'
 import { useToast } from '../../ui/Toast.jsx'
+import { useNavigate } from 'react-router-dom'
 import Modal from '../../components/Modal.jsx'
 
 function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
 
 export default function DriverFinances(){
   const toast = useToast()
+  const navigate = useNavigate()
   const [drivers, setDrivers] = useState([])
   const [managerRemits, setManagerRemits] = useState([])
   const [driverRemits, setDriverRemits] = useState([])
@@ -165,13 +167,21 @@ export default function DriverFinances(){
           <div className="page-title gradient heading-cyan">Manager Payable to Company</div>
           <div className="page-subtitle">Monitor driver's delivered collections and remittances</div>
         </div>
-        <button 
-          className="btn success" 
-          disabled={!country || summary.toPayCompany <= 0 || loading}
-          onClick={handlePayToCompany}
-        >
-          Pay to Company
-        </button>
+        <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+          <button 
+            className="btn secondary" 
+            onClick={()=> navigate('/manager/finances/history/drivers')}
+          >
+            📜 History
+          </button>
+          <button 
+            className="btn success" 
+            disabled={!country || summary.toPayCompany <= 0 || loading}
+            onClick={handlePayToCompany}
+          >
+            Pay to Company
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -276,18 +286,25 @@ export default function DriverFinances(){
                         <span style={{color:'#ef4444', fontWeight:800}}>{currency} {num(d.pendingToCompany||0)}</span>
                       </td>
                       <td style={{padding:'10px 12px', textAlign:'center'}}>
-                        {pendingRemit ? (
+                        <div style={{display:'flex', gap:6, alignItems:'center', justifyContent:'center', flexWrap:'wrap'}}>
+                          {pendingRemit && (
+                            <button 
+                              className="btn success"
+                              onClick={()=> openAcceptModal(pendingRemit._id, d.name, pendingRemit.amount)}
+                              disabled={accepting === pendingRemit._id}
+                              style={{padding:'6px 12px', fontSize:13, whiteSpace:'nowrap'}}
+                            >
+                              {accepting === pendingRemit._id ? '⏳ Accepting...' : `✓ Accept ${currency} ${num(pendingRemit.amount)}`}
+                            </button>
+                          )}
                           <button 
-                            className="btn success"
-                            onClick={()=> openAcceptModal(pendingRemit._id, d.name, pendingRemit.amount)}
-                            disabled={accepting === pendingRemit._id}
+                            className="btn secondary"
+                            onClick={()=> navigate(`/manager/finances/history/drivers?driver=${d.id}`)}
                             style={{padding:'6px 12px', fontSize:13, whiteSpace:'nowrap'}}
                           >
-                            {accepting === pendingRemit._id ? '⏳ Accepting...' : `✓ Accept ${currency} ${num(pendingRemit.amount)}`}
+                            📜 History
                           </button>
-                        ) : (
-                          <span style={{opacity:0.5, fontSize:13}}>—</span>
-                        )}
+                        </div>
                       </td>
                     </tr>
                     )
