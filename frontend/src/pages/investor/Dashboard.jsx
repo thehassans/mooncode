@@ -64,39 +64,78 @@ export default function InvestorDashboard(){
   function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
 
   return (
-    <div className="section" style={{display:'grid', gap:12}}>
+    <div className="section" style={{display:'grid', gap:16}}>
       <div className="page-header">
         <div>
-          <div className="page-title gradient heading-purple">Investment Dashboard</div>
+          <div className="page-title">Investment Dashboard</div>
           <div className="page-subtitle">Track your portfolio performance and earnings</div>
         </div>
-        <button className="btn" onClick={()=> navigate('/investor/me')}>💰 Request Payment</button>
+        <button className="btn success" onClick={()=> navigate('/investor/me')}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:6}}>
+            <line x1="12" y1="1" x2="12" y2="23"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          Request Payment
+        </button>
       </div>
 
       {/* Summary Cards */}
-      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:12}}>
-        <div className="card" style={{background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color:'#fff'}}>
-          <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>💼 Total Investment</div>
-            <div style={{fontSize:28, fontWeight:800}}>{data.currency} {num(data.totalInvestment)}</div>
+      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px,1fr))', gap:16}}>
+        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)'}}>
+          <div style={{padding:'20px', display:'flex', alignItems:'center', gap:16}}>
+            <div style={{width:48, height:48, borderRadius:12, background:'rgba(102, 126, 234, 0.1)', display:'flex', alignItems:'center', justifyContent:'center'}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#667eea" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+              </svg>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13, opacity:0.7, marginBottom:4}}>Total Investment</div>
+              <div style={{fontSize:24, fontWeight:800, color:'#667eea'}}>{data.currency} {num(data.totalInvestment)}</div>
+            </div>
           </div>
         </div>
-        <div className="card" style={{background:'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color:'#fff'}}>
-          <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>📦 Total Units</div>
-            <div style={{fontSize:28, fontWeight:800}}>{num(data.totalUnits)}</div>
+        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)'}}>
+          <div style={{padding:'20px', display:'flex', alignItems:'center', gap:16}}>
+            <div style={{width:48, height:48, borderRadius:12, background:'rgba(245, 158, 11, 0.1)', display:'flex', alignItems:'center', justifyContent:'center'}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13, opacity:0.7, marginBottom:4}}>Total Units</div>
+              <div style={{fontSize:24, fontWeight:800, color:'#f59e0b'}}>{num(data.totalUnits)}</div>
+            </div>
           </div>
         </div>
-        <div className="card" style={{background:'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color:'#fff'}}>
-          <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>✅ Delivered Units</div>
-            <div style={{fontSize:28, fontWeight:800}}>{num(data.totalDeliveredUnits)}</div>
+        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)'}}>
+          <div style={{padding:'20px', display:'flex', alignItems:'center', gap:16}}>
+            <div style={{width:48, height:48, borderRadius:12, background:'rgba(59, 130, 246, 0.1)', display:'flex', alignItems:'center', justifyContent:'center'}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13, opacity:0.7, marginBottom:4}}>Delivered Units</div>
+              <div style={{fontSize:24, fontWeight:800, color:'#3b82f6'}}>{num(data.totalDeliveredUnits)}</div>
+            </div>
           </div>
         </div>
-        <div className="card" style={{background:'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color:'#fff'}}>
-          <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>💰 Total Profit</div>
-            <div style={{fontSize:28, fontWeight:800}}>{data.currency} {num(data.totalProfit)}</div>
+        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)'}}>
+          <div style={{padding:'20px', display:'flex', alignItems:'center', gap:16}}>
+            <div style={{width:48, height:48, borderRadius:12, background:'rgba(16, 185, 129, 0.1)', display:'flex', alignItems:'center', justifyContent:'center'}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"/>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13, opacity:0.7, marginBottom:4}}>Total Profit</div>
+              <div style={{fontSize:24, fontWeight:800, color:'#10b981'}}>{data.currency} {num(data.totalProfit)}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -104,68 +143,84 @@ export default function InvestorDashboard(){
       {/* Product Cards */}
       <div className="card">
         <div className="card-header">
-          <div className="card-title">📦 Your Investment Products</div>
+          <div className="card-title" style={{display:'flex', alignItems:'center', gap:8}}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+            Your Investment Products
+          </div>
         </div>
         {loading ? (
-          <div style={{padding:20, textAlign:'center', opacity:0.7}}>Loading...</div>
+          <div style={{padding:40, textAlign:'center', opacity:0.6}}>
+            <div style={{width:40, height:40, border:'3px solid var(--border)', borderTopColor:'#8b5cf6', borderRadius:'50%', margin:'0 auto 16px', animation:'spin 0.8s linear infinite'}} />
+            <div>Loading products...</div>
+          </div>
         ) : data.products.length === 0 ? (
-          <div style={{padding:20, textAlign:'center', opacity:0.7}}>No products assigned yet</div>
+          <div style={{padding:40, textAlign:'center', opacity:0.6}}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{margin:'0 auto 16px', opacity:0.3}}>
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            </svg>
+            <div>No products assigned yet</div>
+          </div>
         ) : (
-          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(320px, 1fr))', gap:16}}>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(340px, 1fr))', gap:20}}>
             {data.products.map((p, idx) => (
-              <div key={idx} className="card" style={{border:'1px solid var(--border)', padding:0, overflow:'hidden'}}>
+              <div key={idx} className="card" style={{border:'1px solid var(--border)', padding:0, overflow:'hidden', background:'var(--card-bg)'}}>
                 {/* Product Image */}
                 {p.product?.image && (
-                  <div style={{width:'100%', height:200, overflow:'hidden', background:'var(--panel)'}}>
+                  <div style={{width:'100%', height:220, overflow:'hidden', background:'var(--panel)', position:'relative'}}>
                     <img 
                       src={`${API_BASE}${p.product.image}`} 
                       alt={p.product.name}
                       style={{width:'100%', height:'100%', objectFit:'cover'}}
                       onError={(e)=> e.target.style.display='none'}
                     />
+                    <div style={{position:'absolute', top:12, right:12, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(8px)', padding:'6px 12px', borderRadius:20, color:'#fff', fontSize:12, fontWeight:600}}>
+                      {p.country}
+                    </div>
                   </div>
                 )}
                 
                 {/* Product Info */}
-                <div style={{padding:16}}>
-                  <div style={{fontSize:18, fontWeight:700, marginBottom:8, color:'#8b5cf6'}}>{p.product?.name || 'Product'}</div>
+                <div style={{padding:20}}>
+                  <div style={{fontSize:18, fontWeight:700, marginBottom:6}}>{p.product?.name || 'Product'}</div>
                   {p.product?.description && (
-                    <div style={{fontSize:13, opacity:0.7, marginBottom:12, lineHeight:1.5}}>{p.product.description}</div>
+                    <div style={{fontSize:13, opacity:0.6, marginBottom:16, lineHeight:1.6}}>{p.product.description}</div>
                   )}
                   
                   {/* Stats Grid */}
-                  <div style={{display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:10, marginBottom:12}}>
-                    <div style={{background:'var(--panel)', padding:10, borderRadius:6}}>
-                      <div className="helper" style={{fontSize:11}}>Country</div>
-                      <div style={{fontWeight:700, color:'#3b82f6'}}>{p.country}</div>
+                  <div style={{display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:12, marginBottom:16}}>
+                    <div style={{background:'var(--panel)', padding:12, borderRadius:8, border:'1px solid var(--border)'}}>
+                      <div className="helper" style={{fontSize:11, marginBottom:4}}>Stock Available</div>
+                      <div style={{fontWeight:800, color:'#f59e0b', fontSize:16}}>{num(p.stock)}</div>
                     </div>
-                    <div style={{background:'var(--panel)', padding:10, borderRadius:6}}>
-                      <div className="helper" style={{fontSize:11}}>Stock</div>
-                      <div style={{fontWeight:700, color:'#f59e0b'}}>{num(p.stock)}</div>
+                    <div style={{background:'var(--panel)', padding:12, borderRadius:8, border:'1px solid var(--border)'}}>
+                      <div className="helper" style={{fontSize:11, marginBottom:4}}>Price/Unit</div>
+                      <div style={{fontWeight:800, color:'#10b981', fontSize:16}}>{data.currency} {num(p.product?.price || 0)}</div>
                     </div>
-                    <div style={{background:'var(--panel)', padding:10, borderRadius:6}}>
-                      <div className="helper" style={{fontSize:11}}>Price</div>
-                      <div style={{fontWeight:700, color:'#10b981'}}>{data.currency} {num(p.product?.price || 0)}</div>
+                    <div style={{background:'var(--panel)', padding:12, borderRadius:8, border:'1px solid var(--border)'}}>
+                      <div className="helper" style={{fontSize:11, marginBottom:4}}>Your Commission</div>
+                      <div style={{fontWeight:800, color:'#10b981', fontSize:16}}>{data.currency} {num(p.profitPerUnit)}</div>
                     </div>
-                    <div style={{background:'var(--panel)', padding:10, borderRadius:6}}>
-                      <div className="helper" style={{fontSize:11}}>Profit/Unit</div>
-                      <div style={{fontWeight:700, color:'#10b981'}}>{data.currency} {num(p.profitPerUnit)}</div>
+                    <div style={{background:'var(--panel)', padding:12, borderRadius:8, border:'1px solid var(--border)'}}>
+                      <div className="helper" style={{fontSize:11, marginBottom:4}}>Total Orders</div>
+                      <div style={{fontWeight:800, color:'#8b5cf6', fontSize:16}}>{num(p.totalUnits)}</div>
                     </div>
                   </div>
 
                   {/* Performance */}
-                  <div style={{padding:12, background:'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)', borderRadius:8, marginBottom:10}}>
-                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:6}}>
-                      <span style={{fontSize:12, opacity:0.8}}>Total Units</span>
-                      <strong style={{color:'#8b5cf6'}}>{num(p.totalUnits)}</strong>
+                  <div style={{padding:16, background:'var(--panel)', borderRadius:10, border:'1px solid var(--border)'}}>
+                    <div style={{fontSize:12, fontWeight:600, opacity:0.7, marginBottom:12}}>Performance Summary</div>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+                      <span style={{fontSize:13, opacity:0.7}}>Delivered Orders</span>
+                      <strong style={{color:'#3b82f6', fontSize:15}}>{num(p.deliveredUnits)}</strong>
                     </div>
-                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:6}}>
-                      <span style={{fontSize:12, opacity:0.8}}>Delivered</span>
-                      <strong style={{color:'#3b82f6'}}>{num(p.deliveredUnits)}</strong>
-                    </div>
-                    <div style={{display:'flex', justifyContent:'space-between', paddingTop:8, borderTop:'1px solid var(--border)'}}>
-                      <span style={{fontSize:12, opacity:0.8}}>Your Profit</span>
-                      <strong style={{color:'#10b981', fontSize:16}}>{data.currency} {num(p.totalProfit)}</strong>
+                    <div style={{height:1, background:'var(--border)', margin:'12px 0'}} />
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                      <span style={{fontSize:13, fontWeight:600}}>Your Total Profit</span>
+                      <strong style={{color:'#10b981', fontSize:18, fontWeight:800}}>{data.currency} {num(p.totalProfit)}</strong>
                     </div>
                   </div>
                 </div>
