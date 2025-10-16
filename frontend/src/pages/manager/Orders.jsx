@@ -38,17 +38,35 @@ export default function ManagerOrders(){
 
   const perms = me?.managerPermissions || {}
 
-  // Preserve scroll helper
+  // Preserve scroll helper - enhanced for mobile
   const preserveScroll = async (fn)=>{
     const y = typeof window !== 'undefined' ? window.scrollY : 0
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
+    
     try{ return await fn() }
     finally {
+      // Multiple attempts to restore scroll position, especially important on mobile
+      const restoreScroll = () => {
+        try{ window.scrollTo(0, y) }catch{}
+      }
+      
+      // Immediate restore
+      restoreScroll()
+      
+      // After next frame
       try{
         requestAnimationFrame(()=>{
-          try{ window.scrollTo(0, y) }catch{}
-          try{ setTimeout(()=> window.scrollTo(0, y), 0) }catch{}
+          restoreScroll()
+          // Additional delay for mobile browsers
+          if (isMobile) {
+            setTimeout(restoreScroll, 10)
+            setTimeout(restoreScroll, 50)
+            setTimeout(restoreScroll, 100)
+          } else {
+            setTimeout(restoreScroll, 0)
+          }
         })
-      }catch{ try{ window.scrollTo(0, y) }catch{} }
+      }catch{ restoreScroll() }
     }
   }
 
