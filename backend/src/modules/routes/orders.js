@@ -1846,3 +1846,71 @@ router.get('/analytics/last7days', auth, allowRoles('admin','user'), async (req,
     res.status(500).json({ message: 'Failed to load analytics', error: err?.message })
   }
 })
+
+// Submit cancelled/returned order back to company (driver)
+router.post('/:id/submit-return', auth, allowRoles('driver'), async (req, res) => {
+  try{
+    const { id } = req.params
+    const ord = await Order.findById(id)
+    if (!ord) return res.status(404).json({ message: 'Order not found' })
+    
+    // Only driver assigned to this order can submit
+    if (String(ord.deliveryBoy || '') !== String(req.user.id)){
+      return res.status(403).json({ message: 'Not allowed' })
+    }
+    
+    // Only cancelled or returned orders can be submitted
+    const status = String(ord.shipmentStatus || '').toLowerCase()
+    if (!['cancelled', 'returned'].includes(status)){
+      return res.status(400).json({ message: 'Only cancelled or returned orders can be submitted' })
+    }
+    
+    // Mark as returned to company
+    ord.returnedToCompany = true
+    ord.returnedToCompanyAt = new Date()
+    ord.returnedToCompanyBy = req.user.id
+    await ord.save()
+    
+    emitOrderChange(ord, 'return_submitted').catch(()=>{})
+    
+    res.json({ message: 'Order submitted to company', order: ord })
+  }catch(err){
+    console.error('Submit return error:', err)
+    res.status(500).json({ message: 'Failed to submit order', error: err.message })
+  }
+})
+
+// Verify returned/cancelled order submission (user, manager)
+router.post('/:id/verify-return', auth, allowRoles('admin','user','manager'), async (req, res) => {
+  try{
+    const { id } = req.params
+    const ord = await Order.findById(id)
+    if (!ord) return res.status(404).json({ message: 'Order not found' })
+    
+    // Check if order was submitted by driver
+    if (!ord.returnedToCompany){
+      return res.status(400).json({ message: 'Order has not been submitted by driver yet' })
+    }
+    
+    // Only cancelled or returned orders can be verified
+    const status = String(ord.shipmentStatus || '').toLowerCase()
+    if (!['cancelled', 'returned'].includes(status)){
+      return res.status(400).json({ message: 'Only cancelled or returned orders can be verified' })
+    }
+    
+    // Mark as verified
+    ord.verifiedByCompany = true
+    ord.verifiedByCompanyAt = new Date()
+    ord.verifiedBy = req.user.id
+    await ord.save()
+    
+    emitOrderChange(ord, 'return_verified').catch(()=>{})
+    
+    res.json({ message: 'Order return verified', order: ord })
+  }catch(err){
+    console.error('Verify return error:', err)
+    res.status(500).json({ message: 'Failed to verify order', error: err.message })
+  }
+})
+
+export default router

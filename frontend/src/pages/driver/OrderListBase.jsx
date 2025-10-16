@@ -135,6 +135,15 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
       load()
     }catch(e){ alert(e?.message || 'Failed to cancel') }
   }
+  
+  async function submitReturn(o){
+    try{
+      if (!window.confirm(`Submit this ${o.shipmentStatus} order back to company?`)) return
+      await apiPost(`/api/orders/${o._id||o.id}/submit-return`, {})
+      alert('Order submitted to company successfully')
+      load()
+    }catch(e){ alert(e?.message || 'Failed to submit order') }
+  }
 
   return (
     <div className="section" style={{display:'grid', gap:12}}>
@@ -203,6 +212,20 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
                   <div className="helper"><strong>Collected:</strong> {Number(o.collectedAmount).toFixed(2)}</div>
                 ) : null}
                 <div className="helper" style={{whiteSpace:'pre-wrap'}}>{o.customerAddress || o.customerLocation || '-'}</div>
+                {/* Status badge with verification */}
+                {['cancelled','returned'].includes(String(o.shipmentStatus||'').toLowerCase()) && (
+                  <div style={{display:'flex', alignItems:'center', gap:8}}>
+                    <span className="badge" style={{background: o.verifiedByCompany ? '#10b98122' : '#f59e0b22', color: o.verifiedByCompany ? '#065f46' : '#b45309'}}>
+                      {o.shipmentStatus.toUpperCase()}
+                    </span>
+                    {o.verifiedByCompany && (
+                      <span style={{color:'#10b981', fontSize:14, fontWeight:700}}>✓ Order Verified</span>
+                    )}
+                    {o.returnedToCompany && !o.verifiedByCompany && (
+                      <span style={{color:'#f59e0b', fontSize:13}}>Submitted - Awaiting Verification</span>
+                    )}
+                  </div>
+                )}
                 <div style={{display:'flex', gap:8, justifyContent:'flex-end', flexWrap:'wrap'}}>
                   {showMap ? <button className="btn secondary" onClick={()=> openMaps(o)}>Map</button> : null}
                   {showDeliverCancel && (
@@ -210,6 +233,12 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
                       <button className="btn" onClick={()=> markDelivered(o)}>Mark Delivered</button>
                       <button className="btn danger" onClick={()=> cancel(o)}>Cancel</button>
                     </>
+                  )}
+                  {/* Submit button for cancelled/returned orders */}
+                  {['cancelled','returned'].includes(String(o.shipmentStatus||'').toLowerCase()) && !o.returnedToCompany && (
+                    <button className="btn" style={{background:'#8b5cf6', color:'#fff'}} onClick={()=> submitReturn(o)}>
+                      Submit to Company
+                    </button>
                   )}
                 </div>
               </div>

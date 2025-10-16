@@ -56,6 +56,12 @@ const OrderSchema = new mongoose.Schema({
   // Returns / delivery info
   deliveryNotes: { type: String },
   returnReason: { type: String },
+  returnedToCompany: { type: Boolean, default: false },
+  returnedToCompanyAt: { type: Date },
+  returnedToCompanyBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  verifiedByCompany: { type: Boolean, default: false },
+  verifiedByCompanyAt: { type: Date },
+  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
   // Settlements
   receivedFromCourier: { type: Number, default: 0 },

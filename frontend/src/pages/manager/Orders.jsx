@@ -269,6 +269,20 @@ export default function ManagerOrders(){
     }
   }
 
+  async function verifyReturn(orderId){
+    const key = `verify-${orderId}`
+    setUpdating(prev => ({ ...prev, [key]: true }))
+    try{
+      await apiPost(`/api/orders/${orderId}/verify-return`, {})
+      alert('Order return verified successfully')
+      await loadOrders(false)
+    }catch(e){
+      alert(e?.message || 'Failed to verify order')
+    }finally{
+      setUpdating(prev => ({ ...prev, [key]: false }))
+    }
+  }
+
   // Save handler like user Orders page
   const [editingDriver, setEditingDriver] = useState({})
   const [editingStatus, setEditingStatus] = useState({})
@@ -435,6 +449,25 @@ export default function ManagerOrders(){
             </div>
           </div>
         </div>
+        {/* Return verification section for cancelled/returned orders */}
+        {['cancelled','returned'].includes(String(o.shipmentStatus||'').toLowerCase()) && (
+          <div className="section" style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:10, background:'var(--panel)', borderRadius:8}}>
+            <div style={{display:'flex', alignItems:'center', gap:12}}>
+              {o.verifiedByCompany ? (
+                <span style={{color:'#10b981', fontSize:15, fontWeight:700}}>✓ {o.shipmentStatus.charAt(0).toUpperCase() + o.shipmentStatus.slice(1)} Order Verified</span>
+              ) : o.returnedToCompany ? (
+                <>
+                  <span style={{color:'#f59e0b', fontSize:14, fontWeight:600}}>Submitted by Driver - Awaiting Verification</span>
+                  <button className="btn success" onClick={()=> verifyReturn(id)} disabled={updating[`verify-${id}`]}>
+                    {updating[`verify-${id}`] ? 'Verifying...' : 'Verify Order'}
+                  </button>
+                </>
+              ) : (
+                <span style={{color:'#64748b', fontSize:14}}>Not submitted by driver yet</span>
+              )}
+            </div>
+          </div>
+        )}
         <div className="section" style={{display:'flex', gap:12, alignItems:'center', justifyContent:'space-between'}}>
           <div className="helper">Created by: {(o.createdBy?.firstName||'') + ' ' + (o.createdBy?.lastName||'')}</div>
           <div className="helper">Created: {o.createdAt ? new Date(o.createdAt).toLocaleString() : ''}</div>
