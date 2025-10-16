@@ -11,7 +11,6 @@ export default function DriverHistory(){
       showMap={false}
       withFilters
       withRange
-      showSubmitReturn
     />
   )
 }

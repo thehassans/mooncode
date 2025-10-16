@@ -4,12 +4,10 @@ import { getCurrencyConfig, convert } from '../../util/currency'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import OrderStatusTrack from '../../ui/OrderStatusTrack.jsx'
-import { useToast } from '../../ui/Toast.jsx'
 
 export default function ManagerOrders(){
   const location = useLocation()
   const navigate = useNavigate()
-  const toast = useToast()
   const [me, setMe] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} } })
   const [orders, setOrders] = useState([])
   const [error, setError] = useState('')
@@ -437,31 +435,9 @@ export default function ManagerOrders(){
             </div>
           </div>
         </div>
-        <div className="section" style={{display:'flex', gap:12, alignItems:'center', justifyContent:'space-between', flexWrap:'wrap'}}>
+        <div className="section" style={{display:'flex', gap:12, alignItems:'center', justifyContent:'space-between'}}>
           <div className="helper">Created by: {(o.createdBy?.firstName||'') + ' ' + (o.createdBy?.lastName||'')}</div>
           <div className="helper">Created: {o.createdAt ? new Date(o.createdAt).toLocaleString() : ''}</div>
-          {['cancelled','returned'].includes(String(o.shipmentStatus||'').toLowerCase()) && o.submittedToCompany && !o.returnVerified && (
-            <button 
-              className="btn success" 
-              style={{fontSize:12, padding:'6px 12px'}}
-              onClick={async()=>{
-                try{
-                  await apiPost(`/api/orders/${id}/verify-return`, {})
-                  toast.success('Return verified successfully')
-                  loadPage()
-                }catch(e){
-                  toast.error(e?.message || 'Failed to verify return')
-                }
-              }}
-            >
-              ✓ Verify Return
-            </button>
-          )}
-          {['cancelled','returned'].includes(String(o.shipmentStatus||'').toLowerCase()) && o.returnVerified && (
-            <span className="badge" style={{background:'#10b981', color:'white', padding:'6px 12px', fontSize:12}}>
-              ✓ {String(o.shipmentStatus||'').charAt(0).toUpperCase() + String(o.shipmentStatus||'').slice(1)} Order Verified
-            </span>
-          )}
         </div>
       </div>
     )

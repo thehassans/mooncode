@@ -692,31 +692,9 @@ export default function UserOrders(){
                           </div>
                         </div>
                       </div>
-                      <div className="section" style={{display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8}}>
+                      <div className="section" style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
                         <div className="helper">Created by: {agentName}</div>
                         <div className="helper">Created: {o.createdAt ? new Date(o.createdAt).toLocaleString() : ''}</div>
-                        {['cancelled','returned'].includes(String(o.shipmentStatus||'').toLowerCase()) && o.submittedToCompany && !o.returnVerified && (
-                          <button 
-                            className="btn success" 
-                            style={{fontSize:12, padding:'6px 12px'}}
-                            onClick={async()=>{
-                              try{
-                                await apiPost(`/api/orders/${id}/verify-return`, {})
-                                toast.success('Return verified successfully')
-                                loadPage()
-                              }catch(e){
-                                toast.error(e?.message || 'Failed to verify return')
-                              }
-                            }}
-                          >
-                            ✓ Verify Return
-                          </button>
-                        )}
-                        {['cancelled','returned'].includes(String(o.shipmentStatus||'').toLowerCase()) && o.returnVerified && (
-                          <span className="badge" style={{background:'#10b981', color:'white', padding:'6px 12px', fontSize:12}}>
-                            ✓ {String(o.shipmentStatus||'').charAt(0).toUpperCase() + String(o.shipmentStatus||'').slice(1)} Order Verified
-                          </span>
-                        )}
                       </div>
                     </div>
                   )
