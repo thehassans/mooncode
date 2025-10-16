@@ -816,6 +816,65 @@ router.post('/investors', auth, allowRoles('admin','user'), async (req, res) => 
   res.status(201).json({ message: 'Investor created', user: populated })
 })
 
+// Update investor (admin, user)
+router.post('/investors/:id', auth, allowRoles('admin','user'), async (req, res) => {
+  const { id } = req.params
+  const { firstName, lastName, email, phone, investmentAmount, currency, assignments } = req.body || {}
+  
+  const investor = await User.findOne({ _id: id, role: 'investor' })
+  if (!investor) return res.status(404).json({ message: 'Investor not found' })
+  
+  // Check ownership
+  if (req.user.role !== 'admin' && String(investor.createdBy) !== String(req.user.id)){
+    return res.status(403).json({ message: 'Not allowed' })
+  }
+  
+  // Update basic fields
+  if (firstName) investor.firstName = firstName
+  if (lastName) investor.lastName = lastName
+  if (email) investor.email = email
+  if (phone !== undefined) investor.phone = phone
+  
+  // Update investment details
+  if (investmentAmount !== undefined) {
+    investor.investorProfile.investmentAmount = Math.max(0, Number(investmentAmount||0))
+  }
+  
+  // Validate and update currency
+  const CUR = ['AED','SAR','OMR','BHD']
+  if (currency && CUR.includes(currency)) {
+    investor.investorProfile.currency = currency
+  }
+  
+  // Update assigned products
+  if (Array.isArray(assignments)){
+    const assignedProducts = []
+    for (const it of assignments){
+      const pid = it?.productId || it?.product
+      if (!pid) continue
+      const prod = await Product.findById(pid).select('_id')
+      if (!prod) continue
+      const ppu = Number(it?.profitPerUnit || 0)
+      const country = String(it?.country || '').trim()
+      assignedProducts.push({ product: prod._id, country, profitPerUnit: Math.max(0, ppu) })
+    }
+    investor.investorProfile.assignedProducts = assignedProducts
+  }
+  
+  await investor.save()
+  
+  // Broadcast update
+  try{ 
+    const io = getIO()
+    const ownerId = String(investor.createdBy)
+    io.to(`workspace:${ownerId}`).emit('investor.updated', { id: String(investor._id) })
+    io.to(`user:${String(investor._id)}`).emit('investor.updated', { id: String(investor._id) })
+  }catch{}
+  
+  const populated = await User.findById(investor._id, '-password').populate('investorProfile.assignedProducts.product', 'name')
+  res.json({ message: 'Investor updated', user: populated })
+})
+
 // Delete investor (admin => any, user => own)
 router.delete('/investors/:id', auth, allowRoles('admin','user'), async (req, res) => {
   const { id } = req.params

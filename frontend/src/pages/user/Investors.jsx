@@ -17,6 +17,9 @@ export default function Investors(){
   const [products, setProducts] = useState([])
   const [phoneError, setPhoneError] = useState('')
   const [delModal, setDelModal] = useState({ open:false, busy:false, error:'', confirm:'', investor:null })
+  const [editModal, setEditModal] = useState({ open:false, busy:false, error:'', investor:null })
+  const [editForm, setEditForm] = useState({ firstName:'', lastName:'', email:'', phone:'', investmentAmount:'', currency:'SAR' })
+  const [editAssignments, setEditAssignments] = useState([{ productId:'', country:'', profitPerUnit:'' }])
 
   const CURRENCIES = [
     { key:'AED', label:'AED (UAE Dirham)' },
@@ -50,7 +53,12 @@ export default function Investors(){
         createdAt: u.createdAt,
         currency: u.investorProfile?.currency || 'SAR',
         investmentAmount: u.investorProfile?.investmentAmount || 0,
-        assignedProducts: (u.investorProfile?.assignedProducts||[]).map(a => ({ name: a.product?.name || '-', profitPerUnit: a.profitPerUnit }))
+        assignedProducts: (u.investorProfile?.assignedProducts||[]).map(a => ({ 
+          name: a.product?.name || '-', 
+          product: a.product,
+          country: a.country || '',
+          profitPerUnit: a.profitPerUnit 
+        }))
       })))
     }catch(_e){ setRows([]) }
     finally{ setLoadingList(false) }
@@ -141,6 +149,63 @@ export default function Investors(){
 
   function openDelete(investor){ setDelModal({ open:true, busy:false, error:'', confirm:'', investor }) }
   function closeDelete(){ setDelModal(m=>({ ...m, open:false })) }
+  
+  function openEdit(investor){
+    setEditForm({
+      firstName: investor.firstName || '',
+      lastName: investor.lastName || '',
+      email: investor.email || '',
+      phone: investor.phone || '',
+      investmentAmount: investor.investmentAmount || '',
+      currency: investor.currency || 'SAR'
+    })
+    const assigns = (investor.assignedProducts || []).map(a => ({
+      productId: a.product?._id || a.product || '',
+      country: a.country || '',
+      profitPerUnit: a.profitPerUnit || ''
+    }))
+    setEditAssignments(assigns.length > 0 ? assigns : [{ productId:'', country:'', profitPerUnit:'' }])
+    setEditModal({ open:true, busy:false, error:'', investor })
+  }
+  function closeEdit(){ setEditModal({ open:false, busy:false, error:'', investor:null }) }
+  
+  function onEditFormChange(e){
+    const { name, value } = e.target
+    setEditForm(f => ({ ...f, [name]: value }))
+  }
+  
+  function onEditAssignChange(idx, key, value){
+    setEditAssignments(arr => arr.map((row, i) => i===idx ? { ...row, [key]: value } : row))
+  }
+  
+  function addEditAssignment(){ setEditAssignments(arr => [...arr, { productId:'', country:'', profitPerUnit:'' }]) }
+  function removeEditAssignment(idx){ setEditAssignments(arr => arr.filter((_r, i) => i !== idx)) }
+  
+  async function submitEdit(){
+    const investor = editModal.investor
+    if (!investor) return
+    setEditModal(m => ({ ...m, busy:true, error:'' }))
+    try{
+      const payload = {
+        ...editForm,
+        investmentAmount: Number(editForm.investmentAmount || 0),
+        assignments: editAssignments
+          .filter(a => a.productId && a.profitPerUnit !== '')
+          .map(a => ({ 
+            productId: a.productId, 
+            country: a.country || '',
+            profitPerUnit: Number(a.profitPerUnit||0) 
+          }))
+      }
+      await apiPost(`/api/users/investors/${investor.id}`, payload)
+      setEditModal({ open:false, busy:false, error:'', investor:null })
+      loadManagers(q)
+      setMsg('Investor updated successfully')
+      setTimeout(() => setMsg(''), 3000)
+    }catch(e){
+      setEditModal(m => ({ ...m, busy:false, error: e?.message || 'Failed to update investor' }))
+    }
+  }
   async function confirmDelete(){
     const investor = delModal.investor
     if (!investor) return
@@ -343,7 +408,10 @@ export default function Investors(){
                     </td>
                     <td style={{padding:'10px 12px'}}>{fmtDate(u.createdAt)}</td>
                     <td style={{padding:'10px 12px', textAlign:'right'}}>
-                      <button className="btn danger" onClick={()=>openDelete(u)}>Delete</button>
+                      <div style={{display:'flex', gap:6, justifyContent:'flex-end'}}>
+                        <button className="btn secondary" onClick={()=>openEdit(u)}>Edit</button>
+                        <button className="btn danger" onClick={()=>openDelete(u)}>Delete</button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -355,6 +423,130 @@ export default function Investors(){
           Investors can sign in at <code>/login</code> using the email and password above. They will be redirected to <code>/investor</code>.
         </div>
       </div>
+
+      {/* Edit Investor Modal */}
+      <Modal
+        title="Edit Investor"
+        open={editModal.open}
+        onClose={closeEdit}
+        footer={
+          <>
+            <button className="btn secondary" onClick={closeEdit} disabled={editModal.busy}>Cancel</button>
+            <button className="btn" onClick={submitEdit} disabled={editModal.busy}>
+              {editModal.busy ? 'Updating...' : 'Update Investor'}
+            </button>
+          </>
+        }
+      >
+        <div style={{display:'grid', gap:12, maxHeight:'70vh', overflowY:'auto', padding:4}}>
+          {editModal.error && <div className="helper-text error">{editModal.error}</div>}
+          
+          <div className="form-grid">
+            <div>
+              <div className="label">First Name</div>
+              <input className="input" name="firstName" value={editForm.firstName} onChange={onEditFormChange} required />
+            </div>
+            <div>
+              <div className="label">Last Name</div>
+              <input className="input" name="lastName" value={editForm.lastName} onChange={onEditFormChange} required />
+            </div>
+          </div>
+          
+          <div>
+            <div className="label">Email</div>
+            <input className="input" type="email" name="email" value={editForm.email} onChange={onEditFormChange} required />
+          </div>
+          
+          <div>
+            <div className="label">Phone</div>
+            <input className="input" name="phone" value={editForm.phone} onChange={onEditFormChange} />
+          </div>
+          
+          <div className="form-grid">
+            <div>
+              <div className="label">Investment Amount</div>
+              <input className="input" type="number" min="0" step="0.01" name="investmentAmount" value={editForm.investmentAmount} onChange={onEditFormChange} />
+            </div>
+            <div>
+              <div className="label">Currency</div>
+              <select className="input" name="currency" value={editForm.currency} onChange={onEditFormChange}>
+                {CURRENCIES.map(c => (<option key={c.key} value={c.key}>{c.label}</option>))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <div className="label">Assigned Products</div>
+            <div style={{display:'grid', gap:12}}>
+              {editAssignments.map((row, idx) => {
+                const selectedProduct = products.find(p => p._id === row.productId)
+                const showInfo = selectedProduct && row.country
+                
+                let countryStock = 0
+                if (selectedProduct && row.country) {
+                  const stockByCountry = selectedProduct.stockByCountry || {}
+                  countryStock = stockByCountry[row.country] || 0
+                }
+                
+                let convertedPrice = selectedProduct?.price || 0
+                if (selectedProduct && selectedProduct.baseCurrency !== editForm.currency) {
+                  const fromRate = rates[selectedProduct.baseCurrency] || 1
+                  const toRate = rates[editForm.currency] || 1
+                  convertedPrice = (convertedPrice / fromRate) * toRate
+                }
+                
+                const estimatedRevenue = countryStock * convertedPrice
+                
+                return (
+                  <div key={idx} style={{padding:10, background:'var(--panel)', borderRadius:8, border:'1px solid var(--border)'}}>
+                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 120px auto', gap:6, alignItems:'center', marginBottom: showInfo ? 10 : 0}}>
+                      <select className="input" value={row.productId} onChange={e=>onEditAssignChange(idx, 'productId', e.target.value)}>
+                        <option value="">-- Select Product --</option>
+                        {products.map(p => (<option key={p._id} value={p._id}>{p.name}</option>))}
+                      </select>
+                      <select className="input" value={row.country} onChange={e=>onEditAssignChange(idx, 'country', e.target.value)}>
+                        <option value="">-- Select Country --</option>
+                        {countries.map(c => (<option key={c} value={c}>{c}</option>))}
+                      </select>
+                      <input className="input" type="number" min="0" step="0.01" value={row.profitPerUnit} onChange={e=>onEditAssignChange(idx,'profitPerUnit', e.target.value)} placeholder="Profit/unit" />
+                      <div style={{display:'flex', gap:4}}>
+                        {editAssignments.length > 1 && (
+                          <button type="button" className="btn danger small" onClick={()=>removeEditAssignment(idx)}>🗑️</button>
+                        )}
+                        {idx === editAssignments.length-1 && (
+                          <button type="button" className="btn secondary small" onClick={addEditAssignment}>＋</button>
+                        )}
+                      </div>
+                    </div>
+                    {showInfo && (
+                      <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:6, paddingTop:10, borderTop:'1px solid var(--border)'}}>
+                        <div style={{padding:6, background:'var(--panel-2)', borderRadius:4, fontSize:11}}>
+                          <div className="helper" style={{fontSize:10}}>Stock in {row.country}</div>
+                          <div style={{fontWeight:700, color:'#f59e0b'}}>{countryStock}</div>
+                        </div>
+                        <div style={{padding:6, background:'var(--panel-2)', borderRadius:4, fontSize:11}}>
+                          <div className="helper" style={{fontSize:10}}>Price/Unit</div>
+                          <div style={{fontWeight:700, color:'#10b981'}}>{editForm.currency} {convertedPrice.toFixed(2)}</div>
+                        </div>
+                        <div style={{padding:6, background:'var(--panel-2)', borderRadius:4, fontSize:11}}>
+                          <div className="helper" style={{fontSize:10}}>Revenue</div>
+                          <div style={{fontWeight:700, color:'#3b82f6'}}>{editForm.currency} {estimatedRevenue.toFixed(0)}</div>
+                        </div>
+                        <div style={{padding:6, background:'var(--panel-2)', borderRadius:4, fontSize:11, border:'1px solid #8b5cf6'}}>
+                          <div className="helper" style={{fontSize:10}}>Profit</div>
+                          <div style={{fontWeight:800, color:'#8b5cf6'}}>{editForm.currency} {(countryStock * Number(row.profitPerUnit || 0)).toFixed(0)}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Investor Modal */}
       <Modal
         title="Are you sure you want to delete this investor?"
         open={delModal.open}
