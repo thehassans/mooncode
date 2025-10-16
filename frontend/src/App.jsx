@@ -69,6 +69,8 @@ import SiteContact from './pages/site/Contact.jsx'
 import SiteCategories from './pages/site/Categories.jsx'
 import UserFinances from './pages/user/Finances.jsx'
 import UserManagerFinances from './pages/user/ManagerFinances.jsx'
+import AgentAmounts from './pages/user/AgentAmounts.jsx'
+import DriverAmounts from './pages/user/DriverAmounts.jsx'
 import CurrencySettings from './pages/user/CurrencySettings.jsx'
 
 import AnalyticsDashboard from './components/analytics/AnalyticsDashboard'
@@ -340,6 +342,8 @@ export default function App() {
         <Route path="expense" element={<Expenses />} />
         <Route path="transactions" element={<Transactions />} />
         <Route path="manager-finances" element={<UserManagerFinances />} />
+        <Route path="agent-amounts" element={<AgentAmounts />} />
+        <Route path="driver-amounts" element={<DriverAmounts />} />
         <Route path="finances" element={<UserFinances />} />
         <Route path="currency" element={<CurrencySettings />} />
         <Route path="api-setup" element={<UserAPISetup />} />

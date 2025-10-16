@@ -41,6 +41,8 @@ export default function UserLayout(){
         { to: '/user/expense', label: 'Expense Management', icon: '💸' },
         { to: '/user/transactions', label: 'Transactions', icon: '💳' },
         { to: '/user/manager-finances', label: 'Manager Finances', icon: '💼' },
+        { to: '/user/agent-amounts', label: 'Agent Amounts', icon: '💰' },
+        { to: '/user/driver-amounts', label: 'Driver Amounts', icon: '🚗' },
         { to: '/user/currency', label: 'Currency Conversion', icon: '💱' },
       ]
     },
