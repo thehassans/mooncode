@@ -942,7 +942,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       const byC = p.stockByCountry || {}
       const hasStockByCountry = byC && Object.keys(byC).some(k => Number(byC[k] || 0) > 0)
       
-      // If no stockByCountry, use total stock/stockQty and distribute to first country or global
+      // If no stockByCountry, use total stock/stockQty
       const totalStockFallback = Number(p.stock || p.stockQty || 0)
       
       const leftBy = { KSA: Number(byC.KSA || 0), UAE: Number(byC.UAE || 0), Oman: Number(byC.Oman || 0), Bahrain: Number(byC.Bahrain || 0), India: Number(byC.India || 0), Kuwait: Number(byC.Kuwait || 0), Qatar: Number(byC.Qatar || 0) }
