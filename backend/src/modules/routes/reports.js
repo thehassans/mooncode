@@ -847,7 +847,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     
     // ===== Product metrics (inventory + delivered orders) =====
     const products = await Product.find({ createdBy: ownerId })
-      .select('_id price purchasePrice baseCurrency stockByCountry')
+      .select('_id price purchasePrice baseCurrency stockByCountry stock stockQty')
       .lean()
     const productIds = products.map(p => p._id)
     // Aggregate delivered quantities per product and country
@@ -907,26 +907,49 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     for (const p of products){
       const baseCur = normalizeCur(p.baseCurrency || 'SAR')
       const byC = p.stockByCountry || {}
+      const hasStockByCountry = byC && Object.keys(byC).some(k => Number(byC[k] || 0) > 0)
+      
+      // If no stockByCountry, use total stock/stockQty and distribute to first country or global
+      const totalStockFallback = Number(p.stock || p.stockQty || 0)
+      
       const leftBy = { KSA: Number(byC.KSA || 0), UAE: Number(byC.UAE || 0), Oman: Number(byC.Oman || 0), Bahrain: Number(byC.Bahrain || 0), India: Number(byC.India || 0), Kuwait: Number(byC.Kuwait || 0), Qatar: Number(byC.Qatar || 0) }
       const delBy = deliveredMap.get(String(p._id)) || {}
       let totalLeft = 0, totalDelivered = 0
-      for (const c of KNOWN_COUNTRIES){
-        const left = Number(leftBy[c] || 0)
-        const delivered = Number(delBy[c] || 0)
+      
+      if (!hasStockByCountry && totalStockFallback > 0){
+        // Product has no country breakdown - add to global totals only
+        const delivered = Object.values(delBy).reduce((s,v)=> s + Number(v||0), 0)
+        const left = totalStockFallback
         const purchased = left + delivered
-        totalLeft += left
-        totalDelivered += delivered
-        productCountryAgg[c].stockLeftQty += left
-        productCountryAgg[c].stockDeliveredQty += delivered
-        productCountryAgg[c].stockPurchasedQty += purchased
-        productCountryAgg[c].purchaseValueByCurrency[baseCur] += purchased * Number(p.purchasePrice || 0)
-        productCountryAgg[c].deliveredValueByCurrency[baseCur] += delivered * Number(p.price || 0)
+        
+        totalLeft = left
+        totalDelivered = delivered
+        
+        productGlobal.stockLeftQty += left
+        productGlobal.stockDeliveredQty += delivered
+        productGlobal.stockPurchasedQty += purchased
+        productGlobal.purchaseValueByCurrency[baseCur] += purchased * Number(p.purchasePrice || 0)
+        productGlobal.deliveredValueByCurrency[baseCur] += delivered * Number(p.price || 0)
+      } else {
+        // Product has country breakdown
+        for (const c of KNOWN_COUNTRIES){
+          const left = Number(leftBy[c] || 0)
+          const delivered = Number(delBy[c] || 0)
+          const purchased = left + delivered
+          totalLeft += left
+          totalDelivered += delivered
+          productCountryAgg[c].stockLeftQty += left
+          productCountryAgg[c].stockDeliveredQty += delivered
+          productCountryAgg[c].stockPurchasedQty += purchased
+          productCountryAgg[c].purchaseValueByCurrency[baseCur] += purchased * Number(p.purchasePrice || 0)
+          productCountryAgg[c].deliveredValueByCurrency[baseCur] += delivered * Number(p.price || 0)
+        }
+        productGlobal.stockLeftQty += totalLeft
+        productGlobal.stockDeliveredQty += totalDelivered
+        productGlobal.stockPurchasedQty += (totalLeft + totalDelivered)
+        productGlobal.purchaseValueByCurrency[baseCur] += (totalLeft + totalDelivered) * Number(p.purchasePrice || 0)
+        productGlobal.deliveredValueByCurrency[baseCur] += totalDelivered * Number(p.price || 0)
       }
-      productGlobal.stockLeftQty += totalLeft
-      productGlobal.stockDeliveredQty += totalDelivered
-      productGlobal.stockPurchasedQty += (totalLeft + totalDelivered)
-      productGlobal.purchaseValueByCurrency[baseCur] += (totalLeft + totalDelivered) * Number(p.purchasePrice || 0)
-      productGlobal.deliveredValueByCurrency[baseCur] += totalDelivered * Number(p.price || 0)
     }
 
     // Country-specific metrics
