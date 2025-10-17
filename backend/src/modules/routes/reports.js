@@ -2,6 +2,7 @@ import express from "express";
 const router = express.Router();
 import User from "../models/User.js";
 import Order from "../models/Order.js";
+import WebOrder from "../models/WebOrder.js";
 import Product from "../models/Product.js";
 import Expense from "../models/Expense.js";
 import AgentRemit from "../models/AgentRemit.js";
@@ -921,7 +922,6 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     ])
     
     // From web/ecommerce Orders
-    const WebOrder = require('../models/WebOrder')
     const webDeliveredPerProdCountry = await WebOrder.aggregate([
       { $match: { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
       { $unwind: '$items' },
