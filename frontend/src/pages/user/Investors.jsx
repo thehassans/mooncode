@@ -74,13 +74,16 @@ export default function Investors(){
   }
 
   async function loadCountries(){
+    // Use all available countries in the system
+    const allCountries = ['Bahrain', 'India', 'KSA', 'Kuwait', 'Oman', 'Qatar', 'UAE']
+    
     try{ 
       // Get all unique countries from products' stockByCountry
       const productData = await apiGet('/api/products')
       const allProducts = productData?.products || []
-      const countrySet = new Set()
+      const countrySet = new Set(allCountries) // Start with all countries
       
-      // Add countries from each product's stockByCountry
+      // Add any additional countries from products
       for (const product of allProducts) {
         if (product.stockByCountry && typeof product.stockByCountry === 'object') {
           Object.keys(product.stockByCountry).forEach(country => {
@@ -93,10 +96,10 @@ export default function Investors(){
       
       // Convert to array and sort
       const uniqueCountries = Array.from(countrySet).sort()
-      setCountries(uniqueCountries.length > 0 ? uniqueCountries : ['UAE', 'KSA', 'Oman', 'Bahrain', 'India', 'Kuwait', 'Qatar'])
+      setCountries(uniqueCountries)
     }catch{ 
-      // Fallback to common countries
-      setCountries(['UAE', 'KSA', 'Oman', 'Bahrain', 'India', 'Kuwait', 'Qatar']) 
+      // Fallback to all countries
+      setCountries(allCountries) 
     }
   }
 

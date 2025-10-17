@@ -2039,13 +2039,19 @@ router.get("/investor/dashboard", auth, allowRoles("investor"), async (req, res)
       // Get product stock
       const product = await Product.findById(productId).select("stock stockByCountry name image description price").lean();
       
+      if (!product) continue; // Skip if product not found
+      
       // Get country-specific stock
       let stock = 0;
-      if (country && product.stockByCountry) {
+      if (country && product.stockByCountry && Object.keys(product.stockByCountry).length > 0) {
+        // Use country-specific stock if available
         stock = product.stockByCountry[country] || 0;
       } else {
+        // Fallback to total stock if stockByCountry not populated
         stock = product.stock || 0;
       }
+      
+      console.log(`Investor Dashboard - Product: ${product.name}, Country: ${country}, Stock: ${stock}, Total Stock: ${product.stock}, stockByCountry:`, product.stockByCountry);
       
       productStats.push({
         product: {
