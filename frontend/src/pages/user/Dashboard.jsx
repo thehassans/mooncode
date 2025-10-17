@@ -469,8 +469,8 @@ export default function UserDashboard(){
                 <div className="helper">Amounts in AED</div>
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile title="Total Purchase Price (AED)" valueEl={<span style={{color:'#0ea5e9'}}>{`AED ${fmtAmt(purchaseAED)}`}</span>} />
-                <Tile title="Delivered Price (AED)" valueEl={<span style={{color:'#10b981'}}>{`AED ${fmtAmt(deliveredAED)}`}</span>} />
+                <Tile title="Inventory Value (AED)" valueEl={<span style={{color:'#0ea5e9'}}>{`AED ${fmtAmt(purchaseAED)}`}</span>} />
+                <Tile title="Delivered Value (AED)" valueEl={<span style={{color:'#10b981'}}>{`AED ${fmtAmt(deliveredAED)}`}</span>} />
                 <Tile title="Stock Purchased (Qty)" valueEl={<span style={{color:'#0ea5e9'}}>{fmtNum(purchasedQty)}</span>} />
                 <Tile title="Stock Delivered (Qty)" valueEl={<span style={{color:'#10b981'}}>{fmtNum(deliveredQty)}</span>} />
                 <Tile title="Pending Stock (Qty)" valueEl={<span style={{color:'#f59e0b'}}>{fmtNum(pendingQty)}</span>} />
@@ -500,11 +500,11 @@ export default function UserDashboard(){
                 <div style={{fontWeight:900, marginBottom:8}}>{title}</div>
                 <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Purchase Price</div>
+                    <div className="helper">Inventory Value</div>
                     <div style={{fontWeight:900, fontSize:18, color:'#0ea5e9'}}>{formatCurrency(purchaseLocal, c)}</div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Delivered Price</div>
+                    <div className="helper">Delivered Value</div>
                     <div style={{fontWeight:900, fontSize:18, color:'#10b981'}}>{formatCurrency(deliveredLocal, c)}</div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
