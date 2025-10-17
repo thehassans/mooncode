@@ -471,12 +471,12 @@ export default function UserDashboard(){
                 <div className="helper">Amounts in AED</div>
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
-                <Tile title="Total Purchase Price (AED)" valueEl={<span style={{color:'#8b5cf6'}}>{`AED ${fmtAmt(totalPurchaseAED)}`}</span>} />
-                <Tile title="Inventory Value (AED)" valueEl={<span style={{color:'#0ea5e9'}}>{`AED ${fmtAmt(purchaseAED)}`}</span>} />
-                <Tile title="Delivered Value (AED)" valueEl={<span style={{color:'#10b981'}}>{`AED ${fmtAmt(deliveredAED)}`}</span>} />
-                <Tile title="Stock Purchased (Qty)" valueEl={<span style={{color:'#0ea5e9'}}>{fmtNum(purchasedQty)}</span>} />
-                <Tile title="Stock Delivered (Qty)" valueEl={<span style={{color:'#10b981'}}>{fmtNum(deliveredQty)}</span>} />
-                <Tile title="Pending Stock (Qty)" valueEl={<span style={{color:'#f59e0b'}}>{fmtNum(pendingQty)}</span>} />
+                <Tile title="Total Purchase Price (AED)" valueEl={<NavLink className="link" style={{color:'#8b5cf6'}} to="/user/inhouse-products">{`AED ${fmtAmt(totalPurchaseAED)}`}</NavLink>} />
+                <Tile title="Inventory Value (AED)" valueEl={<NavLink className="link" style={{color:'#0ea5e9'}} to="/user/warehouses">{`AED ${fmtAmt(purchaseAED)}`}</NavLink>} />
+                <Tile title="Delivered Value (AED)" valueEl={<NavLink className="link" style={{color:'#10b981'}} to={appendRange('/user/orders?ship=delivered')}>{`AED ${fmtAmt(deliveredAED)}`}</NavLink>} />
+                <Tile title="Stock Purchased (Qty)" valueEl={<NavLink className="link" style={{color:'#0ea5e9'}} to="/user/inhouse-products">{fmtNum(purchasedQty)}</NavLink>} />
+                <Tile title="Stock Delivered (Qty)" valueEl={<NavLink className="link" style={{color:'#10b981'}} to={appendRange('/user/orders?ship=delivered')}>{fmtNum(deliveredQty)}</NavLink>} />
+                <Tile title="Pending Stock (Qty)" valueEl={<NavLink className="link" style={{color:'#f59e0b'}} to="/user/warehouses">{fmtNum(pendingQty)}</NavLink>} />
               </div>
             </div>
           )
@@ -505,27 +505,27 @@ export default function UserDashboard(){
                 <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Total Purchase Price</div>
-                    <div style={{fontWeight:900, fontSize:18, color:'#8b5cf6'}}>{formatCurrency(totalPurchaseLocal, c)}</div>
+                    <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#8b5cf6'}} to="/user/inhouse-products">{formatCurrency(totalPurchaseLocal, c)}</NavLink></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Inventory Value</div>
-                    <div style={{fontWeight:900, fontSize:18, color:'#0ea5e9'}}>{formatCurrency(purchaseLocal, c)}</div>
+                    <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#0ea5e9'}} to="/user/warehouses">{formatCurrency(purchaseLocal, c)}</NavLink></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Delivered Value</div>
-                    <div style={{fontWeight:900, fontSize:18, color:'#10b981'}}>{formatCurrency(deliveredLocal, c)}</div>
+                    <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#10b981'}} to={appendRange('/user/orders?ship=delivered')}>{formatCurrency(deliveredLocal, c)}</NavLink></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Stock Purchased</div>
-                    <div style={{fontWeight:900, fontSize:18, color:'#0ea5e9'}}>{fmtNum(pc?.stockPurchasedQty||0)}</div>
+                    <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#0ea5e9'}} to="/user/inhouse-products">{fmtNum(pc?.stockPurchasedQty||0)}</NavLink></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Stock Delivered</div>
-                    <div style={{fontWeight:900, fontSize:18, color:'#10b981'}}>{fmtNum(pc?.stockDeliveredQty||0)}</div>
+                    <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#10b981'}} to={appendRange('/user/orders?ship=delivered')}>{fmtNum(pc?.stockDeliveredQty||0)}</NavLink></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Pending Stock</div>
-                    <div style={{fontWeight:900, fontSize:18, color:'#f59e0b'}}>{fmtNum(pc?.stockLeftQty||0)}</div>
+                    <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#f59e0b'}} to="/user/warehouses">{fmtNum(pc?.stockLeftQty||0)}</NavLink></div>
                   </div>
                 </div>
               </div>
