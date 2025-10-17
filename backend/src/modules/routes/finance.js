@@ -2037,7 +2037,15 @@ router.get("/investor/dashboard", auth, allowRoles("investor"), async (req, res)
       }
 
       // Get product stock
-      const product = await Product.findById(productId).select("stock name image description price").lean();
+      const product = await Product.findById(productId).select("stock stockByCountry name image description price").lean();
+      
+      // Get country-specific stock
+      let stock = 0;
+      if (country && product.stockByCountry) {
+        stock = product.stockByCountry[country] || 0;
+      } else {
+        stock = product.stock || 0;
+      }
       
       productStats.push({
         product: {
@@ -2048,7 +2056,7 @@ router.get("/investor/dashboard", auth, allowRoles("investor"), async (req, res)
           price: product.price
         },
         country: country || "All",
-        stock: product.stock || 0,
+        stock: stock,
         profitPerUnit,
         totalUnits,
         deliveredUnits,
