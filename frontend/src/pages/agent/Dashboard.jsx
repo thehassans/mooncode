@@ -47,6 +47,7 @@ export default function AgentDashboard(){
   const [ordersSubmittedOverride, setOrdersSubmittedOverride] = useState(null)
   // Agent-submitted status counts
   const [statusCounts, setStatusCounts] = useState({ total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 })
+  const [countryStats, setCountryStats] = useState([]) // country-wise submitted & delivered
   const [currencyCfg, setCurrencyCfg] = useState(null) // normalized { anchor:'AED', perAED, enabled }
   const [walletAED, setWalletAED] = useState(0)
   const [walletPKR, setWalletPKR] = useState(0)
@@ -147,6 +148,24 @@ export default function AgentDashboard(){
         const commissionAED = deliveredAED * 0.12
         setWalletAED(commissionAED)
         setWalletPKR(aedToPKR(commissionAED, cfg))
+        
+        // Compute country-wise stats (submitted & delivered)
+        try{
+          const countryMap = {}
+          for (const o of mine){
+            const country = String(o?.orderCountry || o?.country || 'Unknown').trim() || 'Unknown'
+            if (!countryMap[country]){
+              countryMap[country] = { country, submitted: 0, delivered: 0 }
+            }
+            countryMap[country].submitted += 1
+            const st = String(o?.shipmentStatus||'').toLowerCase()
+            if (st === 'delivered'){
+              countryMap[country].delivered += 1
+            }
+          }
+          const statsArray = Object.values(countryMap).sort((a, b) => b.submitted - a.submitted)
+          setCountryStats(statsArray)
+        }catch{}
       }catch{}
     }finally{ setLoading(false) }
   }
@@ -317,6 +336,131 @@ export default function AgentDashboard(){
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Country-wise Orders Card */}
+      <div className="card" style={{padding:16, border:'1px solid var(--border)'}}>
+        <div className="card-header" style={{padding:0, marginBottom:16, borderBottom:'2px solid var(--border)', paddingBottom:12}}>
+          <div style={{display:'flex', alignItems:'center', gap:10}}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              <path d="M2 12h20"/>
+            </svg>
+            <div>
+              <div className="card-title" style={{marginBottom:2}}>Orders by Country</div>
+              <div className="helper" style={{fontSize:12}}>Track submitted and delivered orders across countries</div>
+            </div>
+          </div>
+        </div>
+        {loading ? (
+          <div style={{padding:40, textAlign:'center'}}>
+            <div style={{width:40, height:40, border:'3px solid var(--border)', borderTopColor:'#8b5cf6', borderRadius:'50%', margin:'0 auto 16px', animation:'spin 0.8s linear infinite'}} />
+            <div style={{opacity:0.6}}>Loading country stats...</div>
+          </div>
+        ) : countryStats.length === 0 ? (
+          <div style={{padding:40, textAlign:'center', opacity:0.6}}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{margin:'0 auto 16px', opacity:0.3}}>
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <div>No country data available</div>
+          </div>
+        ) : (
+          <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap:16}}>
+            {countryStats.map((stat, idx) => {
+              const deliveryRate = stat.submitted > 0 ? ((stat.delivered / stat.submitted) * 100).toFixed(1) : 0
+              const isHighPerformer = deliveryRate >= 70
+              return (
+                <div 
+                  key={stat.country} 
+                  className="card" 
+                  style={{
+                    padding:16, 
+                    background:`linear-gradient(135deg, var(--panel) 0%, var(--panel-2) 100%)`,
+                    border:`2px solid ${isHighPerformer ? '#10b981' : 'var(--border)'}`,
+                    borderRadius:12,
+                    transition:'transform 0.2s, box-shadow 0.2s',
+                    cursor:'default'
+                  }}
+                  onMouseEnter={(e)=> e.currentTarget.style.transform='translateY(-2px)'}
+                  onMouseLeave={(e)=> e.currentTarget.style.transform='translateY(0)'}
+                >
+                  {/* Country Name with Flag Icon */}
+                  <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16}}>
+                    <div style={{display:'flex', alignItems:'center', gap:8}}>
+                      <div style={{
+                        width:36, 
+                        height:36, 
+                        borderRadius:8, 
+                        background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        display:'flex',
+                        alignItems:'center',
+                        justifyContent:'center',
+                        fontSize:18,
+                        fontWeight:700,
+                        color:'#fff',
+                        boxShadow:'0 2px 8px rgba(102, 126, 234, 0.3)'
+                      }}>
+                        {stat.country.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{fontSize:16, fontWeight:700, lineHeight:1.2}}>{stat.country}</div>
+                        <div style={{fontSize:11, opacity:0.6}}>#{idx + 1} by orders</div>
+                      </div>
+                    </div>
+                    {isHighPerformer && (
+                      <div style={{
+                        padding:'4px 10px',
+                        background:'rgba(16, 185, 129, 0.1)',
+                        border:'1px solid #10b981',
+                        borderRadius:20,
+                        fontSize:10,
+                        fontWeight:700,
+                        color:'#10b981'
+                      }}>
+                        HIGH
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12}}>
+                    <div style={{padding:12, background:'var(--panel)', borderRadius:8, border:'1px solid var(--border)'}}>
+                      <div className="helper" style={{fontSize:10, marginBottom:4, color:'#3b82f6'}}>SUBMITTED</div>
+                      <div style={{fontSize:24, fontWeight:800, color:'#3b82f6'}}>{stat.submitted}</div>
+                    </div>
+                    <div style={{padding:12, background:'var(--panel)', borderRadius:8, border:'1px solid var(--border)'}}>
+                      <div className="helper" style={{fontSize:10, marginBottom:4, color:'#10b981'}}>DELIVERED</div>
+                      <div style={{fontSize:24, fontWeight:800, color:'#10b981'}}>{stat.delivered}</div>
+                    </div>
+                  </div>
+
+                  {/* Delivery Rate Progress Bar */}
+                  <div>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6}}>
+                      <span style={{fontSize:11, fontWeight:600, opacity:0.7}}>Delivery Rate</span>
+                      <span style={{fontSize:13, fontWeight:800, color: isHighPerformer ? '#10b981' : '#f59e0b'}}>{deliveryRate}%</span>
+                    </div>
+                    <div style={{width:'100%', height:8, background:'var(--panel)', borderRadius:20, overflow:'hidden', border:'1px solid var(--border)'}}>
+                      <div 
+                        style={{
+                          width:`${deliveryRate}%`, 
+                          height:'100%', 
+                          background: isHighPerformer 
+                            ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)'
+                            : 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)',
+                          transition:'width 0.5s ease',
+                          borderRadius:20
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
