@@ -449,6 +449,7 @@ export default function UserDashboard(){
         {(function(){
           const pm = metrics?.productMetrics || {}
           const g = pm?.global || {}
+          const totalPurchaseAED = sumCurrencyMapAED(g?.totalPurchaseValueByCurrency||{})
           const purchaseAED = sumCurrencyMapAED(g?.purchaseValueByCurrency||{})
           const deliveredAED = sumCurrencyMapAED(g?.deliveredValueByCurrency||{})
           const purchasedQty = Number(g?.stockPurchasedQty||0)
@@ -469,6 +470,7 @@ export default function UserDashboard(){
                 <div className="helper">Amounts in AED</div>
               </div>
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
+                <Tile title="Total Purchase Price (AED)" valueEl={<span style={{color:'#8b5cf6'}}>{`AED ${fmtAmt(totalPurchaseAED)}`}</span>} />
                 <Tile title="Inventory Value (AED)" valueEl={<span style={{color:'#0ea5e9'}}>{`AED ${fmtAmt(purchaseAED)}`}</span>} />
                 <Tile title="Delivered Value (AED)" valueEl={<span style={{color:'#10b981'}}>{`AED ${fmtAmt(deliveredAED)}`}</span>} />
                 <Tile title="Stock Purchased (Qty)" valueEl={<span style={{color:'#0ea5e9'}}>{fmtNum(purchasedQty)}</span>} />
@@ -489,8 +491,9 @@ export default function UserDashboard(){
         <div className="section" style={{display:'grid', gap:12}}>
           {['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar'].map(c=>{
             const pm = metrics?.productMetrics || {}
-            const pc = (pm?.countries && pm.countries[c]) ? pm.countries[c] : { stockPurchasedQty:0, stockDeliveredQty:0, stockLeftQty:0, purchaseValueByCurrency:{}, deliveredValueByCurrency:{} }
+            const pc = (pm?.countries && pm.countries[c]) ? pm.countries[c] : { stockPurchasedQty:0, stockDeliveredQty:0, stockLeftQty:0, purchaseValueByCurrency:{}, totalPurchaseValueByCurrency:{}, deliveredValueByCurrency:{} }
             const code = COUNTRY_INFO[c]?.cur || 'AED'
+            const totalPurchaseLocal = sumCurrencyMapLocal(pc?.totalPurchaseValueByCurrency||{}, code)
             const purchaseLocal = sumCurrencyMapLocal(pc?.purchaseValueByCurrency||{}, code)
             const deliveredLocal = sumCurrencyMapLocal(pc?.deliveredValueByCurrency||{}, code)
             const flag = (COUNTRY_INFO[c] && COUNTRY_INFO[c].flag) ? COUNTRY_INFO[c].flag + ' ' : ''
@@ -499,6 +502,10 @@ export default function UserDashboard(){
               <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
                 <div style={{fontWeight:900, marginBottom:8}}>{title}</div>
                 <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Total Purchase Price</div>
+                    <div style={{fontWeight:900, fontSize:18, color:'#8b5cf6'}}>{formatCurrency(totalPurchaseLocal, c)}</div>
+                  </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Inventory Value</div>
                     <div style={{fontWeight:900, fontSize:18, color:'#0ea5e9'}}>{formatCurrency(purchaseLocal, c)}</div>

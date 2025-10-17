@@ -934,8 +934,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     const KNOWN_COUNTRIES = ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar']
     const emptyCurrencyMap = () => ({ AED:0, OMR:0, SAR:0, BHD:0, INR:0, KWD:0, QAR:0, USD:0, CNY:0 })
     const productCountryAgg = {}
-    for (const c of KNOWN_COUNTRIES){ productCountryAgg[c] = { stockPurchasedQty:0, stockDeliveredQty:0, stockLeftQty:0, purchaseValueByCurrency: emptyCurrencyMap(), deliveredValueByCurrency: emptyCurrencyMap() } }
-    const productGlobal = { stockPurchasedQty:0, stockDeliveredQty:0, stockLeftQty:0, purchaseValueByCurrency: emptyCurrencyMap(), deliveredValueByCurrency: emptyCurrencyMap() }
+    for (const c of KNOWN_COUNTRIES){ productCountryAgg[c] = { stockPurchasedQty:0, stockDeliveredQty:0, stockLeftQty:0, purchaseValueByCurrency: emptyCurrencyMap(), totalPurchaseValueByCurrency: emptyCurrencyMap(), deliveredValueByCurrency: emptyCurrencyMap() } }
+    const productGlobal = { stockPurchasedQty:0, stockDeliveredQty:0, stockLeftQty:0, purchaseValueByCurrency: emptyCurrencyMap(), totalPurchaseValueByCurrency: emptyCurrencyMap(), deliveredValueByCurrency: emptyCurrencyMap() }
     const normalizeCur = (v)=> (['AED','OMR','SAR','BHD','INR','KWD','QAR','USD','CNY'].includes(String(v)) ? String(v) : 'SAR')
     for (const p of products){
       const baseCur = normalizeCur(p.baseCurrency || 'SAR')
@@ -975,7 +975,9 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         productGlobal.stockLeftQty += left
         productGlobal.stockDeliveredQty += delivered
         productGlobal.stockPurchasedQty += purchased
-        // Calculate purchase value of REMAINING stock only (proportional)
+        // Total purchase price (all stock bought)
+        productGlobal.totalPurchaseValueByCurrency[baseCur] += Number(p.purchasePrice || 0)
+        // Purchase value of REMAINING stock only (proportional)
         // If we have 50 left out of 100 purchased, value = purchasePrice × (50/100)
         const purchaseValueOfRemaining = purchased > 0 
           ? Number(p.purchasePrice || 0) * (left / purchased)
@@ -993,6 +995,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
           productCountryAgg[c].stockLeftQty += left
           productCountryAgg[c].stockDeliveredQty += delivered
           productCountryAgg[c].stockPurchasedQty += purchased
+          // Total purchase price (all stock: remaining + delivered)
+          productCountryAgg[c].totalPurchaseValueByCurrency[baseCur] += purchased * Number(p.purchasePrice || 0)
           // Purchase value of REMAINING stock only (left × per-unit price)
           productCountryAgg[c].purchaseValueByCurrency[baseCur] += left * Number(p.purchasePrice || 0)
           // Add amounts by currency
@@ -1010,6 +1014,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         productGlobal.stockLeftQty += totalLeft
         productGlobal.stockDeliveredQty += totalDelivered
         productGlobal.stockPurchasedQty += (totalLeft + totalDelivered)
+        // Total purchase price (all stock: remaining + delivered)
+        productGlobal.totalPurchaseValueByCurrency[baseCur] += (totalLeft + totalDelivered) * Number(p.purchasePrice || 0)
         // Purchase value of REMAINING stock only (totalLeft × per-unit price)
         productGlobal.purchaseValueByCurrency[baseCur] += totalLeft * Number(p.purchasePrice || 0)
       }
