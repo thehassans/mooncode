@@ -952,6 +952,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       
       if (!hasStockByCountry && totalStockFallback > 0){
         // Product has no country breakdown - add to global totals only
+        // For in-house products, purchasePrice is the TOTAL purchase price for the batch, not per-unit
         const delivered = Object.values(delBy).reduce((s,v)=> s + Number(v||0), 0)
         // Sum all amounts across all countries and currencies
         let totalDeliveredAmount = 0
@@ -974,7 +975,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         productGlobal.stockLeftQty += left
         productGlobal.stockDeliveredQty += delivered
         productGlobal.stockPurchasedQty += purchased
-        productGlobal.purchaseValueByCurrency[baseCur] += purchased * Number(p.purchasePrice || 0)
+        // Add total purchase price directly (not multiplied by quantity)
+        productGlobal.purchaseValueByCurrency[baseCur] += Number(p.purchasePrice || 0)
       } else {
         // Product has country breakdown
         for (const c of KNOWN_COUNTRIES){

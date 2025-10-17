@@ -512,7 +512,7 @@ export default function InhouseProducts(){
               <input className="input" type="number" min="0" step="0.01" name="price" value={form.price} onChange={onChange} placeholder="0.00" required />
             </div>
             <div>
-              <div className="label">Purchase Price</div>
+              <div className="label">Total Purchase Price (for entire batch)</div>
               <input className="input" type="number" min="0" step="0.01" name="purchasePrice" value={form.purchasePrice} onChange={onChange} placeholder="0.00" />
             </div>
             <div>
@@ -775,7 +775,7 @@ export default function InhouseProducts(){
                 <input type="number" step="0.01" value={pricePopup.price} onChange={e=>setPricePopup(p=>({...p, price: e.target.value}))} />
               </label>
               <label className="field">
-                <div>Purchase Price</div>
+                <div>Total Purchase Price (batch)</div>
                 <input type="number" step="0.01" value={pricePopup.purchasePrice} onChange={e=>setPricePopup(p=>({...p, purchasePrice: e.target.value}))} />
               </label>
             </div>
@@ -845,7 +845,7 @@ export default function InhouseProducts(){
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Name</th>
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Price (AED/OMR/SAR/BHD)</th>
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Category</th>
-                <th style={{textAlign:'left', padding:'10px 12px'}}>Purchase Price (AED/OMR/SAR/BHD)</th>
+                <th style={{textAlign:'left', padding:'10px 12px'}}>Total Purchase Price</th>
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Made In</th>
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Available In</th>
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Stock</th>
