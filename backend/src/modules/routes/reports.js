@@ -856,7 +856,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       'India': 'INR', 'Kuwait': 'KWD', 'Qatar': 'QAR'
     }
     
-    // Aggregate delivered quantities per product and country with actual order amounts (Internal Orders)
+    // Aggregate delivered quantities per product and country with actual order amounts
+    // From internal Orders
     const deliveredPerProdCountry = await Order.aggregate([
       { $match: { createdBy: { $in: creatorIds }, shipmentStatus: 'delivered', $or: [ { productId: { $in: productIds } }, { 'items.productId': { $in: productIds } } ] } },
       { $project: {
@@ -919,18 +920,16 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       }
     ])
     
-    // Aggregate delivered quantities from WebOrders (E-commerce orders)
-    const WebOrder = mongoose.model('WebOrder')
+    // From web/ecommerce Orders
+    const WebOrder = require('../models/WebOrder')
     const webDeliveredPerProdCountry = await WebOrder.aggregate([
-      { $match: { shipmentStatus: 'delivered' } },
+      { $match: { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
       { $unwind: '$items' },
       { $match: { 'items.productId': { $in: productIds } } },
       { $project: {
-          orderCountry: 1,
-          total: 1,
-          discount: 1,
+          orderCountry: { $ifNull: ['$orderCountry', ''] },
           productId: '$items.productId',
-          quantity: { $let: { vars: { q: { $ifNull: ['$items.quantity', 1] } }, in: { $cond: [ { $lt: ['$$q', 1] }, 1, '$$q' ] } } },
+          quantity: { $ifNull: ['$items.quantity', 1] },
           orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] }
         }
       },
@@ -977,10 +976,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         } 
       }
     ])
-    
     const deliveredMap = new Map()
     const deliveredAmountMap = new Map() // Now stores {country: {currency: amount}}
-    
     // Merge internal orders
     for (const r of deliveredPerProdCountry){
       const pid = String(r._id?.productId || '')
@@ -989,11 +986,10 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       if (!pid) continue
       if (!deliveredMap.has(pid)) deliveredMap.set(pid, {})
       if (!deliveredAmountMap.has(pid)) deliveredAmountMap.set(pid, {})
-      deliveredMap.get(pid)[country] = Number(r.qty || 0)
+      deliveredMap.get(pid)[country] = (deliveredMap.get(pid)[country] || 0) + Number(r.qty || 0)
       if (!deliveredAmountMap.get(pid)[country]) deliveredAmountMap.get(pid)[country] = {}
-      deliveredAmountMap.get(pid)[country][currency] = Number(r.totalAmount || 0)
+      deliveredAmountMap.get(pid)[country][currency] = (deliveredAmountMap.get(pid)[country][currency] || 0) + Number(r.totalAmount || 0)
     }
-    
     // Merge web orders
     for (const r of webDeliveredPerProdCountry){
       const pid = String(r._id?.productId || '')
@@ -1002,14 +998,9 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       if (!pid) continue
       if (!deliveredMap.has(pid)) deliveredMap.set(pid, {})
       if (!deliveredAmountMap.has(pid)) deliveredAmountMap.set(pid, {})
-      
-      // Add to existing quantities
-      const currentQty = deliveredMap.get(pid)[country] || 0
-      deliveredMap.get(pid)[country] = currentQty + Number(r.qty || 0)
-      
+      deliveredMap.get(pid)[country] = (deliveredMap.get(pid)[country] || 0) + Number(r.qty || 0)
       if (!deliveredAmountMap.get(pid)[country]) deliveredAmountMap.get(pid)[country] = {}
-      const currentAmt = deliveredAmountMap.get(pid)[country][currency] || 0
-      deliveredAmountMap.get(pid)[country][currency] = currentAmt + Number(r.totalAmount || 0)
+      deliveredAmountMap.get(pid)[country][currency] = (deliveredAmountMap.get(pid)[country][currency] || 0) + Number(r.totalAmount || 0)
     }
     const KNOWN_COUNTRIES = ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar']
     const emptyCurrencyMap = () => ({ AED:0, OMR:0, SAR:0, BHD:0, INR:0, KWD:0, QAR:0, USD:0, CNY:0 })
@@ -1101,7 +1092,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       }
     }
 
-    // Country-specific metrics
+    // Country-specific metrics from internal Orders
     const countryMetrics = await Order.aggregate([
       { $match: { createdBy: { $in: creatorIds } } },
       // Canonicalize orderCountry to unify aliases
@@ -1149,6 +1140,41 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       } }
     ]);
     
+    // Country-specific metrics from WebOrders
+    const webCountryMetrics = await WebOrder.aggregate([
+      { $match: {} },
+      { $addFields: {
+        orderCountryCanon: {
+          $let: {
+            vars: { c: { $ifNull: ['$orderCountry', ''] } },
+            in: {
+              $switch: {
+                branches: [
+                  { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
+                ],
+                default: '$$c'
+              }
+            }
+          }
+        }
+      } },
+      { $group: {
+        _id: '$orderCountryCanon',
+        totalSales: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $eq: ['$status', 'done'] } ] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        amountTotalOrders: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } },
+        amountDelivered: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $eq: ['$status', 'done'] } ] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        amountPending: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        totalOrders: { $sum: 1 },
+        deliveredOrders: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $eq: ['$status', 'done'] } ] }, 1, 0 ] } },
+      } }
+    ]);
+    
     // Driver expenses by country (based on driver's country)
     const driversByCountry = await User.aggregate([
       { $match: { createdBy: ownerId, role: 'driver' } },
@@ -1180,6 +1206,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     };
     const canon = (name) => name === 'Saudi Arabia' ? 'KSA' : (name === 'United Arab Emirates' ? 'UAE' : name)
     
+    // Merge internal orders
     countryMetrics.forEach(cm => {
       const code = cm._id || '';
       const ccode = canon(String(code))
@@ -1201,6 +1228,19 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       const amtPending = (cm.amountOpen != null ? cm.amountOpen : cm.amountPending) || 0
       countries[key].amountDelivered = (countries[key].amountDelivered || 0) + (cm.amountDelivered || 0);
       countries[key].amountPending = (countries[key].amountPending || 0) + amtPending;
+    });
+    
+    // Merge web orders
+    webCountryMetrics.forEach(cm => {
+      const code = cm._id || '';
+      const ccode = canon(String(code))
+      const key = countries[ccode] ? ccode : 'Other';
+      countries[key].sales = (countries[key].sales || 0) + (cm.totalSales || 0);
+      countries[key].orders = (countries[key].orders || 0) + (cm.totalOrders || 0);
+      countries[key].delivered = (countries[key].delivered || 0) + (cm.deliveredOrders || 0);
+      countries[key].amountTotalOrders = (countries[key].amountTotalOrders || 0) + (cm.amountTotalOrders || 0);
+      countries[key].amountDelivered = (countries[key].amountDelivered || 0) + (cm.amountDelivered || 0);
+      countries[key].amountPending = (countries[key].amountPending || 0) + (cm.amountPending || 0);
     });
     
     // Add driver expenses

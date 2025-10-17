@@ -604,8 +604,8 @@ export default function UserDashboard(){
                     <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#10b981'}} to={appendRange(`/user/orders?country=${qs}`)}>{amtTotalStr}</NavLink></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
-                    <div className="helper">Delivered (Orders)</div>
-                    <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#10b981'}} to={appendRange(`/user/orders?country=${qs}&ship=delivered`)}>{fmtNum(m?.deliveredOrders||0)}</NavLink></div>
+                    <div className="helper">Delivered</div>
+                    <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#10b981'}} to={appendRange(`/user/orders?country=${qs}&ship=delivered`)}>{fmtNum(m?.delivered||0)}</NavLink></div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Amount of Delivered</div>
