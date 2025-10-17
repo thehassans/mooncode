@@ -1022,10 +1022,9 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       let totalLeft = 0, totalDelivered = 0
       
       if (!hasStockByCountry && totalStockFallback > 0){
-        // Product has no country breakdown - add to global totals only
-        // For in-house products, purchasePrice is the TOTAL purchase price for the batch
+        // Product has no stockByCountry, but deliveries are per-country from orders.
+        // 1) Global totals
         const delivered = Object.values(delBy).reduce((s,v)=> s + Number(v||0), 0)
-        // Sum all amounts across all countries and currencies
         let totalDeliveredAmount = 0
         for (const countryAmounts of Object.values(delAmountBy)){
           if (typeof countryAmounts === 'object'){
@@ -1039,21 +1038,31 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         }
         const left = totalStockFallback
         const purchased = left + delivered
-        
         totalLeft = left
         totalDelivered = delivered
-        
         productGlobal.stockLeftQty += left
         productGlobal.stockDeliveredQty += delivered
         productGlobal.stockPurchasedQty += purchased
-        // Total purchase price (all stock bought)
         productGlobal.totalPurchaseValueByCurrency[baseCur] += Number(p.purchasePrice || 0)
-        // Purchase value of REMAINING stock only (proportional)
-        // If we have 50 left out of 100 purchased, value = purchasePrice × (50/100)
         const purchaseValueOfRemaining = purchased > 0 
           ? Number(p.purchasePrice || 0) * (left / purchased)
           : Number(p.purchasePrice || 0)
         productGlobal.purchaseValueByCurrency[baseCur] += purchaseValueOfRemaining
+        // 2) Per-country delivered attribution (qty and amounts)
+        for (const c of KNOWN_COUNTRIES){
+          const dQty = Number(delBy[c] || 0)
+          if (dQty > 0){
+            productCountryAgg[c].stockDeliveredQty += dQty
+          }
+          const cAmts = delAmountBy[c] || {}
+          if (cAmts && typeof cAmts === 'object'){
+            for (const [cur, amt] of Object.entries(cAmts)){
+              if (productCountryAgg[c].deliveredValueByCurrency[cur] !== undefined){
+                productCountryAgg[c].deliveredValueByCurrency[cur] += Number(amt || 0)
+              }
+            }
+          }
+        }
       } else {
         // Product has country breakdown - purchasePrice is per-unit
         for (const c of KNOWN_COUNTRIES){
