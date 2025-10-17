@@ -850,11 +850,13 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       .select('_id price purchasePrice baseCurrency stockByCountry stock stockQty')
       .lean()
     const productIds = products.map(p => p._id)
-    // Aggregate delivered quantities per product and country
+    // Aggregate delivered quantities per product and country with actual order amounts
     const deliveredPerProdCountry = await Order.aggregate([
       { $match: { createdBy: { $in: creatorIds }, shipmentStatus: 'delivered', $or: [ { productId: { $in: productIds } }, { 'items.productId': { $in: productIds } } ] } },
       { $project: {
           orderCountry: 1,
+          total: 1,
+          discount: 1,
           items: { $cond: [ { $and: [ { $isArray: '$items' }, { $gt: [ { $size: '$items' }, 0 ] } ] }, '$items', [ { productId: '$productId', quantity: { $ifNull: ['$quantity', 1] } } ] ] }
         }
       },
@@ -862,7 +864,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       { $project: {
           orderCountry: { $ifNull: ['$orderCountry', ''] },
           productId: '$items.productId',
-          quantity: { $let: { vars: { q: { $ifNull: ['$items.quantity', 1] } }, in: { $cond: [ { $lt: ['$$q', 1] }, 1, '$$q' ] } } }
+          quantity: { $let: { vars: { q: { $ifNull: ['$items.quantity', 1] } }, in: { $cond: [ { $lt: ['$$q', 1] }, 1, '$$q' ] } } },
+          orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] }
         }
       },
       { $match: { productId: { $in: productIds } } },
@@ -888,15 +891,23 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
           }
         }
       },
-      { $group: { _id: { productId: '$productId', country: '$orderCountryCanon' }, qty: { $sum: '$quantity' } } }
+      { $group: { 
+          _id: { productId: '$productId', country: '$orderCountryCanon' }, 
+          qty: { $sum: '$quantity' },
+          totalAmount: { $sum: '$orderAmount' }
+        } 
+      }
     ])
     const deliveredMap = new Map()
+    const deliveredAmountMap = new Map()
     for (const r of deliveredPerProdCountry){
       const pid = String(r._id?.productId || '')
       const country = String(r._id?.country || '')
       if (!pid) continue
       if (!deliveredMap.has(pid)) deliveredMap.set(pid, {})
+      if (!deliveredAmountMap.has(pid)) deliveredAmountMap.set(pid, {})
       deliveredMap.get(pid)[country] = Number(r.qty || 0)
+      deliveredAmountMap.get(pid)[country] = Number(r.totalAmount || 0)
     }
     const KNOWN_COUNTRIES = ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar']
     const emptyCurrencyMap = () => ({ AED:0, OMR:0, SAR:0, BHD:0, INR:0, KWD:0, QAR:0, USD:0, CNY:0 })
@@ -914,11 +925,13 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       
       const leftBy = { KSA: Number(byC.KSA || 0), UAE: Number(byC.UAE || 0), Oman: Number(byC.Oman || 0), Bahrain: Number(byC.Bahrain || 0), India: Number(byC.India || 0), Kuwait: Number(byC.Kuwait || 0), Qatar: Number(byC.Qatar || 0) }
       const delBy = deliveredMap.get(String(p._id)) || {}
+      const delAmountBy = deliveredAmountMap.get(String(p._id)) || {}
       let totalLeft = 0, totalDelivered = 0
       
       if (!hasStockByCountry && totalStockFallback > 0){
         // Product has no country breakdown - add to global totals only
         const delivered = Object.values(delBy).reduce((s,v)=> s + Number(v||0), 0)
+        const deliveredAmount = Object.values(delAmountBy).reduce((s,v)=> s + Number(v||0), 0)
         const left = totalStockFallback
         const purchased = left + delivered
         
@@ -929,12 +942,13 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         productGlobal.stockDeliveredQty += delivered
         productGlobal.stockPurchasedQty += purchased
         productGlobal.purchaseValueByCurrency[baseCur] += purchased * Number(p.purchasePrice || 0)
-        productGlobal.deliveredValueByCurrency[baseCur] += delivered * Number(p.price || 0)
+        productGlobal.deliveredValueByCurrency[baseCur] += deliveredAmount
       } else {
         // Product has country breakdown
         for (const c of KNOWN_COUNTRIES){
           const left = Number(leftBy[c] || 0)
           const delivered = Number(delBy[c] || 0)
+          const deliveredAmount = Number(delAmountBy[c] || 0)
           const purchased = left + delivered
           totalLeft += left
           totalDelivered += delivered
@@ -942,13 +956,14 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
           productCountryAgg[c].stockDeliveredQty += delivered
           productCountryAgg[c].stockPurchasedQty += purchased
           productCountryAgg[c].purchaseValueByCurrency[baseCur] += purchased * Number(p.purchasePrice || 0)
-          productCountryAgg[c].deliveredValueByCurrency[baseCur] += delivered * Number(p.price || 0)
+          productCountryAgg[c].deliveredValueByCurrency[baseCur] += deliveredAmount
         }
+        const totalDeliveredAmount = Object.values(delAmountBy).reduce((s,v)=> s + Number(v||0), 0)
         productGlobal.stockLeftQty += totalLeft
         productGlobal.stockDeliveredQty += totalDelivered
         productGlobal.stockPurchasedQty += (totalLeft + totalDelivered)
         productGlobal.purchaseValueByCurrency[baseCur] += (totalLeft + totalDelivered) * Number(p.purchasePrice || 0)
-        productGlobal.deliveredValueByCurrency[baseCur] += totalDelivered * Number(p.price || 0)
+        productGlobal.deliveredValueByCurrency[baseCur] += totalDeliveredAmount
       }
     }
 
