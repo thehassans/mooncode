@@ -85,7 +85,7 @@ export default function Investors(){
   async function loadRates(){
     try{
       const data = await apiGet('/api/settings/currency')
-      setRates(data?.rates || {})
+      setRates(data?.sarPerUnit || {})
     }catch{ setRates({}) }
   }
 
@@ -302,11 +302,16 @@ export default function Investors(){
                 }
                 
                 // Convert price from product's base currency to investor's currency
+                // sarPerUnit means: 1 unit of currency X = sarPerUnit[X] SAR
+                // e.g., sarPerUnit[BHD] = 9.94 means 1 BHD = 9.94 SAR
                 let convertedPrice = selectedProduct?.price || 0
                 if (selectedProduct && selectedProduct.baseCurrency !== form.currency) {
-                  const fromRate = rates[selectedProduct.baseCurrency] || 1
-                  const toRate = rates[form.currency] || 1
-                  convertedPrice = (convertedPrice / fromRate) * toRate
+                  const fromCurrency = selectedProduct.baseCurrency
+                  const toCurrency = form.currency
+                  // Convert from base currency to SAR first
+                  const priceInSAR = fromCurrency === 'SAR' ? convertedPrice : convertedPrice * (rates[fromCurrency] || 1)
+                  // Then convert from SAR to target currency
+                  convertedPrice = toCurrency === 'SAR' ? priceInSAR : priceInSAR / (rates[toCurrency] || 1)
                 }
                 
                 const estimatedRevenue = countryStock * convertedPrice
@@ -488,11 +493,15 @@ export default function Investors(){
                   countryStock = stockByCountry[row.country] || 0
                 }
                 
+                // Convert price from product's base currency to investor's currency
                 let convertedPrice = selectedProduct?.price || 0
                 if (selectedProduct && selectedProduct.baseCurrency !== editForm.currency) {
-                  const fromRate = rates[selectedProduct.baseCurrency] || 1
-                  const toRate = rates[editForm.currency] || 1
-                  convertedPrice = (convertedPrice / fromRate) * toRate
+                  const fromCurrency = selectedProduct.baseCurrency
+                  const toCurrency = editForm.currency
+                  // Convert from base currency to SAR first
+                  const priceInSAR = fromCurrency === 'SAR' ? convertedPrice : convertedPrice * (rates[fromCurrency] || 1)
+                  // Then convert from SAR to target currency
+                  convertedPrice = toCurrency === 'SAR' ? priceInSAR : priceInSAR / (rates[toCurrency] || 1)
                 }
                 
                 const estimatedRevenue = countryStock * convertedPrice
