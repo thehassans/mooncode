@@ -1016,7 +1016,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       // If no stockByCountry, use total stock/stockQty
       const totalStockFallback = Number(p.stock || p.stockQty || 0)
       
-      const leftBy = { KSA: Number(byC.KSA || 0), UAE: Number(byC.UAE || 0), Oman: Number(byC.Oman || 0), Bahrain: Number(byC.Bahrain || 0), India: Number(byC.India || 0), Kuwait: Number(byC.Kuwait || 0), Qatar: Number(byC.Qatar || 0) }
+      // stockByCountry represents ORIGINAL PURCHASED quantity (same as warehouse logic)
+      const boughtBy = { KSA: Number(byC.KSA || 0), UAE: Number(byC.UAE || 0), Oman: Number(byC.Oman || 0), Bahrain: Number(byC.Bahrain || 0), India: Number(byC.India || 0), Kuwait: Number(byC.Kuwait || 0), Qatar: Number(byC.Qatar || 0) }
       const delBy = deliveredMap.get(String(p._id)) || {}
       const delAmountBy = deliveredAmountMap.get(String(p._id)) || {}
       let totalLeft = 0, totalDelivered = 0
@@ -1056,18 +1057,19 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         productGlobal.purchaseValueByCurrency[baseCur] += purchaseValueOfRemaining
       } else {
         // Product has country breakdown - purchasePrice is per-unit
+        // Use warehouse logic: stockLeft = bought - delivered
         for (const c of KNOWN_COUNTRIES){
-          const left = Number(leftBy[c] || 0)
+          const bought = Number(boughtBy[c] || 0)
           const delivered = Number(delBy[c] || 0)
           const countryAmounts = delAmountBy[c] || {}
-          const purchased = left + delivered
+          const left = Math.max(0, bought - delivered) // warehouse logic: left = bought - delivered
           totalLeft += left
           totalDelivered += delivered
           productCountryAgg[c].stockLeftQty += left
           productCountryAgg[c].stockDeliveredQty += delivered
-          productCountryAgg[c].stockPurchasedQty += purchased
-          // Total purchase price (all stock: remaining + delivered)
-          productCountryAgg[c].totalPurchaseValueByCurrency[baseCur] += purchased * Number(p.purchasePrice || 0)
+          productCountryAgg[c].stockPurchasedQty += bought
+          // Total purchase price (all stock bought)
+          productCountryAgg[c].totalPurchaseValueByCurrency[baseCur] += bought * Number(p.purchasePrice || 0)
           // Purchase value of REMAINING stock only (left × per-unit price)
           productCountryAgg[c].purchaseValueByCurrency[baseCur] += left * Number(p.purchasePrice || 0)
           // Add amounts by currency
@@ -1082,11 +1084,12 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
             }
           }
         }
+        const totalBought = Object.values(boughtBy).reduce((s,v)=> s + Number(v||0), 0)
         productGlobal.stockLeftQty += totalLeft
         productGlobal.stockDeliveredQty += totalDelivered
-        productGlobal.stockPurchasedQty += (totalLeft + totalDelivered)
-        // Total purchase price (all stock: remaining + delivered)
-        productGlobal.totalPurchaseValueByCurrency[baseCur] += (totalLeft + totalDelivered) * Number(p.purchasePrice || 0)
+        productGlobal.stockPurchasedQty += totalBought
+        // Total purchase price (all stock bought)
+        productGlobal.totalPurchaseValueByCurrency[baseCur] += totalBought * Number(p.purchasePrice || 0)
         // Purchase value of REMAINING stock only (totalLeft × per-unit price)
         productGlobal.purchaseValueByCurrency[baseCur] += totalLeft * Number(p.purchasePrice || 0)
       }
