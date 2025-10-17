@@ -355,23 +355,53 @@ export default function Warehouse(){
 
   function calcStockValueByCurrency(it, onlyCountry=null){
     const base = it?.baseCurrency || it?.currency || 'SAR'
-    const p = Number(it?.purchasePrice||0)
-    const s = it?.stockLeft || {}
+    const price = Number(it?.purchasePrice||0)
+    const left = it?.stockLeft || {}
+    const bought = it?.boughtByCountry || {}
+    const hasByCountry = Object.values(bought||{}).some(v=> Number(v||0) > 0)
     const out = {}
+    if (hasByCountry){
+      if (onlyCountry && onlyCountry !== 'All'){
+        const qty = Number(left?.[onlyCountry]||0)
+        for (const k of CUR_KEY_ORDER){ out[k] = conv(price, base, k) * qty }
+      } else {
+        const m = { AED: left.UAE||0, OMR: left.Oman||0, SAR: left.KSA||0, BHD: left.Bahrain||0, INR: left.India||0, KWD: left.Kuwait||0, QAR: left.Qatar||0 }
+        for (const k of CUR_KEY_ORDER){ out[k] = conv(price, base, k) * Number(m[k]||0) }
+      }
+      return out
+    }
+    const totalBought = Number(it?.totalBought || (Number(bought?.UAE||0)+Number(bought?.Oman||0)+Number(bought?.KSA||0)+Number(bought?.Bahrain||0)+Number(bought?.India||0)+Number(bought?.Kuwait||0)+Number(bought?.Qatar||0)))
+    const totalLeft = Number(left?.total || (Number(left?.UAE||0)+Number(left?.Oman||0)+Number(left?.KSA||0)+Number(left?.Bahrain||0)+Number(left?.India||0)+Number(left?.Kuwait||0)+Number(left?.Qatar||0)))
     if (onlyCountry && onlyCountry !== 'All'){
-      const qty = Number(s?.[onlyCountry]||0)
-      for (const k of CUR_KEY_ORDER){ out[k] = conv(p, base, k) * qty }
+      const leftInC = Number(left?.[onlyCountry]||0)
+      const share = totalBought > 0 ? (leftInC / totalBought) : 0
+      for (const k of CUR_KEY_ORDER){ out[k] = conv(price, base, k) * share }
     } else {
-      const m = { AED: s.UAE||0, OMR: s.Oman||0, SAR: s.KSA||0, BHD: s.Bahrain||0, INR: s.India||0, KWD: s.Kuwait||0, QAR: s.Qatar||0 }
-      for (const k of CUR_KEY_ORDER){ out[k] = conv(p, base, k) * Number(m[k]||0) }
+      const share = totalBought > 0 ? (totalLeft / totalBought) : 0
+      for (const k of CUR_KEY_ORDER){ out[k] = conv(price, base, k) * share }
     }
     return out
   }
   function calcDeliveredRevByCurrency(it, onlyCountry=null){
+    const out = {}
+    const amounts = it?.deliveredAmountByCountryAndCurrency || null
+    if (amounts){
+      if (onlyCountry && onlyCountry !== 'All'){
+        const m = amounts?.[onlyCountry] || {}
+        for (const k of CUR_KEY_ORDER){ out[k] = Number(m[k]||0) }
+      } else {
+        for (const k of CUR_KEY_ORDER){ out[k] = 0 }
+        for (const m of Object.values(amounts)){
+          for (const [cur, amt] of Object.entries(m||{})){
+            if (out[cur] != null) out[cur] += Number(amt||0)
+          }
+        }
+      }
+      return out
+    }
     const base = it?.baseCurrency || it?.currency || 'SAR'
     const price = Number(it?.price||0)
     const d = it?.delivered || {}
-    const out = {}
     if (onlyCountry && onlyCountry !== 'All'){
       const qty = Number(d?.[onlyCountry]||0)
       for (const k of CUR_KEY_ORDER){ out[k] = conv(price, base, k) * qty }

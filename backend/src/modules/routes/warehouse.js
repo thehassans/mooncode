@@ -61,7 +61,7 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
       }
     }
 
-    // Internal Orders: delivered quantities
+    // Internal Orders: delivered quantities and amounts
     const deliveredAgg = await Order.aggregate([
       { $match: { 
           ...baseMatch,
@@ -84,26 +84,115 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
       },
       { $unwind: '$_items' },
       { $match: { '_items.productId': { $in: productIds } } },
+      { $project: {
+          productId: '$_items.productId',
+          orderCountry: { $ifNull: ['$orderCountry', ''] },
+          quantity: { $ifNull: ['$_items.quantity', 1] },
+          orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] }
+        }
+      },
+      { $addFields: {
+          orderCountryCanon: {
+            $let: {
+              vars: { c: { $ifNull: ['$orderCountry', ''] } },
+              in: {
+                $switch: {
+                  branches: [
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
+                  ],
+                  default: '$$c'
+                }
+              }
+            }
+          },
+          orderCurrency: {
+            $switch: {
+              branches: [
+                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KSA','SAUDI ARABIA'] ] }, then: 'SAR' },
+                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'AED' },
+                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['OMAN','OM'] ] }, then: 'OMR' },
+                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['BAHRAIN','BH'] ] }, then: 'BHD' },
+                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['INDIA','IN'] ] }, then: 'INR' },
+                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KUWAIT','KW'] ] }, then: 'KWD' },
+                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['QATAR','QA'] ] }, then: 'QAR' },
+              ],
+              default: 'AED'
+            }
+          }
+        }
+      },
       { $group: {
-          _id: { productId: '$_items.productId', country: '$orderCountry' },
-          deliveredQty: { $sum: { $ifNull: ['$_items.quantity', 1] } },
-        } 
+          _id: { productId: '$productId', country: '$orderCountryCanon', currency: '$orderCurrency' },
+          deliveredQty: { $sum: { $ifNull: ['$quantity', 1] } },
+          totalAmount: { $sum: '$orderAmount' }
+        }
       },
     ])
 
-    // Web (E-commerce) Orders: delivered quantities
+    // Web (E-commerce) Orders: delivered quantities and amounts
     const webDeliveredAgg = await WebOrder.aggregate([
       { $match: { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
       { $unwind: '$items' },
       { $match: { 'items.productId': { $in: productIds } } },
+      { $project: {
+          productId: '$items.productId',
+          orderCountry: { $ifNull: ['$orderCountry', ''] },
+          quantity: { $ifNull: ['$items.quantity', 1] },
+          orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] }
+        }
+      },
+      { $addFields: {
+          orderCountryCanon: {
+            $let: {
+              vars: { c: { $ifNull: ['$orderCountry', ''] } },
+              in: {
+                $switch: {
+                  branches: [
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
+                  ],
+                  default: '$$c'
+                }
+              }
+            }
+          },
+          orderCurrency: {
+            $switch: {
+              branches: [
+                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KSA','SAUDI ARABIA'] ] }, then: 'SAR' },
+                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'AED' },
+                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['OMAN','OM'] ] }, then: 'OMR' },
+                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['BAHRAIN','BH'] ] }, then: 'BHD' },
+                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['INDIA','IN'] ] }, then: 'INR' },
+                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KUWAIT','KW'] ] }, then: 'KWD' },
+                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['QATAR','QA'] ] }, then: 'QAR' },
+              ],
+              default: 'AED'
+            }
+          }
+        }
+      },
       { $group: {
-          _id: { productId: '$items.productId', country: '$orderCountry' },
-          deliveredQty: { $sum: { $ifNull: ['$items.quantity', 1] } },
-        } 
+          _id: { productId: '$productId', country: '$orderCountryCanon', currency: '$orderCurrency' },
+          deliveredQty: { $sum: { $ifNull: ['$quantity', 1] } },
+          totalAmount: { $sum: '$orderAmount' }
+        }
       },
     ])
 
     const deliveredMap = new Map()
+    const deliveredAmountMap = new Map() // pid -> { country: { currency: amount } }
     const normCountry = (c)=>{
       const s = String(c||'').trim()
       if (!s) return 'Unknown'
@@ -123,14 +212,22 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
     for (const row of deliveredAgg) {
       const pid = String(row._id.productId)
       const country = normCountry(row._id.country)
+      const currency = String(row._id.currency || 'AED')
       if (!deliveredMap.has(pid)) deliveredMap.set(pid, {})
-      deliveredMap.get(pid)[country] = (deliveredMap.get(pid)[country] || 0) + row.deliveredQty
+      if (!deliveredAmountMap.has(pid)) deliveredAmountMap.set(pid, {})
+      deliveredMap.get(pid)[country] = (deliveredMap.get(pid)[country] || 0) + Number(row.deliveredQty || 0)
+      if (!deliveredAmountMap.get(pid)[country]) deliveredAmountMap.get(pid)[country] = {}
+      deliveredAmountMap.get(pid)[country][currency] = (deliveredAmountMap.get(pid)[country][currency] || 0) + Number(row.totalAmount || 0)
     }
     for (const row of webDeliveredAgg) {
       const pid = String(row._id.productId)
       const country = normCountry(row._id.country)
+      const currency = String(row._id.currency || 'AED')
       if (!deliveredMap.has(pid)) deliveredMap.set(pid, {})
-      deliveredMap.get(pid)[country] = (deliveredMap.get(pid)[country] || 0) + row.deliveredQty
+      if (!deliveredAmountMap.has(pid)) deliveredAmountMap.set(pid, {})
+      deliveredMap.get(pid)[country] = (deliveredMap.get(pid)[country] || 0) + Number(row.deliveredQty || 0)
+      if (!deliveredAmountMap.get(pid)[country]) deliveredAmountMap.get(pid)[country] = {}
+      deliveredAmountMap.get(pid)[country][currency] = (deliveredAmountMap.get(pid)[country][currency] || 0) + Number(row.totalAmount || 0)
     }
 
     const response = products.map(p => {
@@ -181,10 +278,20 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
       const baseCur = ['AED','OMR','SAR','BHD','INR','KWD','QAR'].includes(String(p.baseCurrency)) ? String(p.baseCurrency) : 'SAR'
       const deliveredRevenueByCurrency = { AED: 0, OMR: 0, SAR: 0, BHD: 0, INR: 0, KWD: 0, QAR: 0 }
       const stockValueByCurrency = { AED: 0, OMR: 0, SAR: 0, BHD: 0, INR: 0, KWD: 0, QAR: 0 }
-      // Delivered revenue = delivered qty (allowed only) * sell price in base currency of product
-      deliveredRevenueByCurrency[baseCur] = totalDelivered * (p.price || 0)
-      // Stock value = stock left (allowed only) * buy price in base currency of product
-      stockValueByCurrency[baseCur] = totalLeft * (p.purchasePrice || 0)
+      // Delivered revenue = actual order amounts by currency
+      const amtByCountry = deliveredAmountMap.get(String(p._id)) || {}
+      for (const c of Object.keys(amtByCountry)){
+        const byCur = amtByCountry[c] || {}
+        for (const [cur, amt] of Object.entries(byCur)){
+          if (deliveredRevenueByCurrency[cur] !== undefined){ deliveredRevenueByCurrency[cur] += Number(amt||0) }
+        }
+      }
+      // Stock value: proportional for in-house total batch price; for stockByCountry assume per-unit price
+      const purchase = Number(p.purchasePrice||0)
+      if (totalBought > 0){
+        const share = totalLeft / totalBought
+        stockValueByCurrency[baseCur] = purchase * share
+      }
 
       return {
         _id: p._id,
@@ -196,10 +303,11 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
         boughtByCountry: { UAE: bUAE, Oman: bOman, KSA: bKSA, Bahrain: bBahrain, India: bIndia, Kuwait: bKuwait, Qatar: bQatar },
         delivered: { UAE: delUAE, Oman: delOman, KSA: delKSA, Bahrain: delBahrain, India: delIndia, Kuwait: delKuwait, Qatar: delQatar, total: totalDelivered },
         totalBought,
-        stockValue: totalLeft * (p.purchasePrice || 0),
+        stockValue: stockValueByCurrency[baseCur],
         potentialRevenue: totalLeft * (p.price || 0),
-        deliveredRevenue: totalDelivered * (p.price || 0),
+        deliveredRevenue: Object.values(deliveredRevenueByCurrency).reduce((s,v)=> s + Number(v||0), 0),
         deliveredRevenueByCurrency,
+        deliveredAmountByCountryAndCurrency: amtByCountry,
         stockValueByCurrency,
         createdAt: p.createdAt,
       }
