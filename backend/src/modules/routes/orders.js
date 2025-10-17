@@ -48,6 +48,28 @@ async function emitOrderChange(ord, action = 'updated'){
     }catch{}
     if (ownerId){
       try{ io.to(`workspace:${ownerId}`).emit('orders.changed', { orderId, invoiceNumber, action, status }) }catch{}
+      
+      // Notify investors if this order affects their products
+      if (ord?.productId && ord?.orderCountry) {
+        try {
+          const investors = await User.find({
+            role: 'investor',
+            createdBy: ownerId,
+            'investorProfile.assignedProducts': {
+              $elemMatch: {
+                product: ord.productId,
+                country: ord.orderCountry
+              }
+            }
+          }).select('_id').lean()
+          
+          for (const investor of investors) {
+            io.to(`user:${String(investor._id)}`).emit('orders.changed', { orderId, invoiceNumber, action, status, productId: ord.productId, country: ord.orderCountry })
+          }
+        } catch(e) {
+          console.error('Error notifying investors:', e)
+        }
+      }
     }
   }catch{ /* ignore socket errors */ }
 }

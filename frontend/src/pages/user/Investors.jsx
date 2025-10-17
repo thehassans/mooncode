@@ -319,7 +319,14 @@ export default function Investors(){
                 let countryStock = 0
                 if (selectedProduct && row.country) {
                   const stockByCountry = selectedProduct.stockByCountry || {}
-                  countryStock = stockByCountry[row.country] || 0
+                  // Use country-specific stock if available, otherwise fallback to total stock
+                  if (Object.keys(stockByCountry).length > 0) {
+                    countryStock = stockByCountry[row.country] || 0
+                  } else {
+                    countryStock = selectedProduct.stock || 0
+                  }
+                } else if (selectedProduct) {
+                  countryStock = selectedProduct.stock || 0
                 }
                 
                 // Convert price from product's base currency to investor's currency
@@ -511,7 +518,14 @@ export default function Investors(){
                 let countryStock = 0
                 if (selectedProduct && row.country) {
                   const stockByCountry = selectedProduct.stockByCountry || {}
-                  countryStock = stockByCountry[row.country] || 0
+                  // Use country-specific stock if available, otherwise fallback to total stock
+                  if (Object.keys(stockByCountry).length > 0) {
+                    countryStock = stockByCountry[row.country] || 0
+                  } else {
+                    countryStock = selectedProduct.stock || 0
+                  }
+                } else if (selectedProduct) {
+                  countryStock = selectedProduct.stock || 0
                 }
                 
                 // Convert price from product's base currency to investor's currency

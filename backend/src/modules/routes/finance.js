@@ -2017,7 +2017,7 @@ router.get("/investor/dashboard", auth, allowRoles("investor"), async (req, res)
         productId: productId,
         shipmentStatus: { $in: ["delivered", "in_transit", "picked_up", "pending"] }
       };
-      if (country) match.country = country;
+      if (country) match.orderCountry = country;
 
       const orders = await Order.find(match).select("quantity shipmentStatus total").lean();
       
