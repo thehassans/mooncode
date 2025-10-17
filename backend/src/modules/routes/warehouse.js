@@ -231,48 +231,47 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
     }
 
     const response = products.map(p => {
-      const bought = p.stockByCountry || {}
-      let bUAE = bought.UAE || 0
-      let bOman = bought.Oman || 0
-      let bKSA = bought.KSA || 0
-      let bBahrain = bought.Bahrain || 0
-      let bIndia = bought.India || 0
-      let bKuwait = bought.Kuwait || 0
-      let bQatar = bought.Qatar || 0
+      // Current left per country comes directly from product.stockByCountry
+      const byC = p.stockByCountry || {}
+      let leftUAE = Math.max(0, Number(byC.UAE || 0))
+      let leftOman = Math.max(0, Number(byC.Oman || 0))
+      let leftKSA = Math.max(0, Number(byC.KSA || 0))
+      let leftBahrain = Math.max(0, Number(byC.Bahrain || 0))
+      let leftIndia = Math.max(0, Number(byC.India || 0))
+      let leftKuwait = Math.max(0, Number(byC.Kuwait || 0))
+      let leftQatar = Math.max(0, Number(byC.Qatar || 0))
 
       const dMap = deliveredMap.get(String(p._id)) || {}
-      let delUAE = dMap.UAE || 0
-      let delOman = dMap.Oman || 0
-      let delKSA = dMap.KSA || 0
-      let delBahrain = dMap.Bahrain || 0
-      let delIndia = dMap.India || 0
-      let delKuwait = dMap.Kuwait || 0
-      let delQatar = dMap.Qatar || 0
+      let delUAE = Number(dMap.UAE || 0)
+      let delOman = Number(dMap.Oman || 0)
+      let delKSA = Number(dMap.KSA || 0)
+      let delBahrain = Number(dMap.Bahrain || 0)
+      let delIndia = Number(dMap.India || 0)
+      let delKuwait = Number(dMap.Kuwait || 0)
+      let delQatar = Number(dMap.Qatar || 0)
 
       // If manager with assigned countries, zero-out disallowed countries
       if (Array.isArray(managerAssigned) && managerAssigned.length){
         const allow = new Set(managerAssigned)
-        if (!allow.has('UAE')) { bUAE = 0; delUAE = 0 }
-        if (!allow.has('Oman')) { bOman = 0; delOman = 0 }
-        if (!allow.has('KSA')) { bKSA = 0; delKSA = 0 }
-        if (!allow.has('Bahrain')) { bBahrain = 0; delBahrain = 0 }
-        if (!allow.has('India')) { bIndia = 0; delIndia = 0 }
-        if (!allow.has('Kuwait')) { bKuwait = 0; delKuwait = 0 }
-        if (!allow.has('Qatar')) { bQatar = 0; delQatar = 0 }
+        if (!allow.has('UAE')) { leftUAE = 0; delUAE = 0 }
+        if (!allow.has('Oman')) { leftOman = 0; delOman = 0 }
+        if (!allow.has('KSA')) { leftKSA = 0; delKSA = 0 }
+        if (!allow.has('Bahrain')) { leftBahrain = 0; delBahrain = 0 }
+        if (!allow.has('India')) { leftIndia = 0; delIndia = 0 }
+        if (!allow.has('Kuwait')) { leftKuwait = 0; delKuwait = 0 }
+        if (!allow.has('Qatar')) { leftQatar = 0; delQatar = 0 }
       }
 
       const totalDelivered = delUAE + delOman + delKSA + delBahrain + delIndia + delKuwait + delQatar
-
-      // Stock left = bought - delivered (clamped to 0)
-      const leftUAE = Math.max(0, bUAE - delUAE)
-      const leftOman = Math.max(0, bOman - delOman)
-      const leftKSA = Math.max(0, bKSA - delKSA)
-      const leftBahrain = Math.max(0, bBahrain - delBahrain)
-      const leftIndia = Math.max(0, bIndia - delIndia)
-      const leftKuwait = Math.max(0, bKuwait - delKuwait)
-      const leftQatar = Math.max(0, bQatar - delQatar)
       const totalLeft = leftUAE + leftOman + leftKSA + leftBahrain + leftIndia + leftKuwait + leftQatar
-
+      // Purchased per country is left + delivered
+      const bUAE = leftUAE + delUAE
+      const bOman = leftOman + delOman
+      const bKSA = leftKSA + delKSA
+      const bBahrain = leftBahrain + delBahrain
+      const bIndia = leftIndia + delIndia
+      const bKuwait = leftKuwait + delKuwait
+      const bQatar = leftQatar + delQatar
       const totalBought = bUAE + bOman + bKSA + bBahrain + bIndia + bKuwait + bQatar
 
       const baseCur = ['AED','OMR','SAR','BHD','INR','KWD','QAR'].includes(String(p.baseCurrency)) ? String(p.baseCurrency) : 'SAR'

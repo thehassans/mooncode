@@ -1926,30 +1926,56 @@ router.post('/:id/return/verify', auth, allowRoles('user', 'manager'), async (re
     order.returnVerifiedAt = new Date()
     order.returnVerifiedBy = req.user.id
     
-    // Refill stock for cancelled/returned products
+    // Refill stock only if it was previously decremented on delivery
     try {
-      if (order.items && Array.isArray(order.items) && order.items.length > 0) {
-        // Multi-item order: refill stock for each item
-        for (const item of order.items) {
-          if (item.productId && item.productId._id) {
+      if (order.inventoryAdjusted) {
+        const country = order.orderCountry
+        if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+          // Multi-item order: refill stock for each item
+          const ids = order.items.map(i=> i.productId && (i.productId._id || i.productId)).filter(Boolean)
+          const prods = await Product.find({ _id: { $in: ids } })
+          const byId = new Map(prods.map(p => [String(p._id), p]))
+          for (const item of order.items) {
+            const pid = String(item.productId && (item.productId._id || item.productId))
+            const product = byId.get(pid)
+            if (!product) continue
             const quantity = Math.max(1, Number(item.quantity || 1))
-            const product = await Product.findById(item.productId._id)
-            if (product) {
-              product.stock = (product.stock || 0) + quantity
-              await product.save()
-              console.log(`Refilled stock for product ${product._id}: +${quantity} (new stock: ${product.stock})`)
-            }
+            const byC = product.stockByCountry || {}
+            if (country === 'UAE' || country === 'United Arab Emirates') byC.UAE = Math.max(0, (byC.UAE || 0) + quantity)
+            else if (country === 'Oman' || country === 'OM') byC.Oman = Math.max(0, (byC.Oman || 0) + quantity)
+            else if (country === 'KSA' || country === 'Saudi Arabia') byC.KSA = Math.max(0, (byC.KSA || 0) + quantity)
+            else if (country === 'Bahrain' || country === 'BH') byC.Bahrain = Math.max(0, (byC.Bahrain || 0) + quantity)
+            else if (country === 'India' || country === 'IN') byC.India = Math.max(0, (byC.India || 0) + quantity)
+            else if (country === 'Kuwait' || country === 'KW') byC.Kuwait = Math.max(0, (byC.Kuwait || 0) + quantity)
+            else if (country === 'Qatar' || country === 'QA') byC.Qatar = Math.max(0, (byC.Qatar || 0) + quantity)
+            const totalLeft = (byC.UAE||0) + (byC.Oman||0) + (byC.KSA||0) + (byC.Bahrain||0) + (byC.India||0) + (byC.Kuwait||0) + (byC.Qatar||0)
+            product.stockByCountry = byC
+            product.stockQty = totalLeft
+            product.inStock = totalLeft > 0
+            await product.save()
+          }
+        } else if (order.productId && (order.productId._id || order.productId)) {
+          // Single product order: refill stock
+          const product = await Product.findById(order.productId._id || order.productId)
+          if (product) {
+            const quantity = Math.max(1, Number(order.quantity || 1))
+            const byC = product.stockByCountry || {}
+            if (country === 'UAE' || country === 'United Arab Emirates') byC.UAE = Math.max(0, (byC.UAE || 0) + quantity)
+            else if (country === 'Oman' || country === 'OM') byC.Oman = Math.max(0, (byC.Oman || 0) + quantity)
+            else if (country === 'KSA' || country === 'Saudi Arabia') byC.KSA = Math.max(0, (byC.KSA || 0) + quantity)
+            else if (country === 'Bahrain' || country === 'BH') byC.Bahrain = Math.max(0, (byC.Bahrain || 0) + quantity)
+            else if (country === 'India' || country === 'IN') byC.India = Math.max(0, (byC.India || 0) + quantity)
+            else if (country === 'Kuwait' || country === 'KW') byC.Kuwait = Math.max(0, (byC.Kuwait || 0) + quantity)
+            else if (country === 'Qatar' || country === 'QA') byC.Qatar = Math.max(0, (byC.Qatar || 0) + quantity)
+            const totalLeft = (byC.UAE||0) + (byC.Oman||0) + (byC.KSA||0) + (byC.Bahrain||0) + (byC.India||0) + (byC.Kuwait||0) + (byC.Qatar||0)
+            product.stockByCountry = byC
+            product.stockQty = totalLeft
+            product.inStock = totalLeft > 0
+            await product.save()
           }
         }
-      } else if (order.productId && order.productId._id) {
-        // Single product order: refill stock
-        const quantity = Math.max(1, Number(order.quantity || 1))
-        const product = await Product.findById(order.productId._id)
-        if (product) {
-          product.stock = (product.stock || 0) + quantity
-          await product.save()
-          console.log(`Refilled stock for product ${product._id}: +${quantity} (new stock: ${product.stock})`)
-        }
+        order.inventoryAdjusted = false
+        order.inventoryRestoredAt = new Date()
       }
     } catch (stockError) {
       console.error('Error refilling stock:', stockError)
