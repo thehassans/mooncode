@@ -64,13 +64,13 @@ export default function InvestorDashboard(){
   function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
 
   return (
-    <div className="section" style={{display:'grid', gap:16}}>
-      <div className="page-header">
+    <div className="section" style={{display:'grid', gap:20, padding: isMobile ? '12px' : '20px'}}>
+      <div className="page-header" style={{flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 12 : 0, alignItems: isMobile ? 'stretch' : 'center'}}>
         <div>
-          <div className="page-title">Investment Dashboard</div>
-          <div className="page-subtitle">Track your portfolio performance and earnings</div>
+          <div className="page-title" style={{fontSize: isMobile ? 22 : 28}}>Investment Dashboard</div>
+          <div className="page-subtitle" style={{fontSize: isMobile ? 13 : 14}}>Track your portfolio performance and earnings</div>
         </div>
-        <button className="btn success" onClick={()=> navigate('/investor/me')}>
+        <button className="btn success" onClick={()=> navigate('/investor/me')} style={{width: isMobile ? '100%' : 'auto'}}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:6}}>
             <line x1="12" y1="1" x2="12" y2="23"/>
             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
@@ -80,8 +80,8 @@ export default function InvestorDashboard(){
       </div>
 
       {/* Summary Cards */}
-      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px,1fr))', gap:16}}>
-        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)'}}>
+      <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(220px,1fr))', gap: isMobile ? 12 : 16}}>
+        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)', transition:'transform 0.2s, box-shadow 0.2s'}}>
           <div style={{padding:'20px', display:'flex', alignItems:'center', gap:16}}>
             <div style={{width:48, height:48, borderRadius:12, background:'rgba(102, 126, 234, 0.1)', display:'flex', alignItems:'center', justifyContent:'center'}}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#667eea" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -95,7 +95,7 @@ export default function InvestorDashboard(){
             </div>
           </div>
         </div>
-        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)'}}>
+        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)', transition:'transform 0.2s, box-shadow 0.2s'}}>
           <div style={{padding:'20px', display:'flex', alignItems:'center', gap:16}}>
             <div style={{width:48, height:48, borderRadius:12, background:'rgba(245, 158, 11, 0.1)', display:'flex', alignItems:'center', justifyContent:'center'}}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -110,7 +110,7 @@ export default function InvestorDashboard(){
             </div>
           </div>
         </div>
-        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)'}}>
+        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)', transition:'transform 0.2s, box-shadow 0.2s'}}>
           <div style={{padding:'20px', display:'flex', alignItems:'center', gap:16}}>
             <div style={{width:48, height:48, borderRadius:12, background:'rgba(59, 130, 246, 0.1)', display:'flex', alignItems:'center', justifyContent:'center'}}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -124,7 +124,7 @@ export default function InvestorDashboard(){
             </div>
           </div>
         </div>
-        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)'}}>
+        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)', transition:'transform 0.2s, box-shadow 0.2s'}}>
           <div style={{padding:'20px', display:'flex', alignItems:'center', gap:16}}>
             <div style={{width:48, height:48, borderRadius:12, background:'rgba(16, 185, 129, 0.1)', display:'flex', alignItems:'center', justifyContent:'center'}}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -141,10 +141,10 @@ export default function InvestorDashboard(){
       </div>
 
       {/* Product Cards */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title" style={{display:'flex', alignItems:'center', gap:8}}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div className="card" style={{border:'1px solid var(--border)'}}>  
+        <div className="card-header" style={{padding: isMobile ? '16px' : '20px'}}>
+          <div className="card-title" style={{display:'flex', alignItems:'center', gap:8, fontSize: isMobile ? 16 : 18}}>
+            <svg width={isMobile ? 18 : 20} height={isMobile ? 18 : 20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
               <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
               <line x1="12" y1="22.08" x2="12" y2="12"/>
@@ -153,74 +153,83 @@ export default function InvestorDashboard(){
           </div>
         </div>
         {loading ? (
-          <div style={{padding:40, textAlign:'center', opacity:0.6}}>
-            <div style={{width:40, height:40, border:'3px solid var(--border)', borderTopColor:'#8b5cf6', borderRadius:'50%', margin:'0 auto 16px', animation:'spin 0.8s linear infinite'}} />
-            <div>Loading products...</div>
+          <div style={{padding: isMobile ? 30 : 40, textAlign:'center', opacity:0.6}}>
+            <div style={{width: isMobile ? 32 : 40, height: isMobile ? 32 : 40, border:'3px solid var(--border)', borderTopColor:'#8b5cf6', borderRadius:'50%', margin:'0 auto 16px', animation:'spin 0.8s linear infinite'}} />
+            <div style={{fontSize: isMobile ? 13 : 14}}>Loading products...</div>
           </div>
         ) : data.products.length === 0 ? (
-          <div style={{padding:40, textAlign:'center', opacity:0.6}}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{margin:'0 auto 16px', opacity:0.3}}>
+          <div style={{padding: isMobile ? 30 : 40, textAlign:'center', opacity:0.6}}>
+            <svg width={isMobile ? 40 : 48} height={isMobile ? 40 : 48} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{margin:'0 auto 16px', opacity:0.3}}>
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
             </svg>
-            <div>No products assigned yet</div>
+            <div style={{fontSize: isMobile ? 13 : 14}}>No products assigned yet</div>
           </div>
         ) : (
-          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(340px, 1fr))', gap:20}}>
+          <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))', gap: isMobile ? 16 : 20, padding: isMobile ? 12 : 16}}>
             {data.products.map((p, idx) => (
-              <div key={idx} className="card" style={{border:'1px solid var(--border)', padding:0, overflow:'hidden', background:'var(--card-bg)'}}>
+              <div key={idx} className="card" style={{border:'1px solid var(--border)', padding:0, overflow:'hidden', background:'var(--card-bg)', transition:'transform 0.2s, box-shadow 0.2s', cursor:'default'}}>
                 {/* Product Image */}
-                {p.product?.image && (
-                  <div style={{width:'100%', height:220, overflow:'hidden', background:'var(--panel)', position:'relative'}}>
+                <div style={{width:'100%', height: isMobile ? 180 : 220, overflow:'hidden', background:'var(--panel)', position:'relative'}}>
+                  {p.product?.image ? (
                     <img 
                       src={`${API_BASE}${p.product.image}`} 
                       alt={p.product.name}
                       style={{width:'100%', height:'100%', objectFit:'cover'}}
-                      onError={(e)=> e.target.style.display='none'}
+                      onError={(e)=> {
+                        e.target.style.display='none'
+                        e.target.parentElement.style.background='linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                      }}
                     />
-                    <div style={{position:'absolute', top:12, right:12, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(8px)', padding:'6px 12px', borderRadius:20, color:'#fff', fontSize:12, fontWeight:600}}>
-                      {p.country}
+                  ) : (
+                    <div style={{width:'100%', height:'100%', background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                      </svg>
                     </div>
+                  )}
+                  <div style={{position:'absolute', top: isMobile ? 8 : 12, right: isMobile ? 8 : 12, background:'rgba(0,0,0,0.8)', backdropFilter:'blur(10px)', padding: isMobile ? '4px 10px' : '6px 12px', borderRadius:20, color:'#fff', fontSize: isMobile ? 11 : 12, fontWeight:700, boxShadow:'0 2px 8px rgba(0,0,0,0.2)'}}>
+                    {p.country}
                   </div>
-                )}
+                </div>
                 
                 {/* Product Info */}
-                <div style={{padding:20}}>
-                  <div style={{fontSize:18, fontWeight:700, marginBottom:6}}>{p.product?.name || 'Product'}</div>
+                <div style={{padding: isMobile ? 16 : 20}}>
+                  <div style={{fontSize: isMobile ? 16 : 18, fontWeight:700, marginBottom: isMobile ? 4 : 6, lineHeight:1.3}}>{p.product?.name || 'Product'}</div>
                   {p.product?.description && (
-                    <div style={{fontSize:13, opacity:0.6, marginBottom:16, lineHeight:1.6}}>{p.product.description}</div>
+                    <div style={{fontSize: isMobile ? 12 : 13, opacity:0.6, marginBottom: isMobile ? 12 : 16, lineHeight:1.6, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden'}}>{p.product.description}</div>
                   )}
                   
                   {/* Stats Grid */}
-                  <div style={{display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:12, marginBottom:16}}>
-                    <div style={{background:'var(--panel)', padding:12, borderRadius:8, border:'1px solid var(--border)'}}>
-                      <div className="helper" style={{fontSize:11, marginBottom:4}}>Stock Available</div>
-                      <div style={{fontWeight:800, color:'#f59e0b', fontSize:16}}>{num(p.stock)}</div>
+                  <div style={{display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap: isMobile ? 8 : 12, marginBottom: isMobile ? 12 : 16}}>
+                    <div style={{background:'var(--panel)', padding: isMobile ? 10 : 12, borderRadius:8, border:'1px solid var(--border)'}}>
+                      <div className="helper" style={{fontSize: isMobile ? 10 : 11, marginBottom:4}}>Stock Available</div>
+                      <div style={{fontWeight:800, color:'#f59e0b', fontSize: isMobile ? 14 : 16}}>{num(p.stock)}</div>
                     </div>
-                    <div style={{background:'var(--panel)', padding:12, borderRadius:8, border:'1px solid var(--border)'}}>
-                      <div className="helper" style={{fontSize:11, marginBottom:4}}>Price/Unit</div>
-                      <div style={{fontWeight:800, color:'#10b981', fontSize:16}}>{data.currency} {num(p.product?.price || 0)}</div>
+                    <div style={{background:'var(--panel)', padding: isMobile ? 10 : 12, borderRadius:8, border:'1px solid var(--border)'}}>
+                      <div className="helper" style={{fontSize: isMobile ? 10 : 11, marginBottom:4}}>Price/Unit</div>
+                      <div style={{fontWeight:800, color:'#10b981', fontSize: isMobile ? 14 : 16}}>{data.currency} {num(p.product?.price || 0)}</div>
                     </div>
-                    <div style={{background:'var(--panel)', padding:12, borderRadius:8, border:'1px solid var(--border)'}}>
-                      <div className="helper" style={{fontSize:11, marginBottom:4}}>Your Commission</div>
-                      <div style={{fontWeight:800, color:'#10b981', fontSize:16}}>{data.currency} {num(p.profitPerUnit)}</div>
+                    <div style={{background:'var(--panel)', padding: isMobile ? 10 : 12, borderRadius:8, border:'1px solid var(--border)'}}>
+                      <div className="helper" style={{fontSize: isMobile ? 10 : 11, marginBottom:4}}>Your Commission</div>
+                      <div style={{fontWeight:800, color:'#10b981', fontSize: isMobile ? 14 : 16}}>{data.currency} {num(p.profitPerUnit)}</div>
                     </div>
-                    <div style={{background:'var(--panel)', padding:12, borderRadius:8, border:'1px solid var(--border)'}}>
-                      <div className="helper" style={{fontSize:11, marginBottom:4}}>Total Orders</div>
-                      <div style={{fontWeight:800, color:'#8b5cf6', fontSize:16}}>{num(p.totalUnits)}</div>
+                    <div style={{background:'var(--panel)', padding: isMobile ? 10 : 12, borderRadius:8, border:'1px solid var(--border)'}}>
+                      <div className="helper" style={{fontSize: isMobile ? 10 : 11, marginBottom:4}}>Total Orders</div>
+                      <div style={{fontWeight:800, color:'#8b5cf6', fontSize: isMobile ? 14 : 16}}>{num(p.totalUnits)}</div>
                     </div>
                   </div>
 
                   {/* Performance */}
-                  <div style={{padding:16, background:'var(--panel)', borderRadius:10, border:'1px solid var(--border)'}}>
-                    <div style={{fontSize:12, fontWeight:600, opacity:0.7, marginBottom:12}}>Performance Summary</div>
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
-                      <span style={{fontSize:13, opacity:0.7}}>Delivered Orders</span>
-                      <strong style={{color:'#3b82f6', fontSize:15}}>{num(p.deliveredUnits)}</strong>
+                  <div style={{padding: isMobile ? 12 : 16, background:'var(--panel)', borderRadius:10, border:'1px solid var(--border)'}}>
+                    <div style={{fontSize: isMobile ? 11 : 12, fontWeight:600, opacity:0.7, marginBottom: isMobile ? 10 : 12}}>Performance Summary</div>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: isMobile ? 6 : 8}}>
+                      <span style={{fontSize: isMobile ? 12 : 13, opacity:0.7}}>Delivered Orders</span>
+                      <strong style={{color:'#3b82f6', fontSize: isMobile ? 14 : 15}}>{num(p.deliveredUnits)}</strong>
                     </div>
-                    <div style={{height:1, background:'var(--border)', margin:'12px 0'}} />
+                    <div style={{height:1, background:'var(--border)', margin: isMobile ? '10px 0' : '12px 0'}} />
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                      <span style={{fontSize:13, fontWeight:600}}>Your Total Profit</span>
-                      <strong style={{color:'#10b981', fontSize:18, fontWeight:800}}>{data.currency} {num(p.totalProfit)}</strong>
+                      <span style={{fontSize: isMobile ? 12 : 13, fontWeight:600}}>Your Total Profit</span>
+                      <strong style={{color:'#10b981', fontSize: isMobile ? 16 : 18, fontWeight:800}}>{data.currency} {num(p.totalProfit)}</strong>
                     </div>
                   </div>
                 </div>
