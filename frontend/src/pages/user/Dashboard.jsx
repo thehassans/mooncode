@@ -393,7 +393,8 @@ export default function UserDashboard(){
       <div className="card" style={{marginBottom:12}}>
         {(function(){
           const totalOrdersCount = Number(metrics?.totalOrders||0)
-          const deliveredCount = Number(metrics?.deliveredOrders||0)
+          const deliveredOrdersCount = Number(metrics?.deliveredOrders||0)
+          const deliveredQty = Number(metrics?.productMetrics?.global?.stockDeliveredQty||0)
           const pendingCount = Number((statusTotals?.pending)||0)
           const amountTotalOrdersAED = sumAmountAED('amountTotalOrders')
           const amountDeliveredAED = sumAmountAED('amountDelivered')
@@ -434,7 +435,7 @@ export default function UserDashboard(){
               <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12}}>
                 <Tile title="Total Orders" valueEl={<NavLink className="link" style={{color:'#0ea5e9'}} to={appendRange('/user/orders')}>{fmtNum(totalOrdersCount)}</NavLink>} />
                 <Tile title="Amount of Total Orders (AED)" valueEl={<NavLink className="link" style={{color:'#10b981'}} to={appendRange('/user/orders')}>{`AED ${fmtAmt(amountTotalOrdersAED)}`}</NavLink>} chipsEl={currencyChipsFor('amountTotalOrders')} />
-                <Tile title="Orders Delivered" valueEl={<NavLink className="link" style={{color:'#10b981'}} to={appendRange('/user/orders?ship=delivered')}>{fmtNum(deliveredCount)}</NavLink>} />
+                <Tile title="Orders Delivered (Qty)" valueEl={<NavLink className="link" style={{color:'#10b981'}} to={appendRange('/user/orders?ship=delivered')}>{fmtNum(deliveredQty)}</NavLink>} />
                 <Tile title="Amount of Orders Delivered (AED)" valueEl={<NavLink className="link" style={{color:'#10b981'}} to={appendRange('/user/orders?ship=delivered')}>{`AED ${fmtAmt(amountDeliveredAED)}`}</NavLink>} chipsEl={currencyChipsFor('amountDelivered')} />
                 <Tile title="Open Orders" valueEl={<NavLink className="link" style={{color:'#f59e0b'}} to={appendRange('/user/orders?ship=open')}>{fmtNum(pendingCount)}</NavLink>} />
                 <Tile title="Open Amount (AED)" valueEl={<NavLink className="link" style={{color:'#f97316'}} to={appendRange('/user/orders?ship=open')}>{`AED ${fmtAmt(amountPendingAED)}`}</NavLink>} chipsEl={currencyChipsFor('amountPending')} />
