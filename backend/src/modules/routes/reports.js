@@ -884,8 +884,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
               in: {
                 $switch: {
                   branches: [
-                    { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA','SA'] ] }, then: 'KSA' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES','AE'] ] }, then: 'UAE' },
                     { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
                     { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
                     { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
@@ -1253,12 +1253,15 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       countries[key].amountPending = (countries[key].amountPending || 0) + (cm.amountPending || 0);
     });
     
-    // Inject delivered quantity per country from product metrics aggregation
+    // Inject delivered quantity and local delivered amount per country from product metrics aggregation
     if (productCountryAgg){
       for (const c of KNOWN_COUNTRIES){
         const qty = Number(productCountryAgg?.[c]?.stockDeliveredQty || 0)
         if (!countries[c]) countries[c] = {}
         countries[c].deliveredQty = qty
+        const cur = (countryCurrencyMap && countryCurrencyMap[c]) ? countryCurrencyMap[c] : (c==='KSA' ? 'SAR' : c==='UAE' ? 'AED' : c==='Oman' ? 'OMR' : c==='Bahrain' ? 'BHD' : c==='India' ? 'INR' : c==='Kuwait' ? 'KWD' : c==='Qatar' ? 'QAR' : 'AED')
+        const amtLocal = Number(productCountryAgg?.[c]?.deliveredValueByCurrency?.[cur] || 0)
+        countries[c].amountDeliveredLocal = amtLocal
       }
     }
     

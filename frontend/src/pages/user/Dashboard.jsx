@@ -589,7 +589,7 @@ export default function UserDashboard(){
             const name = flag + ((c==='KSA') ? 'Saudi Arabia (KSA)' : c)
             const qs = encodeURIComponent(c)
             const amtTotalStr = formatCurrency(m?.amountTotalOrders||0, c)
-            const amtDeliveredStr = formatCurrency(m?.amountDelivered||0, c)
+            const amtDeliveredStr = formatCurrency(m?.amountDeliveredLocal ?? m?.amountDelivered || 0, c)
             const amtPendingStr = formatCurrency(m?.amountPending||0, c)
             return (
               <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
