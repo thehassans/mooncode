@@ -847,6 +847,7 @@ router.get('/summary', auth, allowRoles('admin','user','agent','manager'), async
           { $unwind: '$items' },
           { $match: { 'items.productId': { $in: productIds } } },
           { $project: {
+              _id: 1,
               orderCountry: { $ifNull: ['$orderCountry', ''] },
               total: { $ifNull: ['$total', 0] },
               discount: { $ifNull: ['$discount', 0] },
@@ -872,7 +873,9 @@ router.get('/summary', auth, allowRoles('admin','user','agent','manager'), async
               }
             }
           },
-          { $group: { _id: '$orderCurrency', amount: { $sum: { $subtract: ['$total', '$discount'] } } } }
+          // Deduplicate per order first, so multi-item orders are counted once
+          { $group: { _id: { orderId: '$_id', orderCurrency: '$orderCurrency' }, amount: { $first: { $subtract: ['$total', '$discount'] } } } },
+          { $group: { _id: '$_id.orderCurrency', amount: { $sum: '$amount' } } }
         ]) : []
         for (const row of webByCurrency){
           const ccy = String(row._id||'')

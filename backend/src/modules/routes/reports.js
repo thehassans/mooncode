@@ -824,7 +824,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     
     // Products In House - from inventory (remaining stock)
     const productStats = await Product.aggregate([
-      { $match: { createdBy: ownerId } },
+      { $match: { createdBy: { $in: creatorIds } } },
       { $group: { _id: null, totalProductsInHouse: { $sum: '$stockQty' } } }
     ]);
     const totalProductsInHouse = productStats[0]?.totalProductsInHouse || 0;
@@ -847,7 +847,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     const totalExpense = totalAgentExpense + totalDriverExpense;
     
     // ===== Product metrics (inventory + delivered orders) =====
-    const products = await Product.find({ createdBy: ownerId })
+    const products = await Product.find({ createdBy: { $in: creatorIds } })
       .select('_id price purchasePrice baseCurrency stockByCountry stock stockQty')
       .lean()
     const productIds = products.map(p => p._id)
@@ -1179,14 +1179,34 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
           }
         }
       } },
+      { $project: {
+          orderCountryCanon: 1,
+          shipmentStatus: 1,
+          total: { $ifNull: ['$total', 0] },
+          discount: { $ifNull: ['$discount', 0] },
+          items: { $ifNull: ['$items', []] },
+          quantity: { $ifNull: ['$quantity', 1] }
+        }
+      },
+      { $addFields: {
+          qty: {
+            $cond: [
+              { $gt: [ { $size: '$items' }, 0 ] },
+              { $sum: { $map: { input: '$items', as: 'it', in: { $cond: [ { $lt: [ { $ifNull: ['$$it.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$$it.quantity', 1] } ] } } } },
+              { $cond: [ { $lt: ['$quantity', 1] }, 1, '$quantity' ] }
+            ]
+          }
+        }
+      },
       { $group: {
         _id: '$orderCountryCanon',
         // amounts
-        totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
-        amountTotalOrders: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } },
-        amountDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
-        amountPending: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'pending'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
-        amountOpen: { $sum: { $cond: [ { $in: ['$shipmentStatus', ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response','attempted','contacted']] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', '$discount' ] }, 0 ] } },
+        amountTotalOrders: { $sum: { $subtract: [ '$total', '$discount' ] } },
+        amountDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', '$discount' ] }, 0 ] } },
+        amountPending: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'pending'] }, { $subtract: [ '$total', '$discount' ] }, 0 ] } },
+        amountOpen: { $sum: { $cond: [ { $in: ['$shipmentStatus', ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response','attempted','contacted']] }, { $subtract: [ '$total', '$discount' ] }, 0 ] } },
+        amountDiscountDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, '$discount', 0 ] } },
         // counts
         totalOrders: { $sum: 1 },
         pendingOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'pending'] }, 1, 0 ] } },
@@ -1199,6 +1219,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         noResponseOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'no_response'] }, 1, 0 ] } },
         returnedOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'returned'] }, 1, 0 ] } },
         cancelledOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'cancelled'] }, 1, 0 ] } },
+        deliveredQty: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, '$qty', 0 ] } }
       } }
     ]);
     
@@ -1232,10 +1253,73 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         amountTotalOrders: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } },
         amountDelivered: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $eq: ['$status', 'done'] } ] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
         amountPending: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        amountDiscountDelivered: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $eq: ['$status', 'done'] } ] }, { $ifNull: ['$discount', 0] }, 0 ] } },
         totalOrders: { $sum: 1 },
         deliveredOrders: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $eq: ['$status', 'done'] } ] }, 1, 0 ] } },
       } }
     ]);
+
+    // Delivered quantity by country (internal Orders): items-aware and not restricted by productIds
+    const deliveredQtyByCountryInternal = await Order.aggregate([
+      { $match: { createdBy: { $in: creatorIds }, $or: [ { $eq: ['$shipmentStatus','delivered'] }, { $eq: ['$status','done'] } ] } }
+    ]).catch(async()=>{
+      // Fallback pipeline without $expr in $match for some Mongo versions
+      return await Order.aggregate([
+        { $match: { createdBy: { $in: creatorIds }, $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
+        { $addFields: {
+          orderCountryCanon: {
+            $let: {
+              vars: { c: { $ifNull: ['$orderCountry', ''] } },
+              in: {
+                $switch: {
+                  branches: [
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
+                  ],
+                  default: '$$c'
+                }
+              }
+            }
+          },
+          _items: { $cond: [ { $gt: [ { $size: { $ifNull: ['$items', []] } }, 0 ] }, '$items', [ { quantity: { $ifNull: ['$quantity', 1] } } ] ] }
+        } },
+        { $unwind: '$_items' },
+        { $group: { _id: '$orderCountryCanon', qty: { $sum: { $cond: [ { $lt: [ { $ifNull: ['$_items.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$_items.quantity', 1] } ] } } } }
+      ])
+    })
+
+    // Delivered quantity by country (WebOrders)
+    const webDeliveredQtyByCountry = await WebOrder.aggregate([
+      { $match: { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
+      { $addFields: {
+        orderCountryCanon: {
+          $let: {
+            vars: { c: { $ifNull: ['$orderCountry', ''] } },
+            in: {
+              $switch: {
+                branches: [
+                  { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
+                ],
+                default: '$$c'
+              }
+            }
+          }
+        }
+      } },
+      { $unwind: '$items' },
+      { $group: { _id: '$orderCountryCanon', qty: { $sum: { $cond: [ { $lt: [ { $ifNull: ['$items.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$items.quantity', 1] } ] } } } }
+    ])
     
     // Driver expenses by country (based on driver's country)
     const driversByCountry = await User.aggregate([
@@ -1290,6 +1374,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       const amtPending = (cm.amountOpen != null ? cm.amountOpen : cm.amountPending) || 0
       countries[key].amountDelivered = (countries[key].amountDelivered || 0) + (cm.amountDelivered || 0);
       countries[key].amountPending = (countries[key].amountPending || 0) + amtPending;
+      countries[key].amountDiscountDelivered = (countries[key].amountDiscountDelivered || 0) + (cm.amountDiscountDelivered || 0);
+      countries[key].deliveredQty = (countries[key].deliveredQty || 0) + (cm.deliveredQty || 0);
     });
     
     // Merge web orders
@@ -1303,21 +1389,30 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       countries[key].amountTotalOrders = (countries[key].amountTotalOrders || 0) + (cm.amountTotalOrders || 0);
       countries[key].amountDelivered = (countries[key].amountDelivered || 0) + (cm.amountDelivered || 0);
       countries[key].amountPending = (countries[key].amountPending || 0) + (cm.amountPending || 0);
+      countries[key].amountDiscountDelivered = (countries[key].amountDiscountDelivered || 0) + (cm.amountDiscountDelivered || 0);
     });
+
+    // Merge delivered quantities from internal + web item-level aggregations
+    const deliveredQtyMap = {}
+    for (const r of (Array.isArray(deliveredQtyByCountryInternal)? deliveredQtyByCountryInternal: [])){
+      const key = canon(String(r._id||''))
+      deliveredQtyMap[key] = (deliveredQtyMap[key]||0) + Number(r.qty||0)
+    }
+    for (const r of (Array.isArray(webDeliveredQtyByCountry)? webDeliveredQtyByCountry: [])){
+      const key = canon(String(r._id||''))
+      deliveredQtyMap[key] = (deliveredQtyMap[key]||0) + Number(r.qty||0)
+    }
     
-    // Inject delivered quantity and local delivered amount per country from product metrics aggregation
-    if (productCountryAgg){
-      for (const c of KNOWN_COUNTRIES){
-        const qty = Number(productCountryAgg?.[c]?.stockDeliveredQty || 0)
-        if (!countries[c]) countries[c] = {}
-        countries[c].deliveredQty = qty
-        const cur = (countryCurrencyMap && countryCurrencyMap[c]) ? countryCurrencyMap[c] : (c==='KSA' ? 'SAR' : c==='UAE' ? 'AED' : c==='Oman' ? 'OMR' : c==='Bahrain' ? 'BHD' : c==='India' ? 'INR' : c==='Kuwait' ? 'KWD' : c==='Qatar' ? 'QAR' : 'AED')
-        const amtLocal = Number(productCountryAgg?.[c]?.deliveredValueByCurrency?.[cur] || 0)
-        countries[c].amountDeliveredLocal = amtLocal
-        const discLocal = Number(productCountryAgg?.[c]?.discountValueByCurrency?.[cur] || 0)
-        countries[c].amountDiscountLocal = discLocal
-        countries[c].amountGrossLocal = amtLocal + discLocal
-      }
+    // Set per-country delivered qty and amounts (local) from order aggregates (not restricted by Product list)
+    for (const c of KNOWN_COUNTRIES){
+      if (!countries[c]) countries[c] = {}
+      const cur = (countryCurrencyMap && countryCurrencyMap[c]) ? countryCurrencyMap[c] : (c==='KSA' ? 'SAR' : c==='UAE' ? 'AED' : c==='Oman' ? 'OMR' : c==='Bahrain' ? 'BHD' : c==='India' ? 'INR' : c==='Kuwait' ? 'KWD' : c==='Qatar' ? 'QAR' : 'AED')
+      countries[c].deliveredQty = Number(deliveredQtyMap[c] || countries[c].deliveredQty || 0)
+      const amtLocal = Number(countries[c].amountDelivered || 0)
+      const discLocal = Number(countries[c].amountDiscountDelivered || 0)
+      countries[c].amountDeliveredLocal = amtLocal
+      countries[c].amountDiscountLocal = discLocal
+      countries[c].amountGrossLocal = amtLocal + discLocal
     }
     
     // Add driver expenses
