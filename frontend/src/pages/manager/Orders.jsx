@@ -100,6 +100,24 @@ export default function ManagerOrders(){
     return params
   }, [q, country, city, ship, onlyUnassigned, agentFilter, driverFilter])
 
+  function countryToCurrency(c){
+    const raw = String(c||'').trim().toLowerCase()
+    if (!raw) return ''
+    if (raw==='ksa' || raw==='saudi arabia' || raw==='saudi' || raw==='sa') return 'SAR'
+    if (raw==='uae' || raw==='united arab emirates' || raw==='ae') return 'AED'
+    if (raw==='oman' || raw==='om') return 'OMR'
+    if (raw==='bahrain' || raw==='bh') return 'BHD'
+    if (raw==='india' || raw==='in') return 'INR'
+    if (raw==='kuwait' || raw==='kw' || raw==='kwt') return 'KWD'
+    if (raw==='qatar' || raw==='qa') return 'QAR'
+    return ''
+  }
+  function formatCurrency(n, cur){
+    const v = Number(n||0)
+    const s = v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return `${cur} ${s}`
+  }
+
   async function loadSummary(){
     try{
       const params = new URLSearchParams(buildQuery.toString())
