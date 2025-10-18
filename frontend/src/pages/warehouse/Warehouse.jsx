@@ -382,6 +382,27 @@ export default function Warehouse(){
     }
     return out
   }
+  function calcDiscountByCurrency(it, onlyCountry=null){
+    const out = {}
+    const amounts = it?.discountAmountByCountryAndCurrency || null
+    if (amounts){
+      if (onlyCountry && onlyCountry !== 'All'){
+        const m = amounts?.[onlyCountry] || {}
+        for (const k of CUR_KEY_ORDER){ out[k] = Number(m[k]||0) }
+      } else {
+        for (const k of CUR_KEY_ORDER){ out[k] = 0 }
+        for (const m of Object.values(amounts)){
+          for (const [cur, amt] of Object.entries(m||{})){
+            if (out[cur] != null) out[cur] += Number(amt||0)
+          }
+        }
+      }
+      return out
+    }
+    // Fallback: no discount map -> zeroes by currency
+    for (const k of CUR_KEY_ORDER){ out[k] = 0 }
+    return out
+  }
   function calcDeliveredRevByCurrency(it, onlyCountry=null){
     const out = {}
     const amounts = it?.deliveredAmountByCountryAndCurrency || null
@@ -419,6 +440,7 @@ export default function Warehouse(){
     let totalBought=0, potentialRevenueTotal=0
     const stockValueByC = { SAR:0, OMR:0, AED:0, BHD:0, INR:0, KWD:0, QAR:0 }
     const deliveredRevByC = { SAR:0, OMR:0, AED:0, BHD:0, INR:0, KWD:0, QAR:0 }
+    const discountByC = { SAR:0, OMR:0, AED:0, BHD:0, INR:0, KWD:0, QAR:0 }
     for (const it of filtered){
       stockUAE += Number(it?.stockLeft?.UAE||0)
       stockOman += Number(it?.stockLeft?.Oman||0)
@@ -444,7 +466,8 @@ export default function Warehouse(){
       }
       const sv = calcStockValueByCurrency(it, onlyC)
       const dr = calcDeliveredRevByCurrency(it, onlyC)
-      for (const k of curKeys){ stockValueByC[k] += Number(sv[k]||0); deliveredRevByC[k] += Number(dr[k]||0) }
+      const ds = calcDiscountByCurrency(it, onlyC)
+      for (const k of curKeys){ stockValueByC[k] += Number(sv[k]||0); deliveredRevByC[k] += Number(dr[k]||0); discountByC[k] += Number(ds[k]||0) }
       if (onlyC){
         const base = it?.baseCurrency || it?.currency || 'SAR'
         const qty = Number(it?.stockLeft?.[onlyC]||0)
@@ -454,7 +477,9 @@ export default function Warehouse(){
         potentialRevenueTotal += Number(it?.potentialRevenue||0)
       }
     }
-    return { stockUAE, stockOman, stockKSA, stockBahrain, stockIndia, stockKuwait, stockQatar, stockTotal, deliveredUAE, deliveredOman, deliveredKSA, deliveredBahrain, deliveredIndia, deliveredKuwait, deliveredQatar, deliveredTotal, totalBought, potentialRevenueTotal, stockValueByC, deliveredRevByC }
+    const grossByC = {}
+    for (const k of curKeys){ grossByC[k] = Number(deliveredRevByC[k]||0) + Number(discountByC[k]||0) }
+    return { stockUAE, stockOman, stockKSA, stockBahrain, stockIndia, stockKuwait, stockQatar, stockTotal, deliveredUAE, deliveredOman, deliveredKSA, deliveredBahrain, deliveredIndia, deliveredKuwait, deliveredQatar, deliveredTotal, totalBought, potentialRevenueTotal, stockValueByC, deliveredRevByC, discountByC, grossByC }
   }, [filtered, countryFilter, selectedCcy])
 
   return (
@@ -486,6 +511,25 @@ export default function Warehouse(){
 
       <div className="card">
         <div style={{fontWeight:800, marginBottom:8}}>Inhouse Products (All Warehouses)</div>
+        {countryFilter !== 'All' && (
+          <div className="section" style={{display:'grid', gap:10, marginBottom:8}}>
+            <div style={{fontWeight:700}}>Selected Country Totals ({countryFilter})</div>
+            <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:10}}>
+              <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                <div className="helper">Delivered Revenue ({selectedCcy})</div>
+                <div style={{fontWeight:900}}>{num(totals.deliveredRevByC[selectedCcy]||0)}</div>
+              </div>
+              <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                <div className="helper">Discount Given ({selectedCcy})</div>
+                <div style={{fontWeight:900}}>{num(totals.discountByC[selectedCcy]||0)}</div>
+              </div>
+              <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                <div className="helper">Gross Before Discount ({selectedCcy})</div>
+                <div style={{fontWeight:900}}>{num(totals.grossByC[selectedCcy]||0)}</div>
+              </div>
+            </div>
+          </div>
+        )}
         <div style={{overflowX:'auto'}}>
           <table style={{width:'100%', borderCollapse:'separate', borderSpacing:0, border:'1px solid var(--border)', borderRadius:8, overflow:'hidden'}}>
             <thead>

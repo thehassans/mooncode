@@ -33,8 +33,7 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
     const productIds = products.map(p => p._id)
 
     // Aggregate delivered quantities per product and country, supporting both single-product orders and multi-item orders
-    // Internal Orders should only consider shipmentStatus='delivered' (status field isn't used for deliveries)
-    const ordersDeliveredMatch = { shipmentStatus: 'delivered' }
+    const baseMatch = { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] }
 
     // Workspace scoping for Orders: include owner + agents/managers; capture manager's assigned countries
     let createdByScope = null
@@ -65,7 +64,7 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
     // Internal Orders: delivered quantities and amounts
     const deliveredAgg = await Order.aggregate([
       { $match: { 
-          ...ordersDeliveredMatch,
+          ...baseMatch,
           ...(createdByScope ? { createdBy: { $in: createdByScope.map(id => new mongoose.Types.ObjectId(id)) } } : {}),
           $or: [
             { productId: { $in: productIds } },
@@ -89,7 +88,9 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
           productId: '$_items.productId',
           orderCountry: { $ifNull: ['$orderCountry', ''] },
           quantity: { $ifNull: ['$_items.quantity', 1] },
-          orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] }
+          orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] },
+          discountAmount: { $ifNull: ['$discount', 0] },
+          grossAmount: { $ifNull: ['$total', 0] }
         }
       },
       { $addFields: {
@@ -136,7 +137,9 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
       { $group: {
           _id: { productId: '$productId', country: '$orderCountryCanon', currency: '$orderCurrency' },
           deliveredQty: { $sum: { $ifNull: ['$quantity', 1] } },
-          totalAmount: { $sum: '$orderAmount' }
+          totalAmount: { $sum: '$orderAmount' },
+          totalDiscount: { $sum: '$discountAmount' },
+          totalGross: { $sum: '$grossAmount' }
         }
       },
     ])
@@ -151,7 +154,9 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
           orderCountry: { $ifNull: ['$orderCountry', ''] },
           quantity: { $ifNull: ['$items.quantity', 1] },
           orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] },
-          currency: { $ifNull: ['$currency', null] }
+          currency: { $ifNull: ['$currency', null] },
+          discountAmount: { $ifNull: ['$discount', 0] },
+          grossAmount: { $ifNull: ['$total', 0] }
         }
       },
       { $addFields: {
@@ -175,31 +180,39 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
             }
           },
           orderCurrency: {
-            $switch: {
-              branches: [
-                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KSA','SAUDI ARABIA'] ] }, then: 'SAR' },
-                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'AED' },
-                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['OMAN','OM'] ] }, then: 'OMR' },
-                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['BAHRAIN','BH'] ] }, then: 'BHD' },
-                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['INDIA','IN'] ] }, then: 'INR' },
-                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KUWAIT','KW'] ] }, then: 'KWD' },
-                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['QATAR','QA'] ] }, then: 'QAR' },
-              ],
-              default: 'AED'
-            }
+            $ifNull: [
+              '$currency',
+              {
+                $switch: {
+                  branches: [
+                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KSA','SAUDI ARABIA'] ] }, then: 'SAR' },
+                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'AED' },
+                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['OMAN','OM'] ] }, then: 'OMR' },
+                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['BAHRAIN','BH'] ] }, then: 'BHD' },
+                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['INDIA','IN'] ] }, then: 'INR' },
+                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KUWAIT','KW'] ] }, then: 'KWD' },
+                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['QATAR','QA'] ] }, then: 'QAR' },
+                  ],
+                  default: 'AED'
+                }
+              }
+            ]
           }
         }
       },
       { $group: {
           _id: { productId: '$productId', country: '$orderCountryCanon', currency: '$orderCurrency' },
           deliveredQty: { $sum: { $ifNull: ['$quantity', 1] } },
-          totalAmount: { $sum: '$orderAmount' }
+          totalAmount: { $sum: '$orderAmount' },
+          totalDiscount: { $sum: '$discountAmount' },
+          totalGross: { $sum: '$grossAmount' }
         }
       },
     ])
 
     const deliveredMap = new Map()
-    const deliveredAmountMap = new Map() // pid -> { country: { currency: amount } }
+    const deliveredAmountMap = new Map()
+    const deliveredDiscountMap = new Map()
     const normCountry = (c)=>{
       const s = String(c||'').trim()
       if (!s) return 'Unknown'
@@ -222,9 +235,12 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
       const currency = String(row._id.currency || 'AED')
       if (!deliveredMap.has(pid)) deliveredMap.set(pid, {})
       if (!deliveredAmountMap.has(pid)) deliveredAmountMap.set(pid, {})
+      if (!deliveredDiscountMap.has(pid)) deliveredDiscountMap.set(pid, {})
       deliveredMap.get(pid)[country] = (deliveredMap.get(pid)[country] || 0) + Number(row.deliveredQty || 0)
       if (!deliveredAmountMap.get(pid)[country]) deliveredAmountMap.get(pid)[country] = {}
       deliveredAmountMap.get(pid)[country][currency] = (deliveredAmountMap.get(pid)[country][currency] || 0) + Number(row.totalAmount || 0)
+      if (!deliveredDiscountMap.get(pid)[country]) deliveredDiscountMap.get(pid)[country] = {}
+      deliveredDiscountMap.get(pid)[country][currency] = (deliveredDiscountMap.get(pid)[country][currency] || 0) + Number(row.totalDiscount || 0)
     }
     for (const row of webDeliveredAgg) {
       const pid = String(row._id.productId)
@@ -232,9 +248,12 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
       const currency = String(row._id.currency || 'AED')
       if (!deliveredMap.has(pid)) deliveredMap.set(pid, {})
       if (!deliveredAmountMap.has(pid)) deliveredAmountMap.set(pid, {})
+      if (!deliveredDiscountMap.has(pid)) deliveredDiscountMap.set(pid, {})
       deliveredMap.get(pid)[country] = (deliveredMap.get(pid)[country] || 0) + Number(row.deliveredQty || 0)
       if (!deliveredAmountMap.get(pid)[country]) deliveredAmountMap.get(pid)[country] = {}
       deliveredAmountMap.get(pid)[country][currency] = (deliveredAmountMap.get(pid)[country][currency] || 0) + Number(row.totalAmount || 0)
+      if (!deliveredDiscountMap.get(pid)[country]) deliveredDiscountMap.get(pid)[country] = {}
+      deliveredDiscountMap.get(pid)[country][currency] = (deliveredDiscountMap.get(pid)[country][currency] || 0) + Number(row.totalDiscount || 0)
     }
 
     const response = products.map(p => {
@@ -286,6 +305,7 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
       const stockValueByCurrency = { AED: 0, OMR: 0, SAR: 0, BHD: 0, INR: 0, KWD: 0, QAR: 0 }
       // Delivered revenue = actual order amounts by currency
       const amtByCountry = deliveredAmountMap.get(String(p._id)) || {}
+      const discByCountry = deliveredDiscountMap.get(String(p._id)) || {}
       for (const c of Object.keys(amtByCountry)){
         const byCur = amtByCountry[c] || {}
         for (const [cur, amt] of Object.entries(byCur)){
@@ -314,6 +334,7 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
         deliveredRevenue: Object.values(deliveredRevenueByCurrency).reduce((s,v)=> s + Number(v||0), 0),
         deliveredRevenueByCurrency,
         deliveredAmountByCountryAndCurrency: amtByCountry,
+        discountAmountByCountryAndCurrency: discByCountry,
         stockValueByCurrency,
         createdAt: p.createdAt,
       }

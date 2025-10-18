@@ -860,7 +860,14 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     // Aggregate delivered quantities per product and country with actual order amounts
     // From internal Orders
     const deliveredPerProdCountry = await Order.aggregate([
-      { $match: { createdBy: { $in: creatorIds }, shipmentStatus: 'delivered', $or: [ { productId: { $in: productIds } }, { 'items.productId': { $in: productIds } } ] } },
+      { $match: { 
+          createdBy: { $in: creatorIds },
+          $and: [
+            { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] },
+            { $or: [ { productId: { $in: productIds } }, { 'items.productId': { $in: productIds } } ] }
+          ]
+        } 
+      },
       { $project: {
           orderCountry: 1,
           total: 1,
@@ -873,7 +880,9 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
           orderCountry: { $ifNull: ['$orderCountry', ''] },
           productId: '$items.productId',
           quantity: { $let: { vars: { q: { $ifNull: ['$items.quantity', 1] } }, in: { $cond: [ { $lt: ['$$q', 1] }, 1, '$$q' ] } } },
-          orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] }
+          orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] },
+          discountAmount: { $ifNull: ['$discount', 0] },
+          grossAmount: { $ifNull: ['$total', 0] }
         }
       },
       { $match: { productId: { $in: productIds } } },
@@ -921,7 +930,9 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       { $group: { 
           _id: { productId: '$productId', country: '$orderCountryCanon', currency: '$orderCurrency' }, 
           qty: { $sum: '$quantity' },
-          totalAmount: { $sum: '$orderAmount' }
+          totalAmount: { $sum: '$orderAmount' },
+          totalDiscount: { $sum: '$discountAmount' },
+          totalGross: { $sum: '$grossAmount' }
         } 
       }
     ])
@@ -936,7 +947,9 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
           productId: '$items.productId',
           quantity: { $ifNull: ['$items.quantity', 1] },
           orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] },
-          currency: { $ifNull: ['$currency', null] }
+          currency: { $ifNull: ['$currency', null] },
+          discountAmount: { $ifNull: ['$discount', 0] },
+          grossAmount: { $ifNull: ['$total', 0] }
         }
       },
       { $addFields: {
@@ -946,8 +959,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
               in: {
                 $switch: {
                   branches: [
-                    { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA','SA'] ] }, then: 'KSA' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES','AE'] ] }, then: 'UAE' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
                     { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
                     { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
                     { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
@@ -978,12 +991,15 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       { $group: { 
           _id: { productId: '$productId', country: '$orderCountryCanon', currency: '$orderCurrency' }, 
           qty: { $sum: '$quantity' },
-          totalAmount: { $sum: '$orderAmount' }
+          totalAmount: { $sum: '$orderAmount' },
+          totalDiscount: { $sum: '$discountAmount' },
+          totalGross: { $sum: '$grossAmount' }
         } 
       }
     ])
     const deliveredMap = new Map()
-    const deliveredAmountMap = new Map() // Now stores {country: {currency: amount}}
+    const deliveredAmountMap = new Map()
+    const deliveredDiscountMap = new Map()
     // Merge internal orders
     for (const r of deliveredPerProdCountry){
       const pid = String(r._id?.productId || '')
@@ -992,9 +1008,12 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       if (!pid) continue
       if (!deliveredMap.has(pid)) deliveredMap.set(pid, {})
       if (!deliveredAmountMap.has(pid)) deliveredAmountMap.set(pid, {})
+      if (!deliveredDiscountMap.has(pid)) deliveredDiscountMap.set(pid, {})
       deliveredMap.get(pid)[country] = (deliveredMap.get(pid)[country] || 0) + Number(r.qty || 0)
       if (!deliveredAmountMap.get(pid)[country]) deliveredAmountMap.get(pid)[country] = {}
       deliveredAmountMap.get(pid)[country][currency] = (deliveredAmountMap.get(pid)[country][currency] || 0) + Number(r.totalAmount || 0)
+      if (!deliveredDiscountMap.get(pid)[country]) deliveredDiscountMap.get(pid)[country] = {}
+      deliveredDiscountMap.get(pid)[country][currency] = (deliveredDiscountMap.get(pid)[country][currency] || 0) + Number(r.totalDiscount || 0)
     }
     // Merge web orders
     for (const r of webDeliveredPerProdCountry){
@@ -1011,8 +1030,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     const KNOWN_COUNTRIES = ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar']
     const emptyCurrencyMap = () => ({ AED:0, OMR:0, SAR:0, BHD:0, INR:0, KWD:0, QAR:0, USD:0, CNY:0 })
     const productCountryAgg = {}
-    for (const c of KNOWN_COUNTRIES){ productCountryAgg[c] = { stockPurchasedQty:0, stockDeliveredQty:0, stockLeftQty:0, purchaseValueByCurrency: emptyCurrencyMap(), totalPurchaseValueByCurrency: emptyCurrencyMap(), deliveredValueByCurrency: emptyCurrencyMap() } }
-    const productGlobal = { stockPurchasedQty:0, stockDeliveredQty:0, stockLeftQty:0, purchaseValueByCurrency: emptyCurrencyMap(), totalPurchaseValueByCurrency: emptyCurrencyMap(), deliveredValueByCurrency: emptyCurrencyMap() }
+    for (const c of KNOWN_COUNTRIES){ productCountryAgg[c] = { stockPurchasedQty:0, stockDeliveredQty:0, stockLeftQty:0, purchaseValueByCurrency: emptyCurrencyMap(), totalPurchaseValueByCurrency: emptyCurrencyMap(), deliveredValueByCurrency: emptyCurrencyMap(), discountValueByCurrency: emptyCurrencyMap() } }
+    const productGlobal = { stockPurchasedQty:0, stockDeliveredQty:0, stockLeftQty:0, purchaseValueByCurrency: emptyCurrencyMap(), totalPurchaseValueByCurrency: emptyCurrencyMap(), deliveredValueByCurrency: emptyCurrencyMap(), discountValueByCurrency: emptyCurrencyMap() }
     const normalizeCur = (v)=> (['AED','OMR','SAR','BHD','INR','KWD','QAR','USD','CNY'].includes(String(v)) ? String(v) : 'SAR')
     for (const p of products){
       const baseCur = normalizeCur(p.baseCurrency || 'SAR')
@@ -1025,9 +1044,10 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       const leftBy = { KSA: Number(byC.KSA || 0), UAE: Number(byC.UAE || 0), Oman: Number(byC.Oman || 0), Bahrain: Number(byC.Bahrain || 0), India: Number(byC.India || 0), Kuwait: Number(byC.Kuwait || 0), Qatar: Number(byC.Qatar || 0) }
       const delBy = deliveredMap.get(String(p._id)) || {}
       const delAmountBy = deliveredAmountMap.get(String(p._id)) || {}
+      const discAmountBy = deliveredDiscountMap.get(String(p._id)) || {}
       let totalLeft = 0, totalDelivered = 0
       
-      if (!hasStockByCountry && totalStockFallback > 0){
+      if (!hasStockByCountry){
         // Product has no stockByCountry, but deliveries are per-country from orders.
         // 1) Global totals
         const delivered = Object.values(delBy).reduce((s,v)=> s + Number(v||0), 0)
@@ -1068,6 +1088,14 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
               }
             }
           }
+          const cDisc = discAmountBy[c] || {}
+          if (cDisc && typeof cDisc === 'object'){
+            for (const [cur, amt] of Object.entries(cDisc)){
+              if (productCountryAgg[c].discountValueByCurrency[cur] !== undefined){
+                productCountryAgg[c].discountValueByCurrency[cur] += Number(amt || 0)
+              }
+            }
+          }
         }
       } else {
         // Product has country breakdown - purchasePrice is per-unit
@@ -1093,6 +1121,17 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
               }
               if (productGlobal.deliveredValueByCurrency[cur] !== undefined){
                 productGlobal.deliveredValueByCurrency[cur] += Number(amt || 0)
+              }
+            }
+          }
+          const countryDiscounts = discAmountBy[c] || {}
+          if (typeof countryDiscounts === 'object'){
+            for (const [cur, amt] of Object.entries(countryDiscounts)){
+              if (productCountryAgg[c].discountValueByCurrency[cur] !== undefined){
+                productCountryAgg[c].discountValueByCurrency[cur] += Number(amt || 0)
+              }
+              if (productGlobal.discountValueByCurrency[cur] !== undefined){
+                productGlobal.discountValueByCurrency[cur] += Number(amt || 0)
               }
             }
           }
@@ -1258,17 +1297,6 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       countries[key].amountPending = (countries[key].amountPending || 0) + (cm.amountPending || 0);
     });
     
-    // Build delivered totals by country and currency directly from deliveredAmountMap (aligns with warehouse)
-    const deliveredTotalsByCountryAndCurrency = {}
-    for (const [, byCountry] of deliveredAmountMap.entries()){
-      for (const [country, byCur] of Object.entries(byCountry||{})){
-        if (!deliveredTotalsByCountryAndCurrency[country]) deliveredTotalsByCountryAndCurrency[country] = {}
-        for (const [cur, amt] of Object.entries(byCur||{})){
-          deliveredTotalsByCountryAndCurrency[country][cur] = (deliveredTotalsByCountryAndCurrency[country][cur] || 0) + Number(amt || 0)
-        }
-      }
-    }
-
     // Inject delivered quantity and local delivered amount per country from product metrics aggregation
     if (productCountryAgg){
       for (const c of KNOWN_COUNTRIES){
@@ -1276,10 +1304,11 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         if (!countries[c]) countries[c] = {}
         countries[c].deliveredQty = qty
         const cur = (countryCurrencyMap && countryCurrencyMap[c]) ? countryCurrencyMap[c] : (c==='KSA' ? 'SAR' : c==='UAE' ? 'AED' : c==='Oman' ? 'OMR' : c==='Bahrain' ? 'BHD' : c==='India' ? 'INR' : c==='Kuwait' ? 'KWD' : c==='Qatar' ? 'QAR' : 'AED')
-        const byCurTotals = deliveredTotalsByCountryAndCurrency[c] || {}
-        const amtLocal = Number(byCurTotals?.[cur] || 0)
+        const amtLocal = Number(productCountryAgg?.[c]?.deliveredValueByCurrency?.[cur] || 0)
         countries[c].amountDeliveredLocal = amtLocal
-        countries[c].amountDelivered = amtLocal
+        const discLocal = Number(productCountryAgg?.[c]?.discountValueByCurrency?.[cur] || 0)
+        countries[c].amountDiscountLocal = discLocal
+        countries[c].amountGrossLocal = amtLocal + discLocal
       }
     }
     
@@ -1333,8 +1362,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       productMetrics: {
         global: productGlobal,
         countries: productCountryAgg
-      },
-      deliveredByCountryCurrency: deliveredTotalsByCountryAndCurrency
+      }
     });
   } catch (error) {
     console.error('Error fetching user metrics:', error);
