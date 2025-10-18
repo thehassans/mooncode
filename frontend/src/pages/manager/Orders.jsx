@@ -38,6 +38,16 @@ export default function ManagerOrders(){
 
   const perms = me?.managerPermissions || {}
 
+  // Responsive viewport tracking
+  const [vw, setVw] = useState(()=> (typeof window !== 'undefined' ? window.innerWidth : 1024))
+  useEffect(()=>{
+    const onResize = ()=>{ try{ setVw(window.innerWidth || 1024) }catch{} }
+    try{ window.addEventListener('resize', onResize) }catch{}
+    return ()=>{ try{ window.removeEventListener('resize', onResize) }catch{} }
+  }, [])
+  const isMobileView = vw <= 480
+  const isTabletView = vw > 480 && vw <= 768
+
   // Preserve scroll helper - enhanced for mobile
   const preserveScroll = async (fn)=>{
     const y = (typeof window !== 'undefined' && typeof document !== 'undefined')
@@ -464,12 +474,12 @@ export default function ManagerOrders(){
               </div>
             )}
           </div>
-          <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
+          <div style={{display:'flex', alignItems: isMobileView ? 'stretch' : 'center', gap:8, flexWrap:'wrap', flexDirection: isMobileView ? 'column' : 'row', width: isMobileView ? '100%' : undefined}}>
             {o.invoiceNumber ? <div style={{fontWeight:800, fontSize:16}}>#{o.invoiceNumber}</div> : null}
             <button 
               className="btn secondary" 
               onClick={()=> window.open(`/label/${id}`, '_blank', 'noopener,noreferrer')}
-              style={{whiteSpace:'nowrap', padding:'8px 16px'}}
+              style={{whiteSpace:'nowrap', padding:'8px 16px', width: isMobileView ? '100%' : 'auto'}}
             >
               🖨️ Print Label
             </button>
@@ -478,7 +488,7 @@ export default function ManagerOrders(){
         <div className="section" style={{padding:'10px 12px 0', borderTop:'1px solid var(--border)'}}>
           <OrderStatusTrack order={o} />
         </div>
-        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(250px, 1fr))', gap:16}}>
+        <div className="section" style={{display:'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${isMobileView ? 180 : 250}px, 1fr))`, gap:16}}>
           <div style={{display:'grid', gap:6}}>
             <div className="label" style={{display:'flex', alignItems:'center', gap:6}}>
               <span>👤</span> Customer
@@ -617,7 +627,7 @@ export default function ManagerOrders(){
           />
           
           {/* Location & Status Filters */}
-          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:8}}>
+          <div style={{display:'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${isMobileView ? 140 : 180}px, 1fr))`, gap:8}}>
             <select className="input" value={country} onChange={e=> { setCountry(e.target.value); setDriverFilter('') }}>
               <option value=''>📍 All Countries</option>
               {countries.map(c => <option key={c} value={c}>{c}</option>)}
@@ -653,7 +663,7 @@ export default function ManagerOrders(){
           </div>
           
           {/* Advanced Filters */}
-          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:8}}>
+          <div style={{display:'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${isMobileView ? 160 : 200}px, 1fr))`, gap:8}}>
             <select className="input" value={agentFilter} onChange={e=> setAgentFilter(e.target.value)}>
               <option value=''>👥 All Agents</option>
               {agentOptions.map(a => (
