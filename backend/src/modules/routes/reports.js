@@ -824,7 +824,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     
     // Products In House - from inventory (remaining stock)
     const productStats = await Product.aggregate([
-      { $match: { createdBy: { $in: creatorIds } } },
+      { $match: { createdBy: ownerId } },
       { $group: { _id: null, totalProductsInHouse: { $sum: '$stockQty' } } }
     ]);
     const totalProductsInHouse = productStats[0]?.totalProductsInHouse || 0;
@@ -847,7 +847,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     const totalExpense = totalAgentExpense + totalDriverExpense;
     
     // ===== Product metrics (inventory + delivered orders) =====
-    const products = await Product.find({ createdBy: { $in: creatorIds } })
+    const products = await Product.find({ createdBy: ownerId })
       .select('_id price purchasePrice baseCurrency stockByCountry stock stockQty')
       .lean()
     const productIds = products.map(p => p._id)
@@ -1393,24 +1393,24 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       countries[key].amountDiscountDelivered = (countries[key].amountDiscountDelivered || 0) + (cm.amountDiscountDelivered || 0);
     });
 
-    // Merge delivered quantities from internal + web item-level aggregations
+    // Delivered qty per country derived from deliveredMap (owner product scope)
     const deliveredQtyMap = {}
-    for (const r of (Array.isArray(deliveredQtyByCountryInternal)? deliveredQtyByCountryInternal: [])){
-      const key = canon(String(r._id||''))
-      deliveredQtyMap[key] = (deliveredQtyMap[key]||0) + Number(r.qty||0)
-    }
-    for (const r of (Array.isArray(webDeliveredQtyByCountry)? webDeliveredQtyByCountry: [])){
-      const key = canon(String(r._id||''))
-      deliveredQtyMap[key] = (deliveredQtyMap[key]||0) + Number(r.qty||0)
+    for (const [_pid, perCountry] of deliveredMap.entries()){
+      const pc = perCountry || {}
+      for (const [country, qty] of Object.entries(pc)){
+        const key = canon(String(country))
+        deliveredQtyMap[key] = (deliveredQtyMap[key]||0) + Number(qty||0)
+      }
     }
     
-    // Set per-country delivered qty and amounts (local) from order aggregates (not restricted by Product list)
+    // Set per-country delivered qty from map above; set local amounts from productCountryAgg (align with Warehouse)
     for (const c of KNOWN_COUNTRIES){
       if (!countries[c]) countries[c] = {}
       const cur = (countryCurrencyMap && countryCurrencyMap[c]) ? countryCurrencyMap[c] : (c==='KSA' ? 'SAR' : c==='UAE' ? 'AED' : c==='Oman' ? 'OMR' : c==='Bahrain' ? 'BHD' : c==='India' ? 'INR' : c==='Kuwait' ? 'KWD' : c==='Qatar' ? 'QAR' : 'AED')
       countries[c].deliveredQty = Number(deliveredQtyMap[c] || countries[c].deliveredQty || 0)
-      const amtLocal = Number(countries[c].amountDelivered || 0)
-      const discLocal = Number(countries[c].amountDiscountDelivered || 0)
+      const pm = productCountryAgg?.[c] || { deliveredValueByCurrency:{}, discountValueByCurrency:{} }
+      const amtLocal = Number((pm.deliveredValueByCurrency||{})[cur] || 0)
+      const discLocal = Number((pm.discountValueByCurrency||{})[cur] || 0)
       countries[c].amountDeliveredLocal = amtLocal
       countries[c].amountDiscountLocal = discLocal
       countries[c].amountGrossLocal = amtLocal + discLocal
