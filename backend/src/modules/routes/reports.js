@@ -898,18 +898,23 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
             }
           },
           orderCurrency: {
-            $switch: {
-              branches: [
-                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KSA','SAUDI ARABIA'] ] }, then: 'SAR' },
-                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'AED' },
-                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['OMAN','OM'] ] }, then: 'OMR' },
-                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['BAHRAIN','BH'] ] }, then: 'BHD' },
-                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['INDIA','IN'] ] }, then: 'INR' },
-                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KUWAIT','KW'] ] }, then: 'KWD' },
-                { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['QATAR','QA'] ] }, then: 'QAR' },
-              ],
-              default: 'AED'
-            }
+            $ifNull: [
+              '$currency',
+              {
+                $switch: {
+                  branches: [
+                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KSA','SAUDI ARABIA'] ] }, then: 'SAR' },
+                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'AED' },
+                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['OMAN','OM'] ] }, then: 'OMR' },
+                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['BAHRAIN','BH'] ] }, then: 'BHD' },
+                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['INDIA','IN'] ] }, then: 'INR' },
+                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KUWAIT','KW'] ] }, then: 'KWD' },
+                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['QATAR','QA'] ] }, then: 'QAR' },
+                  ],
+                  default: 'AED'
+                }
+              }
+            ]
           }
         }
       },
@@ -941,8 +946,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
               in: {
                 $switch: {
                   branches: [
-                    { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA','SA'] ] }, then: 'KSA' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES','AE'] ] }, then: 'UAE' },
                     { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
                     { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
                     { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
@@ -1253,6 +1258,17 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       countries[key].amountPending = (countries[key].amountPending || 0) + (cm.amountPending || 0);
     });
     
+    // Build delivered totals by country and currency directly from deliveredAmountMap (aligns with warehouse)
+    const deliveredTotalsByCountryAndCurrency = {}
+    for (const [, byCountry] of deliveredAmountMap.entries()){
+      for (const [country, byCur] of Object.entries(byCountry||{})){
+        if (!deliveredTotalsByCountryAndCurrency[country]) deliveredTotalsByCountryAndCurrency[country] = {}
+        for (const [cur, amt] of Object.entries(byCur||{})){
+          deliveredTotalsByCountryAndCurrency[country][cur] = (deliveredTotalsByCountryAndCurrency[country][cur] || 0) + Number(amt || 0)
+        }
+      }
+    }
+
     // Inject delivered quantity and local delivered amount per country from product metrics aggregation
     if (productCountryAgg){
       for (const c of KNOWN_COUNTRIES){
@@ -1260,8 +1276,10 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         if (!countries[c]) countries[c] = {}
         countries[c].deliveredQty = qty
         const cur = (countryCurrencyMap && countryCurrencyMap[c]) ? countryCurrencyMap[c] : (c==='KSA' ? 'SAR' : c==='UAE' ? 'AED' : c==='Oman' ? 'OMR' : c==='Bahrain' ? 'BHD' : c==='India' ? 'INR' : c==='Kuwait' ? 'KWD' : c==='Qatar' ? 'QAR' : 'AED')
-        const amtLocal = Number(productCountryAgg?.[c]?.deliveredValueByCurrency?.[cur] || 0)
+        const byCurTotals = deliveredTotalsByCountryAndCurrency[c] || {}
+        const amtLocal = Number(byCurTotals?.[cur] || 0)
         countries[c].amountDeliveredLocal = amtLocal
+        countries[c].amountDelivered = amtLocal
       }
     }
     
@@ -1315,7 +1333,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       productMetrics: {
         global: productGlobal,
         countries: productCountryAgg
-      }
+      },
+      deliveredByCountryCurrency: deliveredTotalsByCountryAndCurrency
     });
   } catch (error) {
     console.error('Error fetching user metrics:', error);

@@ -33,7 +33,8 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
     const productIds = products.map(p => p._id)
 
     // Aggregate delivered quantities per product and country, supporting both single-product orders and multi-item orders
-    const baseMatch = { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] }
+    // Internal Orders should only consider shipmentStatus='delivered' (status field isn't used for deliveries)
+    const ordersDeliveredMatch = { shipmentStatus: 'delivered' }
 
     // Workspace scoping for Orders: include owner + agents/managers; capture manager's assigned countries
     let createdByScope = null
@@ -64,7 +65,7 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
     // Internal Orders: delivered quantities and amounts
     const deliveredAgg = await Order.aggregate([
       { $match: { 
-          ...baseMatch,
+          ...ordersDeliveredMatch,
           ...(createdByScope ? { createdBy: { $in: createdByScope.map(id => new mongoose.Types.ObjectId(id)) } } : {}),
           $or: [
             { productId: { $in: productIds } },
