@@ -496,7 +496,7 @@ export default function UserDashboard(){
             const code = COUNTRY_INFO[c]?.cur || 'AED'
             const totalPurchaseLocal = sumCurrencyMapLocal(pc?.totalPurchaseValueByCurrency||{}, code)
             const purchaseLocal = sumCurrencyMapLocal(pc?.purchaseValueByCurrency||{}, code)
-            const deliveredLocal = sumCurrencyMapLocal(pc?.deliveredValueByCurrency||{}, code)
+            const deliveredLocal = Number((pc?.deliveredValueByCurrency||{})[code] || 0)
             const flag = (COUNTRY_INFO[c] && COUNTRY_INFO[c].flag) ? COUNTRY_INFO[c].flag + ' ' : ''
             const title = flag + ((c==='KSA') ? 'Saudi Arabia (KSA)' : c)
             return (

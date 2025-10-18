@@ -930,11 +930,12 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
           orderCountry: { $ifNull: ['$orderCountry', ''] },
           productId: '$items.productId',
           quantity: { $ifNull: ['$items.quantity', 1] },
-          orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] }
+          orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] },
+          currency: { $ifNull: ['$currency', null] }
         }
       },
       { $addFields: {
-          orderCountryCanon: {
+        orderCountryCanon: {
             $let: {
               vars: { c: { $ifNull: ['$orderCountry', ''] } },
               in: {
