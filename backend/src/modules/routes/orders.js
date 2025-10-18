@@ -610,6 +610,218 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
   }
 })
 
+// Summary for filtered orders (counts, quantities, amounts by currency)
+router.get('/summary', auth, allowRoles('admin','user','agent','manager'), async (req, res) => {
+  try{
+    let base = {}
+    if (req.user.role === 'admin') {
+      base = {}
+    } else if (req.user.role === 'user') {
+      const agents = await User.find({ role: 'agent', createdBy: req.user.id }, { _id: 1 }).lean()
+      const managers = await User.find({ role: 'manager', createdBy: req.user.id }, { _id: 1 }).lean()
+      const agentIds = agents.map(a => a._id)
+      const managerIds = managers.map(m => m._id)
+      base = { createdBy: { $in: [req.user.id, ...agentIds, ...managerIds] } }
+    } else if (req.user.role === 'manager') {
+      const mgr = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
+      const ownerId = mgr?.createdBy
+      const assignedCountry = mgr?.assignedCountry
+      const assignedCountries = Array.isArray(mgr?.assignedCountries) ? mgr.assignedCountries : []
+      if (ownerId){
+        const agents = await User.find({ role: 'agent', createdBy: ownerId }, { _id: 1 }).lean()
+        const managers = await User.find({ role: 'manager', createdBy: ownerId }, { _id: 1 }).lean()
+        const agentIds = agents.map(a => a._id)
+        const managerIds = managers.map(m => m._id)
+        base = { createdBy: { $in: [ownerId, ...agentIds, ...managerIds] } }
+        const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
+        if (Array.isArray(assignedCountries) && assignedCountries.length){
+          const set = new Set(); for (const c of assignedCountries){ for (const x of expand(c)) set.add(x) }
+          base.orderCountry = { $in: Array.from(set) }
+        } else if (assignedCountry) base.orderCountry = { $in: expand(assignedCountry) }
+      } else {
+        base = { createdBy: req.user.id }
+        const expand = (c)=> (c==='KSA'||c==='Saudi Arabia') ? ['KSA','Saudi Arabia'] : (c==='UAE'||c==='United Arab Emirates') ? ['UAE','United Arab Emirates'] : [c]
+        if (Array.isArray(assignedCountries) && assignedCountries.length){
+          const set = new Set(); for (const c of assignedCountries){ for (const x of expand(c)) set.add(x) }
+          base.orderCountry = { $in: Array.from(set) }
+        } else if (assignedCountry) base.orderCountry = { $in: expand(assignedCountry) }
+      }
+    } else {
+      base = { createdBy: req.user.id }
+    }
+
+    const q = String(req.query.q||'').trim()
+    const country = String(req.query.country||'').trim()
+    const city = String(req.query.city||'').trim()
+    const onlyUnassigned = String(req.query.onlyUnassigned||'').toLowerCase() === 'true'
+    const onlyAssigned = String(req.query.onlyAssigned||'').toLowerCase() === 'true'
+    const statusFilter = String(req.query.status||'').trim().toLowerCase()
+    const shipFilter = String(req.query.ship||'').trim().toLowerCase()
+    const payment = String(req.query.payment||'').trim().toUpperCase()
+    const collectedOnly = String(req.query.collected||'').toLowerCase() === 'true'
+    const agentId = String(req.query.agent||'').trim()
+    const driverId = String(req.query.driver||'').trim()
+    const productParam = String(req.query.product||'').trim()
+
+    const match = { ...base }
+    if (country) {
+      const aliases = {
+        'KSA': ['KSA','Saudi Arabia'],
+        'Saudi Arabia': ['KSA','Saudi Arabia'],
+        'UAE': ['UAE','United Arab Emirates'],
+        'United Arab Emirates': ['UAE','United Arab Emirates'],
+      }
+      if (country === 'Other'){
+        const known = ['KSA','Saudi Arabia','UAE','United Arab Emirates','Oman','Bahrain','India','Kuwait','Qatar']
+        const orList = match.$or ? [...match.$or] : []
+        orList.push({ orderCountry: { $nin: known } })
+        orList.push({ orderCountry: { $exists: false } })
+        orList.push({ orderCountry: '' })
+        match.$or = orList
+      } else match.orderCountry = aliases[country] ? { $in: aliases[country] } : country
+    }
+    if (city) match.city = city
+    if (onlyUnassigned) match.deliveryBoy = { $in: [null, undefined] }
+    else if (onlyAssigned) match.deliveryBoy = { $ne: null }
+    if (statusFilter) match.status = statusFilter
+    if (shipFilter) {
+      if (shipFilter === 'open') match.shipmentStatus = { $in: ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response','attempted','contacted'] }
+      else match.shipmentStatus = shipFilter
+    }
+    if (payment === 'COD') match.paymentMethod = 'COD'
+    else if (payment === 'PREPAID') match.paymentMethod = { $ne: 'COD' }
+    if (collectedOnly) match.collectedAmount = { $gt: 0 }
+    if (agentId) match.createdBy = agentId
+    if (driverId) match.deliveryBoy = driverId
+    if (productParam){
+      try{
+        const pid = new mongoose.Types.ObjectId(productParam)
+        const orList = match.$or ? [...match.$or] : []
+        orList.push({ productId: pid })
+        orList.push({ 'items.productId': pid })
+        match.$or = orList
+      }catch{}
+    }
+    if (q){
+      const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const rx = new RegExp(safe, 'i')
+      const stripped = q.startsWith('#') ? q.slice(1) : q
+      const rxInv = stripped && stripped !== q ? new RegExp(stripped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : null
+      const textConds = [ { invoiceNumber: rx }, ...(rxInv ? [{ invoiceNumber: rxInv }] : []), { customerPhone: rx }, { customerName: rx }, { details: rx }, { city: rx } ]
+      try{
+        let ownerIds = null
+        if (req.user.role === 'user') ownerIds = [ req.user.id ]
+        else if (req.user.role === 'manager') {
+          const mgr = await User.findById(req.user.id).select('createdBy').lean()
+          if (mgr?.createdBy) ownerIds = [ String(mgr.createdBy) ]
+        }
+        const baseUserFilter = ownerIds ? { createdBy: { $in: ownerIds } } : {}
+        const agentsByName = await User.find({ role: 'agent', ...baseUserFilter, $or: [ { firstName: rx }, { lastName: rx }, { email: rx } ] }).select('_id').lean()
+        const driversByName = await User.find({ role: 'driver', ...baseUserFilter, $or: [ { firstName: rx }, { lastName: rx }, { email: rx } ] }).select('_id').lean()
+        const agentIds2 = agentsByName.map(a => a._id)
+        const driverIds2 = driversByName.map(d => d._id)
+        if (agentIds2.length) textConds.push({ createdBy: { $in: agentIds2 } })
+        if (driverIds2.length) textConds.push({ deliveryBoy: { $in: driverIds2 } })
+      }catch{}
+      try{
+        const prods = await Product.find({ name: rx }).select('_id').lean()
+        const pids = prods.map(p => p._id)
+        if (pids.length){ textConds.push({ productId: { $in: pids } }); textConds.push({ 'items.productId': { $in: pids } }) }
+      }catch{}
+      match.$or = (match.$or ? match.$or : []).concat(textConds)
+    }
+
+    const baseProject = {
+      shipmentStatus: 1,
+      orderCountry: { $ifNull: ['$orderCountry', ''] },
+      items: { $ifNull: ['$items', []] },
+      quantity: { $ifNull: ['$quantity', 1] },
+      total: { $ifNull: ['$total', 0] },
+      discount: { $ifNull: ['$discount', 0] },
+      collectedAmount: { $ifNull: ['$collectedAmount', 0] },
+      balanceDue: { $ifNull: ['$balanceDue', 0] },
+      qty: {
+        $cond: [
+          { $gt: [ { $size: { $ifNull: ['$items', []] } }, 0 ] },
+          { $sum: { $map: { input: { $ifNull: ['$items', []] }, as: 'it', in: { $cond: [ { $lt: [ { $ifNull: ['$$it.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$$it.quantity', 1] } ] } } } },
+          { $cond: [ { $lt: [ { $ifNull: ['$quantity', 1] }, 1 ] }, 1, { $ifNull: ['$quantity', 1] } ] }
+        ]
+      },
+      orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] },
+    }
+    const addFieldsStage = {
+      orderCountryCanon: {
+        $let: {
+          vars: { c: { $ifNull: ['$orderCountry', ''] } },
+          in: {
+            $switch: {
+              branches: [
+                { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA','SA'] ] }, then: 'KSA' },
+                { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES','AE'] ] }, then: 'UAE' },
+                { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
+                { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
+                { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
+                { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
+                { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
+              ],
+              default: '$$c'
+            }
+          }
+        }
+      },
+      orderCurrency: {
+        $switch: {
+          branches: [
+            { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KSA','SAUDI ARABIA','SA'] ] }, then: 'SAR' },
+            { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['UAE','UNITED ARAB EMIRATES','AE'] ] }, then: 'AED' },
+            { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['OMAN','OM'] ] }, then: 'OMR' },
+            { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['BAHRAIN','BH'] ] }, then: 'BHD' },
+            { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['INDIA','IN'] ] }, then: 'INR' },
+            { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KUWAIT','KW'] ] }, then: 'KWD' },
+            { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['QATAR','QA'] ] }, then: 'QAR' },
+          ],
+          default: 'SAR'
+        }
+      }
+    }
+
+    const mainAgg = await Order.aggregate([
+      { $match: match },
+      { $project: baseProject },
+      { $addFields: addFieldsStage },
+      { $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          totalQty: { $sum: '$qty' },
+          deliveredOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
+          deliveredQty: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, '$qty', 0 ] } },
+          collectedTotal: { $sum: '$collectedAmount' },
+          balanceDueTotal: { $sum: '$balanceDue' }
+        } 
+      }
+    ])
+
+    const byCurrency = await Order.aggregate([
+      { $match: match },
+      { $project: baseProject },
+      { $addFields: addFieldsStage },
+      { $group: { _id: '$orderCurrency', amount: { $sum: '$orderAmount' } } }
+    ])
+
+    const defaultMap = { AED:0, OMR:0, SAR:0, BHD:0, INR:0, KWD:0, QAR:0 }
+    const amountByCurrency = { ...defaultMap }
+    for (const row of byCurrency){
+      const ccy = String(row._id||'')
+      if (amountByCurrency.hasOwnProperty(ccy)) amountByCurrency[ccy] += Number(row.amount || 0)
+    }
+
+    const totalSummary = mainAgg && mainAgg[0] ? mainAgg[0] : { totalOrders:0, totalQty:0, deliveredOrders:0, deliveredQty:0, collectedTotal:0, balanceDueTotal:0 }
+    res.json({ ...totalSummary, amountByCurrency })
+  }catch(err){
+    res.status(500).json({ message: 'Failed to compute summary', error: err?.message })
+  }
+})
+
 // Export orders as CSV with the same scoping and filters as the list endpoint
 router.get('/export', auth, allowRoles('admin','user','agent','manager'), async (req, res) => {
   try{

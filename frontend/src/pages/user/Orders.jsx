@@ -73,6 +73,7 @@ export default function UserOrders(){
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [summary, setSummary] = useState(null)
   const [query, setQuery] = useState('')
   const [country, setCountry] = useState('')
   const [city, setCity] = useState('')
@@ -201,6 +202,14 @@ export default function UserOrders(){
     return params
   }, [query, country, city, onlyUnassigned, statusFilter, shipFilter, paymentFilter, collectedOnly, agentFilter, driverFilter])
 
+  async function loadSummary(){
+    try{
+      const params = new URLSearchParams(buildQuery.toString())
+      const r = await apiGet(`/api/orders/summary?${params.toString()}`)
+      setSummary(r||null)
+    }catch{ setSummary(null) }
+  }
+
   async function loadOrders(reset=false){
     if (loadingMoreRef.current) return
     loadingMoreRef.current = true
@@ -279,7 +288,7 @@ export default function UserOrders(){
   useEffect(()=>{ loadOrders(true); loadPendingReturns() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
   useEffect(()=>{ let alive=true; getCurrencyConfig().then(c=>{ if(alive) setCurCfg(c) }).catch(()=>{}); return ()=>{ alive=false } },[])
   // Reload on filter changes (except productQuery which is client-side)
-  useEffect(()=>{ loadOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [buildQuery])
+  useEffect(()=>{ loadOrders(true); loadSummary() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [buildQuery])
 
   // Reset fallback flag on filter changes
   useEffect(()=>{ fallbackTriedRef.current = false }, [buildQuery])
@@ -434,6 +443,12 @@ export default function UserOrders(){
     return m[String(code||'').trim()] || null
   }
 
+  function fmtCurrency(n, cur){
+    const v = Number(n||0)
+    const s = v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return `${cur} ${s}`
+  }
+
   // Drivers loaded on-demand by country
 
   // Fetch drivers by country (with caching)
@@ -544,6 +559,51 @@ export default function UserOrders(){
         <div>
           <div className="page-title gradient heading-purple">Orders</div>
           <div className="page-subtitle">Manage drivers and track shipments</div>
+        </div>
+      </div>
+
+      {/* Filtered Summary */}
+      <div className="card" style={{display:'grid', gap:8}}>
+        <div className="card-header">
+          <div className="card-title">Filtered Summary</div>
+        </div>
+        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:8}}>
+          <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+            <div className="helper">Total Orders</div>
+            <div style={{fontWeight:900, fontSize:18}}>{summary?.totalOrders ?? '-'}</div>
+          </div>
+          <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+            <div className="helper">Total Qty</div>
+            <div style={{fontWeight:900, fontSize:18}}>{summary?.totalQty ?? '-'}</div>
+          </div>
+          <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+            <div className="helper">Delivered (Orders)</div>
+            <div style={{fontWeight:900, fontSize:18}}>{summary?.deliveredOrders ?? '-'}</div>
+          </div>
+          <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+            <div className="helper">Delivered (Qty)</div>
+            <div style={{fontWeight:900, fontSize:18}}>{summary?.deliveredQty ?? '-'}</div>
+          </div>
+          {(()=>{
+            const c = String(country||'').trim()
+            const cur = c ? orderCountryCurrency(c) : ''
+            const map = summary?.amountByCurrency || {}
+            if (cur && map[cur] != null){
+              return (
+                <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                  <div className="helper">Amount ({cur})</div>
+                  <div style={{fontWeight:900, fontSize:18}}>{fmtCurrency(map[cur]||0, cur)}</div>
+                </div>
+              )
+            }
+            const order = ['AED','OMR','SAR','BHD','INR','KWD','QAR']
+            return order.filter(k => Number((summary?.amountByCurrency||{})[k]||0) > 0).slice(0,7).map(k => (
+              <div key={k} className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                <div className="helper">Amount ({k})</div>
+                <div style={{fontWeight:900, fontSize:18}}>{fmtCurrency((summary?.amountByCurrency||{})[k]||0, k)}</div>
+              </div>
+            ))
+          })()}
         </div>
       </div>
 

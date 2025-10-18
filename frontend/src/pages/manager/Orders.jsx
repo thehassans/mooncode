@@ -35,6 +35,7 @@ export default function ManagerOrders(){
   const [curCfg, setCurCfg] = useState(null)
   const [pendingReturns, setPendingReturns] = useState([])
   const [verifying, setVerifying] = useState(null)
+  const [summary, setSummary] = useState(null)
 
   const perms = me?.managerPermissions || {}
 
@@ -98,6 +99,14 @@ export default function ManagerOrders(){
     if (driverFilter.trim()) params.set('driver', driverFilter.trim())
     return params
   }, [q, country, city, ship, onlyUnassigned, agentFilter, driverFilter])
+
+  async function loadSummary(){
+    try{
+      const params = new URLSearchParams(buildQuery.toString())
+      const r = await apiGet(`/api/orders/summary?${params.toString()}`)
+      setSummary(r||null)
+    }catch{ setSummary(null) }
+  }
   async function loadOrders(reset=false){
     if (loadingMoreRef.current) return
     loadingMoreRef.current = true
@@ -240,7 +249,7 @@ export default function ManagerOrders(){
     return ()=>{ try{ socket && socket.off('orders.changed') }catch{}; try{ socket && socket.disconnect() }catch{} }
   },[])
   // reload when filters change
-  useEffect(()=>{ loadOrders(true) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [buildQuery])
+  useEffect(()=>{ loadOrders(true); loadSummary() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [buildQuery])
 
   // Keep URL in sync with current filters for shareable deep links
   useEffect(()=>{
@@ -415,6 +424,23 @@ export default function ManagerOrders(){
     function phoneCodeCurrency(code){
       const m = { '+966':'SAR', '+971':'AED', '+968':'OMR', '+973':'BHD', '+965':'KWD', '+974':'QAR', '+91':'INR' }
       return m[String(code||'').trim()] || null
+    }
+    function formatCurrency(n, cur){
+      const v = Number(n||0)
+      const s = v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      return `${cur} ${s}`
+    }
+    function countryToCurrency(c){
+      const raw = String(c||'').trim().toLowerCase()
+      if (!raw) return ''
+      if (raw==='ksa' || raw==='saudi arabia' || raw==='saudi' || raw==='sa') return 'SAR'
+      if (raw==='uae' || raw==='united arab emirates' || raw==='ae') return 'AED'
+      if (raw==='oman' || raw==='om') return 'OMR'
+      if (raw==='bahrain' || raw==='bh') return 'BHD'
+      if (raw==='india' || raw==='in') return 'INR'
+      if (raw==='kuwait' || raw==='kw' || raw==='kwt') return 'KWD'
+      if (raw==='qatar' || raw==='qa') return 'QAR'
+      return ''
     }
     const targetCode = orderCountryCurrency(o.orderCountry)
     const localCode = phoneCodeCurrency(o.phoneCountryCode) || targetCode
@@ -610,6 +636,49 @@ export default function ManagerOrders(){
         <div>
           <div className="page-title gradient heading-purple">Orders</div>
           <div className="page-subtitle">Assign drivers and print labels</div>
+        </div>
+      </div>
+      <div className="card" style={{display:'grid', gap:10}}>
+        <div className="card-header">
+          <div className="card-title">Filtered Summary</div>
+        </div>
+        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:8}}>
+          <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+            <div className="helper">Total Orders</div>
+            <div style={{fontWeight:900, fontSize:18}}>{summary?.totalOrders ?? '-'}</div>
+          </div>
+          <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+            <div className="helper">Total Qty</div>
+            <div style={{fontWeight:900, fontSize:18}}>{summary?.totalQty ?? '-'}</div>
+          </div>
+          <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+            <div className="helper">Delivered (Orders)</div>
+            <div style={{fontWeight:900, fontSize:18}}>{summary?.deliveredOrders ?? '-'}</div>
+          </div>
+          <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+            <div className="helper">Delivered (Qty)</div>
+            <div style={{fontWeight:900, fontSize:18}}>{summary?.deliveredQty ?? '-'}</div>
+          </div>
+          {(()=>{
+            const c = String(country||'').trim()
+            const cur = c ? countryToCurrency(c) : ''
+            const map = summary?.amountByCurrency || {}
+            if (cur && map[cur] != null){
+              return (
+                <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                  <div className="helper">Amount ({cur})</div>
+                  <div style={{fontWeight:900, fontSize:18}}>{formatCurrency(map[cur]||0, cur)}</div>
+                </div>
+              )
+            }
+            const order = ['AED','OMR','SAR','BHD','INR','KWD','QAR']
+            return order.filter(k => Number((summary?.amountByCurrency||{})[k]||0) > 0).slice(0,7).map(k => (
+              <div key={k} className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                <div className="helper">Amount ({k})</div>
+                <div style={{fontWeight:900, fontSize:18}}>{formatCurrency((summary?.amountByCurrency||{})[k]||0, k)}</div>
+              </div>
+            ))
+          })()}
         </div>
       </div>
       <div className="card" style={{display:'grid', gap:12}}>
