@@ -4,6 +4,7 @@ import fs from 'fs'
 import path from 'path'
 import Order from '../models/Order.js'
 import Product from '../models/Product.js'
+import WebOrder from '../models/WebOrder.js'
 import Counter from '../models/Counter.js'
 import { auth, allowRoles } from '../middleware/auth.js'
 import User from '../models/User.js'
@@ -809,14 +810,84 @@ router.get('/summary', auth, allowRoles('admin','user','agent','manager'), async
     ])
 
     const defaultMap = { AED:0, OMR:0, SAR:0, BHD:0, INR:0, KWD:0, QAR:0 }
-    const amountByCurrency = { ...defaultMap }
+    const amountByCurrencyInternal = { ...defaultMap }
     for (const row of byCurrency){
       const ccy = String(row._id||'')
-      if (amountByCurrency.hasOwnProperty(ccy)) amountByCurrency[ccy] += Number(row.amount || 0)
+      if (amountByCurrencyInternal.hasOwnProperty(ccy)) amountByCurrencyInternal[ccy] += Number(row.amount || 0)
+    }
+
+    // Optionally include WebOrders delivered amounts by currency, scoped to owner's products
+    const includeWeb = String(req.query.includeWeb||'').toLowerCase() === 'true'
+    let amountByCurrencyWeb = { ...defaultMap }
+    if (includeWeb && (shipFilter === 'delivered' || shipFilter === 'done' || shipFilter === '')){
+      try{
+        // Derive owner for product scoping
+        let ownerId = null
+        if (req.user.role === 'user') ownerId = new mongoose.Types.ObjectId(req.user.id)
+        else if (req.user.role === 'manager'){
+          const mgr = await User.findById(req.user.id).select('createdBy').lean()
+          ownerId = mgr?.createdBy ? new mongoose.Types.ObjectId(mgr.createdBy) : new mongoose.Types.ObjectId(req.user.id)
+        }
+        const prodFilter = ownerId ? { createdBy: ownerId } : {}
+        const prods = await Product.find(prodFilter).select('_id').lean()
+        const productIds = prods.map(p => p._id)
+
+        const webMatch = {}
+        // Only include delivered/done web orders
+        webMatch.$or = [ { shipmentStatus: 'delivered' }, { status: 'done' } ]
+        if (country){
+          // Support aliases like KSA/Saudi Arabia and UAE/United Arab Emirates
+          const aliases = { 'KSA': ['KSA','Saudi Arabia'], 'Saudi Arabia': ['KSA','Saudi Arabia'], 'UAE': ['UAE','United Arab Emirates'], 'United Arab Emirates': ['UAE','United Arab Emirates'] }
+          webMatch.orderCountry = aliases[country] ? { $in: aliases[country] } : country
+        }
+        if (city) webMatch.city = city
+
+        const webByCurrency = productIds.length ? await WebOrder.aggregate([
+          { $match: webMatch },
+          { $unwind: '$items' },
+          { $match: { 'items.productId': { $in: productIds } } },
+          { $project: {
+              orderCountry: { $ifNull: ['$orderCountry', ''] },
+              total: { $ifNull: ['$total', 0] },
+              discount: { $ifNull: ['$discount', 0] },
+              currency: { $ifNull: ['$currency', null] }
+            }
+          },
+          { $addFields: {
+              orderCurrency: {
+                $ifNull: [ '$currency', {
+                  $switch: {
+                    branches: [
+                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KSA','SAUDI ARABIA'] ] }, then: 'SAR' },
+                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'AED' },
+                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['OMAN','OM'] ] }, then: 'OMR' },
+                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['BAHRAIN','BH'] ] }, then: 'BHD' },
+                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['INDIA','IN'] ] }, then: 'INR' },
+                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KUWAIT','KW'] ] }, then: 'KWD' },
+                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['QATAR','QA'] ] }, then: 'QAR' },
+                    ],
+                    default: 'AED'
+                  }
+                } ]
+              }
+            }
+          },
+          { $group: { _id: '$orderCurrency', amount: { $sum: { $subtract: ['$total', '$discount'] } } } }
+        ]) : []
+        for (const row of webByCurrency){
+          const ccy = String(row._id||'')
+          if (amountByCurrencyWeb.hasOwnProperty(ccy)) amountByCurrencyWeb[ccy] += Number(row.amount || 0)
+        }
+      }catch(_e){ amountByCurrencyWeb = { ...defaultMap } }
+    }
+
+    const amountByCurrency = { ...defaultMap }
+    for (const k of Object.keys(defaultMap)){
+      amountByCurrency[k] = Number(amountByCurrencyInternal[k]||0) + Number(amountByCurrencyWeb[k]||0)
     }
 
     const totalSummary = mainAgg && mainAgg[0] ? mainAgg[0] : { totalOrders:0, totalQty:0, deliveredOrders:0, deliveredQty:0, collectedTotal:0, balanceDueTotal:0 }
-    res.json({ ...totalSummary, amountByCurrency })
+    res.json({ ...totalSummary, amountByCurrencyInternal, amountByCurrencyWeb, amountByCurrency })
   }catch(err){
     res.status(500).json({ message: 'Failed to compute summary', error: err?.message })
   }

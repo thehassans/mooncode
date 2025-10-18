@@ -103,6 +103,7 @@ export default function ManagerOrders(){
   async function loadSummary(){
     try{
       const params = new URLSearchParams(buildQuery.toString())
+      if (String(ship||'').trim().toLowerCase() === 'delivered') params.set('includeWeb','true')
       const r = await apiGet(`/api/orders/summary?${params.toString()}`)
       setSummary(r||null)
     }catch{ setSummary(null) }
