@@ -592,8 +592,11 @@ export default function UserDashboard(){
             const code = COUNTRY_INFO[c]?.cur || 'AED'
             const pm = metrics?.productMetrics || {}
             const pcAgg = (pm?.countries && pm.countries[c]) ? pm.countries[c] : null
-            const deliveredFromProducts = Number((pcAgg?.deliveredValueByCurrency||{})[code] || 0)
-            const amtDeliveredStr = formatCurrency((deliveredFromProducts ?? m?.amountDeliveredLocal ?? m?.amountDelivered ?? 0), c)
+            const byCurTotals = (metrics?.deliveredByCountryCurrency && metrics.deliveredByCountryCurrency[c]) ? metrics.deliveredByCountryCurrency[c] : null
+            const hasTotals = !!(byCurTotals && Object.prototype.hasOwnProperty.call(byCurTotals, code))
+            const hasPmBucket = !!(pcAgg && pcAgg.deliveredValueByCurrency && Object.prototype.hasOwnProperty.call(pcAgg.deliveredValueByCurrency, code))
+            const deliveredLocalPref = hasTotals ? Number(byCurTotals[code] || 0) : (hasPmBucket ? Number(pcAgg.deliveredValueByCurrency[code] || 0) : (m?.amountDeliveredLocal ?? m?.amountDelivered ?? 0))
+            const amtDeliveredStr = formatCurrency(deliveredLocalPref, c)
             const amtPendingStr = formatCurrency(m?.amountPending||0, c)
             return (
               <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
