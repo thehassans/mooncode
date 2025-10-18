@@ -590,6 +590,8 @@ export default function UserDashboard(){
             const qs = encodeURIComponent(c)
             const amtTotalStr = formatCurrency(m?.amountTotalOrders||0, c)
             const amtDeliveredStr = formatCurrency((m?.amountDeliveredLocal ?? m?.amountDelivered ?? 0), c)
+            const amtDiscountStr = formatCurrency((m?.amountDiscountLocal ?? 0), c)
+            const amtGrossStr = formatCurrency((m?.amountGrossLocal ?? ((m?.amountDeliveredLocal ?? m?.amountDelivered ?? 0) + (m?.amountDiscountLocal ?? 0))), c)
             const amtPendingStr = formatCurrency(m?.amountPending||0, c)
             return (
               <div key={c} className="panel" style={{border:'1px solid var(--border)', borderRadius:12, padding:12, background:'var(--panel)'}}>
@@ -610,6 +612,14 @@ export default function UserDashboard(){
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Amount of Delivered</div>
                     <div style={{fontWeight:900, fontSize:18}}><NavLink className="link" style={{color:'#10b981'}} to={appendRange(`/user/orders?country=${qs}&ship=delivered`)}>{amtDeliveredStr}</NavLink></div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Amount of Discount</div>
+                    <div style={{fontWeight:900, fontSize:18}}>{amtDiscountStr}</div>
+                  </div>
+                  <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
+                    <div className="helper">Gross Before Discount</div>
+                    <div style={{fontWeight:900, fontSize:18}}>{amtGrossStr}</div>
                   </div>
                   <div className="mini-card" style={{border:'1px solid var(--border)', borderRadius:10, padding:10}}>
                     <div className="helper">Open Orders</div>

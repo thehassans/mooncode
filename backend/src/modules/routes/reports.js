@@ -1026,6 +1026,9 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       deliveredMap.get(pid)[country] = (deliveredMap.get(pid)[country] || 0) + Number(r.qty || 0)
       if (!deliveredAmountMap.get(pid)[country]) deliveredAmountMap.get(pid)[country] = {}
       deliveredAmountMap.get(pid)[country][currency] = (deliveredAmountMap.get(pid)[country][currency] || 0) + Number(r.totalAmount || 0)
+      if (!deliveredDiscountMap.has(pid)) deliveredDiscountMap.set(pid, {})
+      if (!deliveredDiscountMap.get(pid)[country]) deliveredDiscountMap.get(pid)[country] = {}
+      deliveredDiscountMap.get(pid)[country][currency] = (deliveredDiscountMap.get(pid)[country][currency] || 0) + Number(r.totalDiscount || 0)
     }
     const KNOWN_COUNTRIES = ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar']
     const emptyCurrencyMap = () => ({ AED:0, OMR:0, SAR:0, BHD:0, INR:0, KWD:0, QAR:0, USD:0, CNY:0 })
