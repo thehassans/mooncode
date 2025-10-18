@@ -40,7 +40,9 @@ export default function ManagerOrders(){
 
   // Preserve scroll helper - enhanced for mobile
   const preserveScroll = async (fn)=>{
-    const y = typeof window !== 'undefined' ? window.scrollY : 0
+    const y = (typeof window !== 'undefined' && typeof document !== 'undefined')
+      ? (window.scrollY || (document.scrollingElement && document.scrollingElement.scrollTop) || (document.documentElement && document.documentElement.scrollTop) || (document.body && document.body.scrollTop) || 0)
+      : 0
     const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
     
     try{ return await fn() }
@@ -48,6 +50,9 @@ export default function ManagerOrders(){
       // Multiple attempts to restore scroll position, especially important on mobile
       const restoreScroll = () => {
         try{ window.scrollTo(0, y) }catch{}
+        try{ if (document && document.scrollingElement) document.scrollingElement.scrollTop = y }catch{}
+        try{ if (document && document.documentElement) document.documentElement.scrollTop = y }catch{}
+        try{ if (document && document.body) document.body.scrollTop = y }catch{}
       }
       
       // Immediate restore
@@ -122,10 +127,12 @@ export default function ManagerOrders(){
   async function verifyReturn(orderId){
     setVerifying(orderId)
     try{
-      const response = await apiPost(`/api/orders/${orderId}/return/verify`, {})
-      toast.success(response?.message || 'Order verified successfully and stock refilled')
-      loadPendingReturns() // Reload pending returns
-      loadOrders(true) // Refresh main orders list
+      await preserveScroll(async ()=>{
+        const response = await apiPost(`/api/orders/${orderId}/return/verify`, {})
+        toast.success(response?.message || 'Order verified successfully and stock refilled')
+        await loadPendingReturns()
+        await loadOrders(true)
+      })
     }catch(e){
       toast.error(e?.message || 'Failed to verify order')
     }finally{
