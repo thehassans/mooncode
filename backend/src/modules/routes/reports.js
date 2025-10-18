@@ -1225,7 +1225,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     
     // Country-specific metrics from WebOrders
     const webCountryMetrics = await WebOrder.aggregate([
-      { $match: {} },
+      { $match: { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
+      { $match: { 'items.productId': { $in: productIds } } },
       { $addFields: {
         orderCountryCanon: {
           $let: {
@@ -1249,13 +1250,13 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       } },
       { $group: {
         _id: '$orderCountryCanon',
-        totalSales: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $eq: ['$status', 'done'] } ] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        totalSales: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } },
         amountTotalOrders: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } },
-        amountDelivered: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $eq: ['$status', 'done'] } ] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
-        amountPending: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        amountDelivered: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } },
+        amountPending: { $sum: 0 },
         amountDiscountDelivered: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $eq: ['$status', 'done'] } ] }, { $ifNull: ['$discount', 0] }, 0 ] } },
         totalOrders: { $sum: 1 },
-        deliveredOrders: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $eq: ['$status', 'done'] } ] }, 1, 0 ] } },
+        deliveredOrders: { $sum: 1 },
       } }
     ]);
 
