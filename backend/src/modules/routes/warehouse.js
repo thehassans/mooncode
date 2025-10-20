@@ -79,21 +79,34 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
               '$items',
               [ { productId: '$productId', quantity: { $ifNull: ['$quantity', 1] } } ]
             ]
-          }
+          },
+          _itemsNorm: {
+            $map: {
+              input: '$._items',
+              as: 'it',
+              in: {
+                productId: '$$it.productId',
+                q: { $cond: [ { $lt: [ { $ifNull: ['$$it.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$$it.quantity', 1] } ] }
+              }
+            }
+          },
+          matchedItems: { $filter: { input: '$._itemsNorm', as: 'it', cond: { $in: ['$$it.productId', productIds] } } },
+          matchedQtyTotal: { $sum: { $map: { input: '$matchedItems', as: 'mi', in: '$$mi.q' } } }
         } 
       },
-      { $unwind: '$_items' },
-      { $match: { '_items.productId': { $in: productIds } } },
+      { $unwind: '$matchedItems' },
       { $project: {
-          productId: '$_items.productId',
+          productId: '$matchedItems.productId',
           orderCountry: { $ifNull: ['$orderCountry', ''] },
-          quantity: { $ifNull: ['$_items.quantity', 1] },
+          quantity: '$matchedItems.q',
           orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] },
           discountAmount: { $ifNull: ['$discount', 0] },
-          grossAmount: { $ifNull: ['$total', 0] }
+          grossAmount: { $ifNull: ['$total', 0] },
+          matchedQtyTotal: { $ifNull: ['$matchedQtyTotal', 0] }
         }
       },
       { $addFields: {
+          allocFactor: { $cond: [ { $gt: ['$matchedQtyTotal', 0] }, { $divide: ['$quantity', '$matchedQtyTotal'] }, 0 ] },
           orderCountryCanon: {
             $let: {
               vars: { c: { $ifNull: ['$orderCountry', ''] } },
@@ -137,9 +150,9 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
       { $group: {
           _id: { productId: '$productId', country: '$orderCountryCanon', currency: '$orderCurrency' },
           deliveredQty: { $sum: { $ifNull: ['$quantity', 1] } },
-          totalAmount: { $sum: '$orderAmount' },
-          totalDiscount: { $sum: '$discountAmount' },
-          totalGross: { $sum: '$grossAmount' }
+          totalAmount: { $sum: { $multiply: ['$orderAmount', '$allocFactor'] } },
+          totalDiscount: { $sum: { $multiply: ['$discountAmount', '$allocFactor'] } },
+          totalGross: { $sum: { $multiply: ['$grossAmount', '$allocFactor'] } }
         }
       },
     ])
@@ -147,19 +160,26 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
     // Web (E-commerce) Orders: delivered quantities and amounts
     const webDeliveredAgg = await WebOrder.aggregate([
       { $match: { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
-      { $unwind: '$items' },
-      { $match: { 'items.productId': { $in: productIds } } },
+      { $addFields: {
+          itemsNorm: { $map: { input: { $ifNull: ['$items', []] }, as: 'it', in: { productId: '$$it.productId', q: { $cond: [ { $lt: [ { $ifNull: ['$$it.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$$it.quantity', 1] } ] } } } },
+          matchedItems: { $filter: { input: { $ifNull: ['$itemsNorm', []] }, as: 'mi', cond: { $in: ['$$mi.productId', productIds] } } },
+          matchedQtyTotal: { $sum: { $map: { input: { $ifNull: ['$matchedItems', []] }, as: 'x', in: '$$x.q' } } }
+        }
+      },
+      { $unwind: '$matchedItems' },
       { $project: {
-          productId: '$items.productId',
+          productId: '$matchedItems.productId',
           orderCountry: { $ifNull: ['$orderCountry', ''] },
-          quantity: { $ifNull: ['$items.quantity', 1] },
+          quantity: '$matchedItems.q',
           orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] },
           currency: { $ifNull: ['$currency', null] },
           discountAmount: { $ifNull: ['$discount', 0] },
-          grossAmount: { $ifNull: ['$total', 0] }
+          grossAmount: { $ifNull: ['$total', 0] },
+          matchedQtyTotal: { $ifNull: ['$matchedQtyTotal', 0] }
         }
       },
       { $addFields: {
+          allocFactor: { $cond: [ { $gt: ['$matchedQtyTotal', 0] }, { $divide: ['$quantity', '$matchedQtyTotal'] }, 0 ] },
           orderCountryCanon: {
             $let: {
               vars: { c: { $ifNull: ['$orderCountry', ''] } },
@@ -203,9 +223,9 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
       { $group: {
           _id: { productId: '$productId', country: '$orderCountryCanon', currency: '$orderCurrency' },
           deliveredQty: { $sum: { $ifNull: ['$quantity', 1] } },
-          totalAmount: { $sum: '$orderAmount' },
-          totalDiscount: { $sum: '$discountAmount' },
-          totalGross: { $sum: '$grossAmount' }
+          totalAmount: { $sum: { $multiply: ['$orderAmount', '$allocFactor'] } },
+          totalDiscount: { $sum: { $multiply: ['$discountAmount', '$allocFactor'] } },
+          totalGross: { $sum: { $multiply: ['$grossAmount', '$allocFactor'] } }
         }
       },
     ])

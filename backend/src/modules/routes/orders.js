@@ -501,6 +501,8 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
     const agentId = String(req.query.agent||'').trim()
     const driverId = String(req.query.driver||'').trim()
     const productParam = String(req.query.product||'').trim()
+    let pidForAlloc = null
+    try{ pidForAlloc = productParam ? new mongoose.Types.ObjectId(productParam) : null }catch{ pidForAlloc = null }
 
     const match = { ...base }
     if (country) {
@@ -737,6 +739,7 @@ router.get('/summary', auth, allowRoles('admin','user','agent','manager'), async
       orderCountry: { $ifNull: ['$orderCountry', ''] },
       items: { $ifNull: ['$items', []] },
       quantity: { $ifNull: ['$quantity', 1] },
+      productId: 1,
       total: { $ifNull: ['$total', 0] },
       discount: { $ifNull: ['$discount', 0] },
       collectedAmount: { $ifNull: ['$collectedAmount', 0] },
@@ -786,28 +789,71 @@ router.get('/summary', auth, allowRoles('admin','user','agent','manager'), async
       }
     }
 
-    const mainAgg = await Order.aggregate([
-      { $match: match },
-      { $project: baseProject },
-      { $addFields: addFieldsStage },
-      { $group: {
-          _id: null,
-          totalOrders: { $sum: 1 },
-          totalQty: { $sum: '$qty' },
-          deliveredOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
-          deliveredQty: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, '$qty', 0 ] } },
-          collectedTotal: { $sum: '$collectedAmount' },
-          balanceDueTotal: { $sum: '$balanceDue' }
-        } 
-      }
-    ])
+    const mainAgg = await Order.aggregate(
+      pidForAlloc ? [
+        { $match: match },
+        { $project: baseProject },
+        { $addFields: {
+            _items: { $cond: [ { $gt: [ { $size: '$items' }, 0 ] }, '$items', [ { productId: '$productId', quantity: '$quantity' } ] ] },
+            itemsNorm: { $map: { input: { $ifNull: ['$_items', []] }, as: 'it', in: { productId: '$$it.productId', q: { $cond: [ { $lt: [ { $ifNull: ['$$it.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$$it.quantity', 1] } ] } } } },
+            qtyMatched: {
+              $cond: [
+                { $gt: [ { $size: '$itemsNorm' }, 0 ] },
+                { $sum: { $map: { input: { $filter: { input: '$itemsNorm', as: 'mi', cond: { $eq: ['$$mi.productId', pidForAlloc] } } }, as: 'fi', in: '$$fi.q' } } },
+                { $cond: [ { $eq: ['$productId', pidForAlloc] }, { $cond: [ { $lt: ['$quantity', 1] }, 1, '$quantity' ] }, 0 ] }
+              ]
+            }
+          }
+        },
+        { $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            totalQty: { $sum: '$qtyMatched' },
+            deliveredOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
+            deliveredQty: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, '$qtyMatched', 0 ] } },
+            collectedTotal: { $sum: '$collectedAmount' },
+            balanceDueTotal: { $sum: '$balanceDue' }
+          } 
+        }
+      ] : [
+        { $match: match },
+        { $project: baseProject },
+        { $addFields: addFieldsStage },
+        { $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            totalQty: { $sum: '$qty' },
+            deliveredOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
+            deliveredQty: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, '$qty', 0 ] } },
+            collectedTotal: { $sum: '$collectedAmount' },
+            balanceDueTotal: { $sum: '$balanceDue' }
+          } 
+        }
+      ]
+    )
 
-    const byCurrency = await Order.aggregate([
-      { $match: match },
-      { $project: baseProject },
-      { $addFields: addFieldsStage },
-      { $group: { _id: '$orderCurrency', amount: { $sum: '$orderAmount' } } }
-    ])
+    const byCurrency = await Order.aggregate(
+      pidForAlloc ? [
+        { $match: match },
+        { $project: baseProject },
+        { $addFields: {
+            _items: { $cond: [ { $gt: [ { $size: '$items' }, 0 ] }, '$items', [ { productId: '$productId', quantity: '$quantity' } ] ] },
+            itemsNorm: { $map: { input: { $ifNull: ['$_items', []] }, as: 'it', in: { productId: '$$it.productId', q: { $cond: [ { $lt: [ { $ifNull: ['$$it.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$$it.quantity', 1] } ] } } } },
+            matchedItems: { $filter: { input: '$itemsNorm', as: 'mi', cond: { $eq: ['$$mi.productId', pidForAlloc] } } },
+            matchedQtyTotal: { $sum: { $map: { input: '$matchedItems', as: 'x', in: '$$x.q' } } }
+          }
+        },
+        { $unwind: '$matchedItems' },
+        { $addFields: addFieldsStage },
+        { $addFields: { allocFactor: { $cond: [ { $gt: ['$matchedQtyTotal', 0] }, { $divide: ['$matchedItems.q', '$matchedQtyTotal'] }, 0 ] } } },
+        { $group: { _id: '$orderCurrency', amount: { $sum: { $multiply: ['$orderAmount', '$allocFactor'] } } } }
+      ] : [
+        { $match: match },
+        { $project: baseProject },
+        { $addFields: addFieldsStage },
+        { $group: { _id: '$orderCurrency', amount: { $sum: '$orderAmount' } } }
+      ]
+    )
 
     const defaultMap = { AED:0, OMR:0, SAR:0, BHD:0, INR:0, KWD:0, QAR:0 }
     const amountByCurrencyInternal = { ...defaultMap }
@@ -841,42 +887,88 @@ router.get('/summary', auth, allowRoles('admin','user','agent','manager'), async
           webMatch.orderCountry = aliases[country] ? { $in: aliases[country] } : country
         }
         if (city) webMatch.city = city
-
-        const webByCurrency = productIds.length ? await WebOrder.aggregate([
-          { $match: webMatch },
-          { $unwind: '$items' },
-          { $match: { 'items.productId': { $in: productIds } } },
-          { $project: {
-              _id: 1,
-              orderCountry: { $ifNull: ['$orderCountry', ''] },
-              total: { $ifNull: ['$total', 0] },
-              discount: { $ifNull: ['$discount', 0] },
-              currency: { $ifNull: ['$currency', null] }
-            }
-          },
-          { $addFields: {
-              orderCurrency: {
-                $ifNull: [ '$currency', {
-                  $switch: {
-                    branches: [
-                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KSA','SAUDI ARABIA'] ] }, then: 'SAR' },
-                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'AED' },
-                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['OMAN','OM'] ] }, then: 'OMR' },
-                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['BAHRAIN','BH'] ] }, then: 'BHD' },
-                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['INDIA','IN'] ] }, then: 'INR' },
-                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KUWAIT','KW'] ] }, then: 'KWD' },
-                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['QATAR','QA'] ] }, then: 'QAR' },
-                    ],
-                    default: 'AED'
+        let webByCurrency = []
+        if (productIds.length){
+          if (pidForAlloc){
+            webByCurrency = await WebOrder.aggregate([
+              { $match: webMatch },
+              { $addFields: {
+                  _items: { $cond: [ { $gt: [ { $size: { $ifNull: ['$items', []] } }, 0 ] }, '$items', [] ] },
+                  itemsNorm: { $map: { input: { $ifNull: ['$_items', []] }, as: 'it', in: { productId: '$$it.productId', q: { $cond: [ { $lt: [ { $ifNull: ['$$it.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$$it.quantity', 1] } ] } } } },
+                  matchedItems: { $filter: { input: '$itemsNorm', as: 'mi', cond: { $and: [ { $in: ['$$mi.productId', productIds] }, { $eq: ['$$mi.productId', pidForAlloc] } ] } } },
+                  matchedQtyTotal: { $sum: { $map: { input: '$matchedItems', as: 'x', in: '$$x.q' } } }
+                }
+              },
+              { $unwind: '$matchedItems' },
+              { $project: {
+                  orderCountry: { $ifNull: ['$orderCountry', ''] },
+                  total: { $ifNull: ['$total', 0] },
+                  discount: { $ifNull: ['$discount', 0] },
+                  currency: { $ifNull: ['$currency', null] },
+                  qty: '$matchedItems.q',
+                  matchedQtyTotal: { $ifNull: ['$matchedQtyTotal', 0] }
+                }
+              },
+              { $addFields: {
+                  orderCurrency: {
+                    $ifNull: [ '$currency', {
+                      $switch: {
+                        branches: [
+                          { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KSA','SAUDI ARABIA'] ] }, then: 'SAR' },
+                          { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'AED' },
+                          { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['OMAN','OM'] ] }, then: 'OMR' },
+                          { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['BAHRAIN','BH'] ] }, then: 'BHD' },
+                          { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['INDIA','IN'] ] }, then: 'INR' },
+                          { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KUWAIT','KW'] ] }, then: 'KWD' },
+                          { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['QATAR','QA'] ] }, then: 'QAR' },
+                        ],
+                        default: 'AED'
+                      }
+                    } ]
+                  },
+                  allocFactor: { $cond: [ { $gt: ['$matchedQtyTotal', 0] }, { $divide: ['$qty', '$matchedQtyTotal'] }, 0 ] }
+                }
+              },
+              { $group: { _id: '$orderCurrency', amount: { $sum: { $multiply: [ { $subtract: ['$total', '$discount'] }, '$allocFactor' ] } } } }
+            ])
+          } else {
+            webByCurrency = await WebOrder.aggregate([
+              { $match: webMatch },
+              { $unwind: '$items' },
+              { $match: { 'items.productId': { $in: productIds } } },
+              { $project: {
+                  _id: 1,
+                  orderCountry: { $ifNull: ['$orderCountry', ''] },
+                  total: { $ifNull: ['$total', 0] },
+                  discount: { $ifNull: ['$discount', 0] },
+                  currency: { $ifNull: ['$currency', null] }
+                }
+              },
+              { $addFields: {
+                  orderCurrency: {
+                    $ifNull: [ '$currency', {
+                      $switch: {
+                        branches: [
+                          { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KSA','SAUDI ARABIA'] ] }, then: 'SAR' },
+                          { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'AED' },
+                          { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['OMAN','OM'] ] }, then: 'OMR' },
+                          { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['BAHRAIN','BH'] ] }, then: 'BHD' },
+                          { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['INDIA','IN'] ] }, then: 'INR' },
+                          { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KUWAIT','KW'] ] }, then: 'KWD' },
+                          { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['QATAR','QA'] ] }, then: 'QAR' },
+                        ],
+                        default: 'AED'
+                      }
+                    } ]
                   }
-                } ]
-              }
-            }
-          },
-          // Deduplicate per order first, so multi-item orders are counted once
-          { $group: { _id: { orderId: '$_id', orderCurrency: '$orderCurrency' }, amount: { $first: { $subtract: ['$total', '$discount'] } } } },
-          { $group: { _id: '$_id.orderCurrency', amount: { $sum: '$amount' } } }
-        ]) : []
+                }
+              },
+              // Deduplicate per order first, so multi-item orders are counted once
+              { $group: { _id: { orderId: '$_id', orderCurrency: '$orderCurrency' }, amount: { $first: { $subtract: ['$total', '$discount'] } } } },
+              { $group: { _id: '$_id.orderCurrency', amount: { $sum: '$amount' } } }
+            ])
+          }
+        }
         for (const row of webByCurrency){
           const ccy = String(row._id||'')
           if (amountByCurrencyWeb.hasOwnProperty(ccy)) amountByCurrencyWeb[ccy] += Number(row.amount || 0)
