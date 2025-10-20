@@ -871,10 +871,10 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       { $addFields: {
           _items: { $cond: [ { $gt: [ { $size: { $ifNull: ['$items', []] } }, 0 ] }, '$items', [ { productId: '$productId', quantity: { $ifNull: ['$quantity', 1] } } ] ] },
           _itemsNorm: { $map: { input: '$._items', as: 'it', in: { productId: '$$it.productId', q: { $cond: [ { $lt: [ { $ifNull: ['$$it.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$$it.quantity', 1] } ] } } } },
-          matchedItems: { $filter: { input: '$._itemsNorm', as: 'mi', cond: { $in: ['$$mi.productId', productIds] } } },
-          matchedQtyTotal: { $sum: { $map: { input: '$matchedItems', as: 'x', in: '$$x.q' } } }
+          matchedItems: { $filter: { input: '$._itemsNorm', as: 'mi', cond: { $in: ['$$mi.productId', productIds] } } }
         }
       },
+      { $addFields: { matchedQtyTotal: { $sum: { $map: { input: '$matchedItems', as: 'x', in: '$$x.q' } } } } },
       { $unwind: '$matchedItems' },
       { $project: {
           orderCountry: { $ifNull: ['$orderCountry', ''] },
@@ -943,10 +943,10 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       { $match: { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
       { $addFields: {
           itemsNorm: { $map: { input: { $ifNull: ['$items', []] }, as: 'it', in: { productId: '$$it.productId', q: { $cond: [ { $lt: [ { $ifNull: ['$$it.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$$it.quantity', 1] } ] } } } },
-          matchedItems: { $filter: { input: { $ifNull: ['$itemsNorm', []] }, as: 'mi', cond: { $in: ['$$mi.productId', productIds] } } },
-          matchedQtyTotal: { $sum: { $map: { input: { $ifNull: ['$matchedItems', []] }, as: 'x', in: '$$x.q' } } }
+          matchedItems: { $filter: { input: { $ifNull: ['$itemsNorm', []] }, as: 'mi', cond: { $in: ['$$mi.productId', productIds] } } }
         }
       },
+      { $addFields: { matchedQtyTotal: { $sum: { $map: { input: { $ifNull: ['$matchedItems', []] }, as: 'x', in: '$$x.q' } } } } },
       { $unwind: '$matchedItems' },
       { $project: {
           orderCountry: { $ifNull: ['$orderCountry', ''] },
