@@ -1270,37 +1270,32 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
 
     // Delivered quantity by country (internal Orders): items-aware and not restricted by productIds
     const deliveredQtyByCountryInternal = await Order.aggregate([
-      { $match: { createdBy: { $in: creatorIds }, $or: [ { $eq: ['$shipmentStatus','delivered'] }, { $eq: ['$status','done'] } ] } }
-    ]).catch(async()=>{
-      // Fallback pipeline without $expr in $match for some Mongo versions
-      return await Order.aggregate([
-        { $match: { createdBy: { $in: creatorIds }, $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
-        { $addFields: {
-          orderCountryCanon: {
-            $let: {
-              vars: { c: { $ifNull: ['$orderCountry', ''] } },
-              in: {
-                $switch: {
-                  branches: [
-                    { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
-                  ],
-                  default: '$$c'
-                }
+      { $match: { createdBy: { $in: creatorIds }, $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
+      { $addFields: {
+        orderCountryCanon: {
+          $let: {
+            vars: { c: { $ifNull: ['$orderCountry', ''] } },
+            in: {
+              $switch: {
+                branches: [
+                  { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
+                ],
+                default: '$$c'
               }
             }
-          },
-          _items: { $cond: [ { $gt: [ { $size: { $ifNull: ['$items', []] } }, 0 ] }, '$items', [ { quantity: { $ifNull: ['$quantity', 1] } } ] ] }
-        } },
-        { $unwind: '$_items' },
-        { $group: { _id: '$orderCountryCanon', qty: { $sum: { $cond: [ { $lt: [ { $ifNull: ['$_items.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$_items.quantity', 1] } ] } } } }
-      ])
-    })
+          }
+        },
+        _items: { $cond: [ { $gt: [ { $size: { $ifNull: ['$items', []] } }, 0 ] }, '$items', [ { quantity: { $ifNull: ['$quantity', 1] } } ] ] }
+      } },
+      { $unwind: '$_items' },
+      { $group: { _id: '$orderCountryCanon', qty: { $sum: { $cond: [ { $lt: [ { $ifNull: ['$_items.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$_items.quantity', 1] } ] } } } }
+    ])
 
     // Delivered quantity by country (WebOrders)
     const webDeliveredQtyByCountry = await WebOrder.aggregate([
