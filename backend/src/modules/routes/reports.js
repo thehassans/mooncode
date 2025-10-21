@@ -798,9 +798,9 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       { $group: {
         _id: null,
         totalOrders: { $sum: 1 },
-        totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
-        totalCOD: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $eq: ['$paymentMethod', 'COD'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] }, 0 ] } },
-        totalPrepaid: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $ne: ['$paymentMethod', 'COD'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] }, 0 ] } },
+        totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $ifNull: ['$total', 0] }, 0 ] } },
+        totalCOD: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $eq: ['$paymentMethod', 'COD'] }, { $ifNull: ['$total', 0] }, 0 ] }, 0 ] } },
+        totalPrepaid: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $ne: ['$paymentMethod', 'COD'] }, { $ifNull: ['$total', 0] }, 0 ] }, 0 ] } },
         totalCollected: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $ifNull: ['$collectedAmount', 0] }, 0 ] } },
         pendingOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'pending'] }, 1, 0 ] } },
         openOrders: { $sum: { $cond: [ { $in: ['$shipmentStatus', ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response','attempted','contacted']] }, 1, 0 ] } },
@@ -858,10 +858,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     }
     
     // Aggregate delivered quantities per product and country with actual order amounts
-    // From internal Orders (guard against empty productIds and pipeline errors)
-    let deliveredPerProdCountry = []
-    if (productIds.length){
-      try{ deliveredPerProdCountry = await Order.aggregate([
+    // From internal Orders
+    const deliveredPerProdCountry = await Order.aggregate([
       { $match: { 
           createdBy: { $in: creatorIds },
           $and: [
@@ -870,26 +868,25 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
           ]
         } 
       },
-      { $addFields: {
-          _items: { $cond: [ { $gt: [ { $size: { $ifNull: ['$items', []] } }, 0 ] }, '$items', [ { productId: '$productId', quantity: { $ifNull: ['$quantity', 1] } } ] ] },
-          _itemsNorm: { $map: { input: '$._items', as: 'it', in: { productId: '$$it.productId', q: { $cond: [ { $lt: [ { $ifNull: ['$$it.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$$it.quantity', 1] } ] } } } },
-          matchedItems: { $filter: { input: '$._itemsNorm', as: 'mi', cond: { $in: ['$$mi.productId', productIds] } } }
+      { $project: {
+          orderCountry: 1,
+          total: 1,
+          discount: 1,
+          items: { $cond: [ { $and: [ { $isArray: '$items' }, { $gt: [ { $size: '$items' }, 0 ] } ] }, '$items', [ { productId: '$productId', quantity: { $ifNull: ['$quantity', 1] } } ] ] }
         }
       },
-      { $addFields: { matchedQtyTotal: { $sum: { $map: { input: '$matchedItems', as: 'x', in: '$$x.q' } } } } },
-      { $unwind: '$matchedItems' },
+      { $unwind: '$items' },
       { $project: {
           orderCountry: { $ifNull: ['$orderCountry', ''] },
-          productId: '$matchedItems.productId',
-          quantity: '$matchedItems.q',
+          productId: '$items.productId',
+          quantity: { $let: { vars: { q: { $ifNull: ['$items.quantity', 1] } }, in: { $cond: [ { $lt: ['$$q', 1] }, 1, '$$q' ] } } },
           orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] },
           discountAmount: { $ifNull: ['$discount', 0] },
-          grossAmount: { $ifNull: ['$total', 0] },
-          matchedQtyTotal: { $ifNull: ['$matchedQtyTotal', 0] }
+          grossAmount: { $ifNull: ['$total', 0] }
         }
       },
+      { $match: { productId: { $in: productIds } } },
       { $addFields: {
-          allocFactor: { $cond: [ { $gt: ['$matchedQtyTotal', 0] }, { $divide: ['$quantity', '$matchedQtyTotal'] }, 0 ] },
           orderCountryCanon: {
             $let: {
               vars: { c: { $ifNull: ['$orderCountry', ''] } },
@@ -933,40 +930,30 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       { $group: { 
           _id: { productId: '$productId', country: '$orderCountryCanon', currency: '$orderCurrency' }, 
           qty: { $sum: '$quantity' },
-          totalAmount: { $sum: { $multiply: ['$orderAmount', '$allocFactor'] } },
-          totalDiscount: { $sum: { $multiply: ['$discountAmount', '$allocFactor'] } },
-          totalGross: { $sum: { $multiply: ['$grossAmount', '$allocFactor'] } }
+          totalAmount: { $sum: '$orderAmount' },
+          totalDiscount: { $sum: '$discountAmount' },
+          totalGross: { $sum: '$grossAmount' }
         } 
       }
-    ]) } catch(e){ console.error('user-metrics deliveredPerProdCountry agg error', e?.message || e) }
-    }
+    ])
     
     // From web/ecommerce Orders
-    let webDeliveredPerProdCountry = []
-    if (productIds.length){
-      try{ webDeliveredPerProdCountry = await WebOrder.aggregate([
+    const webDeliveredPerProdCountry = await WebOrder.aggregate([
       { $match: { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
-      { $addFields: {
-          itemsNorm: { $map: { input: { $ifNull: ['$items', []] }, as: 'it', in: { productId: '$$it.productId', q: { $cond: [ { $lt: [ { $ifNull: ['$$it.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$$it.quantity', 1] } ] } } } },
-          matchedItems: { $filter: { input: { $ifNull: ['$itemsNorm', []] }, as: 'mi', cond: { $in: ['$$mi.productId', productIds] } } }
-        }
-      },
-      { $addFields: { matchedQtyTotal: { $sum: { $map: { input: { $ifNull: ['$matchedItems', []] }, as: 'x', in: '$$x.q' } } } } },
-      { $unwind: '$matchedItems' },
+      { $unwind: '$items' },
+      { $match: { 'items.productId': { $in: productIds } } },
       { $project: {
           orderCountry: { $ifNull: ['$orderCountry', ''] },
-          productId: '$matchedItems.productId',
-          quantity: '$matchedItems.q',
+          productId: '$items.productId',
+          quantity: { $ifNull: ['$items.quantity', 1] },
           orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] },
           currency: { $ifNull: ['$currency', null] },
           discountAmount: { $ifNull: ['$discount', 0] },
-          grossAmount: { $ifNull: ['$total', 0] },
-          matchedQtyTotal: { $ifNull: ['$matchedQtyTotal', 0] }
+          grossAmount: { $ifNull: ['$total', 0] }
         }
       },
       { $addFields: {
-          allocFactor: { $cond: [ { $gt: ['$matchedQtyTotal', 0] }, { $divide: ['$quantity', '$matchedQtyTotal'] }, 0 ] },
-          orderCountryCanon: {
+        orderCountryCanon: {
             $let: {
               vars: { c: { $ifNull: ['$orderCountry', ''] } },
               in: {
@@ -1009,13 +996,12 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       { $group: { 
           _id: { productId: '$productId', country: '$orderCountryCanon', currency: '$orderCurrency' }, 
           qty: { $sum: '$quantity' },
-          totalAmount: { $sum: { $multiply: ['$orderAmount', '$allocFactor'] } },
-          totalDiscount: { $sum: { $multiply: ['$discountAmount', '$allocFactor'] } },
-          totalGross: { $sum: { $multiply: ['$grossAmount', '$allocFactor'] } }
+          totalAmount: { $sum: '$orderAmount' },
+          totalDiscount: { $sum: '$discountAmount' },
+          totalGross: { $sum: '$grossAmount' }
         } 
       }
-    ]) } catch(e){ console.error('user-metrics webDeliveredPerProdCountry agg error', e?.message || e) }
-    }
+    ])
     const deliveredMap = new Map()
     const deliveredAmountMap = new Map()
     const deliveredDiscountMap = new Map()
@@ -1163,12 +1149,13 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         productGlobal.stockPurchasedQty += (totalLeft + totalDelivered)
         // Total purchase price (all stock: remaining + delivered)
         productGlobal.totalPurchaseValueByCurrency[baseCur] += (totalLeft + totalDelivered) * Number(p.purchasePrice || 0)
+        // Purchase value of REMAINING stock only (totalLeft × per-unit price)
+        productGlobal.purchaseValueByCurrency[baseCur] += totalLeft * Number(p.purchasePrice || 0)
       }
     }
 
-    // Country-specific metrics from internal Orders (guard)
-    let countryMetrics = []
-    try{ countryMetrics = await Order.aggregate([
+    // Country-specific metrics from internal Orders
+    const countryMetrics = await Order.aggregate([
       { $match: { createdBy: { $in: creatorIds } } },
       // Canonicalize orderCountry to unify aliases
       { $addFields: {
@@ -1213,32 +1200,31 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       },
       { $group: {
         _id: '$orderCountryCanon',
-        // amounts
-        totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', '$discount' ] }, 0 ] } },
-        amountTotalOrders: { $sum: { $subtract: [ '$total', '$discount' ] } },
-        amountDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', '$discount' ] }, 0 ] } },
-        amountPending: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, { $subtract: [ '$total', '$discount' ] }, 0 ] } },
-        amountOpen: { $sum: { $cond: [ { $in: ['$shipmentStatus', ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response','attempted','contacted']] }, { $subtract: [ '$total', '$discount' ] }, 0 ] } },
+        // amounts (sum of total only)
+        totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $ifNull: ['$total', 0] }, 0 ] } },
+        amountTotalOrders: { $sum: { $ifNull: ['$total', 0] } },
+        amountDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $ifNull: ['$total', 0] }, 0 ] } },
+        amountPending: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'pending'] }, { $ifNull: ['$total', 0] }, 0 ] } },
+        amountOpen: { $sum: { $cond: [ { $in: ['$shipmentStatus', ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response','attempted','contacted']] }, { $ifNull: ['$total', 0] }, 0 ] } },
         amountDiscountDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, '$discount', 0 ] } },
         // counts
         totalOrders: { $sum: 1 },
-        pendingOrders: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, 1, 0 ] } },
+        pendingOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'pending'] }, 1, 0 ] } },
         openOrders: { $sum: { $cond: [ { $in: ['$shipmentStatus', ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response','attempted','contacted']] }, 1, 0 ] } },
-        assignedOrders: { $sum: { $cond: [ { $eq: ['$status', 'assigned'] }, 1, 0 ] } },
+        assignedOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'assigned'] }, 1, 0 ] } },
         pickedUpOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'picked_up'] }, 1, 0 ] } },
         inTransitOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'in_transit'] }, 1, 0 ] } },
         outForDeliveryOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'out_for_delivery'] }, 1, 0 ] } },
         deliveredOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
         noResponseOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'no_response'] }, 1, 0 ] } },
         returnedOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'returned'] }, 1, 0 ] } },
-        cancelledOrders: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'cancelled'] }, { $eq: ['$status', 'cancelled'] } ] }, 1, 0 ] } },
+        cancelledOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'cancelled'] }, 1, 0 ] } },
         deliveredQty: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, '$qty', 0 ] } }
       } }
-    ]) } catch(e){ console.error('user-metrics countryMetrics agg error', e?.message || e) }
-
-    // Country-specific metrics from WebOrders (guard)
-    let webCountryMetrics = []
-    try{ webCountryMetrics = await WebOrder.aggregate([
+    ]);
+    
+    // Country-specific metrics from WebOrders
+    const webCountryMetrics = await WebOrder.aggregate([
       { $match: { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
       { $match: { 'items.productId': { $in: productIds } } },
       { $addFields: {
@@ -1264,17 +1250,77 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       } },
       { $group: {
         _id: '$orderCountryCanon',
-        totalSales: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } },
-        amountTotalOrders: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } },
-        amountDelivered: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } },
+        totalSales: { $sum: { $ifNull: ['$total', 0] } },
+        amountTotalOrders: { $sum: { $ifNull: ['$total', 0] } },
+        amountDelivered: { $sum: { $ifNull: ['$total', 0] } },
         amountPending: { $sum: 0 },
         amountDiscountDelivered: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $eq: ['$status', 'done'] } ] }, { $ifNull: ['$discount', 0] }, 0 ] } },
         totalOrders: { $sum: 1 },
         deliveredOrders: { $sum: 1 },
       } }
-    ]) } catch(e){ console.error('user-metrics webCountryMetrics agg error', e?.message || e) }
+    ]);
 
-    // (Removed unused deliveredQtyByCountryInternal and webDeliveredQtyByCountry blocks)
+    // Delivered quantity by country (internal Orders): items-aware and not restricted by productIds
+    const deliveredQtyByCountryInternal = await Order.aggregate([
+      { $match: { createdBy: { $in: creatorIds }, $or: [ { $eq: ['$shipmentStatus','delivered'] }, { $eq: ['$status','done'] } ] } }
+    ]).catch(async()=>{
+      // Fallback pipeline without $expr in $match for some Mongo versions
+      return await Order.aggregate([
+        { $match: { createdBy: { $in: creatorIds }, $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
+        { $addFields: {
+          orderCountryCanon: {
+            $let: {
+              vars: { c: { $ifNull: ['$orderCountry', ''] } },
+              in: {
+                $switch: {
+                  branches: [
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
+                  ],
+                  default: '$$c'
+                }
+              }
+            }
+          },
+          _items: { $cond: [ { $gt: [ { $size: { $ifNull: ['$items', []] } }, 0 ] }, '$items', [ { quantity: { $ifNull: ['$quantity', 1] } } ] ] }
+        } },
+        { $unwind: '$_items' },
+        { $group: { _id: '$orderCountryCanon', qty: { $sum: { $cond: [ { $lt: [ { $ifNull: ['$_items.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$_items.quantity', 1] } ] } } } }
+      ])
+    })
+
+    // Delivered quantity by country (WebOrders)
+    const webDeliveredQtyByCountry = await WebOrder.aggregate([
+      { $match: { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
+      { $addFields: {
+        orderCountryCanon: {
+          $let: {
+            vars: { c: { $ifNull: ['$orderCountry', ''] } },
+            in: {
+              $switch: {
+                branches: [
+                  { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
+                  { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
+                ],
+                default: '$$c'
+              }
+            }
+          }
+        }
+      } },
+      { $unwind: '$items' },
+      { $group: { _id: '$orderCountryCanon', qty: { $sum: { $cond: [ { $lt: [ { $ifNull: ['$items.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$items.quantity', 1] } ] } } } }
+    ])
     
     // Driver expenses by country (based on driver's country)
     const driversByCountry = await User.aggregate([
@@ -1357,17 +1403,16 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       }
     }
     
-    // Set per-country delivered qty from map above; set local amounts from productCountryAgg (align with Warehouse)
+    // Set per-country delivered qty from map above; set local amounts directly from aggregated totals
     for (const c of KNOWN_COUNTRIES){
       if (!countries[c]) countries[c] = {}
       const cur = (countryCurrencyMap && countryCurrencyMap[c]) ? countryCurrencyMap[c] : (c==='KSA' ? 'SAR' : c==='UAE' ? 'AED' : c==='Oman' ? 'OMR' : c==='Bahrain' ? 'BHD' : c==='India' ? 'INR' : c==='Kuwait' ? 'KWD' : c==='Qatar' ? 'QAR' : 'AED')
       countries[c].deliveredQty = Number(deliveredQtyMap[c] || countries[c].deliveredQty || 0)
-      const pm = productCountryAgg?.[c] || { deliveredValueByCurrency:{}, discountValueByCurrency:{} }
-      const amtLocal = Number((pm.deliveredValueByCurrency||{})[cur] || 0)
-      const discLocal = Number((pm.discountValueByCurrency||{})[cur] || 0)
+      const amtLocal = Number(countries[c].amountDelivered || 0)
+      const discLocal = Number(countries[c].amountDiscountDelivered || 0)
       countries[c].amountDeliveredLocal = amtLocal
       countries[c].amountDiscountLocal = discLocal
-      countries[c].amountGrossLocal = amtLocal + discLocal
+      countries[c].amountGrossLocal = amtLocal
     }
     
     // Add driver expenses
@@ -1438,7 +1483,7 @@ router.get('/user-metrics/sales-by-country', auth, allowRoles('user'), async (re
     const creatorIds = [ownerId, ...agents.map(a => a._id), ...managers.map(m => m._id)]
     const rows = await Order.aggregate([
       { $match: { createdBy: { $in: creatorIds }, shipmentStatus: 'delivered' } },
-      { $group: { _id: '$orderCountry', sum: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } } } }
+      { $group: { _id: '$orderCountry', sum: { $sum: { $ifNull: ['$total', 0] } } } }
     ])
     const acc = { KSA: 0, Oman: 0, UAE: 0, Bahrain: 0, Other: 0 }
     for (const r of rows){
@@ -1477,9 +1522,9 @@ router.get('/manager-metrics', auth, allowRoles('manager'), async (req, res) => 
       { $match: baseMatch },
       { $group: { _id: null,
         totalOrders: { $sum: 1 },
-        totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
-        totalCOD: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $eq: ['$paymentMethod', 'COD'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] }, 0 ] } },
-        totalPrepaid: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $ne: ['$paymentMethod', 'COD'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] }, 0 ] } },
+        totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $ifNull: ['$total', 0] }, 0 ] } },
+        totalCOD: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $eq: ['$paymentMethod', 'COD'] }, { $ifNull: ['$total', 0] }, 0 ] }, 0 ] } },
+        totalPrepaid: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $cond: [ { $ne: ['$paymentMethod', 'COD'] }, { $ifNull: ['$total', 0] }, 0 ] }, 0 ] } },
         totalCollected: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $ifNull: ['$collectedAmount', 0] }, 0 ] } },
         pendingOrders: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, 1, 0 ] } },
         pickedUpOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'picked_up'] }, 1, 0 ] } },
@@ -1495,21 +1540,19 @@ router.get('/manager-metrics', auth, allowRoles('manager'), async (req, res) => 
       { $group: {
         _id: '$orderCountry',
         // amounts
-        totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
-        amountTotalOrders: { $sum: { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] } },
-        amountDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
-        amountPending: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, { $subtract: [ '$total', { $ifNull: ['$discount', 0] } ] }, 0 ] } },
+        totalSales: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $ifNull: ['$total', 0] }, 0 ] } },
+        amountTotalOrders: { $sum: { $ifNull: ['$total', 0] } },
+        amountDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $ifNull: ['$total', 0] }, 0 ] } },
+        amountPending: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, { $ifNull: ['$total', 0] }, 0 ] } },
         // counts
         totalOrders: { $sum: 1 },
         pendingOrders: { $sum: { $cond: [ { $eq: ['$status', 'pending'] }, 1, 0 ] } },
-        assignedOrders: { $sum: { $cond: [ { $eq: ['$status', 'assigned'] }, 1, 0 ] } },
         pickedUpOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'picked_up'] }, 1, 0 ] } },
-        inTransitOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'in_transit'] }, 1, 0 ] } },
-        outForDeliveryOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'out_for_delivery'] }, 1, 0 ] } },
         deliveredOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
+        cancelledOrders: { $sum: { $cond: [ { $eq: ['$status', 'cancelled'] }, 1, 0 ] } },
+        outForDeliveryOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'out_for_delivery'] }, 1, 0 ] } },
         noResponseOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'no_response'] }, 1, 0 ] } },
         returnedOrders: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'returned'] }, 1, 0 ] } },
-        cancelledOrders: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'cancelled'] }, { $eq: ['$status', 'cancelled'] } ] }, 1, 0 ] } },
       } }
     ])
 
