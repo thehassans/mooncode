@@ -2,7 +2,6 @@ import express from "express";
 const router = express.Router();
 import User from "../models/User.js";
 import Order from "../models/Order.js";
-import WebOrder from "../models/WebOrder.js";
 import Product from "../models/Product.js";
 import Expense from "../models/Expense.js";
 import AgentRemit from "../models/AgentRemit.js";
@@ -880,7 +879,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
           orderCountry: { $ifNull: ['$orderCountry', ''] },
           productId: '$items.productId',
           quantity: { $let: { vars: { q: { $ifNull: ['$items.quantity', 1] } }, in: { $cond: [ { $lt: ['$$q', 1] }, 1, '$$q' ] } } },
-          orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] },
+          orderAmount: { $ifNull: ['$total', 0] },
           discountAmount: { $ifNull: ['$discount', 0] },
           grossAmount: { $ifNull: ['$total', 0] }
         }
@@ -937,71 +936,6 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       }
     ])
     
-    // From web/ecommerce Orders
-    const webDeliveredPerProdCountry = await WebOrder.aggregate([
-      { $match: { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
-      { $unwind: '$items' },
-      { $match: { 'items.productId': { $in: productIds } } },
-      { $project: {
-          orderCountry: { $ifNull: ['$orderCountry', ''] },
-          productId: '$items.productId',
-          quantity: { $ifNull: ['$items.quantity', 1] },
-          orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] },
-          currency: { $ifNull: ['$currency', null] },
-          discountAmount: { $ifNull: ['$discount', 0] },
-          grossAmount: { $ifNull: ['$total', 0] }
-        }
-      },
-      { $addFields: {
-        orderCountryCanon: {
-            $let: {
-              vars: { c: { $ifNull: ['$orderCountry', ''] } },
-              in: {
-                $switch: {
-                  branches: [
-                    { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
-                    { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
-                  ],
-                  default: '$$c'
-                }
-              }
-            }
-          },
-          orderCurrency: {
-            $ifNull: [
-              '$currency',
-              {
-                $switch: {
-                  branches: [
-                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KSA','SAUDI ARABIA'] ] }, then: 'SAR' },
-                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'AED' },
-                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['OMAN','OM'] ] }, then: 'OMR' },
-                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['BAHRAIN','BH'] ] }, then: 'BHD' },
-                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['INDIA','IN'] ] }, then: 'INR' },
-                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KUWAIT','KW'] ] }, then: 'KWD' },
-                    { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['QATAR','QA'] ] }, then: 'QAR' },
-                  ],
-                  default: 'AED'
-                }
-              }
-            ]
-          }
-        }
-      },
-      { $group: { 
-          _id: { productId: '$productId', country: '$orderCountryCanon', currency: '$orderCurrency' }, 
-          qty: { $sum: '$quantity' },
-          totalAmount: { $sum: '$orderAmount' },
-          totalDiscount: { $sum: '$discountAmount' },
-          totalGross: { $sum: '$grossAmount' }
-        } 
-      }
-    ])
     const deliveredMap = new Map()
     const deliveredAmountMap = new Map()
     const deliveredDiscountMap = new Map()
@@ -1020,21 +954,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       if (!deliveredDiscountMap.get(pid)[country]) deliveredDiscountMap.get(pid)[country] = {}
       deliveredDiscountMap.get(pid)[country][currency] = (deliveredDiscountMap.get(pid)[country][currency] || 0) + Number(r.totalDiscount || 0)
     }
-    // Merge web orders
-    for (const r of webDeliveredPerProdCountry){
-      const pid = String(r._id?.productId || '')
-      const country = String(r._id?.country || '')
-      const currency = String(r._id?.currency || 'AED')
-      if (!pid) continue
-      if (!deliveredMap.has(pid)) deliveredMap.set(pid, {})
-      if (!deliveredAmountMap.has(pid)) deliveredAmountMap.set(pid, {})
-      deliveredMap.get(pid)[country] = (deliveredMap.get(pid)[country] || 0) + Number(r.qty || 0)
-      if (!deliveredAmountMap.get(pid)[country]) deliveredAmountMap.get(pid)[country] = {}
-      deliveredAmountMap.get(pid)[country][currency] = (deliveredAmountMap.get(pid)[country][currency] || 0) + Number(r.totalAmount || 0)
-      if (!deliveredDiscountMap.has(pid)) deliveredDiscountMap.set(pid, {})
-      if (!deliveredDiscountMap.get(pid)[country]) deliveredDiscountMap.get(pid)[country] = {}
-      deliveredDiscountMap.get(pid)[country][currency] = (deliveredDiscountMap.get(pid)[country][currency] || 0) + Number(r.totalDiscount || 0)
-    }
+    // No web orders merge: metrics derive from Orders collection only
     const KNOWN_COUNTRIES = ['KSA','UAE','Oman','Bahrain','India','Kuwait','Qatar']
     const emptyCurrencyMap = () => ({ AED:0, OMR:0, SAR:0, BHD:0, INR:0, KWD:0, QAR:0, USD:0, CNY:0 })
     const productCountryAgg = {}
@@ -1223,42 +1143,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       } }
     ]);
     
-    // Country-specific metrics from WebOrders
-    const webCountryMetrics = await WebOrder.aggregate([
-      { $match: { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
-      { $match: { 'items.productId': { $in: productIds } } },
-      { $addFields: {
-        orderCountryCanon: {
-          $let: {
-            vars: { c: { $ifNull: ['$orderCountry', ''] } },
-            in: {
-              $switch: {
-                branches: [
-                  { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
-                  { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
-                  { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
-                  { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
-                  { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
-                  { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
-                  { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
-                ],
-                default: '$$c'
-              }
-            }
-          }
-        }
-      } },
-      { $group: {
-        _id: '$orderCountryCanon',
-        totalSales: { $sum: { $ifNull: ['$total', 0] } },
-        amountTotalOrders: { $sum: { $ifNull: ['$total', 0] } },
-        amountDelivered: { $sum: { $ifNull: ['$total', 0] } },
-        amountPending: { $sum: 0 },
-        amountDiscountDelivered: { $sum: { $cond: [ { $or: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $eq: ['$status', 'done'] } ] }, { $ifNull: ['$discount', 0] }, 0 ] } },
-        totalOrders: { $sum: 1 },
-        deliveredOrders: { $sum: 1 },
-      } }
-    ]);
+    // Removed WebOrder aggregation: dashboard country metrics derive from Orders only
 
     // Delivered quantity by country (internal Orders): items-aware and not restricted by productIds
     const deliveredQtyByCountryInternal = await Order.aggregate([
@@ -1294,33 +1179,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       ])
     })
 
-    // Delivered quantity by country (WebOrders)
-    const webDeliveredQtyByCountry = await WebOrder.aggregate([
-      { $match: { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] } },
-      { $addFields: {
-        orderCountryCanon: {
-          $let: {
-            vars: { c: { $ifNull: ['$orderCountry', ''] } },
-            in: {
-              $switch: {
-                branches: [
-                  { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
-                  { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
-                  { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
-                  { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
-                  { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
-                  { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
-                  { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
-                ],
-                default: '$$c'
-              }
-            }
-          }
-        }
-      } },
-      { $unwind: '$items' },
-      { $group: { _id: '$orderCountryCanon', qty: { $sum: { $cond: [ { $lt: [ { $ifNull: ['$items.quantity', 1] }, 1 ] }, 1, { $ifNull: ['$items.quantity', 1] } ] } } } }
-    ])
+    // Removed WebOrder delivered qty aggregation
     
     // Driver expenses by country (based on driver's country)
     const driversByCountry = await User.aggregate([
@@ -1379,19 +1238,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       countries[key].deliveredQty = (countries[key].deliveredQty || 0) + (cm.deliveredQty || 0);
     });
     
-    // Merge web orders
-    webCountryMetrics.forEach(cm => {
-      const code = cm._id || '';
-      const ccode = canon(String(code))
-      const key = countries[ccode] ? ccode : 'Other';
-      countries[key].sales = (countries[key].sales || 0) + (cm.totalSales || 0);
-      countries[key].orders = (countries[key].orders || 0) + (cm.totalOrders || 0);
-      countries[key].delivered = (countries[key].delivered || 0) + (cm.deliveredOrders || 0);
-      countries[key].amountTotalOrders = (countries[key].amountTotalOrders || 0) + (cm.amountTotalOrders || 0);
-      countries[key].amountDelivered = (countries[key].amountDelivered || 0) + (cm.amountDelivered || 0);
-      countries[key].amountPending = (countries[key].amountPending || 0) + (cm.amountPending || 0);
-      countries[key].amountDiscountDelivered = (countries[key].amountDiscountDelivered || 0) + (cm.amountDiscountDelivered || 0);
-    });
+    // No web country merge: all country totals come from Orders only
 
     // Delivered qty per country derived from deliveredMap (owner product scope)
     const deliveredQtyMap = {}

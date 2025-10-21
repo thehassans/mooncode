@@ -4,7 +4,6 @@ import fs from 'fs'
 import path from 'path'
 import Order from '../models/Order.js'
 import Product from '../models/Product.js'
-import WebOrder from '../models/WebOrder.js'
 import Counter from '../models/Counter.js'
 import { auth, allowRoles } from '../middleware/auth.js'
 import User from '../models/User.js'
@@ -748,7 +747,7 @@ router.get('/summary', auth, allowRoles('admin','user','agent','manager'), async
           { $cond: [ { $lt: [ { $ifNull: ['$quantity', 1] }, 1 ] }, 1, { $ifNull: ['$quantity', 1] } ] }
         ]
       },
-      orderAmount: { $subtract: [ { $ifNull: ['$total', 0] }, { $ifNull: ['$discount', 0] } ] },
+      orderAmount: { $ifNull: ['$total', 0] },
     }
     const addFieldsStage = {
       orderCountryCanon: {
@@ -816,77 +815,12 @@ router.get('/summary', auth, allowRoles('admin','user','agent','manager'), async
       if (amountByCurrencyInternal.hasOwnProperty(ccy)) amountByCurrencyInternal[ccy] += Number(row.amount || 0)
     }
 
-    // Optionally include WebOrders delivered amounts by currency, scoped to owner's products
-    const includeWeb = String(req.query.includeWeb||'').toLowerCase() === 'true'
-    let amountByCurrencyWeb = { ...defaultMap }
-    if (includeWeb && (shipFilter === 'delivered' || shipFilter === 'done' || shipFilter === '')){
-      try{
-        // Derive owner for product scoping
-        let ownerId = null
-        if (req.user.role === 'user') ownerId = new mongoose.Types.ObjectId(req.user.id)
-        else if (req.user.role === 'manager'){
-          const mgr = await User.findById(req.user.id).select('createdBy').lean()
-          ownerId = mgr?.createdBy ? new mongoose.Types.ObjectId(mgr.createdBy) : new mongoose.Types.ObjectId(req.user.id)
-        }
-        const prodFilter = ownerId ? { createdBy: ownerId } : {}
-        const prods = await Product.find(prodFilter).select('_id').lean()
-        const productIds = prods.map(p => p._id)
-
-        const webMatch = {}
-        // Only include delivered/done web orders
-        webMatch.$or = [ { shipmentStatus: 'delivered' }, { status: 'done' } ]
-        if (country){
-          // Support aliases like KSA/Saudi Arabia and UAE/United Arab Emirates
-          const aliases = { 'KSA': ['KSA','Saudi Arabia'], 'Saudi Arabia': ['KSA','Saudi Arabia'], 'UAE': ['UAE','United Arab Emirates'], 'United Arab Emirates': ['UAE','United Arab Emirates'] }
-          webMatch.orderCountry = aliases[country] ? { $in: aliases[country] } : country
-        }
-        if (city) webMatch.city = city
-
-        const webByCurrency = productIds.length ? await WebOrder.aggregate([
-          { $match: webMatch },
-          { $unwind: '$items' },
-          { $match: { 'items.productId': { $in: productIds } } },
-          { $project: {
-              _id: 1,
-              orderCountry: { $ifNull: ['$orderCountry', ''] },
-              total: { $ifNull: ['$total', 0] },
-              discount: { $ifNull: ['$discount', 0] },
-              currency: { $ifNull: ['$currency', null] }
-            }
-          },
-          { $addFields: {
-              orderCurrency: {
-                $ifNull: [ '$currency', {
-                  $switch: {
-                    branches: [
-                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KSA','SAUDI ARABIA'] ] }, then: 'SAR' },
-                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'AED' },
-                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['OMAN','OM'] ] }, then: 'OMR' },
-                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['BAHRAIN','BH'] ] }, then: 'BHD' },
-                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['INDIA','IN'] ] }, then: 'INR' },
-                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['KUWAIT','KW'] ] }, then: 'KWD' },
-                      { case: { $in: [ { $toUpper: { $ifNull: ['$orderCountry', ''] } }, ['QATAR','QA'] ] }, then: 'QAR' },
-                    ],
-                    default: 'AED'
-                  }
-                } ]
-              }
-            }
-          },
-          // Deduplicate per order first, so multi-item orders are counted once
-          { $group: { _id: { orderId: '$_id', orderCurrency: '$orderCurrency' }, amount: { $first: { $subtract: ['$total', '$discount'] } } } },
-          { $group: { _id: '$_id.orderCurrency', amount: { $sum: '$amount' } } }
-        ]) : []
-        for (const row of webByCurrency){
-          const ccy = String(row._id||'')
-          if (amountByCurrencyWeb.hasOwnProperty(ccy)) amountByCurrencyWeb[ccy] += Number(row.amount || 0)
-        }
-      }catch(_e){ amountByCurrencyWeb = { ...defaultMap } }
-    }
+    // No WebOrders: dashboard/warehouse summary derives from Orders only
+    const amountByCurrencyWeb = { ...defaultMap }
 
     const amountByCurrency = { ...defaultMap }
     for (const k of Object.keys(defaultMap)){
-      amountByCurrency[k] = Number(amountByCurrencyInternal[k]||0) + Number(amountByCurrencyWeb[k]||0)
+      amountByCurrency[k] = Number(amountByCurrencyInternal[k]||0)
     }
 
     const totalSummary = mainAgg && mainAgg[0] ? mainAgg[0] : { totalOrders:0, totalQty:0, deliveredOrders:0, deliveredQty:0, collectedTotal:0, balanceDueTotal:0 }
