@@ -1293,14 +1293,20 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     // ===== PROFIT/LOSS CALCULATION =====
     // Profit = Revenue (total) - Purchase Cost - Driver Commission - Agent Commission - Investor Commission
     
-    // Get currency configuration for PKR conversion
+    // Get currency configuration for PKR conversion and currency-to-AED conversion
     let pkrRates = {
       AED: 76, OMR: 726, SAR: 72, BHD: 830, KWD: 880, QAR: 79, INR: 3.3
+    }
+    let sarPerUnit = {
+      SAR: 1, AED: 1.02, OMR: 9.78, BHD: 9.94, INR: 0.046, KWD: 12.2, QAR: 1.03
     }
     try {
       const currencyDoc = await Setting.findOne({ key: 'currency' }).lean()
       if (currencyDoc?.value?.pkrPerUnit) {
         pkrRates = { ...pkrRates, ...currencyDoc.value.pkrPerUnit }
+      }
+      if (currencyDoc?.value?.sarPerUnit) {
+        sarPerUnit = { ...sarPerUnit, ...currencyDoc.value.sarPerUnit }
       }
     } catch (e) {
       // Use default rates if fetch fails
@@ -1311,6 +1317,17 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       const rate = pkrRates[targetCurrency]
       if (!rate || rate === 0) return pkrAmount
       return pkrAmount / rate
+    }
+    
+    // Helper: Convert any currency to AED via SAR
+    const convertToAED = (amount, fromCurrency) => {
+      if (fromCurrency === 'AED') return amount
+      // Convert to SAR first, then SAR to AED
+      const sarRate = sarPerUnit[fromCurrency]
+      const aedRate = sarPerUnit['AED']
+      if (!sarRate || !aedRate || sarRate === 0) return amount
+      const amountInSAR = amount / sarRate
+      return amountInSAR * aedRate
     }
     
     // Get all delivered orders with full details for profit calculation
@@ -1419,16 +1436,49 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       }
     }
     
-    // Calculate final profit/loss
-    // Convert global agent commission from PKR to AED for display
-    const globalAgentCommissionAED = convertPKR(globalAgentCommission, 'AED')
-    const globalProfit = globalRevenue - globalPurchaseCost - globalDriverCommission - globalAgentCommissionAED - globalInvestorCommission
-    
+    // Calculate profit for each country in local currency
     for (const c of KNOWN_COUNTRIES) {
       if (profitByCountry[c]) {
         profitByCountry[c].profit = profitByCountry[c].revenue - profitByCountry[c].purchaseCost - profitByCountry[c].driverCommission - profitByCountry[c].agentCommission - profitByCountry[c].investorCommission
       }
     }
+    
+    // Calculate global profit by converting each country's profit to AED and summing
+    let globalProfitFromCountries = 0
+    for (const c of KNOWN_COUNTRIES) {
+      if (profitByCountry[c]) {
+        const countryCurrency = profitByCountry[c].currency || 'AED'
+        const profitInAED = convertToAED(profitByCountry[c].profit, countryCurrency)
+        globalProfitFromCountries += profitInAED
+      }
+    }
+    
+    // Also calculate global totals in AED for display
+    const globalRevenueAED = convertToAED(globalRevenue, 'AED') // already in various currencies, need proper aggregation
+    const globalPurchaseCostAED = convertToAED(globalPurchaseCost, 'AED')
+    const globalDriverCommissionAED = convertToAED(globalDriverCommission, 'AED')
+    const globalAgentCommissionAED = convertPKR(globalAgentCommission, 'AED')
+    const globalInvestorCommissionAED = convertToAED(globalInvestorCommission, 'AED')
+    
+    // Convert country-wise revenue, costs, commissions to AED for accurate global totals
+    let totalRevenueAED = 0
+    let totalPurchaseCostAED = 0
+    let totalDriverCommAED = 0
+    let totalAgentCommAED = 0
+    let totalInvestorCommAED = 0
+    
+    for (const c of KNOWN_COUNTRIES) {
+      if (profitByCountry[c]) {
+        const curr = profitByCountry[c].currency || 'AED'
+        totalRevenueAED += convertToAED(profitByCountry[c].revenue, curr)
+        totalPurchaseCostAED += convertToAED(profitByCountry[c].purchaseCost, curr)
+        totalDriverCommAED += convertToAED(profitByCountry[c].driverCommission, curr)
+        totalAgentCommAED += convertToAED(profitByCountry[c].agentCommission, curr)
+        totalInvestorCommAED += convertToAED(profitByCountry[c].investorCommission, curr)
+      }
+    }
+    
+    const globalProfit = globalProfitFromCountries
     
     // Add profit data to country objects
     for (const c of KNOWN_COUNTRIES) {
@@ -1460,11 +1510,11 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       profitLoss: {
         profit: globalProfit,
         isProfit: globalProfit >= 0,
-        revenue: globalRevenue,
-        purchaseCost: globalPurchaseCost,
-        driverCommission: globalDriverCommission,
-        agentCommission: globalAgentCommissionAED,
-        investorCommission: globalInvestorCommission,
+        revenue: totalRevenueAED,
+        purchaseCost: totalPurchaseCostAED,
+        driverCommission: totalDriverCommAED,
+        agentCommission: totalAgentCommAED,
+        investorCommission: totalInvestorCommAED,
         byCountry: profitByCountry
       },
       countries,
