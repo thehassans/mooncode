@@ -452,7 +452,7 @@ export default function UserDashboard(){
                       </div>
                       <div style={{display:'grid', gap:6, fontSize:13}}>
                         <div style={{display:'flex', justifyContent:'space-between'}}>
-                          <span className="helper">Revenue:</span>
+                          <span className="helper">Delivered:</span>
                           <span style={{fontWeight:700, color:'#0ea5e9'}}>{currency} {fmtAmt(profitData.revenue || 0)}</span>
                         </div>
                         <div style={{display:'flex', justifyContent:'space-between'}}>
