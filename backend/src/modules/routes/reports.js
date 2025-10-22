@@ -1293,52 +1293,73 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     // ===== PROFIT/LOSS CALCULATION =====
     // Profit = Revenue (total) - Purchase Cost - Driver Commission - Agent Commission - Investor Commission
     
-    // Get currency configuration for PKR conversion and currency-to-AED conversion
-    let pkrRates = {
-      AED: 76, OMR: 726, SAR: 72, BHD: 830, KWD: 880, QAR: 79, INR: 3.3
+    // Get currency configuration - use perAED rates (how much of currency X per 1 AED)
+    let perAED = {
+      AED: 1,
+      SAR: 1,
+      QAR: 1,
+      BHD: 0.10,
+      OMR: 0.10,
+      KWD: 0.083,
+      USD: 0.27,
+      CNY: 1.94,
+      INR: 24.16,
+      PKR: 76.56
     }
-    let sarPerUnit = {
-      SAR: 1, AED: 1.02, OMR: 9.78, BHD: 9.94, INR: 0.046, KWD: 12.2, QAR: 1.03
-    }
+    
     try {
       const currencyDoc = await Setting.findOne({ key: 'currency' }).lean()
-      if (currencyDoc?.value?.pkrPerUnit) {
-        pkrRates = { ...pkrRates, ...currencyDoc.value.pkrPerUnit }
-      }
-      if (currencyDoc?.value?.sarPerUnit) {
-        sarPerUnit = { ...sarPerUnit, ...currencyDoc.value.sarPerUnit }
+      if (currencyDoc?.value?.perAED) {
+        // Direct perAED rates
+        perAED = { ...perAED, ...currencyDoc.value.perAED }
+      } else if (currencyDoc?.value?.sarPerUnit) {
+        // Legacy: convert sarPerUnit to perAED
+        const sarPerUnit = currencyDoc.value.sarPerUnit
+        const sarPerAED = sarPerUnit.AED || 1.02
+        for (const [curr, sarRate] of Object.entries(sarPerUnit)) {
+          if (curr === 'AED') {
+            perAED.AED = 1
+          } else if (sarRate > 0) {
+            // C per AED = (SAR per AED) / (SAR per C)
+            perAED[curr] = sarPerAED / sarRate
+          }
+        }
+        // Add PKR from pkrPerUnit if available
+        if (currencyDoc.value.pkrPerUnit?.AED) {
+          perAED.PKR = currencyDoc.value.pkrPerUnit.AED
+        }
       }
     } catch (e) {
       // Use default rates if fetch fails
     }
     
-    // Helper: Convert PKR to target currency
-    const convertPKR = (pkrAmount, targetCurrency) => {
-      const rate = pkrRates[targetCurrency]
-      if (!rate || rate === 0) return pkrAmount
-      return pkrAmount / rate
-    }
+    // Currency conversion helpers using perAED rates (matching frontend utility)
+    // perAED[currency] = how much of that currency per 1 AED
+    // Example: perAED.PKR = 76.56 means 1 AED = 76.56 PKR
     
-    // Helper: Convert any currency to AED via SAR
-    const convertToAED = (amount, fromCurrency) => {
+    // Convert any currency to AED
+    const toAED = (amount, fromCurrency) => {
       if (fromCurrency === 'AED') return amount
-      // Convert to SAR first, then SAR to AED
-      const sarRate = sarPerUnit[fromCurrency]
-      const aedRate = sarPerUnit['AED']
-      if (!sarRate || !aedRate || sarRate === 0) return amount
-      const amountInSAR = amount / sarRate
-      return amountInSAR * aedRate
+      const rate = perAED[fromCurrency]
+      if (!rate || rate === 0) return amount
+      // amount in C -> AED = amount / (C per AED)
+      return amount / rate
     }
     
-    // Helper: Convert from one currency to another via SAR
-    const convertToCountryCurrency = (amount, fromCurrency, toCurrency) => {
+    // Convert AED to any currency
+    const fromAED = (amountAED, toCurrency) => {
+      if (toCurrency === 'AED') return amountAED
+      const rate = perAED[toCurrency]
+      if (!rate || rate === 0) return amountAED
+      // AED -> C = amount * (C per AED)
+      return amountAED * rate
+    }
+    
+    // Convert from one currency to another via AED
+    const convertCurrency = (amount, fromCurrency, toCurrency) => {
       if (fromCurrency === toCurrency) return amount
-      // Convert to SAR first
-      const fromRate = sarPerUnit[fromCurrency]
-      const toRate = sarPerUnit[toCurrency]
-      if (!fromRate || !toRate || fromRate === 0 || toRate === 0) return amount
-      const amountInSAR = amount / fromRate
-      return amountInSAR * toRate
+      const amountInAED = toAED(amount, fromCurrency)
+      return fromAED(amountInAED, toCurrency)
     }
     
     // Get all delivered orders with full details for profit calculation
@@ -1430,7 +1451,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
             const purchasePriceInBaseCurrency = Number(prod.purchasePrice || 0)
             
             // Convert purchase price from product's baseCurrency to order country currency
-            const purchasePriceConverted = convertToCountryCurrency(purchasePriceInBaseCurrency, productBaseCurrency, countryCurrency)
+            const purchasePriceConverted = convertCurrency(purchasePriceInBaseCurrency, productBaseCurrency, countryCurrency)
             purchaseCost += purchasePriceConverted * qty
             
             // Investor commission
@@ -1446,7 +1467,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         const purchasePriceInBaseCurrency = Number(prod.purchasePrice || 0)
         
         // Convert purchase price from product's baseCurrency to order country currency
-        const purchasePriceConverted = convertToCountryCurrency(purchasePriceInBaseCurrency, productBaseCurrency, countryCurrency)
+        const purchasePriceConverted = convertCurrency(purchasePriceInBaseCurrency, productBaseCurrency, countryCurrency)
         purchaseCost += purchasePriceConverted * qty
         
         // Investor commission
@@ -1468,10 +1489,10 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       globalAgentCommission += agentCommissionPKR
       globalInvestorCommission += investorCommission
       
-      // Add to country totals (convert agent commission to local currency)
+      // Add to country totals (convert agent commission from PKR to local currency)
       if (profitByCountry[canon]) {
         const countryCurrency = countryCurrencyMap[canon] || 'AED'
-        const agentCommissionLocal = convertPKR(agentCommissionPKR, countryCurrency)
+        const agentCommissionLocal = convertCurrency(agentCommissionPKR, 'PKR', countryCurrency)
         
         profitByCountry[canon].revenue += revenue
         profitByCountry[canon].purchaseCost += purchaseCost
@@ -1499,17 +1520,10 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     for (const c of KNOWN_COUNTRIES) {
       if (profitByCountry[c]) {
         const countryCurrency = profitByCountry[c].currency || 'AED'
-        const profitInAED = convertToAED(profitByCountry[c].profit, countryCurrency)
+        const profitInAED = toAED(profitByCountry[c].profit, countryCurrency)
         globalProfitFromCountries += profitInAED
       }
     }
-    
-    // Also calculate global totals in AED for display
-    const globalRevenueAED = convertToAED(globalRevenue, 'AED') // already in various currencies, need proper aggregation
-    const globalPurchaseCostAED = convertToAED(globalPurchaseCost, 'AED')
-    const globalDriverCommissionAED = convertToAED(globalDriverCommission, 'AED')
-    const globalAgentCommissionAED = convertPKR(globalAgentCommission, 'AED')
-    const globalInvestorCommissionAED = convertToAED(globalInvestorCommission, 'AED')
     
     // Convert country-wise revenue, costs, commissions to AED for accurate global totals
     let totalRevenueAED = 0
@@ -1521,11 +1535,11 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     for (const c of KNOWN_COUNTRIES) {
       if (profitByCountry[c]) {
         const curr = profitByCountry[c].currency || 'AED'
-        totalRevenueAED += convertToAED(profitByCountry[c].revenue, curr)
-        totalPurchaseCostAED += convertToAED(profitByCountry[c].purchaseCost, curr)
-        totalDriverCommAED += convertToAED(profitByCountry[c].driverCommission, curr)
-        totalAgentCommAED += convertToAED(profitByCountry[c].agentCommission, curr)
-        totalInvestorCommAED += convertToAED(profitByCountry[c].investorCommission, curr)
+        totalRevenueAED += toAED(profitByCountry[c].revenue, curr)
+        totalPurchaseCostAED += toAED(profitByCountry[c].purchaseCost, curr)
+        totalDriverCommAED += toAED(profitByCountry[c].driverCommission, curr)
+        totalAgentCommAED += toAED(profitByCountry[c].agentCommission, curr)
+        totalInvestorCommAED += toAED(profitByCountry[c].investorCommission, curr)
       }
     }
     
