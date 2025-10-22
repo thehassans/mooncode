@@ -1375,6 +1375,12 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     
     console.log(`[Profit/Loss] Found ${deliveredOrders.length} delivered orders for profit calculation`)
     
+    // Log sample of order countries for debugging
+    if (deliveredOrders.length > 0) {
+      const sampleCountries = deliveredOrders.slice(0, 10).map(o => `"${o.orderCountry}"`).join(', ')
+      console.log(`[Profit/Loss] Sample order countries: ${sampleCountries}`)
+    }
+    
     // Get all investors for this owner with their product assignments
     const investors = await User.find({
       createdBy: ownerId,
@@ -1506,7 +1512,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     }
     
     // Log distribution by country for debugging
-    console.log('[Profit/Loss] Orders by country:', Object.keys(profitByCountry).map(c => `${c}: revenue=${profitByCountry[c].revenue.toFixed(2)}`).join(', '))
+    console.log('[Profit/Loss] Orders by country:', Object.keys(profitByCountry).map(c => `${c}: revenue=${profitByCountry[c].revenue.toFixed(2)}, purchaseCost=${profitByCountry[c].purchaseCost.toFixed(2)}`).join(', '))
     
     // Calculate profit for each country in local currency
     for (const c of KNOWN_COUNTRIES) {
