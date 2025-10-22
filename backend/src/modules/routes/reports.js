@@ -1441,7 +1441,17 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       const orderCountry = String(order.orderCountry || '')
       const canon = canonicalizeCountry(orderCountry)
       
+      // Validate order has essential data
+      if (!order._id) {
+        console.warn('[Profit/Loss] Order missing _id, skipping')
+        continue
+      }
+      
       const revenue = Number(order.total || 0)
+      if (revenue === 0) {
+        console.warn(`[Profit/Loss] Order ${order._id} has zero total, country: ${orderCountry}`)
+      }
+      
       let purchaseCost = 0
       let investorCommission = 0
       const countryCurrency = countryCurrencyMap[canon] || 'AED'
@@ -1451,35 +1461,56 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       if (Array.isArray(order.items) && order.items.length > 0) {
         for (const item of order.items) {
           const prod = item.productId
-          if (prod) {
-            const qty = Math.max(1, Number(item.quantity || 1))
-            const productBaseCurrency = prod.baseCurrency || 'SAR'
-            const purchasePriceInBaseCurrency = Number(prod.purchasePrice || 0)
-            
-            // Convert purchase price from product's baseCurrency to order country currency
-            const purchasePriceConverted = convertCurrency(purchasePriceInBaseCurrency, productBaseCurrency, countryCurrency)
-            purchaseCost += purchasePriceConverted * qty
-            
-            // Investor commission
-            const key = `${prod._id}_${canon}`
-            const invCommPerUnit = investorCommissionMap.get(key) || 0
-            investorCommission += invCommPerUnit * qty
+          if (!prod) {
+            console.warn(`[Profit/Loss] Order ${order._id} has item with no product reference`)
+            continue
           }
+          if (!prod._id) {
+            console.warn(`[Profit/Loss] Order ${order._id} has item with unpopulated product`)
+            continue
+          }
+          
+          const qty = Math.max(1, Number(item.quantity || 1))
+          const productBaseCurrency = prod.baseCurrency || 'SAR'
+          const purchasePriceInBaseCurrency = Number(prod.purchasePrice || 0)
+          
+          if (purchasePriceInBaseCurrency === 0) {
+            console.warn(`[Profit/Loss] Product ${prod._id} has zero purchasePrice`)
+          }
+          
+          // Convert purchase price from product's baseCurrency to order country currency
+          const purchasePriceConverted = convertCurrency(purchasePriceInBaseCurrency, productBaseCurrency, countryCurrency)
+          purchaseCost += purchasePriceConverted * qty
+            
+          // Investor commission
+          const key = `${prod._id}_${canon}`
+          const invCommPerUnit = investorCommissionMap.get(key) || 0
+          investorCommission += invCommPerUnit * qty
         }
       } else if (order.productId) {
         const prod = order.productId
-        const qty = Math.max(1, Number(order.quantity || 1))
-        const productBaseCurrency = prod.baseCurrency || 'SAR'
-        const purchasePriceInBaseCurrency = Number(prod.purchasePrice || 0)
-        
-        // Convert purchase price from product's baseCurrency to order country currency
-        const purchasePriceConverted = convertCurrency(purchasePriceInBaseCurrency, productBaseCurrency, countryCurrency)
-        purchaseCost += purchasePriceConverted * qty
-        
-        // Investor commission
-        const key = `${prod._id}_${canon}`
-        const invCommPerUnit = investorCommissionMap.get(key) || 0
-        investorCommission += invCommPerUnit * qty
+        if (!prod || !prod._id) {
+          console.warn(`[Profit/Loss] Order ${order._id} has unpopulated productId`)
+        } else {
+          const qty = Math.max(1, Number(order.quantity || 1))
+          const productBaseCurrency = prod.baseCurrency || 'SAR'
+          const purchasePriceInBaseCurrency = Number(prod.purchasePrice || 0)
+          
+          if (purchasePriceInBaseCurrency === 0) {
+            console.warn(`[Profit/Loss] Product ${prod._id} in order ${order._id} has zero purchasePrice`)
+          }
+          
+          // Convert purchase price from product's baseCurrency to order country currency
+          const purchasePriceConverted = convertCurrency(purchasePriceInBaseCurrency, productBaseCurrency, countryCurrency)
+          purchaseCost += purchasePriceConverted * qty
+          
+          // Investor commission
+          const key = `${prod._id}_${canon}`
+          const invCommPerUnit = investorCommissionMap.get(key) || 0
+          investorCommission += invCommPerUnit * qty
+        }
+      } else {
+        console.warn(`[Profit/Loss] Order ${order._id} has neither items nor productId`)
       }
       
       // Driver commission
