@@ -1341,6 +1341,8 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     .populate('createdBy', 'role')
     .lean()
     
+    console.log(`[Profit/Loss] Found ${deliveredOrders.length} delivered orders for profit calculation`)
+    
     // Get all investors for this owner with their product assignments
     const investors = await User.find({
       createdBy: ownerId,
@@ -1379,9 +1381,27 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       }
     }
     
+    // Helper to canonicalize country names consistently
+    const canonicalizeCountry = (country) => {
+      const c = String(country || '').trim()
+      const upper = c.toUpperCase()
+      
+      // Handle all variants
+      if (upper === 'KSA' || upper === 'SAUDI ARABIA' || upper === 'SA') return 'KSA'
+      if (upper === 'UAE' || upper === 'UNITED ARAB EMIRATES' || upper === 'AE') return 'UAE'
+      if (upper === 'OMAN' || upper === 'OM') return 'Oman'
+      if (upper === 'BAHRAIN' || upper === 'BH') return 'Bahrain'
+      if (upper === 'INDIA' || upper === 'IN') return 'India'
+      if (upper === 'KUWAIT' || upper === 'KW') return 'Kuwait'
+      if (upper === 'QATAR' || upper === 'QA') return 'Qatar'
+      
+      // Return original if no match
+      return c
+    }
+    
     for (const order of deliveredOrders) {
       const orderCountry = String(order.orderCountry || '')
-      const canon = orderCountry.toUpperCase() === 'SAUDI ARABIA' ? 'KSA' : orderCountry.toUpperCase() === 'UNITED ARAB EMIRATES' ? 'UAE' : orderCountry
+      const canon = canonicalizeCountry(orderCountry)
       
       const revenue = Number(order.total || 0)
       let purchaseCost = 0
@@ -1433,8 +1453,14 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         profitByCountry[canon].driverCommission += driverCommission
         profitByCountry[canon].agentCommission += agentCommissionLocal
         profitByCountry[canon].investorCommission += investorCommission
+      } else {
+        // Log unmatched countries for debugging
+        console.warn(`[Profit/Loss] Order country '${orderCountry}' (canonicalized to '${canon}') not in KNOWN_COUNTRIES. Order ID: ${order._id}`)
       }
     }
+    
+    // Log distribution by country for debugging
+    console.log('[Profit/Loss] Orders by country:', Object.keys(profitByCountry).map(c => `${c}: revenue=${profitByCountry[c].revenue.toFixed(2)}`).join(', '))
     
     // Calculate profit for each country in local currency
     for (const c of KNOWN_COUNTRIES) {
