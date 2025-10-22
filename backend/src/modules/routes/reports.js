@@ -1289,6 +1289,129 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     const totalWithdraw = totalExpense;
     const totalRevenue = orders.totalSales - totalExpense; // Net profit
     
+    // ===== PROFIT/LOSS CALCULATION =====
+    // Profit = Revenue (total) - Purchase Cost - Driver Commission - Agent Commission - Investor Commission
+    
+    // Get all delivered orders with full details for profit calculation
+    const deliveredOrders = await Order.find({
+      createdBy: { $in: creatorIds },
+      shipmentStatus: 'delivered'
+    })
+    .populate('productId', 'purchasePrice baseCurrency')
+    .populate('items.productId', 'purchasePrice baseCurrency')
+    .populate('deliveryBoy', 'driverProfile')
+    .populate('createdBy', 'role')
+    .lean()
+    
+    // Get all investors for this owner with their product assignments
+    const investors = await User.find({
+      createdBy: ownerId,
+      role: 'investor'
+    }).select('investorProfile').lean()
+    
+    // Build investor commission map: productId+country -> profitPerUnit
+    const investorCommissionMap = new Map()
+    for (const inv of investors) {
+      if (inv.investorProfile?.assignedProducts) {
+        for (const ap of inv.investorProfile.assignedProducts) {
+          const key = `${ap.product}_${ap.country}`
+          const existing = investorCommissionMap.get(key) || 0
+          investorCommissionMap.set(key, existing + Number(ap.profitPerUnit || 0))
+        }
+      }
+    }
+    
+    // Calculate profit/loss globally and by country
+    let globalRevenue = 0
+    let globalPurchaseCost = 0
+    let globalDriverCommission = 0
+    let globalAgentCommission = 0
+    let globalInvestorCommission = 0
+    
+    const profitByCountry = {}
+    for (const c of KNOWN_COUNTRIES) {
+      profitByCountry[c] = {
+        revenue: 0,
+        purchaseCost: 0,
+        driverCommission: 0,
+        agentCommission: 0,
+        investorCommission: 0,
+        profit: 0,
+        currency: countryCurrencyMap[c] || 'AED'
+      }
+    }
+    
+    for (const order of deliveredOrders) {
+      const orderCountry = String(order.orderCountry || '')
+      const canon = orderCountry.toUpperCase() === 'SAUDI ARABIA' ? 'KSA' : orderCountry.toUpperCase() === 'UNITED ARAB EMIRATES' ? 'UAE' : orderCountry
+      
+      const revenue = Number(order.total || 0)
+      let purchaseCost = 0
+      let investorCommission = 0
+      
+      // Calculate purchase cost and investor commission per item
+      if (Array.isArray(order.items) && order.items.length > 0) {
+        for (const item of order.items) {
+          const prod = item.productId
+          if (prod) {
+            const qty = Math.max(1, Number(item.quantity || 1))
+            purchaseCost += Number(prod.purchasePrice || 0) * qty
+            // Investor commission
+            const key = `${prod._id}_${canon}`
+            const invCommPerUnit = investorCommissionMap.get(key) || 0
+            investorCommission += invCommPerUnit * qty
+          }
+        }
+      } else if (order.productId) {
+        const prod = order.productId
+        const qty = Math.max(1, Number(order.quantity || 1))
+        purchaseCost += Number(prod.purchasePrice || 0) * qty
+        // Investor commission
+        const key = `${prod._id}_${canon}`
+        const invCommPerUnit = investorCommissionMap.get(key) || 0
+        investorCommission += invCommPerUnit * qty
+      }
+      
+      // Driver commission
+      const driverCommission = order.deliveryBoy?.driverProfile?.commissionPerOrder ? Number(order.deliveryBoy.driverProfile.commissionPerOrder) : 0
+      
+      // Agent commission (stored in order.agentCommissionPKR)
+      const agentCommission = Number(order.agentCommissionPKR || 0)
+      
+      // Add to global totals
+      globalRevenue += revenue
+      globalPurchaseCost += purchaseCost
+      globalDriverCommission += driverCommission
+      globalAgentCommission += agentCommission
+      globalInvestorCommission += investorCommission
+      
+      // Add to country totals
+      if (profitByCountry[canon]) {
+        profitByCountry[canon].revenue += revenue
+        profitByCountry[canon].purchaseCost += purchaseCost
+        profitByCountry[canon].driverCommission += driverCommission
+        profitByCountry[canon].agentCommission += agentCommission
+        profitByCountry[canon].investorCommission += investorCommission
+      }
+    }
+    
+    // Calculate final profit/loss
+    const globalProfit = globalRevenue - globalPurchaseCost - globalDriverCommission - globalAgentCommission - globalInvestorCommission
+    
+    for (const c of KNOWN_COUNTRIES) {
+      if (profitByCountry[c]) {
+        profitByCountry[c].profit = profitByCountry[c].revenue - profitByCountry[c].purchaseCost - profitByCountry[c].driverCommission - profitByCountry[c].agentCommission - profitByCountry[c].investorCommission
+      }
+    }
+    
+    // Add profit data to country objects
+    for (const c of KNOWN_COUNTRIES) {
+      if (countries[c]) {
+        countries[c].profit = profitByCountry[c].profit
+        countries[c].profitDetails = profitByCountry[c]
+      }
+    }
+    
     res.json({
       totalSales: orders.totalSales,
       totalCOD: orders.totalCOD,
@@ -1307,6 +1430,17 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       totalAgentExpense,
       totalDriverExpense,
       totalRevenue,
+      // Profit/Loss metrics
+      profitLoss: {
+        profit: globalProfit,
+        isProfit: globalProfit >= 0,
+        revenue: globalRevenue,
+        purchaseCost: globalPurchaseCost,
+        driverCommission: globalDriverCommission,
+        agentCommission: globalAgentCommission,
+        investorCommission: globalInvestorCommission,
+        byCountry: profitByCountry
+      },
       countries,
       statusTotals,
       productMetrics: {
