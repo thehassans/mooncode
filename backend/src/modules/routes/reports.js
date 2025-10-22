@@ -1330,6 +1330,17 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       return amountInSAR * aedRate
     }
     
+    // Helper: Convert from one currency to another via SAR
+    const convertToCountryCurrency = (amount, fromCurrency, toCurrency) => {
+      if (fromCurrency === toCurrency) return amount
+      // Convert to SAR first
+      const fromRate = sarPerUnit[fromCurrency]
+      const toRate = sarPerUnit[toCurrency]
+      if (!fromRate || !toRate || fromRate === 0 || toRate === 0) return amount
+      const amountInSAR = amount / fromRate
+      return amountInSAR * toRate
+    }
+    
     // Get all delivered orders with full details for profit calculation
     const deliveredOrders = await Order.find({
       createdBy: { $in: creatorIds },
@@ -1406,14 +1417,22 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       const revenue = Number(order.total || 0)
       let purchaseCost = 0
       let investorCommission = 0
+      const countryCurrency = countryCurrencyMap[canon] || 'AED'
       
       // Calculate purchase cost and investor commission per item
+      // Note: Purchase costs are stored in product baseCurrency and need conversion
       if (Array.isArray(order.items) && order.items.length > 0) {
         for (const item of order.items) {
           const prod = item.productId
           if (prod) {
             const qty = Math.max(1, Number(item.quantity || 1))
-            purchaseCost += Number(prod.purchasePrice || 0) * qty
+            const productBaseCurrency = prod.baseCurrency || 'SAR'
+            const purchasePriceInBaseCurrency = Number(prod.purchasePrice || 0)
+            
+            // Convert purchase price from product's baseCurrency to order country currency
+            const purchasePriceConverted = convertToCountryCurrency(purchasePriceInBaseCurrency, productBaseCurrency, countryCurrency)
+            purchaseCost += purchasePriceConverted * qty
+            
             // Investor commission
             const key = `${prod._id}_${canon}`
             const invCommPerUnit = investorCommissionMap.get(key) || 0
@@ -1423,7 +1442,13 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       } else if (order.productId) {
         const prod = order.productId
         const qty = Math.max(1, Number(order.quantity || 1))
-        purchaseCost += Number(prod.purchasePrice || 0) * qty
+        const productBaseCurrency = prod.baseCurrency || 'SAR'
+        const purchasePriceInBaseCurrency = Number(prod.purchasePrice || 0)
+        
+        // Convert purchase price from product's baseCurrency to order country currency
+        const purchasePriceConverted = convertToCountryCurrency(purchasePriceInBaseCurrency, productBaseCurrency, countryCurrency)
+        purchaseCost += purchasePriceConverted * qty
+        
         // Investor commission
         const key = `${prod._id}_${canon}`
         const invCommPerUnit = investorCommissionMap.get(key) || 0
