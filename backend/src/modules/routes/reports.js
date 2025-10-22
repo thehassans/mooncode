@@ -6,6 +6,7 @@ import Product from "../models/Product.js";
 import Expense from "../models/Expense.js";
 import AgentRemit from "../models/AgentRemit.js";
 import Remittance from "../models/Remittance.js";
+import Setting from "../models/Setting.js";
 import { auth, allowRoles } from "../middleware/auth.js";
 import mongoose from "mongoose";
 
@@ -1292,6 +1293,26 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     // ===== PROFIT/LOSS CALCULATION =====
     // Profit = Revenue (total) - Purchase Cost - Driver Commission - Agent Commission - Investor Commission
     
+    // Get currency configuration for PKR conversion
+    let pkrRates = {
+      AED: 76, OMR: 726, SAR: 72, BHD: 830, KWD: 880, QAR: 79, INR: 3.3
+    }
+    try {
+      const currencyDoc = await Setting.findOne({ key: 'currency' }).lean()
+      if (currencyDoc?.value?.pkrPerUnit) {
+        pkrRates = { ...pkrRates, ...currencyDoc.value.pkrPerUnit }
+      }
+    } catch (e) {
+      // Use default rates if fetch fails
+    }
+    
+    // Helper: Convert PKR to target currency
+    const convertPKR = (pkrAmount, targetCurrency) => {
+      const rate = pkrRates[targetCurrency]
+      if (!rate || rate === 0) return pkrAmount
+      return pkrAmount / rate
+    }
+    
     // Get all delivered orders with full details for profit calculation
     const deliveredOrders = await Order.find({
       createdBy: { $in: creatorIds },
@@ -1375,28 +1396,33 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       // Driver commission
       const driverCommission = order.deliveryBoy?.driverProfile?.commissionPerOrder ? Number(order.deliveryBoy.driverProfile.commissionPerOrder) : 0
       
-      // Agent commission (stored in order.agentCommissionPKR)
-      const agentCommission = Number(order.agentCommissionPKR || 0)
+      // Agent commission (stored in PKR, needs conversion)
+      const agentCommissionPKR = Number(order.agentCommissionPKR || 0)
       
-      // Add to global totals
+      // Add to global totals (keep PKR for global)
       globalRevenue += revenue
       globalPurchaseCost += purchaseCost
       globalDriverCommission += driverCommission
-      globalAgentCommission += agentCommission
+      globalAgentCommission += agentCommissionPKR
       globalInvestorCommission += investorCommission
       
-      // Add to country totals
+      // Add to country totals (convert agent commission to local currency)
       if (profitByCountry[canon]) {
+        const countryCurrency = countryCurrencyMap[canon] || 'AED'
+        const agentCommissionLocal = convertPKR(agentCommissionPKR, countryCurrency)
+        
         profitByCountry[canon].revenue += revenue
         profitByCountry[canon].purchaseCost += purchaseCost
         profitByCountry[canon].driverCommission += driverCommission
-        profitByCountry[canon].agentCommission += agentCommission
+        profitByCountry[canon].agentCommission += agentCommissionLocal
         profitByCountry[canon].investorCommission += investorCommission
       }
     }
     
     // Calculate final profit/loss
-    const globalProfit = globalRevenue - globalPurchaseCost - globalDriverCommission - globalAgentCommission - globalInvestorCommission
+    // Convert global agent commission from PKR to AED for display
+    const globalAgentCommissionAED = convertPKR(globalAgentCommission, 'AED')
+    const globalProfit = globalRevenue - globalPurchaseCost - globalDriverCommission - globalAgentCommissionAED - globalInvestorCommission
     
     for (const c of KNOWN_COUNTRIES) {
       if (profitByCountry[c]) {
@@ -1437,7 +1463,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         revenue: globalRevenue,
         purchaseCost: globalPurchaseCost,
         driverCommission: globalDriverCommission,
-        agentCommission: globalAgentCommission,
+        agentCommission: globalAgentCommissionAED,
         investorCommission: globalInvestorCommission,
         byCountry: profitByCountry
       },
