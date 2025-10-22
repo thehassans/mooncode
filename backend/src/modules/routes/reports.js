@@ -1399,26 +1399,6 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       }
     }
     
-    // Calculate profit/loss globally and by country
-    let globalRevenue = 0
-    let globalPurchaseCost = 0
-    let globalDriverCommission = 0
-    let globalAgentCommission = 0
-    let globalInvestorCommission = 0
-    
-    const profitByCountry = {}
-    for (const c of KNOWN_COUNTRIES) {
-      profitByCountry[c] = {
-        revenue: 0,
-        purchaseCost: 0,
-        driverCommission: 0,
-        agentCommission: 0,
-        investorCommission: 0,
-        profit: 0,
-        currency: countryCurrencyMap[c] || 'AED'
-      }
-    }
-    
     // Helper to canonicalize country names consistently
     const canonicalizeCountry = (country) => {
       const c = String(country || '').trim()
@@ -1435,6 +1415,55 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       
       // Return original if no match
       return c
+    }
+    
+    // Get advertisement expenses
+    const adExpenses = await Expense.find({
+      createdBy: { $in: creatorIds },
+      type: 'advertisement'
+    }).lean()
+    
+    // Group ad expenses by country
+    const adExpensesByCountry = {}
+    for (const c of KNOWN_COUNTRIES) {
+      adExpensesByCountry[c] = 0
+    }
+    
+    for (const expense of adExpenses) {
+      const expenseCountry = canonicalizeCountry(expense.country || '')
+      if (adExpensesByCountry[expenseCountry] !== undefined) {
+        // Convert expense amount to country currency if needed
+        const countryCurrency = countryCurrencyMap[expenseCountry] || 'AED'
+        const expenseCurrency = expense.currency || 'SAR'
+        const expenseAmount = Number(expense.amount || 0)
+        
+        // Convert to country currency
+        const convertedAmount = convertCurrency(expenseAmount, expenseCurrency, countryCurrency)
+        adExpensesByCountry[expenseCountry] += convertedAmount
+      }
+    }
+    
+    console.log('[Profit/Loss] Advertisement expenses by country:', Object.keys(adExpensesByCountry).map(c => `${c}: ${adExpensesByCountry[c].toFixed(2)}`).join(', '))
+    
+    // Calculate profit/loss globally and by country
+    let globalRevenue = 0
+    let globalPurchaseCost = 0
+    let globalDriverCommission = 0
+    let globalAgentCommission = 0
+    let globalInvestorCommission = 0
+    
+    const profitByCountry = {}
+    for (const c of KNOWN_COUNTRIES) {
+      profitByCountry[c] = {
+        revenue: 0,
+        purchaseCost: 0,
+        driverCommission: 0,
+        agentCommission: 0,
+        investorCommission: 0,
+        advertisementExpense: adExpensesByCountry[c] || 0,
+        profit: 0,
+        currency: countryCurrencyMap[c] || 'AED'
+      }
     }
     
     for (const order of deliveredOrders) {
@@ -1545,10 +1574,10 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     // Log distribution by country for debugging
     console.log('[Profit/Loss] Orders by country:', Object.keys(profitByCountry).map(c => `${c}: revenue=${profitByCountry[c].revenue.toFixed(2)}, purchaseCost=${profitByCountry[c].purchaseCost.toFixed(2)}`).join(', '))
     
-    // Calculate profit for each country in local currency
+    // Calculate profit for each country in local currency (including ad expenses)
     for (const c of KNOWN_COUNTRIES) {
       if (profitByCountry[c]) {
-        profitByCountry[c].profit = profitByCountry[c].revenue - profitByCountry[c].purchaseCost - profitByCountry[c].driverCommission - profitByCountry[c].agentCommission - profitByCountry[c].investorCommission
+        profitByCountry[c].profit = profitByCountry[c].revenue - profitByCountry[c].purchaseCost - profitByCountry[c].driverCommission - profitByCountry[c].agentCommission - profitByCountry[c].investorCommission - profitByCountry[c].advertisementExpense
       }
     }
     
@@ -1568,6 +1597,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     let totalDriverCommAED = 0
     let totalAgentCommAED = 0
     let totalInvestorCommAED = 0
+    let totalAdExpenseAED = 0
     
     for (const c of KNOWN_COUNTRIES) {
       if (profitByCountry[c]) {
@@ -1577,6 +1607,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         totalDriverCommAED += toAED(profitByCountry[c].driverCommission, curr)
         totalAgentCommAED += toAED(profitByCountry[c].agentCommission, curr)
         totalInvestorCommAED += toAED(profitByCountry[c].investorCommission, curr)
+        totalAdExpenseAED += toAED(profitByCountry[c].advertisementExpense, curr)
       }
     }
     
@@ -1617,6 +1648,7 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
         driverCommission: totalDriverCommAED,
         agentCommission: totalAgentCommAED,
         investorCommission: totalInvestorCommAED,
+        advertisementExpense: totalAdExpenseAED,
         byCountry: profitByCountry
       },
       countries,

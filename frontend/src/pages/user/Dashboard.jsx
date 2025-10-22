@@ -428,6 +428,10 @@ export default function UserDashboard(){
                     <div className="helper" style={{fontSize:12}}>Investor Commission</div>
                     <div style={{fontWeight:800, fontSize:18, color:'#f59e0b'}}>AED {fmtAmt(metrics.profitLoss.investorCommission || 0)}</div>
                   </div>
+                  <div style={{textAlign:'center'}}>
+                    <div className="helper" style={{fontSize:12}}>Advertisement</div>
+                    <div style={{fontWeight:800, fontSize:18, color:'#ef4444'}}>AED {fmtAmt(metrics.profitLoss.advertisementExpense || 0)}</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -470,6 +474,10 @@ export default function UserDashboard(){
                         <div style={{display:'flex', justifyContent:'space-between'}}>
                           <span className="helper">Investor Comm:</span>
                           <span style={{fontWeight:700, color:'#f59e0b'}}>{currency} {fmtAmt(profitData.investorCommission || 0)}</span>
+                        </div>
+                        <div style={{display:'flex', justifyContent:'space-between'}}>
+                          <span className="helper">Advertisement:</span>
+                          <span style={{fontWeight:700, color:'#ef4444'}}>{currency} {fmtAmt(profitData.advertisementExpense || 0)}</span>
                         </div>
                       </div>
                     </div>

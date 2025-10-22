@@ -152,15 +152,23 @@ router.post(
   auth,
   allowRoles("admin", "user", "agent"),
   async (req, res) => {
-    const { title, category, amount, currency, notes, incurredAt } =
+    const { title, type, category, amount, currency, country, notes, incurredAt } =
       req.body || {};
     if (!title || amount == null)
       return res.status(400).json({ message: "Missing title or amount" });
+    
+    // Validate advertisement expenses have a country
+    if (type === 'advertisement' && !country) {
+      return res.status(400).json({ message: "Advertisement expenses must specify a country" });
+    }
+    
     const doc = new Expense({
       title,
+      type: type || 'general',
       category,
       amount: Math.max(0, Number(amount || 0)),
       currency: currency || "SAR",
+      country: type === 'advertisement' ? country : undefined,
       notes,
       incurredAt: incurredAt ? new Date(incurredAt) : new Date(),
       createdBy: req.user.id,
