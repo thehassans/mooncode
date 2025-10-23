@@ -575,4 +575,49 @@ router.get('/:id/stock/history', auth, async (req, res) => {
   }
 })
 
+// Get all orders for a specific product
+router.get('/:id/orders', auth, async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    // Verify product exists
+    const product = await Product.findById(id)
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' })
+    }
+
+    // Import Order model
+    const Order = (await import('../models/Order.js')).default
+
+    // Find all orders containing this product (single product or in items array)
+    const orders = await Order.find({
+      $or: [
+        { productId: id },
+        { 'items.productId': id }
+      ]
+    })
+      .populate('createdBy', 'firstName lastName email role')
+      .populate('deliveryBoy', 'firstName lastName email')
+      .populate('assignedBy', 'firstName lastName email role')
+      .sort({ createdAt: -1 })
+      .lean()
+
+    // Enhance with role information
+    const enhancedOrders = orders.map(order => ({
+      ...order,
+      createdByRole: order.createdBy?.role || order.createdByRole,
+      assignedByRole: order.assignedBy?.role || 'manager'
+    }))
+
+    res.json({
+      success: true,
+      orders: enhancedOrders,
+      totalOrders: enhancedOrders.length
+    })
+  } catch (error) {
+    console.error('Get product orders error:', error)
+    res.status(500).json({ message: 'Failed to fetch product orders' })
+  }
+})
+
 export default router

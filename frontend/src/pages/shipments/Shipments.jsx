@@ -313,7 +313,22 @@ export default function Shipments(){
                             </div>
                           )}
                           <div>
-                            <div style={{fontWeight:700, fontSize:15, marginBottom:4}}>{product.name}</div>
+                            <div 
+                              style={{
+                                fontWeight:700, 
+                                fontSize:15, 
+                                marginBottom:4,
+                                color:'#667eea',
+                                cursor:'pointer',
+                                textDecoration:'none',
+                                transition:'all 0.2s'
+                              }}
+                              onClick={() => window.location.href = `/shipments/product/${product._id}`}
+                              onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+                              onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                            >
+                              {product.name}
+                            </div>
                             <div style={{fontSize:12, opacity:0.7}}>{product.baseCurrency} {product.price?.toFixed(2)}</div>
                           </div>
                         </div>
