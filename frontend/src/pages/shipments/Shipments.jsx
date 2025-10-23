@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { apiGet, apiPost } from '../../api'
 import Modal from '../../components/Modal.jsx'
 
@@ -13,6 +14,7 @@ const COUNTRIES = [
 ]
 
 export default function Shipments(){
+  const navigate = useNavigate()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
@@ -323,7 +325,7 @@ export default function Shipments(){
                                 textDecoration:'none',
                                 transition:'all 0.2s'
                               }}
-                              onClick={() => window.location.href = `/shipments/product/${product._id}`}
+                              onClick={() => navigate(`/shipments/product/${product._id}`)}
                               onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
                               onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
                             >

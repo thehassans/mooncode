@@ -614,7 +614,23 @@ export default function Warehouse(){
                               )}
                             </div>
                             <div style={{minWidth:0}}>
-                              <div style={{fontWeight:800, lineHeight:1.2}}>{it.name}</div>
+                              <div 
+                                style={{
+                                  fontWeight:800, 
+                                  lineHeight:1.2,
+                                  color:'#667eea',
+                                  cursor:'pointer',
+                                  transition:'all 0.2s'
+                                }}
+                                onClick={() => {
+                                  const prodId = prodById[String(it._id)]?._id
+                                  if (prodId) navigate(`/shipments/product/${prodId}`)
+                                }}
+                                onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+                                onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                              >
+                                {it.name}
+                              </div>
                               {cat ? <div className="helper" style={{fontSize:12}}>{cat}</div> : null}
                               {(() => {
                                 const p = prodById[String(it._id)]
