@@ -53,6 +53,7 @@ import InhouseProducts from './pages/products/InhouseProducts.jsx'
 import Warehouse from './pages/warehouse/Warehouse.jsx'
 import Shipments from './pages/shipments/Shipments.jsx'
 import Reports from './pages/user/Reports.jsx'
+import DriverReports from './pages/user/DriverReports.jsx'
 import Expenses from './pages/finance/Expenses.jsx'
 import Transactions from './pages/finance/Transactions.jsx'
 import Support from './pages/support/Support.jsx'
@@ -344,6 +345,7 @@ export default function App() {
         <Route path="warehouses" element={<Warehouse />} />
         <Route path="shipments" element={<Shipments />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="driver-reports" element={<DriverReports />} />
         <Route path="insights" element={<AnalyticsDashboard />} />
         <Route path="expense" element={<Expenses />} />
         <Route path="transactions" element={<Transactions />} />

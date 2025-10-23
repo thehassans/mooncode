@@ -59,6 +59,7 @@ export default function UserLayout(){
       icon: '📈', 
       children: [
         { to: '/user/reports', label: 'Business Reports', icon: '📑' },
+        { to: '/user/driver-reports', label: 'Driver Reports', icon: '🚗' },
         { to: '/user/campaigns', label: 'Campaigns', icon: '📢' },
         { to: '/user/finances', label: 'Finances', icon: '💰' },
       ] 

@@ -1807,4 +1807,105 @@ router.get('/manager-metrics', auth, allowRoles('manager'), async (req, res) => 
   }
 })
 
+// Driver metrics endpoint for Driver Reports
+router.get('/driver-metrics', auth, allowRoles('user'), async (req, res) => {
+  try {
+    const ownerId = new mongoose.Types.ObjectId(req.user.id);
+    
+    // Get all managers created by this owner
+    const managers = await User.find({ role: 'manager', createdBy: ownerId }, { _id: 1, firstName: 1, lastName: 1, phone: 1 }).lean();
+    const managerIds = managers.map(m => m._id);
+    
+    // Get all drivers created by owner or their managers
+    const drivers = await User.find({ 
+      role: 'driver', 
+      $or: [
+        { createdBy: ownerId },
+        { createdBy: { $in: managerIds } }
+      ]
+    }).select('firstName lastName phone country city createdBy').lean();
+    
+    // Aggregate driver statistics
+    const driverMetrics = await Promise.all(drivers.map(async (driver) => {
+      const driverId = driver._id;
+      
+      // Get order statistics
+      const orderStats = await Order.aggregate([
+        { $match: { assignedDriver: driverId } },
+        { $group: {
+            _id: null,
+            ordersDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
+            ordersAssigned: { $sum: 1 },
+            ordersPending: { $sum: { $cond: [ { $in: ['$shipmentStatus', ['assigned','picked_up','in_transit','out_for_delivery']] }, 1, 0 ] } },
+          }
+        }
+      ]);
+      
+      // Get settlement information from remittances
+      const settlements = await Remittance.find({ 
+        driver: driverId 
+      }).lean();
+      
+      let settlementAmount = 0;
+      let payToCompany = 0;
+      let payToManager = 0;
+      let pendingSettlement = 0;
+      
+      settlements.forEach(remit => {
+        const amount = Number(remit.amount || 0);
+        settlementAmount += amount;
+        
+        if (remit.status === 'accepted') {
+          payToCompany += amount;
+        } else if (remit.status === 'pending') {
+          pendingSettlement += amount;
+        }
+      });
+      
+      // Find which manager this driver belongs to
+      let managerInfo = null;
+      if (driver.createdBy && !driver.createdBy.equals(ownerId)) {
+        const manager = managers.find(m => m._id.equals(driver.createdBy));
+        if (manager) {
+          managerInfo = {
+            name: `${manager.firstName || ''} ${manager.lastName || ''}`.trim(),
+            phone: manager.phone
+          };
+          payToManager = settlementAmount - payToCompany - pendingSettlement;
+        }
+      }
+      
+      const stats = orderStats[0] || { ordersDelivered: 0, ordersAssigned: 0, ordersPending: 0 };
+      
+      // Map country to currency
+      const countryCurrencyMap = {
+        'KSA': 'SAR', 'UAE': 'AED', 'Oman': 'OMR', 'Bahrain': 'BHD',
+        'India': 'INR', 'Kuwait': 'KWD', 'Qatar': 'QAR'
+      };
+      
+      return {
+        id: String(driver._id),
+        name: `${driver.firstName || ''} ${driver.lastName || ''}`.trim(),
+        phone: driver.phone || 'N/A',
+        country: driver.country || 'N/A',
+        city: driver.city || 'N/A',
+        currency: countryCurrencyMap[driver.country] || 'AED',
+        ordersDelivered: stats.ordersDelivered,
+        ordersAssigned: stats.ordersAssigned,
+        ordersPending: stats.ordersPending,
+        settlementAmount,
+        payToCompany,
+        payToManager,
+        pendingSettlement,
+        manager: managerInfo
+      };
+    }));
+    
+    res.json({ drivers: driverMetrics });
+  } catch (error) {
+    console.error('Error fetching driver metrics:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 export default router;
