@@ -293,6 +293,38 @@ router.get('/', auth, allowRoles('admin','user','agent','manager','customer'), a
   res.json({ products })
 })
 
+// Get single product by ID (authenticated)
+router.get('/:id', auth, allowRoles('admin','user','agent','manager','customer'), async (req, res) => {
+  try {
+    const { id } = req.params
+    const product = await Product.findById(id)
+    
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' })
+    }
+    
+    // Permission check
+    if (req.user.role === 'user') {
+      // User can only view their own products
+      if (String(product.createdBy) !== String(req.user.id)) {
+        return res.status(403).json({ message: 'Not allowed' })
+      }
+    } else if (req.user.role === 'manager') {
+      // Manager can view owner's products
+      const mgr = await User.findById(req.user.id).select('createdBy')
+      if (String(product.createdBy) !== String(mgr?.createdBy || '__none__')) {
+        return res.status(403).json({ message: 'Not allowed' })
+      }
+    }
+    // Admin, agent, customer can view all
+    
+    res.json({ product })
+  } catch (error) {
+    console.error('Get product error:', error)
+    res.status(500).json({ message: 'Failed to fetch product' })
+  }
+})
+
 // Update product (admin; user owner; manager with permission on owner's products)
 router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), async (req, res) => {
   const { id } = req.params

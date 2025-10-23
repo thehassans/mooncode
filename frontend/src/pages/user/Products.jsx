@@ -17,7 +17,14 @@ export default function UserProducts() {
     setLoading(true)
     try {
       const data = await apiGet('/api/products')
-      setProducts(data.products || [])
+      const productsList = data.products || []
+      console.log('Loaded products:', productsList.length)
+      // Filter out products without valid IDs
+      const validProducts = productsList.filter(p => p && p._id)
+      if (validProducts.length !== productsList.length) {
+        console.warn('Some products missing IDs:', productsList.length - validProducts.length)
+      }
+      setProducts(validProducts)
     } catch (err) {
       console.error('Failed to load products:', err)
     } finally {
@@ -109,7 +116,14 @@ export default function UserProducts() {
               <div
                 key={product._id}
                 className="card"
-                onClick={() => navigate(`/user/products/${product._id}`)}
+                onClick={() => {
+                  console.log('Navigating to product:', product._id, product.name)
+                  if (product._id) {
+                    navigate(`/user/products/${product._id}`)
+                  } else {
+                    console.error('Product missing ID:', product)
+                  }
+                }}
                 style={{
                   padding: 0,
                   overflow: 'hidden',
