@@ -279,8 +279,44 @@ export default function Shipments(){
                       transition:'all 0.2s'
                     }}>
                       <td style={{padding:'16px 20px'}}>
-                        <div style={{fontWeight:700, fontSize:15, marginBottom:4}}>{product.name}</div>
-                        <div style={{fontSize:12, opacity:0.7}}>{product.baseCurrency} {product.price?.toFixed(2)}</div>
+                        <div style={{display:'flex', gap:12, alignItems:'center'}}>
+                          {product.imagePath || (product.images && product.images[0]) ? (
+                            <img
+                              src={product.imagePath || product.images[0]}
+                              alt={product.name}
+                              style={{
+                                width:60,
+                                height:60,
+                                objectFit:'cover',
+                                borderRadius:8,
+                                border:'2px solid var(--border)',
+                                background:'var(--panel)'
+                              }}
+                              onError={(e) => {
+                                e.target.style.display = 'none'
+                              }}
+                            />
+                          ) : (
+                            <div style={{
+                              width:60,
+                              height:60,
+                              borderRadius:8,
+                              border:'2px solid var(--border)',
+                              background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              display:'flex',
+                              alignItems:'center',
+                              justifyContent:'center',
+                              fontSize:24,
+                              color:'white'
+                            }}>
+                              📦
+                            </div>
+                          )}
+                          <div>
+                            <div style={{fontWeight:700, fontSize:15, marginBottom:4}}>{product.name}</div>
+                            <div style={{fontSize:12, opacity:0.7}}>{product.baseCurrency} {product.price?.toFixed(2)}</div>
+                          </div>
+                        </div>
                       </td>
                       <td style={{padding:'16px 20px'}}>
                         <span style={{
