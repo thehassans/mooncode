@@ -383,7 +383,13 @@ export default function ManagerOrders(){
           const drv = editingDriver[orderId]
           if (drv && String(drv).trim()){
             // Use dedicated endpoint which also flips pending -> assigned
-            await assignDriver(orderId, drv)
+            const r = await apiPost(`/api/orders/${orderId}/assign-driver`, { driverId: drv })
+            const updated = r?.order
+            if (updated){
+              setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
+            } else {
+              await loadOrders(false)
+            }
           } else {
             // Unassign driver
             const r = await apiPatch(`/api/orders/${orderId}`, { deliveryBoy: null })
@@ -533,7 +539,7 @@ export default function ManagerOrders(){
         <div className="section" style={{padding:'10px 12px 0', borderTop:'1px solid var(--border)'}}>
           <OrderStatusTrack order={o} />
         </div>
-        <div className="section" style={{display:'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${isMobileView ? 180 : 250}px, 1fr))`, gap:16}}>
+        <div className="section" style={{display:'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${isMobileView ? 'min(100%, 280px)' : '250px'}, 1fr))`, gap:16}}>
           <div style={{display:'grid', gap:6}}>
             <div className="label" style={{display:'flex', alignItems:'center', gap:6}}>
               <span>👤</span> Customer
@@ -548,7 +554,7 @@ export default function ManagerOrders(){
             <div className="label" style={{display:'flex', alignItems:'center', gap:6}}>
               <span>📦</span> Product
             </div>
-            <div style={{fontWeight:700, fontSize:15}}>{o.productId?.name || '-'}</div>
+            <div style={{fontWeight:700, fontSize:15}}>{o.productId?.name || (o.items && o.items.length > 0 && o.items[0]?.productId?.name) || '-'}</div>
             <div className="helper">Qty: {qty}</div>
             <div className="helper" style={{fontSize:15, fontWeight:600, color:'var(--primary)'}}>
               Total: {targetCode} {totalConv.toFixed(2)}

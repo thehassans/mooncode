@@ -231,6 +231,7 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
                       {o.city ? <span className="chip">{o.city}</span> : null}
                     </div>
                   </div>
+                  <div style={{fontSize:14, fontWeight:600, marginBottom:4}}>{o.productId?.name || (o.items && o.items.length > 0 && o.items[0]?.productId?.name) || 'Product'}</div>
                   <div className="helper">{o.customerName || '-'} • {o.customerPhone || '-'}</div>
                   {o.collectedAmount != null && Number(o.collectedAmount) > 0 ? (
                     <div className="helper"><strong>Collected:</strong> {Number(o.collectedAmount).toFixed(2)}</div>

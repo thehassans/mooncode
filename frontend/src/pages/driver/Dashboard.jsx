@@ -69,8 +69,7 @@ export default function DriverDashboard(){
         })
       }
       setAssigned((a.orders||[])
-        .filter(o => String(o?.shipmentStatus||'').toLowerCase() !== 'picked_up')
-        .slice(0,5))
+        .filter(o => String(o?.shipmentStatus||'').toLowerCase() !== 'picked_up'))
     }catch{
       setMetrics({ totalAssignedAllTime: 0, status: { assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 } })
       setAssigned([])
@@ -197,6 +196,7 @@ export default function DriverDashboard(){
             <div key={String(o._id||o.id)} style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, border:'1px solid var(--border)', borderRadius:10, padding:'10px 12px'}}>
               <div style={{display:'grid', gap:2}}>
                 <div style={{fontWeight:700}}>#{o.invoiceNumber || String(o._id||'').slice(-6)}</div>
+                <div style={{fontSize:13}}>{o.productId?.name || (o.items && o.items[0]?.productId?.name) || 'Product'}</div>
                 <div className="helper" style={{fontSize:12}}>{o.customerName || 'Customer'} • {fmtPrice(o)}</div>
               </div>
               <button className="btn" onClick={()=> markPicked(o)}>Picked Up</button>
