@@ -196,7 +196,17 @@ export default function DriverDashboard(){
             <div key={String(o._id||o.id)} style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, border:'1px solid var(--border)', borderRadius:10, padding:'10px 12px'}}>
               <div style={{display:'grid', gap:2}}>
                 <div style={{fontWeight:700}}>#{o.invoiceNumber || String(o._id||'').slice(-6)}</div>
-                <div style={{fontSize:13}}>{o.productId?.name || (o.items && o.items[0]?.productId?.name) || 'Product'}</div>
+                <div style={{fontSize:13}}>
+                  {(() => {
+                    if (o.productId?.name) return o.productId.name
+                    if (o.items && Array.isArray(o.items)) {
+                      for (const item of o.items) {
+                        if (item?.productId?.name) return item.productId.name
+                      }
+                    }
+                    return 'Product'
+                  })()}
+                </div>
                 <div className="helper" style={{fontSize:12}}>{o.customerName || 'Customer'} • {fmtPrice(o)}</div>
               </div>
               <button className="btn" onClick={()=> markPicked(o)}>Picked Up</button>

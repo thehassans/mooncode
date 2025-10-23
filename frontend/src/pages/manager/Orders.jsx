@@ -554,7 +554,26 @@ export default function ManagerOrders(){
             <div className="label" style={{display:'flex', alignItems:'center', gap:6}}>
               <span>📦</span> Product
             </div>
-            <div style={{fontWeight:700, fontSize:15}}>{o.productId?.name || (o.items && o.items.length > 0 && o.items[0]?.productId?.name) || '-'}</div>
+            <div style={{fontWeight:700, fontSize:15}}>
+              {(() => {
+                // Try productId
+                if (o.productId?.name) return o.productId.name
+                // Try items array
+                if (o.items && Array.isArray(o.items) && o.items.length > 0) {
+                  for (const item of o.items) {
+                    if (item?.productId?.name) return item.productId.name
+                  }
+                }
+                // Fallback: show ID if product data is missing
+                const pid = o.productId?._id || o.productId
+                if (pid) return `Product ID: ${String(pid).slice(-8)}`
+                if (o.items && o.items.length > 0 && o.items[0]?.productId) {
+                  const itemPid = o.items[0].productId._id || o.items[0].productId
+                  if (itemPid) return `Product ID: ${String(itemPid).slice(-8)}`
+                }
+                return '-'
+              })()}
+            </div>
             <div className="helper">Qty: {qty}</div>
             <div className="helper" style={{fontSize:15, fontWeight:600, color:'var(--primary)'}}>
               Total: {targetCode} {totalConv.toFixed(2)}
