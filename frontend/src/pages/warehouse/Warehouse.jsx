@@ -624,8 +624,25 @@ export default function Warehouse(){
                                   transition:'all 0.2s'
                                 }}
                                 onClick={() => {
-                                  const prodId = prodById[String(it._id)]?._id
-                                  if (!prodId) return
+                                  // Try to find product ID by the warehouse item ID first
+                                  let prodId = prodById[String(it._id)]?._id
+                                  
+                                  // If not found, search by product name in prodById
+                                  if (!prodId) {
+                                    const productName = String(it?.name || '').trim()
+                                    for (const [id, prod] of Object.entries(prodById)) {
+                                      if (String(prod?.name || '').trim() === productName) {
+                                        prodId = id
+                                        break
+                                      }
+                                    }
+                                  }
+                                  
+                                  if (!prodId) {
+                                    console.warn('Product ID not found for:', it.name)
+                                    return
+                                  }
+                                  
                                   // Detect if we're in manager or user context
                                   const isManager = location.pathname.startsWith('/manager')
                                   const basePath = isManager ? '/manager/warehouses' : '/user/shipments'
