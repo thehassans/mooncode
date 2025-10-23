@@ -60,10 +60,12 @@ export default function ProductDetail() {
 
       setOrders(enrichedOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
     } catch (err) {
-      console.error('Failed to load data:', err)
-      // If product not found, set null
+      // If product not found (404), handle silently
       if (err.message?.includes('404') || err.message?.includes('not found')) {
         setProduct(null)
+      } else {
+        // Only log non-404 errors
+        console.error('Failed to load data:', err)
       }
     } finally {
       setLoading(false)
