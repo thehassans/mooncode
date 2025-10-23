@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost } from '../../api'
-import Modal from '../../ui/Modal.jsx'
+import Modal from '../../components/Modal.jsx'
 
 const COUNTRIES = [
   { code: 'UAE', name: 'UAE', flag: '🇦🇪' },
