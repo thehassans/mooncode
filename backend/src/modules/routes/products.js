@@ -293,38 +293,6 @@ router.get('/', auth, allowRoles('admin','user','agent','manager','customer'), a
   res.json({ products })
 })
 
-// Get single product by ID (authenticated)
-router.get('/:id', auth, allowRoles('admin','user','agent','manager'), async (req, res) => {
-  try {
-    const { id } = req.params
-    const product = await Product.findById(id)
-    
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' })
-    }
-
-    // Check permissions based on role
-    if (req.user.role === 'user') {
-      // User can only see their own products
-      if (String(product.createdBy) !== String(req.user.id)) {
-        return res.status(403).json({ message: 'Not authorized to view this product' })
-      }
-    } else if (req.user.role === 'manager') {
-      // Manager can see products in their workspace
-      const mgr = await User.findById(req.user.id).select('createdBy')
-      if (String(product.createdBy) !== String(mgr?.createdBy)) {
-        return res.status(403).json({ message: 'Not authorized to view this product' })
-      }
-    }
-    // Admin and agent can see all products
-
-    res.json({ product })
-  } catch (error) {
-    console.error('Get product by ID error:', error)
-    res.status(500).json({ message: 'Failed to fetch product' })
-  }
-})
-
 // Update product (admin; user owner; manager with permission on owner's products)
 router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), async (req, res) => {
   const { id } = req.params
@@ -604,73 +572,6 @@ router.get('/:id/stock/history', auth, async (req, res) => {
   } catch (error) {
     console.error('Get stock history error:', error)
     res.status(500).json({ message: 'Failed to fetch stock history' })
-  }
-})
-
-// Get all orders for a specific product
-router.get('/:id/orders', auth, allowRoles('user', 'manager', 'agent'), async (req, res) => {
-  try {
-    const { id } = req.params
-    
-    // Verify product exists
-    const product = await Product.findById(id)
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' })
-    }
-
-    // Import Order model
-    const Order = (await import('../models/Order.js')).default
-
-    // Build query based on user role
-    let orderQuery = {
-      $or: [
-        { productId: id },
-        { 'items.productId': id }
-      ]
-    }
-
-    // Filter orders based on user role and workspace
-    if (req.user.role === 'user') {
-      // User sees all orders in their workspace
-      const agents = await User.find({ role: 'agent', createdBy: req.user.id }).select('_id').lean()
-      const managers = await User.find({ role: 'manager', createdBy: req.user.id }).select('_id').lean()
-      const allowedCreators = [req.user.id, ...agents.map(a => a._id), ...managers.map(m => m._id)]
-      
-      orderQuery.createdBy = { $in: allowedCreators }
-    } else if (req.user.role === 'manager') {
-      // Manager sees orders in their workspace
-      const me = await User.findById(req.user.id).select('createdBy').lean()
-      const ownerId = me?.createdBy
-      
-      if (ownerId) {
-        const agents = await User.find({ role: 'agent', createdBy: ownerId }).select('_id').lean()
-        const managers = await User.find({ role: 'manager', createdBy: ownerId }).select('_id').lean()
-        const allowedCreators = [ownerId, ...agents.map(a => a._id), ...managers.map(m => m._id)]
-        
-        orderQuery.createdBy = { $in: allowedCreators }
-      }
-    } else if (req.user.role === 'agent') {
-      // Agent sees only their own orders
-      orderQuery.createdBy = req.user.id
-    }
-
-    // Find all orders containing this product
-    const orders = await Order.find(orderQuery)
-      .populate('createdBy', 'firstName lastName email role')
-      .populate('deliveryBoy', 'firstName lastName email')
-      .populate('assignedBy', 'firstName lastName email role')
-      .populate('returnVerifiedBy', 'firstName lastName email role')
-      .sort({ createdAt: -1 })
-      .lean()
-
-    res.json({
-      success: true,
-      orders,
-      count: orders.length
-    })
-  } catch (error) {
-    console.error('Get product orders error:', error)
-    res.status(500).json({ message: 'Failed to fetch product orders' })
   }
 })
 

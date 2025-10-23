@@ -36,6 +36,7 @@ export default function UserLayout(){
       children: [
         { to: '/user/orders', label: 'Orders', icon: '🧾' },
         { to: '/user/online-orders', label: 'Online Orders', icon: '🌐' },
+        { to: '/user/products', label: 'Product Detail', icon: '📦' },
         { to: '/user/inhouse-products', label: 'Inhouse Products', icon: '🏷️' },
         { to: '/user/warehouses', label: 'Warehouses', icon: '🏬' },
         { to: '/user/shipments', label: 'Shipments', icon: '🚚' },

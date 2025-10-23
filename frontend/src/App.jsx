@@ -53,7 +53,6 @@ import ErrorLogs from './pages/user/ErrorLogs.jsx'
 import InhouseProducts from './pages/products/InhouseProducts.jsx'
 import Warehouse from './pages/warehouse/Warehouse.jsx'
 import Shipments from './pages/shipments/Shipments.jsx'
-import InventoryProductDetail from './pages/shipments/ProductDetail.jsx'
 import Reports from './pages/user/Reports.jsx'
 import DriverReports from './pages/user/DriverReports.jsx'
 import Expenses from './pages/finance/Expenses.jsx'
@@ -79,6 +78,8 @@ import DriverAmounts from './pages/user/DriverAmounts.jsx'
 import CurrencySettings from './pages/user/CurrencySettings.jsx'
 import UserReturnedOrders from './pages/user/ReturnedOrders.jsx'
 import ManagerReturnedOrders from './pages/manager/ReturnedOrders.jsx'
+import UserProducts from './pages/user/Products.jsx'
+import UserProductDetail from './pages/user/ProductDetail.jsx'
 
 import AnalyticsDashboard from './components/analytics/AnalyticsDashboard'
 
@@ -345,9 +346,10 @@ export default function App() {
         <Route path="orders/returned" element={<UserReturnedOrders />} />
         <Route path="online-orders" element={<OnlineOrders />} />
         <Route path="inhouse-products" element={<InhouseProducts />} />
+        <Route path="products" element={<UserProducts />} />
+        <Route path="products/:id" element={<UserProductDetail />} />
         <Route path="warehouses" element={<Warehouse />} />
         <Route path="shipments" element={<Shipments />} />
-        <Route path="inventory/product/:id" element={<InventoryProductDetail />} />
         <Route path="reports" element={<Reports />} />
         <Route path="driver-reports" element={<DriverReports />} />
         <Route path="insights" element={<AnalyticsDashboard />} />

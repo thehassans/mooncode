@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { apiGet, apiPost } from '../../api'
 import Modal from '../../components/Modal.jsx'
 
@@ -14,7 +13,6 @@ const COUNTRIES = [
 ]
 
 export default function Shipments(){
-  const navigate = useNavigate()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
@@ -315,25 +313,7 @@ export default function Shipments(){
                             </div>
                           )}
                           <div>
-                            <div 
-                              onClick={() => navigate(`/inventory/product/${product._id}`)}
-                              style={{
-                                fontWeight:700, 
-                                fontSize:15, 
-                                marginBottom:4,
-                                cursor: 'pointer',
-                                color: '#667eea',
-                                transition: 'all 0.2s'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.target.style.textDecoration = 'underline'
-                              }}
-                              onMouseLeave={(e) => {
-                                e.target.style.textDecoration = 'none'
-                              }}
-                            >
-                              {product.name}
-                            </div>
+                            <div style={{fontWeight:700, fontSize:15, marginBottom:4}}>{product.name}</div>
                             <div style={{fontSize:12, opacity:0.7}}>{product.baseCurrency} {product.price?.toFixed(2)}</div>
                           </div>
                         </div>
