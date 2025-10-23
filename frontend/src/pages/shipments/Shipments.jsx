@@ -316,18 +316,21 @@ export default function Shipments(){
                           )}
                           <div>
                             <div 
+                              onClick={() => navigate(`/product/${product._id}`)}
                               style={{
                                 fontWeight:700, 
                                 fontSize:15, 
                                 marginBottom:4,
-                                color:'#667eea',
-                                cursor:'pointer',
-                                textDecoration:'none',
-                                transition:'all 0.2s'
+                                cursor: 'pointer',
+                                color: '#667eea',
+                                transition: 'all 0.2s'
                               }}
-                              onClick={() => navigate(`/user/shipments/product/${product._id}`)}
-                              onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
-                              onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                              onMouseEnter={(e) => {
+                                e.target.style.textDecoration = 'underline'
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.textDecoration = 'none'
+                              }}
                             >
                               {product.name}
                             </div>

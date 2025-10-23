@@ -3,13 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { apiGet } from '../../api'
 
 const COUNTRIES = [
-  { code: 'UAE', name: 'UAE', flag: '🇦🇪' },
-  { code: 'Oman', name: 'Oman', flag: '🇴🇲' },
-  { code: 'KSA', name: 'Saudi Arabia', flag: '🇸🇦' },
-  { code: 'Bahrain', name: 'Bahrain', flag: '🇧🇭' },
-  { code: 'India', name: 'India', flag: '🇮🇳' },
-  { code: 'Kuwait', name: 'Kuwait', flag: '🇰🇼' },
-  { code: 'Qatar', name: 'Qatar', flag: '🇶🇦' }
+  { code: 'UAE', flag: '🇦🇪' },
+  { code: 'Oman', flag: '🇴🇲' },
+  { code: 'KSA', flag: '🇸🇦' },
+  { code: 'Bahrain', flag: '🇧🇭' },
+  { code: 'India', flag: '🇮🇳' },
+  { code: 'Kuwait', flag: '🇰🇼' },
+  { code: 'Qatar', flag: '🇶🇦' }
 ]
 
 export default function ProductDetail() {
@@ -18,38 +18,28 @@ export default function ProductDetail() {
   const [product, setProduct] = useState(null)
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
-  const [ordersLoading, setOrdersLoading] = useState(true)
   const [error, setError] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [countryFilter, setCountryFilter] = useState('all')
+  const [selectedStatus, setSelectedStatus] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
-    loadProduct()
-    loadOrders()
+    loadProductDetails()
   }, [id])
 
-  async function loadProduct() {
+  async function loadProductDetails() {
     setLoading(true)
     try {
-      const data = await apiGet(`/api/products/${id}`)
-      setProduct(data.product || data)
+      // Load product
+      const productData = await apiGet(`/api/products/${id}`)
+      setProduct(productData.product || productData)
+
+      // Load orders for this product
+      const ordersData = await apiGet(`/api/products/${id}/orders`)
+      setOrders(ordersData.orders || [])
     } catch (err) {
-      setError(err?.message || 'Failed to load product')
+      setError(err?.message || 'Failed to load product details')
     } finally {
       setLoading(false)
-    }
-  }
-
-  async function loadOrders() {
-    setOrdersLoading(true)
-    try {
-      const data = await apiGet(`/api/products/${id}/orders`)
-      setOrders(data.orders || [])
-    } catch (err) {
-      console.error('Failed to load orders:', err)
-      setOrders([])
-    } finally {
-      setOrdersLoading(false)
     }
   }
 
@@ -62,56 +52,50 @@ export default function ProductDetail() {
     return Object.values(product.stockByCountry).reduce((sum, val) => sum + Number(val || 0), 0)
   }
 
-  function fmtDate(s) {
+  function formatDate(date) {
+    if (!date) return 'N/A'
     try {
-      return new Date(s).toLocaleDateString('en-US', {
+      return new Date(date).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
       })
-    } catch { return '' }
+    } catch {
+      return 'N/A'
+    }
   }
 
   function getStatusColor(status) {
     const s = String(status || '').toLowerCase()
-    if (s === 'delivered') return '#10b981'
-    if (['cancelled', 'returned'].includes(s)) return '#ef4444'
-    if (['assigned', 'picked_up', 'out_for_delivery'].includes(s)) return '#3b82f6'
-    if (s === 'pending') return '#f59e0b'
-    return '#6b7280'
-  }
-
-  function getStatusBadge(status) {
-    const color = getStatusColor(status)
-    return (
-      <span style={{
-        padding: '4px 12px',
-        borderRadius: 6,
-        fontSize: 12,
-        fontWeight: 600,
-        background: `${color}22`,
-        color: color,
-        textTransform: 'capitalize'
-      }}>
-        {String(status || 'pending').replace('_', ' ')}
-      </span>
-    )
+    if (s === 'delivered') return { bg: '#ecfdf5', text: '#065f46', border: '#10b981' }
+    if (s === 'cancelled' || s === 'returned') return { bg: '#fef2f2', text: '#991b1b', border: '#ef4444' }
+    if (s === 'pending') return { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' }
+    if (s === 'assigned' || s === 'picked_up' || s === 'out_for_delivery') return { bg: '#dbeafe', text: '#1e40af', border: '#3b82f6' }
+    return { bg: '#f3f4f6', text: '#374151', border: '#9ca3af' }
   }
 
   const filteredOrders = orders.filter(order => {
-    if (statusFilter !== 'all' && order.shipmentStatus !== statusFilter) return false
-    if (countryFilter !== 'all' && order.orderCountry !== countryFilter) return false
+    if (selectedStatus !== 'all' && order.shipmentStatus !== selectedStatus) return false
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      return (
+        order.invoiceNumber?.toLowerCase().includes(query) ||
+        order.customerName?.toLowerCase().includes(query) ||
+        order.customerPhone?.toLowerCase().includes(query) ||
+        order.city?.toLowerCase().includes(query)
+      )
+    }
     return true
   })
 
-  const orderStats = {
+  const stats = {
     total: orders.length,
-    pending: orders.filter(o => !o.shipmentStatus || o.shipmentStatus === 'pending').length,
     delivered: orders.filter(o => o.shipmentStatus === 'delivered').length,
-    cancelled: orders.filter(o => ['cancelled', 'returned'].includes(o.shipmentStatus)).length,
-    inProgress: orders.filter(o => ['assigned', 'picked_up', 'out_for_delivery'].includes(o.shipmentStatus)).length
+    pending: orders.filter(o => ['pending', 'assigned', 'picked_up', 'out_for_delivery'].includes(o.shipmentStatus)).length,
+    cancelled: orders.filter(o => o.shipmentStatus === 'cancelled').length,
+    returned: orders.filter(o => o.shipmentStatus === 'returned').length
   }
 
   if (loading) {
@@ -124,45 +108,60 @@ export default function ProductDetail() {
 
   if (error || !product) {
     return (
-      <div style={{ padding: 40, textAlign: 'center' }}>
-        <div style={{ color: '#ef4444', fontSize: 18, marginBottom: 16 }}>{error || 'Product not found'}</div>
-        <button className="btn secondary" onClick={() => navigate(-1)}>Go Back</button>
+      <div style={{ padding: 40 }}>
+        <div style={{ 
+          padding: 20, 
+          background: '#fef2f2', 
+          border: '1px solid #ef4444', 
+          borderRadius: 12, 
+          color: '#991b1b',
+          marginBottom: 20
+        }}>
+          {error || 'Product not found'}
+        </div>
+        <button className="btn" onClick={() => navigate('/shipments')}>
+          Back to Inventory
+        </button>
       </div>
     )
   }
 
-  const totalStock = getTotalStock()
-  const isLowStock = totalStock < 10
-
   return (
-    <div style={{ display: 'grid', gap: 20, padding: 20 }}>
+    <div style={{ padding: 20, maxWidth: 1600, margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button
-          className="btn secondary"
-          onClick={() => navigate(-1)}
-          style={{ width: 40, height: 40, padding: 0, borderRadius: 10 }}
+      <div style={{ marginBottom: 30 }}>
+        <button 
+          onClick={() => navigate('/shipments')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: '#667eea',
+            cursor: 'pointer',
+            fontSize: 14,
+            fontWeight: 600,
+            marginBottom: 16,
+            padding: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}
         >
-          ←
+          ← Back to Inventory
         </button>
-        <div>
-          <h1 style={{
-            fontSize: 28,
-            fontWeight: 800,
-            margin: 0,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
-          }}>
-            {product.name}
-          </h1>
-          <p style={{ margin: '4px 0 0', opacity: 0.7, fontSize: 14 }}>Complete product overview and order history</p>
-        </div>
+
+        <h1 style={{
+          fontSize: 32,
+          fontWeight: 800,
+          margin: 0,
+          color: '#111827'
+        }}>
+          Product Details
+        </h1>
       </div>
 
       {/* Product Info Card */}
-      <div className="card" style={{ padding: 24 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 24 }}>
+      <div className="card" style={{ padding: 30, marginBottom: 30 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 30 }}>
           {/* Product Image */}
           <div>
             {product.imagePath || (product.images && product.images[0]) ? (
@@ -170,8 +169,8 @@ export default function ProductDetail() {
                 src={product.imagePath || product.images[0]}
                 alt={product.name}
                 style={{
-                  width: 150,
-                  height: 150,
+                  width: 200,
+                  height: 200,
                   objectFit: 'cover',
                   borderRadius: 12,
                   border: '2px solid var(--border)',
@@ -180,15 +179,15 @@ export default function ProductDetail() {
               />
             ) : (
               <div style={{
-                width: 150,
-                height: 150,
+                width: 200,
+                height: 200,
                 borderRadius: 12,
                 border: '2px solid var(--border)',
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 48,
+                fontSize: 64,
                 color: 'white'
               }}>
                 📦
@@ -197,284 +196,372 @@ export default function ProductDetail() {
           </div>
 
           {/* Product Details */}
-          <div style={{ display: 'grid', gap: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-              <div>
-                <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 4, fontWeight: 600 }}>SKU</div>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>{product.sku || 'N/A'}</div>
+          <div>
+            <h2 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 8px 0', color: '#111827' }}>
+              {product.name}
+            </h2>
+            
+            <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{
+                fontSize: 24,
+                fontWeight: 700,
+                color: '#667eea'
+              }}>
+                {product.baseCurrency} {product.price?.toFixed(2)}
               </div>
-              <div>
-                <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 4, fontWeight: 600 }}>PRICE</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#667eea' }}>
-                  {product.baseCurrency} {product.price?.toFixed(2)}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 4, fontWeight: 600 }}>TOTAL STOCK</div>
+
+              {product.sku && (
                 <div style={{
-                  fontSize: 20,
-                  fontWeight: 800,
-                  color: isLowStock ? '#ef4444' : '#10b981'
+                  background: 'rgba(102, 126, 234, 0.1)',
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: '#667eea'
                 }}>
-                  {totalStock} units
-                  {isLowStock && <span style={{ fontSize: 12, marginLeft: 8 }}>⚠️ Low</span>}
+                  SKU: {product.sku}
                 </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 4, fontWeight: 600 }}>CATEGORY</div>
-                <div style={{ fontSize: 16, fontWeight: 600 }}>{product.category || 'Other'}</div>
-              </div>
+              )}
+
+              {product.category && (
+                <div style={{
+                  background: '#f3f4f6',
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: '#6b7280'
+                }}>
+                  {product.category}
+                </div>
+              )}
             </div>
 
+            {product.description && (
+              <p style={{ fontSize: 15, lineHeight: 1.6, color: '#6b7280', marginBottom: 20 }}>
+                {product.description}
+              </p>
+            )}
+
             {/* Stock by Country */}
-            <div>
-              <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 8, fontWeight: 600 }}>STOCK BY COUNTRY</div>
+            <div style={{ marginTop: 24 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: '#111827' }}>
+                Stock Availability
+              </div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                {COUNTRIES.map(c => {
-                  const stock = getStockForCountry(c.code)
+                {COUNTRIES.map(country => {
+                  const stock = getStockForCountry(country.code)
                   return (
-                    <div key={c.code} style={{
-                      padding: '8px 16px',
+                    <div key={country.code} style={{
+                      background: stock > 0 ? '#ecfdf5' : '#f9fafb',
+                      border: `1px solid ${stock > 0 ? '#10b981' : '#e5e7eb'}`,
+                      padding: '10px 16px',
                       borderRadius: 8,
-                      background: stock > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                      border: `1px solid ${stock > 0 ? '#10b981' : '#6b7280'}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8
+                      minWidth: 120
                     }}>
-                      <span style={{ fontSize: 20 }}>{c.flag}</span>
-                      <span style={{ fontWeight: 700, fontSize: 16, color: stock > 0 ? '#10b981' : '#6b7280' }}>
+                      <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                        {country.flag} {country.code}
+                      </div>
+                      <div style={{
+                        fontSize: 20,
+                        fontWeight: 800,
+                        color: stock > 0 ? '#065f46' : '#9ca3af'
+                      }}>
                         {stock}
-                      </span>
+                      </div>
                     </div>
                   )
                 })}
               </div>
+
+              <div style={{
+                marginTop: 16,
+                padding: 16,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: 12,
+                color: 'white',
+                display: 'inline-block'
+              }}>
+                <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 4 }}>Total Stock</div>
+                <div style={{ fontSize: 32, fontWeight: 800 }}>{getTotalStock()}</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Order Statistics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
-        <div style={{
-          padding: 20,
-          borderRadius: 12,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white'
-        }}>
-          <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4 }}>TOTAL ORDERS</div>
-          <div style={{ fontSize: 32, fontWeight: 800 }}>{orderStats.total}</div>
+      {/* Order Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 30 }}>
+        <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', padding: 20, borderRadius: 12 }}>
+          <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 8 }}>Total Orders</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#111827' }}>{stats.total}</div>
         </div>
 
-        <div style={{
-          padding: 20,
-          borderRadius: 12,
-          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-          color: 'white'
-        }}>
-          <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4 }}>DELIVERED</div>
-          <div style={{ fontSize: 32, fontWeight: 800 }}>{orderStats.delivered}</div>
+        <div style={{ background: '#ecfdf5', border: '1px solid #10b981', padding: 20, borderRadius: 12 }}>
+          <div style={{ fontSize: 13, color: '#065f46', marginBottom: 8 }}>Delivered</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#065f46' }}>{stats.delivered}</div>
         </div>
 
-        <div style={{
-          padding: 20,
-          borderRadius: 12,
-          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-          color: 'white'
-        }}>
-          <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4 }}>IN PROGRESS</div>
-          <div style={{ fontSize: 32, fontWeight: 800 }}>{orderStats.inProgress}</div>
+        <div style={{ background: '#dbeafe', border: '1px solid #3b82f6', padding: 20, borderRadius: 12 }}>
+          <div style={{ fontSize: 13, color: '#1e40af', marginBottom: 8 }}>In Progress</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#1e40af' }}>{stats.pending}</div>
         </div>
 
-        <div style={{
-          padding: 20,
-          borderRadius: 12,
-          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-          color: 'white'
-        }}>
-          <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4 }}>PENDING</div>
-          <div style={{ fontSize: 32, fontWeight: 800 }}>{orderStats.pending}</div>
+        <div style={{ background: '#fef2f2', border: '1px solid #ef4444', padding: 20, borderRadius: 12 }}>
+          <div style={{ fontSize: 13, color: '#991b1b', marginBottom: 8 }}>Cancelled</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#991b1b' }}>{stats.cancelled}</div>
         </div>
 
-        <div style={{
-          padding: 20,
-          borderRadius: 12,
-          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-          color: 'white'
-        }}>
-          <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 4 }}>CANCELLED</div>
-          <div style={{ fontSize: 32, fontWeight: 800 }}>{orderStats.cancelled}</div>
+        <div style={{ background: '#fef3c7', border: '1px solid #f59e0b', padding: 20, borderRadius: 12 }}>
+          <div style={{ fontSize: 13, color: '#92400e', marginBottom: 8 }}>Returned</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#92400e' }}>{stats.returned}</div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="card" style={{ padding: 20 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'block' }}>Filter by Status</label>
-            <select
-              className="input"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ fontSize: 14 }}
-            >
-              <option value="all">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="assigned">Assigned</option>
-              <option value="picked_up">Picked Up</option>
-              <option value="out_for_delivery">Out for Delivery</option>
-              <option value="delivered">Delivered</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="returned">Returned</option>
-            </select>
-          </div>
+      <div className="card" style={{ padding: 20, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'center' }}>
+          <input
+            type="text"
+            className="input"
+            placeholder="Search by invoice, customer name, phone, or city..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ fontSize: 15 }}
+          />
 
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'block' }}>Filter by Country</label>
-            <select
-              className="input"
-              value={countryFilter}
-              onChange={(e) => setCountryFilter(e.target.value)}
-              style={{ fontSize: 14 }}
-            >
-              <option value="all">All Countries</option>
-              {COUNTRIES.map(c => (
-                <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
-              ))}
-            </select>
-          </div>
+          <select
+            className="input"
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            style={{ minWidth: 200, fontSize: 15 }}
+          >
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="assigned">Assigned</option>
+            <option value="picked_up">Picked Up</option>
+            <option value="out_for_delivery">Out for Delivery</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="returned">Returned</option>
+          </select>
         </div>
       </div>
 
-      {/* Orders Table */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--panel)' }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
-            Order History ({filteredOrders.length})
-          </h3>
-        </div>
+      {/* Orders List */}
+      <div>
+        <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20, color: '#111827' }}>
+          Order History ({filteredOrders.length})
+        </h3>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 12 }}>INVOICE #</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 12 }}>CUSTOMER</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700, fontSize: 12 }}>QTY</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 12 }}>COUNTRY</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 12 }}>STATUS</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 12 }}>SUBMITTED BY</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 12 }}>ASSIGNED TO</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 12 }}>ASSIGNED BY</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 12 }}>DATE</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ordersLoading ? (
-                <tr>
-                  <td colSpan={9} style={{ padding: '40px 20px', textAlign: 'center', opacity: 0.7 }}>
-                    Loading orders...
-                  </td>
-                </tr>
-              ) : filteredOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={9} style={{ padding: '40px 20px', textAlign: 'center', opacity: 0.7 }}>
-                    No orders found
-                  </td>
-                </tr>
-              ) : (
-                filteredOrders.map((order, idx) => (
-                  <tr key={order._id} style={{
+        {filteredOrders.length === 0 ? (
+          <div className="card" style={{ padding: 60, textAlign: 'center' }}>
+            <div style={{ fontSize: 16, color: '#9ca3af' }}>
+              {searchQuery || selectedStatus !== 'all' ? 'No orders match your filters' : 'No orders found for this product'}
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 16 }}>
+            {filteredOrders.map(order => {
+              const statusColors = getStatusColor(order.shipmentStatus)
+              
+              return (
+                <div key={order._id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  {/* Order Header */}
+                  <div style={{
+                    padding: 20,
+                    background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)',
                     borderBottom: '1px solid var(--border)',
-                    background: idx % 2 ? 'transparent' : 'rgba(102, 126, 234, 0.03)'
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: 16
                   }}>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{
-                        fontWeight: 700,
-                        color: '#667eea'
+                    <div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#111827', marginBottom: 4 }}>
+                        Order #{order.invoiceNumber || String(order._id).slice(-8)}
+                      </div>
+                      <div style={{ fontSize: 14, color: '#6b7280' }}>
+                        Created {formatDate(order.createdAt)}
+                      </div>
+                    </div>
+
+                    <div style={{
+                      padding: '8px 16px',
+                      borderRadius: 8,
+                      background: statusColors.bg,
+                      border: `1px solid ${statusColors.border}`,
+                      color: statusColors.text,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      textTransform: 'capitalize'
+                    }}>
+                      {order.shipmentStatus?.replace(/_/g, ' ')}
+                    </div>
+                  </div>
+
+                  {/* Order Details */}
+                  <div style={{ padding: 20 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 20 }}>
+                      {/* Customer Info */}
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 8 }}>
+                          Customer Information
+                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: '#111827', marginBottom: 4 }}>
+                          {order.customerName || 'N/A'}
+                        </div>
+                        <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 2 }}>
+                          {order.phoneCountryCode} {order.customerPhone}
+                        </div>
+                        <div style={{ fontSize: 14, color: '#6b7280' }}>
+                          {order.city}, {order.orderCountry}
+                        </div>
+                      </div>
+
+                      {/* Created By */}
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 8 }}>
+                          Order Submitted By
+                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: '#111827', marginBottom: 4 }}>
+                          {order.createdBy?.firstName} {order.createdBy?.lastName}
+                        </div>
+                        <div style={{
+                          display: 'inline-block',
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          background: '#dbeafe',
+                          color: '#1e40af',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          textTransform: 'capitalize'
+                        }}>
+                          {order.createdByRole || order.createdBy?.role || 'N/A'}
+                        </div>
+                      </div>
+
+                      {/* Delivery Info */}
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 8 }}>
+                          Assigned Driver
+                        </div>
+                        {order.deliveryBoy ? (
+                          <>
+                            <div style={{ fontSize: 15, fontWeight: 600, color: '#111827', marginBottom: 4 }}>
+                              {order.deliveryBoy?.firstName} {order.deliveryBoy?.lastName}
+                            </div>
+                            {order.assignedBy && (
+                              <div style={{ fontSize: 13, color: '#6b7280' }}>
+                                Assigned by: {order.assignedBy?.firstName} {order.assignedBy?.lastName}
+                                {order.assignedBy?.role && (
+                                  <span style={{
+                                    marginLeft: 6,
+                                    padding: '2px 8px',
+                                    borderRadius: 4,
+                                    background: '#f3f4f6',
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    textTransform: 'capitalize'
+                                  }}>
+                                    {order.assignedBy.role}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div style={{ fontSize: 14, color: '#9ca3af' }}>Not assigned yet</div>
+                        )}
+                      </div>
+
+                      {/* Order Value */}
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 8 }}>
+                          Order Value
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: '#111827', marginBottom: 4 }}>
+                          {product.baseCurrency} {order.total?.toFixed(2) || '0.00'}
+                        </div>
+                        <div style={{ fontSize: 13, color: '#6b7280' }}>
+                          Quantity: {order.quantity || 1}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Delivery Timeline */}
+                    {(order.deliveredAt || order.cancelledAt) && (
+                      <div style={{
+                        marginTop: 20,
+                        paddingTop: 20,
+                        borderTop: '1px solid var(--border)'
                       }}>
-                        #{order.invoiceNumber || String(order._id).slice(-5)}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ fontWeight: 600 }}>{order.customerName || 'N/A'}</div>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>{order.customerPhone}</div>
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                      <span style={{ fontWeight: 700, fontSize: 16 }}>{order.quantity || 1}</span>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 18 }}>
-                          {COUNTRIES.find(c => c.code === order.orderCountry)?.flag || '🌍'}
-                        </span>
-                        <span style={{ fontWeight: 600 }}>{order.orderCountry}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      {getStatusBadge(order.shipmentStatus)}
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 16 }}>
-                          {order.createdByRole === 'agent' ? '🧑‍💼' : 
-                           order.createdByRole === 'manager' ? '👔' : 
-                           order.createdByRole === 'user' ? '👤' : '🔹'}
-                        </span>
-                        <div>
-                          <div style={{ fontWeight: 600 }}>
-                            {order.createdBy?.firstName} {order.createdBy?.lastName}
-                          </div>
-                          <div style={{ fontSize: 11, opacity: 0.6, textTransform: 'capitalize' }}>
-                            {order.createdByRole}
-                          </div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 12 }}>
+                          Timeline
                         </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      {order.deliveryBoy ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 16 }}>🚚</span>
+                        
+                        {order.deliveredAt && (
+                          <div style={{ marginBottom: 8 }}>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: '#065f46' }}>Delivered: </span>
+                            <span style={{ fontSize: 14, color: '#6b7280' }}>{formatDate(order.deliveredAt)}</span>
+                            {order.collectedAmount != null && (
+                              <span style={{ marginLeft: 12, fontSize: 14, color: '#6b7280' }}>
+                                (Collected: {product.baseCurrency} {order.collectedAmount?.toFixed(2)})
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {order.shipmentStatus === 'cancelled' && order.cancelReason && (
+                          <div style={{ marginBottom: 8 }}>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: '#991b1b' }}>Cancelled: </span>
+                            <span style={{ fontSize: 14, color: '#6b7280' }}>{order.cancelReason}</span>
+                          </div>
+                        )}
+
+                        {order.shipmentStatus === 'returned' && (
                           <div>
-                            <div style={{ fontWeight: 600 }}>
-                              {order.deliveryBoy.firstName} {order.deliveryBoy.lastName}
+                            <div style={{ marginBottom: 8 }}>
+                              <span style={{ fontSize: 14, fontWeight: 600, color: '#92400e' }}>Returned: </span>
+                              <span style={{ fontSize: 14, color: '#6b7280' }}>
+                                {order.returnReason || 'No reason provided'}
+                              </span>
                             </div>
-                            <div style={{ fontSize: 11, opacity: 0.6 }}>Driver</div>
+                            
+                            {order.returnSubmittedToCompany && (
+                              <div style={{ marginBottom: 8 }}>
+                                <span style={{ fontSize: 14, fontWeight: 600, color: '#92400e' }}>Submitted for Verification: </span>
+                                <span style={{ fontSize: 14, color: '#6b7280' }}>Yes</span>
+                              </div>
+                            )}
+                            
+                            {order.returnVerified && order.returnVerifiedAt && (
+                              <div style={{
+                                padding: 12,
+                                background: '#ecfdf5',
+                                border: '1px solid #10b981',
+                                borderRadius: 8,
+                                marginTop: 8
+                              }}>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: '#065f46', marginBottom: 4 }}>
+                                  Stock Refilled
+                                </div>
+                                <div style={{ fontSize: 13, color: '#065f46' }}>
+                                  Verified {formatDate(order.returnVerifiedAt)} by {order.returnVerifiedBy?.firstName} {order.returnVerifiedBy?.lastName}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ) : (
-                        <span style={{ opacity: 0.5 }}>—</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      {order.assignedBy ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 16 }}>
-                            {order.assignedByRole === 'manager' ? '👔' : '👤'}
-                          </span>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>
-                              {order.assignedBy.firstName} {order.assignedBy.lastName}
-                            </div>
-                            <div style={{ fontSize: 11, opacity: 0.6, textTransform: 'capitalize' }}>
-                              {order.assignedByRole || 'Manager'}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <span style={{ opacity: 0.5 }}>—</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ fontSize: 13 }}>{fmtDate(order.createdAt)}</div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

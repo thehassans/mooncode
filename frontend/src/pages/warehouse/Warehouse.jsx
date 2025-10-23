@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { API_BASE, apiGet, apiUploadPatch } from '../../api'
 import { io } from 'socket.io-client'
 import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import Modal from '../../components/Modal'
 
 export default function Warehouse(){
@@ -13,7 +13,6 @@ export default function Warehouse(){
   const [sort, setSort] = useState('name')
   const [ccyCfg, setCcyCfg] = useState(null)
   const navigate = useNavigate()
-  const location = useLocation()
   const [prodMap, setProdMap] = useState({})
   const [prodById, setProdById] = useState({})
   const [countryFilter, setCountryFilter] = useState('All')
@@ -616,40 +615,20 @@ export default function Warehouse(){
                             </div>
                             <div style={{minWidth:0}}>
                               <div 
+                                onClick={() => navigate(`/product/${it._id}`)}
                                 style={{
                                   fontWeight:800, 
                                   lineHeight:1.2,
-                                  color:'#667eea',
                                   cursor:'pointer',
+                                  color:'#667eea',
                                   transition:'all 0.2s'
                                 }}
-                                onClick={() => {
-                                  // Try to find product ID by the warehouse item ID first
-                                  let prodId = prodById[String(it._id)]?._id
-                                  
-                                  // If not found, search by product name in prodById
-                                  if (!prodId) {
-                                    const productName = String(it?.name || '').trim()
-                                    for (const [id, prod] of Object.entries(prodById)) {
-                                      if (String(prod?.name || '').trim() === productName) {
-                                        prodId = id
-                                        break
-                                      }
-                                    }
-                                  }
-                                  
-                                  if (!prodId) {
-                                    console.warn('Product ID not found for:', it.name)
-                                    return
-                                  }
-                                  
-                                  // Detect if we're in manager or user context
-                                  const isManager = location.pathname.startsWith('/manager')
-                                  const basePath = isManager ? '/manager/warehouses' : '/user/shipments'
-                                  navigate(`${basePath}/product/${prodId}`)
+                                onMouseEnter={(e) => {
+                                  e.target.style.textDecoration = 'underline'
                                 }}
-                                onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
-                                onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                                onMouseLeave={(e) => {
+                                  e.target.style.textDecoration = 'none'
+                                }}
                               >
                                 {it.name}
                               </div>

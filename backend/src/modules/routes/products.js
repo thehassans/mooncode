@@ -589,7 +589,7 @@ router.get('/:id/orders', auth, async (req, res) => {
     // Import Order model
     const Order = (await import('../models/Order.js')).default
 
-    // Find all orders containing this product (single product or in items array)
+    // Find all orders containing this product
     const orders = await Order.find({
       $or: [
         { productId: id },
@@ -599,20 +599,14 @@ router.get('/:id/orders', auth, async (req, res) => {
       .populate('createdBy', 'firstName lastName email role')
       .populate('deliveryBoy', 'firstName lastName email')
       .populate('assignedBy', 'firstName lastName email role')
+      .populate('returnVerifiedBy', 'firstName lastName email role')
       .sort({ createdAt: -1 })
       .lean()
 
-    // Enhance with role information
-    const enhancedOrders = orders.map(order => ({
-      ...order,
-      createdByRole: order.createdBy?.role || order.createdByRole,
-      assignedByRole: order.assignedBy?.role || 'manager'
-    }))
-
     res.json({
       success: true,
-      orders: enhancedOrders,
-      totalOrders: enhancedOrders.length
+      orders,
+      count: orders.length
     })
   } catch (error) {
     console.error('Get product orders error:', error)
