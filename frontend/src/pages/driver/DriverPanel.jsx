@@ -7,6 +7,7 @@ export default function DriverPanel() {
   const toast = useToast()
   const [assigned, setAssigned] = useState([])
   const [loading, setLoading] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [city, setCity] = useState(() => {
     try { return localStorage.getItem('driver.city') || '' } catch { return '' }
   })
@@ -243,6 +244,17 @@ export default function DriverPanel() {
     }
   }
 
+  async function returnOrder(order) {
+    try {
+      const reason = window.prompt('Reason for return:', '')
+      if (reason === null) return
+      await apiPost(`/api/orders/${order._id || order.id}/return`, { reason })
+      await loadAssigned()
+    } catch (e) {
+      alert(e?.message || 'Failed to return order')
+    }
+  }
+
   // Helper to compute numeric total for an order
   function getOrderNumericTotal(o){
     try{
@@ -346,6 +358,12 @@ export default function DriverPanel() {
             const code = order?.invoiceNumber ? `#${order.invoiceNumber}` : `#${String(id).slice(-5)}`
             toast.warn(`Order cancelled (${code})`)
           }catch{ toast.warn(`Order cancelled (#${String(id).slice(-5)})`) }
+        } else if (status === 'returned') {
+          await apiPost(`/api/orders/${id}/return`, { reason: note || '' })
+          try{
+            const code = order?.invoiceNumber ? `#${order.invoiceNumber}` : `#${String(id).slice(-5)}`
+            toast.warn(`Order returned (${code})`)
+          }catch{ toast.warn(`Order returned (#${String(id).slice(-5)})`) }
         } else if (status === 'no_response' || status === 'attempted' || status === 'contacted' || status === 'picked_up' || status === 'out_for_delivery') {
           await apiPost(`/api/orders/${id}/shipment/update`, { shipmentStatus: status, deliveryNotes: note || '' })
           const label = status === 'picked_up' ? 'picked up' : (status === 'out_for_delivery' ? 'out for delivery' : (status.replace('_',' ')))
@@ -435,7 +453,14 @@ export default function DriverPanel() {
               <div className="order-details">
                 <div className="info-row">
                   <span className="label">Product:</span>
-                  <span className="value">{order.details || 'No details provided'}</span>
+                  <span className="value">{(() => {
+                    if (order.productId?.name) return order.productId.name
+                    if (Array.isArray(order.items) && order.items.length > 0) {
+                      const names = order.items.map(item => item?.productId?.name).filter(Boolean)
+                      if (names.length) return names.join(', ')
+                    }
+                    return order.details || 'No product name'
+                  })()}</span>
                 </div>
                 {order.invoiceNumber && (
                   <div className="info-row">
@@ -526,12 +551,13 @@ export default function DriverPanel() {
                   <option value="no_response">No Response</option>
                   <option value="contacted">Contacted</option>
                   <option value="cancelled">Cancelled</option>
+                  <option value="returned">Returned</option>
                 </select>
               </div>
 
               <div className="status-form" style={{display:'grid', gap:10}}>
-                <label className="input-label">{status === 'cancelled' ? 'Reason' : 'Note'}</label>
-                <textarea className="input" placeholder={status === 'cancelled' ? 'Reason for cancellation...' : 'Add a short note...'} value={note} onChange={e=> setNote(e.target.value)} rows={2} />
+                <label className="input-label">{(status === 'cancelled' || status === 'returned') ? 'Reason' : 'Note'}</label>
+                <textarea className="input" placeholder={(status === 'cancelled' || status === 'returned') ? 'Reason for ' + status + '...' : 'Add a short note...'} value={note} onChange={e=> setNote(e.target.value)} rows={2} />
                 {status === 'delivered' && (
                   <>
                     <label className="input-label">Collected Amount</label>
@@ -550,10 +576,31 @@ export default function DriverPanel() {
   }
 
   const sortedAssigned = sortOrders(assigned)
-  const activeOrders = React.useMemo(()=>{
+  
+  // Filter orders by search query
+  const filteredOrders = React.useMemo(() => {
     const list = sortedAssigned || []
+    if (!searchQuery.trim()) return list
+    
+    const query = searchQuery.toLowerCase().trim()
+    return list.filter(o => {
+      const invoice = (o.invoiceNumber || '').toLowerCase()
+      const area = (o.customerAddress || o.customerLocation || o.city || '').toLowerCase()
+      const name = (o.customerName || '').toLowerCase()
+      const phone = (o.customerPhone || '').toLowerCase()
+      
+      return invoice.includes(query) || 
+             area.includes(query) || 
+             name.includes(query) ||
+             phone.includes(query) ||
+             query.includes(invoice)
+    })
+  }, [sortedAssigned, searchQuery])
+  
+  const activeOrders = React.useMemo(()=>{
+    const list = filteredOrders || []
     return list.filter(o => !['delivered','cancelled','returned'].includes(String(o?.shipmentStatus||'').toLowerCase()))
-  }, [sortedAssigned])
+  }, [filteredOrders])
 
   return (
     <div className="driver-panel">
@@ -568,6 +615,25 @@ export default function DriverPanel() {
         <div className="section-header">
           <h2 className="section-title">My Assigned Orders</h2>
           <span className="order-count">{activeOrders.length}</span>
+        </div>
+        
+        {/* Search Bar */}
+        <div style={{marginBottom:16}}>
+          <input
+            type="text"
+            className="input"
+            placeholder="🔍 Search by Invoice #, Area, Name, or Phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width:'100%',
+              padding:'12px 16px',
+              fontSize:15,
+              borderRadius:12,
+              border:'1px solid var(--border)',
+              background:'var(--panel)'
+            }}
+          />
         </div>
 
         <div className="orders-list">

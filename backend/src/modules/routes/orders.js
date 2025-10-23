@@ -1859,7 +1859,7 @@ router.post('/:id/deliver', auth, allowRoles('admin','user','agent','driver'), a
 })
 
 // Mark as returned
-router.post('/:id/return', auth, allowRoles('admin','user','agent'), async (req, res) => {
+router.post('/:id/return', auth, allowRoles('admin','user','agent','driver'), async (req, res) => {
   const { id } = req.params
   const { reason } = req.body || {}
   const ord = await Order.findById(id)
