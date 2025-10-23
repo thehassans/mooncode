@@ -318,6 +318,7 @@ export default function App() {
         <Route path="finances/history/agents" element={<AgentRemitHistory />} />
         <Route path="transactions/drivers" element={<ManagerDriverFinances />} />
         <Route path="warehouses" element={<Warehouse />} />
+        <Route path="warehouses/product/:id" element={<InventoryProductDetail />} />
         <Route path="inhouse-products" element={<InhouseProducts />} />
         <Route path="expenses" element={<ManagerExpenses />} />
       </Route>

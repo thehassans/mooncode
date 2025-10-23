@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { API_BASE, apiGet, apiUploadPatch } from '../../api'
 import { io } from 'socket.io-client'
 import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import Modal from '../../components/Modal'
 
 export default function Warehouse(){
@@ -13,6 +13,7 @@ export default function Warehouse(){
   const [sort, setSort] = useState('name')
   const [ccyCfg, setCcyCfg] = useState(null)
   const navigate = useNavigate()
+  const location = useLocation()
   const [prodMap, setProdMap] = useState({})
   const [prodById, setProdById] = useState({})
   const [countryFilter, setCountryFilter] = useState('All')
@@ -624,7 +625,11 @@ export default function Warehouse(){
                                 }}
                                 onClick={() => {
                                   const prodId = prodById[String(it._id)]?._id
-                                  if (prodId) navigate(`/shipments/product/${prodId}`)
+                                  if (!prodId) return
+                                  // Detect if we're in manager or user context
+                                  const isManager = location.pathname.startsWith('/manager')
+                                  const basePath = isManager ? '/manager/warehouses' : '/user/shipments'
+                                  navigate(`${basePath}/product/${prodId}`)
                                 }}
                                 onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
                                 onMouseLeave={(e) => e.target.style.textDecoration = 'none'}

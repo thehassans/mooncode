@@ -325,7 +325,7 @@ export default function Shipments(){
                                 textDecoration:'none',
                                 transition:'all 0.2s'
                               }}
-                              onClick={() => navigate(`/shipments/product/${product._id}`)}
+                              onClick={() => navigate(`/user/shipments/product/${product._id}`)}
                               onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
                               onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
                             >
