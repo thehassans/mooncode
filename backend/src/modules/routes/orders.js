@@ -1236,34 +1236,175 @@ router.post('/:id/assign-driver', auth, allowRoles('admin','user','manager'), as
 
 // Driver: list assigned orders
 router.get('/driver/assigned', auth, allowRoles('driver'), async (req, res) => {
-  const orders = await Order.find({ deliveryBoy: req.user.id, shipmentStatus: { $nin: ['delivered','cancelled'] } })
-    .sort({ createdAt: -1 })
-    .populate('productId')
-  res.json({ orders })
+  try{
+    const { q = '', ship = '' } = req.query || {}
+    const match = { deliveryBoy: req.user.id, shipmentStatus: { $nin: ['delivered','cancelled'] } }
+    
+    // Status filter
+    if (ship && String(ship).trim()) {
+      match.shipmentStatus = String(ship).trim().toLowerCase()
+    }
+    
+    // Text search over invoice, phone, name, city, details and product names
+    if (q && String(q).trim()){
+      const safe = String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const rx = new RegExp(safe, 'i')
+      const stripped = String(q).trim().startsWith('#') ? String(q).trim().slice(1) : ''
+      const rxInv = stripped ? new RegExp(stripped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : null
+      const or = [
+        { invoiceNumber: rx },
+        ...(rxInv ? [{ invoiceNumber: rxInv }] : []),
+        { customerPhone: rx },
+        { customerName: rx },
+        { details: rx },
+        { city: rx },
+        { customerAddress: rx },
+      ]
+      try{
+        const prods = await Product.find({ name: rx }).select('_id').lean()
+        const pids = prods.map(p => p._id)
+        if (pids.length){
+          or.push({ productId: { $in: pids } })
+          or.push({ 'items.productId': { $in: pids } })
+        }
+      }catch{}
+      match.$or = or
+    }
+    
+    const orders = await Order.find(match)
+      .sort({ createdAt: -1 })
+      .populate('productId')
+      .populate('items.productId')
+    res.json({ orders })
+  }catch(err){
+    res.status(500).json({ message: err?.message || 'Failed to load assigned orders' })
+  }
 })
 
 // Driver: list picked up orders (shipmentStatus = picked_up)
 router.get('/driver/picked', auth, allowRoles('driver'), async (req, res) => {
-  const orders = await Order.find({ deliveryBoy: req.user.id, shipmentStatus: 'picked_up' })
-    .sort({ updatedAt: -1 })
-    .populate('productId')
-  res.json({ orders })
+  try{
+    const { q = '' } = req.query || {}
+    const match = { deliveryBoy: req.user.id, shipmentStatus: 'picked_up' }
+    
+    // Text search
+    if (q && String(q).trim()){
+      const safe = String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const rx = new RegExp(safe, 'i')
+      const stripped = String(q).trim().startsWith('#') ? String(q).trim().slice(1) : ''
+      const rxInv = stripped ? new RegExp(stripped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : null
+      const or = [
+        { invoiceNumber: rx },
+        ...(rxInv ? [{ invoiceNumber: rxInv }] : []),
+        { customerPhone: rx },
+        { customerName: rx },
+        { details: rx },
+        { city: rx },
+        { customerAddress: rx },
+      ]
+      try{
+        const prods = await Product.find({ name: rx }).select('_id').lean()
+        const pids = prods.map(p => p._id)
+        if (pids.length){
+          or.push({ productId: { $in: pids } })
+          or.push({ 'items.productId': { $in: pids } })
+        }
+      }catch{}
+      match.$or = or
+    }
+    
+    const orders = await Order.find(match)
+      .sort({ updatedAt: -1 })
+      .populate('productId')
+      .populate('items.productId')
+    res.json({ orders })
+  }catch(err){
+    res.status(500).json({ message: err?.message || 'Failed to load picked orders' })
+  }
 })
 
 // Driver: list delivered orders
 router.get('/driver/delivered', auth, allowRoles('driver'), async (req, res) => {
-  const orders = await Order.find({ deliveryBoy: req.user.id, shipmentStatus: 'delivered' })
-    .sort({ updatedAt: -1 })
-    .populate('productId')
-  res.json({ orders })
+  try{
+    const { q = '' } = req.query || {}
+    const match = { deliveryBoy: req.user.id, shipmentStatus: 'delivered' }
+    
+    // Text search
+    if (q && String(q).trim()){
+      const safe = String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const rx = new RegExp(safe, 'i')
+      const stripped = String(q).trim().startsWith('#') ? String(q).trim().slice(1) : ''
+      const rxInv = stripped ? new RegExp(stripped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : null
+      const or = [
+        { invoiceNumber: rx },
+        ...(rxInv ? [{ invoiceNumber: rxInv }] : []),
+        { customerPhone: rx },
+        { customerName: rx },
+        { details: rx },
+        { city: rx },
+        { customerAddress: rx },
+      ]
+      try{
+        const prods = await Product.find({ name: rx }).select('_id').lean()
+        const pids = prods.map(p => p._id)
+        if (pids.length){
+          or.push({ productId: { $in: pids } })
+          or.push({ 'items.productId': { $in: pids } })
+        }
+      }catch{}
+      match.$or = or
+    }
+    
+    const orders = await Order.find(match)
+      .sort({ updatedAt: -1 })
+      .populate('productId')
+      .populate('items.productId')
+    res.json({ orders })
+  }catch(err){
+    res.status(500).json({ message: err?.message || 'Failed to load delivered orders' })
+  }
 })
 
 // Driver: list cancelled orders
 router.get('/driver/cancelled', auth, allowRoles('driver'), async (req, res) => {
-  const orders = await Order.find({ deliveryBoy: req.user.id, shipmentStatus: 'cancelled' })
-    .sort({ updatedAt: -1 })
-    .populate('productId')
-  res.json({ orders })
+  try{
+    const { q = '' } = req.query || {}
+    const match = { deliveryBoy: req.user.id, shipmentStatus: 'cancelled' }
+    
+    // Text search
+    if (q && String(q).trim()){
+      const safe = String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const rx = new RegExp(safe, 'i')
+      const stripped = String(q).trim().startsWith('#') ? String(q).trim().slice(1) : ''
+      const rxInv = stripped ? new RegExp(stripped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : null
+      const or = [
+        { invoiceNumber: rx },
+        ...(rxInv ? [{ invoiceNumber: rxInv }] : []),
+        { customerPhone: rx },
+        { customerName: rx },
+        { details: rx },
+        { city: rx },
+        { customerAddress: rx },
+      ]
+      try{
+        const prods = await Product.find({ name: rx }).select('_id').lean()
+        const pids = prods.map(p => p._id)
+        if (pids.length){
+          or.push({ productId: { $in: pids } })
+          or.push({ 'items.productId': { $in: pids } })
+        }
+      }catch{}
+      match.$or = or
+    }
+    
+    const orders = await Order.find(match)
+      .sort({ updatedAt: -1 })
+      .populate('productId')
+      .populate('items.productId')
+    res.json({ orders })
+  }catch(err){
+    res.status(500).json({ message: err?.message || 'Failed to load cancelled orders' })
+  }
 })
 
 // Driver: metrics across all time by shipmentStatus

@@ -7,6 +7,7 @@ export default function DriverDelivered(){
       title="Delivered Orders"
       subtitle="All orders you have delivered"
       endpoint="/api/orders/driver/delivered"
+      withFilters
     />
   )
 }

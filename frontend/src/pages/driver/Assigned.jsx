@@ -8,6 +8,7 @@ export default function DriverAssigned(){
       subtitle="Orders currently assigned to you"
       endpoint="/api/orders/driver/assigned"
       showDeliverCancel
+      withFilters
     />
   )
 }

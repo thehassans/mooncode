@@ -8,6 +8,7 @@ export default function DriverPicked(){
       subtitle="Orders you have marked as picked up"
       endpoint="/api/orders/driver/picked"
       showDeliverCancel
+      withFilters
     />
   )
 }

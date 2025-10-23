@@ -183,8 +183,14 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
         )}
         {withFilters && (
           <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:8}}>
-            <input className="input" placeholder="Search invoice, product, customer, city" value={q} onChange={e=> setQ(e.target.value)} />
-            <select className="input" value={ship} onChange={e=> setShip(e.target.value)}>
+            <input 
+              className="input" 
+              placeholder="🔍 Search: Invoice #, Phone, Name, Area..." 
+              value={q} 
+              onChange={e=> setQ(e.target.value)}
+              style={{fontSize:14}}
+            />
+            <select className="input" value={ship} onChange={e=> setShip(e.target.value)} style={{fontSize:14}}>
               <option value="">All Statuses</option>
               <option value="pending">Pending</option>
               <option value="assigned">Assigned</option>
