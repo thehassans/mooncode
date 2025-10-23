@@ -488,4 +488,91 @@ router.get('/categories', async (req, res) => {
   }
 })
 
+// Add stock to product (User/Manager)
+router.post('/:id/stock/add', auth, allowRoles('user', 'manager'), async (req, res) => {
+  try {
+    const { id } = req.params
+    const { country, quantity, notes } = req.body
+
+    if (!country || !quantity || quantity <= 0) {
+      return res.status(400).json({ message: 'Country and valid quantity are required' })
+    }
+
+    const product = await Product.findById(id)
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' })
+    }
+
+    // Initialize stockByCountry if not exists
+    if (!product.stockByCountry) {
+      product.stockByCountry = {}
+    }
+
+    // Add to existing stock
+    const currentStock = product.stockByCountry[country] || 0
+    product.stockByCountry[country] = currentStock + Number(quantity)
+
+    // Update stockQty (total across all countries)
+    let totalStock = 0
+    Object.values(product.stockByCountry).forEach(val => {
+      totalStock += Number(val || 0)
+    })
+    product.stockQty = totalStock
+    product.inStock = totalStock > 0
+
+    // Add to stock history
+    if (!product.stockHistory) {
+      product.stockHistory = []
+    }
+
+    product.stockHistory.push({
+      country,
+      quantity: Number(quantity),
+      notes: notes || '',
+      addedBy: req.user.id,
+      date: new Date()
+    })
+
+    await product.save()
+
+    res.json({
+      message: 'Stock added successfully',
+      product,
+      newStock: product.stockByCountry[country],
+      totalStock: product.stockQty
+    })
+  } catch (error) {
+    console.error('Add stock error:', error)
+    res.status(500).json({ message: error.message || 'Failed to add stock' })
+  }
+})
+
+// Get stock history for a product
+router.get('/:id/stock/history', auth, async (req, res) => {
+  try {
+    const { id } = req.params
+
+    const product = await Product.findById(id)
+      .populate('stockHistory.addedBy', 'firstName lastName email')
+      .lean()
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' })
+    }
+
+    const history = product.stockHistory || []
+
+    // Sort by date descending (most recent first)
+    history.sort((a, b) => new Date(b.date) - new Date(a.date))
+
+    res.json({
+      success: true,
+      history
+    })
+  } catch (error) {
+    console.error('Get stock history error:', error)
+    res.status(500).json({ message: 'Failed to fetch stock history' })
+  }
+})
+
 export default router

@@ -54,6 +54,13 @@ const ProductSchema = new mongoose.Schema({
   createdByRole: { type: String, default: '' },
   createdByActor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdByActorName: { type: String, default: '' },
+  stockHistory: [{
+    country: { type: String, required: true },
+    quantity: { type: Number, required: true },
+    notes: { type: String, default: '' },
+    addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    date: { type: Date, default: Date.now }
+  }],
 }, { timestamps: true })
 
 export default mongoose.model('Product', ProductSchema)
