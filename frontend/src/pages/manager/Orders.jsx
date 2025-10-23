@@ -371,6 +371,25 @@ export default function ManagerOrders(){
   const [editingDriver, setEditingDriver] = useState({})
   const [editingStatus, setEditingStatus] = useState({})
   const [updating, setUpdating] = useState({})
+  
+  // Helper to preserve scroll on dropdown changes
+  const handleDriverChange = (orderId, value) => {
+    const y = window.scrollY
+    setEditingDriver(prev => ({...prev, [orderId]: value}))
+    requestAnimationFrame(() => {
+      window.scrollTo(0, y)
+      setTimeout(() => window.scrollTo(0, y), 0)
+    })
+  }
+  
+  const handleStatusChange = (orderId, value) => {
+    const y = window.scrollY
+    setEditingStatus(prev => ({...prev, [orderId]: value}))
+    requestAnimationFrame(() => {
+      window.scrollTo(0, y)
+      setTimeout(() => window.scrollTo(0, y), 0)
+    })
+  }
   async function saveOrder(orderId){
     const key = `save-${orderId}`
     setUpdating(prev => ({ ...prev, [key]: true }))
@@ -586,7 +605,7 @@ export default function ManagerOrders(){
             <select 
               className="input" 
               value={editingDriver[id] !== undefined ? editingDriver[id] : driverId} 
-              onChange={(e)=> setEditingDriver(prev => ({...prev, [id]: e.target.value}))} 
+              onChange={(e)=> handleDriverChange(id, e.target.value)} 
               disabled={updating[`save-${id}`]}
               style={{fontSize:14}}
             >
@@ -599,7 +618,7 @@ export default function ManagerOrders(){
             <select 
               className="input" 
               value={editingStatus[id] || (o.shipmentStatus || 'pending')} 
-              onChange={(e)=> setEditingStatus(prev => ({...prev, [id]: e.target.value}))} 
+              onChange={(e)=> handleStatusChange(id, e.target.value)} 
               disabled={updating[`save-${id}`]}
               style={{fontSize:14}}
             >
