@@ -10,6 +10,11 @@ const ExpenseSchema = new mongoose.Schema({
   notes: { type: String },
   incurredAt: { type: Date, default: Date.now },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  // Manager approval fields
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' }, // Default approved for user/admin, pending for manager
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  approvedAt: { type: Date },
+  rejectionReason: { type: String },
 }, { timestamps: true })
 
 export default mongoose.model('Expense', ExpenseSchema)

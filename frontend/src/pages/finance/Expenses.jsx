@@ -37,7 +37,33 @@ export default function Expenses(){
   }
   useEffect(()=>{ load() }, [])
 
-  const adExpenses = useMemo(() => items.filter(e => e.type === 'advertisement'), [items])
+  const pendingManagerExpenses = useMemo(() => items.filter(e => e.status === 'pending' && e.createdBy?.role === 'manager'), [items])
+  const adExpenses = useMemo(() => items.filter(e => e.type === 'advertisement' && e.status === 'approved'), [items])
+  
+  async function approveExpense(id){
+    if (!confirm('Approve this expense?')) return
+    try{
+      await apiPost(`/api/finance/expenses/${id}/approve`, {})
+      setMsg('Expense approved successfully')
+      setTimeout(()=> setMsg(''), 2000)
+      await load()
+    }catch(err){
+      setMsg(err?.response?.data?.message || err?.message || 'Failed to approve expense')
+    }
+  }
+  
+  async function rejectExpense(id){
+    const reason = prompt('Reason for rejection (optional):')
+    if (reason === null) return // User cancelled
+    try{
+      await apiPost(`/api/finance/expenses/${id}/reject`, { reason })
+      setMsg('Expense rejected')
+      setTimeout(()=> setMsg(''), 2000)
+      await load()
+    }catch(err){
+      setMsg(err?.response?.data?.message || err?.message || 'Failed to reject expense')
+    }
+  }
   const totalByCountry = useMemo(() => {
     const byCountry = {}
     COUNTRIES.forEach(c => { byCountry[c.code] = 0 })
@@ -107,6 +133,100 @@ export default function Expenses(){
           </div>
         </div>
       </div>
+
+      {/* Pending Manager Expenses - Approval Section */}
+      {pendingManagerExpenses.length > 0 && (
+        <div style={{marginBottom: 24}}>
+          <div className="card" style={{
+            padding: 0,
+            overflow: 'hidden',
+            borderRadius: 16,
+            border: '2px solid #fbbf24',
+            background: 'rgba(251, 191, 36, 0.05)'
+          }}>
+            <div style={{
+              padding: '16px 20px',
+              background: 'rgba(251, 191, 36, 0.1)',
+              borderBottom: '1px solid #fbbf24',
+              display:'flex',
+              justifyContent:'space-between',
+              alignItems:'center'
+            }}>
+              <div style={{display:'flex', alignItems:'center', gap:12}}>
+                <span style={{fontSize:24}}>⏳</span>
+                <div>
+                  <h3 style={{margin:0, fontSize:18, fontWeight:800}}>
+                    Manager Expenses Pending Approval ({pendingManagerExpenses.length})
+                  </h3>
+                  <p style={{margin:0, fontSize:13, opacity:0.7}}>Review and approve expenses from your managers</p>
+                </div>
+              </div>
+            </div>
+            <div style={{padding: 16}}>
+              <div style={{display:'grid', gap:12}}>
+                {pendingManagerExpenses.map(exp => {
+                  const country = COUNTRIES.find(c => c.code === exp.country)
+                  const managerName = `${exp.createdBy?.firstName || ''} ${exp.createdBy?.lastName || ''}`.trim() || 'Manager'
+                  return (
+                    <div key={exp._id} className="card" style={{
+                      padding: 16,
+                      border: '1px solid #fbbf24',
+                      background: 'rgba(251, 191, 36, 0.05)',
+                      display:'flex',
+                      justifyContent:'space-between',
+                      alignItems:'center',
+                      gap:16,
+                      flexWrap:'wrap'
+                    }}>
+                      <div style={{flex:1, minWidth:250}}>
+                        <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
+                          <div style={{fontWeight:800, fontSize:16}}>{exp.title}</div>
+                          <span className="badge" style={{background:'#fef3c7', color:'#92400e'}}>
+                            👤 {managerName}
+                          </span>
+                        </div>
+                        <div style={{display:'flex', gap:16, flexWrap:'wrap', fontSize:13, color:'var(--muted)'}}>
+                          {country && (
+                            <span style={{display:'flex', alignItems:'center', gap:4}}>
+                              <span style={{fontSize:16}}>{country.flag}</span>
+                              {country.name}
+                            </span>
+                          )}
+                          <span>📅 {fmtDate(exp.incurredAt)}</span>
+                          <span style={{fontWeight:700, color:'#f59e0b', fontSize:15}}>
+                            {exp.currency} {fmtNum(exp.amount)}
+                          </span>
+                        </div>
+                        {exp.notes && (
+                          <div style={{marginTop:8, padding:8, background:'var(--panel)', borderRadius:6, fontSize:13}}>
+                            <strong>Notes:</strong> {exp.notes}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{display:'flex', gap:8}}>
+                        <button 
+                          className="btn success" 
+                          onClick={() => approveExpense(exp._id)}
+                          style={{padding:'8px 16px', fontSize:14, fontWeight:600}}
+                        >
+                          ✅ Approve
+                        </button>
+                        <button 
+                          className="btn danger" 
+                          onClick={() => rejectExpense(exp._id)}
+                          style={{padding:'8px 16px', fontSize:14, fontWeight:600}}
+                        >
+                          ❌ Reject
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Country Cards Grid */}
       <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:16, marginBottom:24}}>

@@ -146,11 +146,11 @@ router.post(
 );
 const upload = multer({ storage });
 
-// Create expense (admin, user, agent)
+// Create expense (admin, user, agent, manager)
 router.post(
   "/expenses",
   auth,
-  allowRoles("admin", "user", "agent"),
+  allowRoles("admin", "user", "agent", "manager"),
   async (req, res) => {
     const { title, type, category, amount, currency, country, notes, incurredAt } =
       req.body || {};
@@ -162,6 +162,9 @@ router.post(
       return res.status(400).json({ message: "Advertisement expenses must specify a country" });
     }
     
+    // Manager expenses need approval, others are auto-approved
+    const status = req.user.role === 'manager' ? 'pending' : 'approved';
+    
     const doc = new Expense({
       title,
       type: type || 'general',
@@ -172,8 +175,13 @@ router.post(
       notes,
       incurredAt: incurredAt ? new Date(incurredAt) : new Date(),
       createdBy: req.user.id,
+      status,
     });
     await doc.save();
+    
+    // Populate createdBy for response
+    await doc.populate('createdBy', 'firstName lastName email role');
+    
     return res.status(201).json({ message: "Expense created", expense: doc });
   }
 );
@@ -517,29 +525,118 @@ router.get(
   }
 );
 
-// List expenses (admin => all; user => own+agents; agent => own)
+// List expenses (admin => all; user => own+agents+managers; agent => own; manager => own)
 router.get(
   "/expenses",
   auth,
-  allowRoles("admin", "user", "agent"),
+  allowRoles("admin", "user", "agent", "manager"),
   async (req, res) => {
+    const User = (await import("../models/User.js")).default;
     let match = {};
     if (req.user.role === "admin") {
       match = {};
     } else if (req.user.role === "user") {
-      const User = (await import("../models/User.js")).default;
+      // User sees: own expenses + agents' expenses + managers' expenses
       const agents = await User.find(
         { role: "agent", createdBy: req.user.id },
         { _id: 1 }
       ).lean();
-      const ids = agents.map((a) => a._id.toString());
+      const managers = await User.find(
+        { role: "manager", createdBy: req.user.id },
+        { _id: 1 }
+      ).lean();
+      const ids = [...agents.map((a) => a._id.toString()), ...managers.map((m) => m._id.toString())];
       match = { createdBy: { $in: [req.user.id, ...ids] } };
+    } else if (req.user.role === "manager") {
+      // Manager sees only their own expenses
+      match = { createdBy: req.user.id };
     } else {
+      // Agent sees own
       match = { createdBy: req.user.id };
     }
-    const items = await Expense.find(match).sort({ incurredAt: -1 });
+    const items = await Expense.find(match)
+      .sort({ incurredAt: -1 })
+      .populate('createdBy', 'firstName lastName email role')
+      .populate('approvedBy', 'firstName lastName email')
+      .lean();
     const total = items.reduce((a, b) => a + Number(b.amount || 0), 0);
     res.json({ expenses: items, total });
+  }
+);
+
+// Approve expense (user only - for manager expenses)
+router.post(
+  "/expenses/:id/approve",
+  auth,
+  allowRoles("user"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const expense = await Expense.findById(id).populate('createdBy', 'firstName lastName role createdBy');
+      
+      if (!expense) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+      
+      // Verify the expense creator is a manager created by this user
+      if (expense.createdBy?.role !== 'manager' || String(expense.createdBy?.createdBy) !== String(req.user.id)) {
+        return res.status(403).json({ message: "You can only approve expenses from your managers" });
+      }
+      
+      if (expense.status !== 'pending') {
+        return res.status(400).json({ message: "Expense is not pending approval" });
+      }
+      
+      expense.status = 'approved';
+      expense.approvedBy = req.user.id;
+      expense.approvedAt = new Date();
+      await expense.save();
+      
+      await expense.populate('approvedBy', 'firstName lastName email');
+      
+      res.json({ message: "Expense approved successfully", expense });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to approve expense", error: err?.message });
+    }
+  }
+);
+
+// Reject expense (user only - for manager expenses)
+router.post(
+  "/expenses/:id/reject",
+  auth,
+  allowRoles("user"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body || {};
+      const expense = await Expense.findById(id).populate('createdBy', 'firstName lastName role createdBy');
+      
+      if (!expense) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+      
+      // Verify the expense creator is a manager created by this user
+      if (expense.createdBy?.role !== 'manager' || String(expense.createdBy?.createdBy) !== String(req.user.id)) {
+        return res.status(403).json({ message: "You can only reject expenses from your managers" });
+      }
+      
+      if (expense.status !== 'pending') {
+        return res.status(400).json({ message: "Expense is not pending approval" });
+      }
+      
+      expense.status = 'rejected';
+      expense.approvedBy = req.user.id;
+      expense.approvedAt = new Date();
+      expense.rejectionReason = reason || '';
+      await expense.save();
+      
+      await expense.populate('approvedBy', 'firstName lastName email');
+      
+      res.json({ message: "Expense rejected", expense });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to reject expense", error: err?.message });
+    }
   }
 );
 
