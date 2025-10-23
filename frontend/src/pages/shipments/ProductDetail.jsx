@@ -119,8 +119,8 @@ export default function ProductDetail() {
         }}>
           {error || 'Product not found'}
         </div>
-        <button className="btn" onClick={() => navigate('/shipments')}>
-          Back to Inventory
+        <button className="btn" onClick={() => navigate(-1)}>
+          Go Back
         </button>
       </div>
     )
@@ -131,7 +131,7 @@ export default function ProductDetail() {
       {/* Header */}
       <div style={{ marginBottom: 30 }}>
         <button 
-          onClick={() => navigate('/shipments')}
+          onClick={() => navigate(-1)}
           style={{
             background: 'transparent',
             border: 'none',
@@ -146,7 +146,7 @@ export default function ProductDetail() {
             gap: 8
           }}
         >
-          ← Back to Inventory
+          ← Back
         </button>
 
         <h1 style={{

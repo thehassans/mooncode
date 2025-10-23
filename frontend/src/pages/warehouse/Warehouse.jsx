@@ -615,7 +615,7 @@ export default function Warehouse(){
                             </div>
                             <div style={{minWidth:0}}>
                               <div 
-                                onClick={() => navigate(`/product/${it._id}`)}
+                                onClick={() => navigate(`/inventory/product/${it._id}`)}
                                 style={{
                                   fontWeight:800, 
                                   lineHeight:1.2,

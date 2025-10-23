@@ -316,7 +316,7 @@ export default function Shipments(){
                           )}
                           <div>
                             <div 
-                              onClick={() => navigate(`/product/${product._id}`)}
+                              onClick={() => navigate(`/inventory/product/${product._id}`)}
                               style={{
                                 fontWeight:700, 
                                 fontSize:15, 

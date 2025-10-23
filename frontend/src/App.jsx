@@ -347,7 +347,7 @@ export default function App() {
         <Route path="inhouse-products" element={<InhouseProducts />} />
         <Route path="warehouses" element={<Warehouse />} />
         <Route path="shipments" element={<Shipments />} />
-        <Route path="product/:id" element={<InventoryProductDetail />} />
+        <Route path="inventory/product/:id" element={<InventoryProductDetail />} />
         <Route path="reports" element={<Reports />} />
         <Route path="driver-reports" element={<DriverReports />} />
         <Route path="insights" element={<AnalyticsDashboard />} />
