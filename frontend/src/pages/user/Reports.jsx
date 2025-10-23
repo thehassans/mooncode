@@ -15,7 +15,7 @@ const REPORT_TEMPLATES = [
   { id: 1, name: 'Classic Corporate', description: 'Traditional formal business report' },
   { id: 2, name: 'Modern Executive', description: 'Clean contemporary design' },
   { id: 3, name: 'Financial Statement', description: 'Data-focused spreadsheet style' },
-  { id: 4, name: 'Annual Report', description: 'Premium prestige layout' },
+  { id: 4, name: 'Monthly Report', description: 'Premium prestige layout' },
   { id: 5, name: 'Minimal Professional', description: 'Sleek minimalist design' }
 ]
 
@@ -313,7 +313,9 @@ function Template2({ logo, selectedCountry, byCountry, filteredCountries, global
       {/* Modern Header */}
       <div style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', padding: 30, borderRadius: 12, marginBottom: 32}}>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-          <img src={logo} alt="Logo" style={{height: 120, filter: 'brightness(0) invert(1)'}} onError={(e) => { e.target.style.display = 'none' }} />
+          <div style={{background: '#fff', padding: 12, borderRadius: 8, display: 'inline-flex', alignItems: 'center'}}>
+            <img src={logo} alt="Logo" style={{height: 100}} onError={(e) => { e.target.style.display = 'none' }} />
+          </div>
           <div style={{textAlign:'right', color:'#fff'}}>
             <div style={{fontSize: 14, fontWeight: 600, marginBottom: 8}}>BUSINESS REPORT</div>
             <div style={{fontSize: 12, opacity: 0.9}}>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
@@ -361,12 +363,12 @@ function Template2({ logo, selectedCountry, byCountry, filteredCountries, global
                 <div style={{fontSize: 24, fontWeight: 900, color: isProfit ? '#10b981' : '#ef4444'}}>{isProfit ? '+' : ''}{currency} {fmtNum(profit)}</div>
               </div>
               <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13}}>
-                <div><span style={{color: '#6b7280'}}>Revenue:</span> <span style={{fontWeight: 700}}>{currency} {fmtNum(data.revenue || 0)}</span></div>
-                <div><span style={{color: '#6b7280'}}>Purchase:</span> <span style={{fontWeight: 700}}>{currency} {fmtNum(data.purchaseCost || 0)}</span></div>
-                <div><span style={{color: '#6b7280'}}>Driver:</span> <span style={{fontWeight: 700}}>{currency} {fmtNum(data.driverCommission || 0)}</span></div>
-                <div><span style={{color: '#6b7280'}}>Agent:</span> <span style={{fontWeight: 700}}>{currency} {fmtNum(data.agentCommission || 0)}</span></div>
-                <div><span style={{color: '#6b7280'}}>Investor:</span> <span style={{fontWeight: 700}}>{currency} {fmtNum(data.investorCommission || 0)}</span></div>
-                <div><span style={{color: '#6b7280'}}>Ads:</span> <span style={{fontWeight: 700}}>{currency} {fmtNum(data.advertisementExpense || 0)}</span></div>
+                <div><span style={{color: '#6b7280'}}>Revenue:</span> <span style={{fontWeight: 700, color: '#111'}}>{currency} {fmtNum(data.revenue || 0)}</span></div>
+                <div><span style={{color: '#6b7280'}}>Purchase:</span> <span style={{fontWeight: 700, color: '#111'}}>{currency} {fmtNum(data.purchaseCost || 0)}</span></div>
+                <div><span style={{color: '#6b7280'}}>Driver:</span> <span style={{fontWeight: 700, color: '#111'}}>{currency} {fmtNum(data.driverCommission || 0)}</span></div>
+                <div><span style={{color: '#6b7280'}}>Agent:</span> <span style={{fontWeight: 700, color: '#111'}}>{currency} {fmtNum(data.agentCommission || 0)}</span></div>
+                <div><span style={{color: '#6b7280'}}>Investor:</span> <span style={{fontWeight: 700, color: '#111'}}>{currency} {fmtNum(data.investorCommission || 0)}</span></div>
+                <div><span style={{color: '#6b7280'}}>Ads:</span> <span style={{fontWeight: 700, color: '#111'}}>{currency} {fmtNum(data.advertisementExpense || 0)}</span></div>
               </div>
             </div>
           )
@@ -392,8 +394,8 @@ function Template3({ logo, selectedCountry, byCountry, filteredCountries, global
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
           <img src={logo} alt="Logo" style={{height: 120}} onError={(e) => { e.target.style.display = 'none' }} />
           <div style={{textAlign:'right'}}>
-            <div style={{fontSize: 16, fontWeight: 700}}>FINANCIAL STATEMENT</div>
-            <div style={{fontSize: 12, marginTop: 4}}>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+            <div style={{fontSize: 16, fontWeight: 700, color: '#000'}}>FINANCIAL STATEMENT</div>
+            <div style={{fontSize: 12, marginTop: 4, color: '#000'}}>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
           </div>
         </div>
       </div>
@@ -403,19 +405,19 @@ function Template3({ logo, selectedCountry, byCountry, filteredCountries, global
       <table style={{width: '100%', marginBottom: 32, borderCollapse: 'collapse', border: '2px solid #000'}}>
         <thead>
           <tr style={{background: '#f3f4f6'}}>
-            <th style={{padding: 12, textAlign: 'left', border: '1px solid #000', fontWeight: 700}}>ITEM</th>
-            <th style={{padding: 12, textAlign: 'right', border: '1px solid #000', fontWeight: 700}}>AMOUNT (AED)</th>
+            <th style={{padding: 12, textAlign: 'left', border: '1px solid #000', fontWeight: 700, color: '#000'}}>ITEM</th>
+            <th style={{padding: 12, textAlign: 'right', border: '1px solid #000', fontWeight: 700, color: '#000'}}>AMOUNT (AED)</th>
           </tr>
         </thead>
         <tbody>
-          <tr><td style={{padding: 12, border: '1px solid #000'}}>Revenue</td><td style={{padding: 12, textAlign: 'right', border: '1px solid #000', fontWeight: 600}}>{fmtNum(globalRevenue)}</td></tr>
-          <tr style={{background: '#fafafa'}}><td style={{padding: 12, border: '1px solid #000'}}>Purchase Cost</td><td style={{padding: 12, textAlign: 'right', border: '1px solid #000'}}>({fmtNum(globalPurchaseCost)})</td></tr>
-          <tr><td style={{padding: 12, border: '1px solid #000'}}>Driver Commission</td><td style={{padding: 12, textAlign: 'right', border: '1px solid #000'}}>({fmtNum(globalDriverComm)})</td></tr>
-          <tr style={{background: '#fafafa'}}><td style={{padding: 12, border: '1px solid #000'}}>Agent Commission</td><td style={{padding: 12, textAlign: 'right', border: '1px solid #000'}}>({fmtNum(globalAgentComm)})</td></tr>
-          <tr><td style={{padding: 12, border: '1px solid #000'}}>Investor Commission</td><td style={{padding: 12, textAlign: 'right', border: '1px solid #000'}}>({fmtNum(globalInvestorComm)})</td></tr>
-          <tr style={{background: '#fafafa'}}><td style={{padding: 12, border: '1px solid #000'}}>Advertisement Expense</td><td style={{padding: 12, textAlign: 'right', border: '1px solid #000'}}>({fmtNum(globalAdExpense)})</td></tr>
+          <tr><td style={{padding: 12, border: '1px solid #000', color: '#000'}}>Revenue</td><td style={{padding: 12, textAlign: 'right', border: '1px solid #000', fontWeight: 600, color: '#000'}}>{fmtNum(globalRevenue)}</td></tr>
+          <tr style={{background: '#fafafa'}}><td style={{padding: 12, border: '1px solid #000', color: '#000'}}>Purchase Cost</td><td style={{padding: 12, textAlign: 'right', border: '1px solid #000', color: '#000'}}>({fmtNum(globalPurchaseCost)})</td></tr>
+          <tr><td style={{padding: 12, border: '1px solid #000', color: '#000'}}>Driver Commission</td><td style={{padding: 12, textAlign: 'right', border: '1px solid #000', color: '#000'}}>({fmtNum(globalDriverComm)})</td></tr>
+          <tr style={{background: '#fafafa'}}><td style={{padding: 12, border: '1px solid #000', color: '#000'}}>Agent Commission</td><td style={{padding: 12, textAlign: 'right', border: '1px solid #000', color: '#000'}}>({fmtNum(globalAgentComm)})</td></tr>
+          <tr><td style={{padding: 12, border: '1px solid #000', color: '#000'}}>Investor Commission</td><td style={{padding: 12, textAlign: 'right', border: '1px solid #000', color: '#000'}}>({fmtNum(globalInvestorComm)})</td></tr>
+          <tr style={{background: '#fafafa'}}><td style={{padding: 12, border: '1px solid #000', color: '#000'}}>Advertisement Expense</td><td style={{padding: 12, textAlign: 'right', border: '1px solid #000', color: '#000'}}>({fmtNum(globalAdExpense)})</td></tr>
           <tr style={{background: globalProfit >= 0 ? '#dcfce7' : '#fee2e2', borderTop: '2px solid #000'}}>
-            <td style={{padding: 12, border: '1px solid #000', fontWeight: 700}}>NET {globalProfit >= 0 ? 'PROFIT' : 'LOSS'}</td>
+            <td style={{padding: 12, border: '1px solid #000', fontWeight: 700, color: '#000'}}>NET {globalProfit >= 0 ? 'PROFIT' : 'LOSS'}</td>
             <td style={{padding: 12, textAlign: 'right', border: '1px solid #000', fontWeight: 800, color: globalProfit >= 0 ? '#166534' : '#991b1b'}}>{fmtNum(Math.abs(globalProfit))}</td>
           </tr>
         </tbody>
@@ -436,15 +438,15 @@ function Template3({ logo, selectedCountry, byCountry, filteredCountries, global
               </tr>
             </thead>
             <tbody>
-              <tr><td style={{padding: 10, border: '1px solid #000'}}>Revenue</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', fontWeight: 600}}>{fmtNum(data.revenue || 0)}</td></tr>
-              <tr style={{background: '#fafafa'}}><td style={{padding: 10, border: '1px solid #000'}}>Purchase Cost</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000'}}>({fmtNum(data.purchaseCost || 0)})</td></tr>
-              <tr><td style={{padding: 10, border: '1px solid #000'}}>Driver Commission</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000'}}>({fmtNum(data.driverCommission || 0)})</td></tr>
-              <tr style={{background: '#fafafa'}}><td style={{padding: 10, border: '1px solid #000'}}>Agent Commission</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000'}}>({fmtNum(data.agentCommission || 0)})</td></tr>
-              <tr><td style={{padding: 10, border: '1px solid #000'}}>Investor Commission</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000'}}>({fmtNum(data.investorCommission || 0)})</td></tr>
-              <tr style={{background: '#fafafa'}}><td style={{padding: 10, border: '1px solid #000'}}>Advertisement</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000'}}>({fmtNum(data.advertisementExpense || 0)})</td></tr>
+              <tr><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Revenue</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', fontWeight: 600, color: '#000'}}>{fmtNum(data.revenue || 0)}</td></tr>
+              <tr style={{background: '#fafafa'}}><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Purchase Cost</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>({fmtNum(data.purchaseCost || 0)})</td></tr>
+              <tr><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Driver Commission</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>({fmtNum(data.driverCommission || 0)})</td></tr>
+              <tr style={{background: '#fafafa'}}><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Agent Commission</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>({fmtNum(data.agentCommission || 0)})</td></tr>
+              <tr><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Investor Commission</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>({fmtNum(data.investorCommission || 0)})</td></tr>
+              <tr style={{background: '#fafafa'}}><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Advertisement</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>({fmtNum(data.advertisementExpense || 0)})</td></tr>
               <tr style={{background: profit >= 0 ? '#dcfce7' : '#fee2e2', borderTop: '2px solid #000'}}>
-                <td style={{padding: 10, border: '1px solid #000', fontWeight: 700}}>Net {profit >= 0 ? 'Profit' : 'Loss'}</td>
-                <td style={{padding: 10, textAlign: 'right', border: '1px solid #000', fontWeight: 800}}>{fmtNum(Math.abs(profit))}</td>
+                <td style={{padding: 10, border: '1px solid #000', fontWeight: 700, color: '#000'}}>Net {profit >= 0 ? 'Profit' : 'Loss'}</td>
+                <td style={{padding: 10, textAlign: 'right', border: '1px solid #000', fontWeight: 800, color: '#000'}}>{fmtNum(Math.abs(profit))}</td>
               </tr>
             </tbody>
           </table>
@@ -453,21 +455,21 @@ function Template3({ logo, selectedCountry, byCountry, filteredCountries, global
 
       {/* Footer */}
       <div style={{marginTop: 32, paddingTop: 16, borderTop: '4px double #000', textAlign: 'center'}}>
-        <div style={{fontSize: 16, fontWeight: 800}}>Qadeer Hussain, Owner of Buysial</div>
-        <div style={{fontSize: 12, marginTop: 4}}>Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+        <div style={{fontSize: 16, fontWeight: 800, color: '#000'}}>Qadeer Hussain, Owner of Buysial</div>
+        <div style={{fontSize: 12, marginTop: 4, color: '#000'}}>Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
       </div>
     </>
   )
 }
 
-// Template 4: Annual Report - Premium prestige layout
+// Template 4: Monthly Report - Premium prestige layout
 function Template4({ logo, selectedCountry, byCountry, filteredCountries, globalProfit, globalRevenue, globalPurchaseCost, globalDriverComm, globalAgentComm, globalInvestorComm, globalAdExpense }) {
   return (
     <>
       {/* Luxury Header */}
       <div style={{textAlign: 'center', borderBottom: '3px solid #d97706', paddingBottom: 24, marginBottom: 32}}>
         <img src={logo} alt="Logo" style={{height: 120, marginBottom: 16}} onError={(e) => { e.target.style.display = 'none' }} />
-        <div style={{fontSize: 28, fontWeight: 900, color: '#78350f', fontFamily: 'Georgia, serif', letterSpacing: '2px'}}>ANNUAL BUSINESS REPORT</div>
+        <div style={{fontSize: 28, fontWeight: 900, color: '#78350f', fontFamily: 'Georgia, serif', letterSpacing: '2px'}}>MONTHLY BUSINESS REPORT</div>
         <div style={{fontSize: 13, color: '#92400e', marginTop: 8, fontWeight: 600}}>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
         <div style={{fontSize: 12, color: '#a16207', marginTop: 4}}>{selectedCountry === 'all' ? 'Global Operations' : COUNTRIES.find(c => c.code === selectedCountry)?.name}</div>
       </div>
