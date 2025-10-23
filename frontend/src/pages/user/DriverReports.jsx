@@ -119,14 +119,31 @@ export default function DriverReports(){
                 className="input" 
                 value={selectedDriver} 
                 onChange={(e) => setSelectedDriver(e.target.value)}
-                style={{minWidth:160, padding:'8px 12px', fontSize:14}}
+                style={{minWidth:200, padding:'8px 12px', fontSize:14}}
               >
-                <option value="all">All Drivers</option>
+                <option value="all">All Drivers ({drivers.length})</option>
                 {drivers.map(d => (
-                  <option key={d.id} value={d.name}>{d.name}</option>
+                  <option key={d.id} value={d.name}>{d.name} - {d.city}</option>
                 ))}
               </select>
             </div>
+            {selectedDriver !== 'all' && (
+              <button 
+                onClick={() => setSelectedDriver('all')}
+                style={{
+                  padding: '8px 12px',
+                  background: '#ef4444',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Clear Filter ✕
+              </button>
+            )}
             <button className="btn secondary" onClick={loadDrivers} disabled={loading} style={{padding:'8px 16px'}}>
               {loading ? 'Loading...' : 'Refresh'}
             </button>
@@ -173,12 +190,11 @@ export default function DriverReports(){
 
       {/* Report Content */}
       <div ref={reportRef} style={{background: '#fff', padding: 40, borderRadius: 12, boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
-        <Template1 
-          logo="/BuySial2.png" 
-          selectedCountry={selectedCountry}
-          selectedDriver={selectedDriver}
-          drivers={filteredDrivers}
-        />
+        {selectedTemplate === 1 && <Template1 logo="/BuySial2.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
+        {selectedTemplate === 2 && <Template2 logo="/BuySial2.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
+        {selectedTemplate === 3 && <Template3 logo="/BuySial2.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
+        {selectedTemplate === 4 && <Template4 logo="/BuySial2.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
+        {selectedTemplate === 5 && <Template5 logo="/BuySial2.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
       </div>
     </div>
   )
@@ -339,6 +355,216 @@ function DriverCard({ driver }) {
         </div>
       )}
     </div>
+  )
+}
+
+// Template 2: Modern Executive
+function Template2({ logo, selectedCountry, selectedDriver, drivers }) {
+  return (
+    <>
+      <div style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', padding: 30, borderRadius: 12, marginBottom: 32}}>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <div style={{background: '#fff', padding: 12, borderRadius: 8, display: 'inline-flex', alignItems: 'center'}}>
+            <img src={logo} alt="Logo" style={{height: 100}} onError={(e) => { e.target.style.display = 'none' }} />
+          </div>
+          <div style={{textAlign:'right', color:'#fff'}}>
+            <div style={{fontSize: 14, fontWeight: 600, marginBottom: 8}}>DRIVER PERFORMANCE</div>
+            <div style={{fontSize: 12, opacity: 0.9}}>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+            <div style={{fontSize: 11, opacity: 0.8, marginTop: 4}}>{selectedCountry === 'all' ? 'All Countries' : COUNTRIES.find(c => c.code === selectedCountry)?.name}</div>
+          </div>
+        </div>
+      </div>
+
+      {selectedDriver === 'all' && (
+        <div style={{marginBottom: 24, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16}}>
+          <div style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', borderRadius: 12, padding: 20, color: '#fff'}}>
+            <div style={{fontSize: 12, opacity: 0.9, marginBottom: 4}}>Total Drivers</div>
+            <div style={{fontSize: 32, fontWeight: 900}}>{drivers.length}</div>
+          </div>
+          <div style={{background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', borderRadius: 12, padding: 20, color: '#fff'}}>
+            <div style={{fontSize: 12, opacity: 0.9, marginBottom: 4}}>Delivered</div>
+            <div style={{fontSize: 32, fontWeight: 900}}>{drivers.reduce((s, d) => s + (d.ordersDelivered || 0), 0)}</div>
+          </div>
+          <div style={{background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', borderRadius: 12, padding: 20, color: '#fff'}}>
+            <div style={{fontSize: 12, opacity: 0.9, marginBottom: 4}}>Assigned</div>
+            <div style={{fontSize: 32, fontWeight: 900}}>{drivers.reduce((s, d) => s + (d.ordersAssigned || 0), 0)}</div>
+          </div>
+          <div style={{background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', borderRadius: 12, padding: 20, color: '#fff'}}>
+            <div style={{fontSize: 12, opacity: 0.9, marginBottom: 4}}>Pending</div>
+            <div style={{fontSize: 32, fontWeight: 900}}>{drivers.reduce((s, d) => s + (d.ordersPending || 0), 0)}</div>
+          </div>
+        </div>
+      )}
+
+      {drivers.map(driver => (
+        <div key={driver.id} style={{background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, marginBottom: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.05)'}}>
+          <div style={{fontSize: 18, fontWeight: 700, color: '#111', marginBottom: 12}}>{driver.name}</div>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 12}}>
+            <div><span style={{color: '#6b7280'}}>Phone:</span> <span style={{fontWeight: 700, color: '#111'}}>{driver.phone}</span></div>
+            <div><span style={{color: '#6b7280'}}>Location:</span> <span style={{fontWeight: 700, color: '#111'}}>{driver.city}, {driver.country}</span></div>
+          </div>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 12}}>
+            <div style={{background: '#f0fdf4', padding: 12, borderRadius: 8}}><div style={{fontSize: 11, color: '#166534', marginBottom: 4}}>Delivered</div><div style={{fontSize: 20, fontWeight: 700, color: '#166534'}}>{driver.ordersDelivered || 0}</div></div>
+            <div style={{background: '#fef3c7', padding: 12, borderRadius: 8}}><div style={{fontSize: 11, color: '#92400e', marginBottom: 4}}>Assigned</div><div style={{fontSize: 20, fontWeight: 700, color: '#92400e'}}>{driver.ordersAssigned || 0}</div></div>
+            <div style={{background: '#fee2e2', padding: 12, borderRadius: 8}}><div style={{fontSize: 11, color: '#991b1b', marginBottom: 4}}>Pending</div><div style={{fontSize: 20, fontWeight: 700, color: '#991b1b'}}>{driver.ordersPending || 0}</div></div>
+          </div>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, fontSize: 13}}>
+            <div><span style={{color: '#6b7280'}}>Settlement:</span> <span style={{fontWeight: 700, color: '#111'}}>{driver.currency} {fmtNum(driver.settlementAmount || 0)}</span></div>
+            <div><span style={{color: '#6b7280'}}>To Company:</span> <span style={{fontWeight: 700, color: '#111'}}>{driver.currency} {fmtNum(driver.payToCompany || 0)}</span></div>
+            <div><span style={{color: '#6b7280'}}>To Manager:</span> <span style={{fontWeight: 700, color: '#111'}}>{driver.currency} {fmtNum(driver.payToManager || 0)}</span></div>
+            <div><span style={{color: '#6b7280'}}>Pending:</span> <span style={{fontWeight: 700, color: '#111'}}>{driver.currency} {fmtNum(driver.pendingSettlement || 0)}</span></div>
+          </div>
+          {driver.manager && <div style={{marginTop: 12, padding: 12, background: '#eff6ff', borderRadius: 6}}><div style={{fontSize: 12, color: '#1e40af', fontWeight: 600}}>Manager: {driver.manager.name}</div></div>}
+        </div>
+      ))}
+
+      <div style={{marginTop: 40, paddingTop: 20, borderTop: '2px solid #e5e7eb', textAlign: 'center'}}>
+        <div style={{fontSize: 16, fontWeight: 800, color: '#111'}}>Qadeer Hussain, Owner of Buysial</div>
+        <div style={{fontSize: 12, color: '#6b7280', marginTop: 4}}>Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+      </div>
+    </>
+  )
+}
+
+// Template 3: Financial Statement
+function Template3({ logo, selectedCountry, selectedDriver, drivers }) {
+  return (
+    <>
+      <div style={{borderBottom: '4px double #000', paddingBottom: 16, marginBottom: 24}}>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <img src={logo} alt="Logo" style={{height: 120}} onError={(e) => { e.target.style.display = 'none' }} />
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize: 16, fontWeight: 700, color: '#000'}}>DRIVER FINANCIAL REPORT</div>
+            <div style={{fontSize: 12, marginTop: 4, color: '#000'}}>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+          </div>
+        </div>
+      </div>
+
+      {drivers.map(driver => (
+        <table key={driver.id} style={{width: '100%', marginBottom: 24, borderCollapse: 'collapse', border: '2px solid #000'}}>
+          <thead>
+            <tr style={{background: '#111', color: '#fff'}}>
+              <th colSpan={2} style={{padding: 12, textAlign: 'left', fontWeight: 700}}>{driver.name} - {driver.city}, {driver.country}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Phone Number</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', fontWeight: 600, color: '#000'}}>{driver.phone}</td></tr>
+            <tr style={{background: '#fafafa'}}><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Driver ID</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>{driver.id}</td></tr>
+            <tr><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Orders Delivered</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', fontWeight: 600, color: '#000'}}>{driver.ordersDelivered || 0}</td></tr>
+            <tr style={{background: '#fafafa'}}><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Orders Assigned</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>{driver.ordersAssigned || 0}</td></tr>
+            <tr><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Orders Pending</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>{driver.ordersPending || 0}</td></tr>
+            <tr style={{background: '#fafafa'}}><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Settlement Amount</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', fontWeight: 600, color: '#000'}}>{driver.currency} {fmtNum(driver.settlementAmount || 0)}</td></tr>
+            <tr><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Pay to Company</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>{driver.currency} {fmtNum(driver.payToCompany || 0)}</td></tr>
+            <tr style={{background: '#fafafa'}}><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Pay to Manager</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>{driver.currency} {fmtNum(driver.payToManager || 0)}</td></tr>
+            <tr><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Pending Settlement</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>{driver.currency} {fmtNum(driver.pendingSettlement || 0)}</td></tr>
+            {driver.manager && <tr style={{background: '#eff6ff'}}><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Manager</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', fontWeight: 600, color: '#000'}}>{driver.manager.name}</td></tr>}
+          </tbody>
+        </table>
+      ))}
+
+      <div style={{marginTop: 32, paddingTop: 16, borderTop: '4px double #000', textAlign: 'center'}}>
+        <div style={{fontSize: 16, fontWeight: 800, color: '#000'}}>Qadeer Hussain, Owner of Buysial</div>
+        <div style={{fontSize: 12, marginTop: 4, color: '#000'}}>Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+      </div>
+    </>
+  )
+}
+
+// Template 4: Monthly Report
+function Template4({ logo, selectedCountry, selectedDriver, drivers }) {
+  return (
+    <>
+      <div style={{textAlign: 'center', borderBottom: '3px solid #d97706', paddingBottom: 24, marginBottom: 32}}>
+        <img src={logo} alt="Logo" style={{height: 120, marginBottom: 16}} onError={(e) => { e.target.style.display = 'none' }} />
+        <div style={{fontSize: 28, fontWeight: 900, color: '#78350f', fontFamily: 'Georgia, serif', letterSpacing: '2px'}}>MONTHLY DRIVER REPORT</div>
+        <div style={{fontSize: 13, color: '#92400e', marginTop: 8, fontWeight: 600}}>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+      </div>
+
+      {drivers.map(driver => (
+        <div key={driver.id} style={{background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', border: '2px solid #d97706', borderRadius: 16, padding: 32, marginBottom: 24}}>
+          <div style={{fontSize: 20, fontWeight: 900, color: '#78350f', marginBottom: 16, textAlign: 'center', fontFamily: 'Georgia, serif'}}>{driver.name}</div>
+          <div style={{background: '#fff', borderRadius: 8, padding: 16, marginBottom: 16}}>
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, fontSize: 14}}>
+              <div><span style={{color: '#92400e', fontWeight: 600}}>Phone:</span> <span style={{color: '#000'}}>{driver.phone}</span></div>
+              <div><span style={{color: '#92400e', fontWeight: 600}}>Location:</span> <span style={{color: '#000'}}>{driver.city}, {driver.country}</span></div>
+            </div>
+          </div>
+          <div style={{background: '#78350f', color: '#fff', padding: 12, borderRadius: 8, marginBottom: 12}}>
+            <div style={{fontSize: 12, opacity: 0.9, marginBottom: 8, letterSpacing: '1px'}}>ORDER PERFORMANCE</div>
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12}}>
+              <div><div style={{fontSize: 11, opacity: 0.8}}>Delivered</div><div style={{fontSize: 24, fontWeight: 700}}>{driver.ordersDelivered || 0}</div></div>
+              <div><div style={{fontSize: 11, opacity: 0.8}}>Assigned</div><div style={{fontSize: 24, fontWeight: 700}}>{driver.ordersAssigned || 0}</div></div>
+              <div><div style={{fontSize: 11, opacity: 0.8}}>Pending</div><div style={{fontSize: 24, fontWeight: 700}}>{driver.ordersPending || 0}</div></div>
+            </div>
+          </div>
+          <div style={{background: '#fff', borderRadius: 8, padding: 16}}>
+            <table style={{width: '100%', fontSize: 13}}>
+              <tbody>
+                <tr style={{borderBottom: '1px solid #fde68a'}}><td style={{padding: '8px 0', color: '#92400e', fontWeight: 600}}>Settlement Amount</td><td style={{padding: '8px 0', textAlign: 'right', fontWeight: 700, color: '#000'}}>{driver.currency} {fmtNum(driver.settlementAmount || 0)}</td></tr>
+                <tr style={{borderBottom: '1px solid #fde68a'}}><td style={{padding: '8px 0', color: '#92400e', fontWeight: 600}}>Pay to Company</td><td style={{padding: '8px 0', textAlign: 'right', fontWeight: 700, color: '#000'}}>{driver.currency} {fmtNum(driver.payToCompany || 0)}</td></tr>
+                <tr style={{borderBottom: '1px solid #fde68a'}}><td style={{padding: '8px 0', color: '#92400e', fontWeight: 600}}>Pay to Manager</td><td style={{padding: '8px 0', textAlign: 'right', fontWeight: 700, color: '#000'}}>{driver.currency} {fmtNum(driver.payToManager || 0)}</td></tr>
+                <tr><td style={{padding: '8px 0', color: '#92400e', fontWeight: 600}}>Pending Settlement</td><td style={{padding: '8px 0', textAlign: 'right', fontWeight: 700, color: '#000'}}>{driver.currency} {fmtNum(driver.pendingSettlement || 0)}</td></tr>
+              </tbody>
+            </table>
+          </div>
+          {driver.manager && <div style={{marginTop: 12, background: '#78350f', color: '#fff', padding: 12, borderRadius: 8, textAlign: 'center'}}><div style={{fontSize: 13, fontWeight: 600}}>Manager: {driver.manager.name}</div></div>}
+        </div>
+      ))}
+
+      <div style={{borderTop: '3px solid #d97706', paddingTop: 24, marginTop: 32, textAlign: 'center'}}>
+        <div style={{fontSize: 16, fontWeight: 800, color: '#78350f'}}>Qadeer Hussain, Owner of Buysial</div>
+        <div style={{fontSize: 12, color: '#92400e', marginTop: 4}}>Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+      </div>
+    </>
+  )
+}
+
+// Template 5: Minimal Professional
+function Template5({ logo, selectedCountry, selectedDriver, drivers }) {
+  return (
+    <>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'start', borderBottom: '1px solid #e5e7eb', paddingBottom: 16, marginBottom: 32}}>
+        <img src={logo} alt="Logo" style={{height: 120}} onError={(e) => { e.target.style.display = 'none' }} />
+        <div style={{textAlign:'right'}}>
+          <div style={{fontSize: 12, fontWeight: 400, color: '#9ca3af', marginBottom: 4}}>Driver Performance Report</div>
+          <div style={{fontSize: 11, color: '#6b7280'}}>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+        </div>
+      </div>
+
+      {drivers.map(driver => (
+        <div key={driver.id} style={{borderBottom: '1px solid #f3f4f6', paddingBottom: 24, marginBottom: 24}}>
+          <div style={{fontSize: 20, fontWeight: 300, color: '#111', marginBottom: 16}}>{driver.name}</div>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24, marginBottom: 20}}>
+            <div>
+              <div style={{fontSize: 11, color: '#9ca3af', marginBottom: 4}}>CONTACT</div>
+              <div style={{fontSize: 14, fontWeight: 300, color: '#111'}}>{driver.phone}</div>
+              <div style={{fontSize: 12, color: '#6b7280'}}>{driver.city}, {driver.country}</div>
+            </div>
+            <div>
+              <div style={{fontSize: 11, color: '#9ca3af', marginBottom: 4}}>ID</div>
+              <div style={{fontSize: 14, fontWeight: 300, color: '#111'}}>{driver.id}</div>
+            </div>
+          </div>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20}}>
+            <div><div style={{fontSize: 11, color: '#9ca3af'}}>Delivered</div><div style={{fontSize: 32, fontWeight: 300, color: '#111'}}>{driver.ordersDelivered || 0}</div></div>
+            <div><div style={{fontSize: 11, color: '#9ca3af'}}>Assigned</div><div style={{fontSize: 32, fontWeight: 300, color: '#111'}}>{driver.ordersAssigned || 0}</div></div>
+            <div><div style={{fontSize: 11, color: '#9ca3af'}}>Pending</div><div style={{fontSize: 32, fontWeight: 300, color: '#111'}}>{driver.ordersPending || 0}</div></div>
+          </div>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, fontSize: 13, fontWeight: 300}}>
+            <div><span style={{color: '#9ca3af'}}>Settlement</span> <span style={{color: '#111'}}>{driver.currency} {fmtNum(driver.settlementAmount || 0)}</span></div>
+            <div><span style={{color: '#9ca3af'}}>To Company</span> <span style={{color: '#111'}}>{driver.currency} {fmtNum(driver.payToCompany || 0)}</span></div>
+            <div><span style={{color: '#9ca3af'}}>To Manager</span> <span style={{color: '#111'}}>{driver.currency} {fmtNum(driver.payToManager || 0)}</span></div>
+            <div><span style={{color: '#9ca3af'}}>Pending</span> <span style={{color: '#111'}}>{driver.currency} {fmtNum(driver.pendingSettlement || 0)}</span></div>
+          </div>
+          {driver.manager && <div style={{marginTop: 16, paddingTop: 12, borderTop: '1px solid #f3f4f6'}}><div style={{fontSize: 11, color: '#9ca3af'}}>Manager</div><div style={{fontSize: 13, fontWeight: 300, color: '#111'}}>{driver.manager.name}</div></div>}
+        </div>
+      ))}
+
+      <div style={{marginTop: 40, paddingTop: 16, borderTop: '1px solid #e5e7eb', textAlign: 'center'}}>
+        <div style={{fontSize: 14, fontWeight: 300, color: '#111'}}>Qadeer Hussain, Owner of Buysial</div>
+        <div style={{fontSize: 11, color: '#9ca3af', marginTop: 4}}>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+      </div>
+    </>
   )
 }
 
