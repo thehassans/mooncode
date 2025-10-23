@@ -26,6 +26,8 @@ export default function Expenses(){
     incurredAt: ''
   })
   const [msg, setMsg] = useState('')
+  const [approvalModal, setApprovalModal] = useState({ open: false, expense: null, action: '' })
+  const [rejectReason, setRejectReason] = useState('')
 
   async function load(){
     setLoading(true)
@@ -40,28 +42,37 @@ export default function Expenses(){
   const pendingManagerExpenses = useMemo(() => items.filter(e => e.status === 'pending' && e.createdBy?.role === 'manager'), [items])
   const adExpenses = useMemo(() => items.filter(e => e.type === 'advertisement' && e.status === 'approved'), [items])
   
-  async function approveExpense(id){
-    if (!confirm('Approve this expense?')) return
-    try{
-      await apiPost(`/api/finance/expenses/${id}/approve`, {})
-      setMsg('Expense approved successfully')
-      setTimeout(()=> setMsg(''), 2000)
-      await load()
-    }catch(err){
-      setMsg(err?.response?.data?.message || err?.message || 'Failed to approve expense')
-    }
+  function openApprovalModal(expense, action){
+    setApprovalModal({ open: true, expense, action })
+    setRejectReason('')
   }
   
-  async function rejectExpense(id){
-    const reason = prompt('Reason for rejection (optional):')
-    if (reason === null) return // User cancelled
+  function closeApprovalModal(){
+    setApprovalModal({ open: false, expense: null, action: '' })
+    setRejectReason('')
+  }
+  
+  async function confirmApproval(){
+    const { expense, action } = approvalModal
+    if (!expense) return
+    
     try{
-      await apiPost(`/api/finance/expenses/${id}/reject`, { reason })
-      setMsg('Expense rejected')
-      setTimeout(()=> setMsg(''), 2000)
+      if (action === 'approve') {
+        await apiPost(`/api/finance/expenses/${expense._id}/approve`, {})
+        setMsg('✅ Expense approved successfully')
+      } else if (action === 'reject') {
+        if (!rejectReason.trim()) {
+          alert('Please provide a reason for rejection')
+          return
+        }
+        await apiPost(`/api/finance/expenses/${expense._id}/reject`, { reason: rejectReason })
+        setMsg('❌ Expense rejected')
+      }
+      setTimeout(()=> setMsg(''), 3000)
+      closeApprovalModal()
       await load()
     }catch(err){
-      setMsg(err?.response?.data?.message || err?.message || 'Failed to reject expense')
+      setMsg(err?.response?.data?.message || err?.message || 'Failed to process request')
     }
   }
   const totalByCountry = useMemo(() => {
@@ -206,14 +217,14 @@ export default function Expenses(){
                       <div style={{display:'flex', gap:8}}>
                         <button 
                           className="btn success" 
-                          onClick={() => approveExpense(exp._id)}
+                          onClick={() => openApprovalModal(exp, 'approve')}
                           style={{padding:'8px 16px', fontSize:14, fontWeight:600}}
                         >
                           ✅ Approve
                         </button>
                         <button 
                           className="btn danger" 
-                          onClick={() => rejectExpense(exp._id)}
+                          onClick={() => openApprovalModal(exp, 'reject')}
                           style={{padding:'8px 16px', fontSize:14, fontWeight:600}}
                         >
                           ❌ Reject
@@ -290,6 +301,7 @@ export default function Expenses(){
               <tr>
                 <th style={{textAlign:'left', padding:'16px 20px', fontWeight:700, fontSize:13, opacity:0.8}}>CAMPAIGN</th>
                 <th style={{textAlign:'left', padding:'16px 20px', fontWeight:700, fontSize:13, opacity:0.8}}>COUNTRY</th>
+                <th style={{textAlign:'left', padding:'16px 20px', fontWeight:700, fontSize:13, opacity:0.8}}>CREATED BY</th>
                 <th style={{textAlign:'right', padding:'16px 20px', fontWeight:700, fontSize:13, opacity:0.8}}>AMOUNT</th>
                 <th style={{textAlign:'left', padding:'16px 20px', fontWeight:700, fontSize:13, opacity:0.8}}>NOTES</th>
                 <th style={{textAlign:'left', padding:'16px 20px', fontWeight:700, fontSize:13, opacity:0.8}}>DATE</th>
@@ -297,15 +309,19 @@ export default function Expenses(){
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} style={{padding:'40px 20px',textAlign:'center',opacity:.6}}>Loading expenses...</td></tr>
+                <tr><td colSpan={6} style={{padding:'40px 20px',textAlign:'center',opacity:.6}}>Loading expenses...</td></tr>
               ) : adExpenses.length === 0 ? (
-                <tr><td colSpan={5} style={{padding:'40px 20px',textAlign:'center',opacity:.6}}>
+                <tr><td colSpan={6} style={{padding:'40px 20px',textAlign:'center',opacity:.6}}>
                   <div style={{fontSize:48,marginBottom:12}}>📊</div>
                   <div style={{fontWeight:600}}>No advertisement expenses yet</div>
                   <div style={{fontSize:14,opacity:0.7}}>Start tracking your advertising spend</div>
                 </td></tr>
               ) : adExpenses.map((e, idx) => {
                 const country = COUNTRIES.find(c => c.code === e.country)
+                const isManager = e.createdBy?.role === 'manager'
+                const creatorName = isManager 
+                  ? `${e.createdBy?.firstName || ''} ${e.createdBy?.lastName || ''}`.trim() || 'Manager'
+                  : 'Owner'
                 return (
                   <tr key={e._id} style={{
                     borderBottom: idx < adExpenses.length - 1 ? '1px solid var(--border)' : 'none',
@@ -321,6 +337,14 @@ export default function Expenses(){
                           <span>{country.name}</span>
                         </div>
                       )}
+                    </td>
+                    <td style={{padding:'16px 20px'}}>
+                      <div style={{display:'flex', alignItems:'center', gap:6}}>
+                        <span style={{fontSize:16}}>{isManager ? '🧑‍💼' : '👤'}</span>
+                        <span style={{fontWeight:isManager ? 600 : 400, color: isManager ? 'var(--primary)' : 'var(--text)'}}>
+                          {creatorName}
+                        </span>
+                      </div>
                     </td>
                     <td style={{padding:'16px 20px', textAlign:'right'}}>
                       <span style={{fontWeight:700, fontSize:16, color:'#f59e0b'}}>
@@ -440,6 +464,158 @@ export default function Expenses(){
         </div>
         {msg && <div style={{marginTop:12, padding:12, borderRadius:8, background: msg.includes('success') ? '#10b98120' : '#ef444420', color: msg.includes('success') ? '#10b981' : '#ef4444', fontSize:14}}>{msg}</div>}
       </Modal>
+
+      {/* Approval/Rejection Modal */}
+      {approvalModal.open && approvalModal.expense && (
+        <Modal 
+          open={approvalModal.open} 
+          onClose={closeApprovalModal}
+          title={approvalModal.action === 'approve' ? '✅ Approve Expense' : '❌ Reject Expense'}
+        >
+          <div style={{display:'grid', gap:20}}>
+            {/* Expense Details */}
+            <div style={{
+              padding:20, 
+              background:'var(--panel)', 
+              borderRadius:12, 
+              border:'1px solid var(--border)'
+            }}>
+              <div style={{display:'grid', gap:12}}>
+                <div>
+                  <div style={{fontSize:12, fontWeight:600, opacity:0.6, marginBottom:4}}>CAMPAIGN TITLE</div>
+                  <div style={{fontSize:16, fontWeight:700}}>{approvalModal.expense.title}</div>
+                </div>
+                
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+                  <div>
+                    <div style={{fontSize:12, fontWeight:600, opacity:0.6, marginBottom:4}}>COUNTRY</div>
+                    <div style={{display:'flex', alignItems:'center', gap:6}}>
+                      {(() => {
+                        const country = COUNTRIES.find(c => c.code === approvalModal.expense.country)
+                        return country ? (
+                          <>
+                            <span style={{fontSize:18}}>{country.flag}</span>
+                            <span style={{fontWeight:600}}>{country.name}</span>
+                          </>
+                        ) : approvalModal.expense.country
+                      })()}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div style={{fontSize:12, fontWeight:600, opacity:0.6, marginBottom:4}}>AMOUNT</div>
+                    <div style={{fontSize:20, fontWeight:800, color:'#f59e0b'}}>
+                      {approvalModal.expense.currency} {fmtNum(approvalModal.expense.amount)}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{fontSize:12, fontWeight:600, opacity:0.6, marginBottom:4}}>SUBMITTED BY</div>
+                  <div style={{display:'flex', alignItems:'center', gap:6}}>
+                    <span style={{fontSize:18}}>🧑‍💼</span>
+                    <span style={{fontWeight:600}}>
+                      {`${approvalModal.expense.createdBy?.firstName || ''} ${approvalModal.expense.createdBy?.lastName || ''}`.trim() || 'Manager'}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{fontSize:12, fontWeight:600, opacity:0.6, marginBottom:4}}>DATE</div>
+                  <div style={{fontWeight:600}}>{fmtDate(approvalModal.expense.incurredAt)}</div>
+                </div>
+
+                {approvalModal.expense.notes && (
+                  <div>
+                    <div style={{fontSize:12, fontWeight:600, opacity:0.6, marginBottom:4}}>NOTES</div>
+                    <div style={{
+                      padding:12, 
+                      background:'var(--bg)', 
+                      borderRadius:8, 
+                      fontSize:14,
+                      lineHeight:1.6
+                    }}>
+                      {approvalModal.expense.notes}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Rejection Reason (only for reject action) */}
+            {approvalModal.action === 'reject' && (
+              <div>
+                <label className="label" style={{fontWeight:600, marginBottom:8, display:'block', color:'#ef4444'}}>
+                  Reason for Rejection <span style={{color:'#ef4444'}}>*</span>
+                </label>
+                <textarea 
+                  className="input" 
+                  value={rejectReason} 
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Please provide a clear reason for rejecting this expense..."
+                  rows={4}
+                  style={{
+                    fontSize:14, 
+                    resize:'vertical', 
+                    minHeight:100,
+                    borderColor: '#ef4444'
+                  }}
+                />
+                <div style={{fontSize:12, opacity:0.7, marginTop:4}}>
+                  This reason will be visible to the manager
+                </div>
+              </div>
+            )}
+
+            {/* Confirmation Message */}
+            <div style={{
+              padding:16, 
+              background: approvalModal.action === 'approve' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+              borderRadius:8,
+              border: `1px solid ${approvalModal.action === 'approve' ? '#10b981' : '#ef4444'}`
+            }}>
+              <div style={{display:'flex', alignItems:'center', gap:12}}>
+                <span style={{fontSize:24}}>{approvalModal.action === 'approve' ? '✅' : '⚠️'}</span>
+                <div>
+                  <div style={{fontWeight:700, fontSize:15, marginBottom:4}}>
+                    {approvalModal.action === 'approve' ? 'Confirm Approval' : 'Confirm Rejection'}
+                  </div>
+                  <div style={{fontSize:13, opacity:0.8}}>
+                    {approvalModal.action === 'approve' 
+                      ? 'This expense will be approved and included in your expense reports.'
+                      : 'This expense will be rejected and the manager will be notified.'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{display:'flex', gap:12, justifyContent:'flex-end'}}>
+              <button 
+                className="btn secondary" 
+                onClick={closeApprovalModal}
+                style={{padding:'10px 20px', fontWeight:600}}
+              >
+                Cancel
+              </button>
+              <button 
+                className={`btn ${approvalModal.action === 'approve' ? 'success' : 'danger'}`}
+                onClick={confirmApproval}
+                style={{
+                  padding:'10px 24px', 
+                  fontWeight:700,
+                  background: approvalModal.action === 'approve' 
+                    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                    : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  border: 'none'
+                }}
+              >
+                {approvalModal.action === 'approve' ? '✅ Confirm Approval' : '❌ Confirm Rejection'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
