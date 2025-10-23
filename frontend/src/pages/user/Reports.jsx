@@ -143,18 +143,26 @@ export default function Reports(){
       <div ref={reportRef} style={{background: '#fff', padding: 40, borderRadius: 12, boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
         {/* Report Header with Logo */}
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'start', borderBottom: '3px solid #1e40af', paddingBottom: 20, marginBottom: 32}}>
-          <div>
-            <div style={{
-              fontSize: 32,
-              fontWeight: 900,
-              color: '#1e40af',
-              marginBottom: 4,
-              letterSpacing: '-0.5px'
-            }}>
-              BUYSIAL
-            </div>
-            <div style={{fontSize: 12, color: '#6b7280', fontWeight: 500, letterSpacing: '0.5px'}}>
-              BUSINESS INTELLIGENCE REPORT
+          <div style={{display:'flex', alignItems:'center', gap:16}}>
+            <img 
+              src="/BuySial2.png" 
+              alt="Buysial Logo" 
+              style={{height: 50, width: 'auto', objectFit: 'contain'}}
+              onError={(e) => { e.target.style.display = 'none' }}
+            />
+            <div>
+              <div style={{
+                fontSize: 32,
+                fontWeight: 900,
+                color: '#1e40af',
+                marginBottom: 4,
+                letterSpacing: '-0.5px'
+              }}>
+                BUYSIAL
+              </div>
+              <div style={{fontSize: 12, color: '#6b7280', fontWeight: 500, letterSpacing: '0.5px'}}>
+                BUSINESS REPORT
+              </div>
             </div>
           </div>
           <div style={{textAlign:'right'}}>
@@ -201,11 +209,11 @@ export default function Reports(){
             <table style={{width: '100%', fontSize: 13, marginTop: 16, borderCollapse: 'collapse'}}>
               <tbody>
                 <ReportRow label="Total Revenue" value={`AED ${fmtNum(globalRevenue)}`} color="#0ea5e9" bold />
-                <ReportRow label="Purchase Cost" value={`AED ${fmtNum(globalPurchaseCost)}`} color="#374151" />
-                <ReportRow label="Driver Commission" value={`AED ${fmtNum(globalDriverComm)}`} color="#374151" />
-                <ReportRow label="Agent Commission" value={`AED ${fmtNum(globalAgentComm)}`} color="#374151" />
-                <ReportRow label="Investor Commission" value={`AED ${fmtNum(globalInvestorComm)}`} color="#374151" />
-                <ReportRow label="Advertisement Expense" value={`AED ${fmtNum(globalAdExpense)}`} color="#374151" />
+                <ReportRow label="Purchase Cost" value={`AED ${fmtNum(globalPurchaseCost)}`} color="#374151" indent />
+                <ReportRow label="Driver Commission" value={`AED ${fmtNum(globalDriverComm)}`} color="#374151" indent />
+                <ReportRow label="Agent Commission" value={`AED ${fmtNum(globalAgentComm)}`} color="#374151" indent />
+                <ReportRow label="Investor Commission" value={`AED ${fmtNum(globalInvestorComm)}`} color="#374151" indent />
+                <ReportRow label="Advertisement Expense" value={`AED ${fmtNum(globalAdExpense)}`} color="#374151" indent />
               </tbody>
             </table>
           </div>
@@ -259,11 +267,11 @@ export default function Reports(){
                   <table style={{width: '100%', fontSize: 13, borderCollapse: 'collapse'}}>
                     <tbody>
                       <ReportRow label="Revenue (Delivered Orders)" value={`${currency} ${fmtNum(data.revenue || 0)}`} color="#0ea5e9" bold />
-                      <ReportRow label="Less: Purchase Cost" value={`${currency} ${fmtNum(data.purchaseCost || 0)}`} color="#374151" indent />
-                      <ReportRow label="Less: Driver Commission" value={`${currency} ${fmtNum(data.driverCommission || 0)}`} color="#374151" indent />
-                      <ReportRow label="Less: Agent Commission" value={`${currency} ${fmtNum(data.agentCommission || 0)}`} color="#374151" indent />
-                      <ReportRow label="Less: Investor Commission" value={`${currency} ${fmtNum(data.investorCommission || 0)}`} color="#374151" indent />
-                      <ReportRow label="Less: Advertisement Expense" value={`${currency} ${fmtNum(data.advertisementExpense || 0)}`} color="#374151" indent />
+                      <ReportRow label="Purchase Cost" value={`${currency} ${fmtNum(data.purchaseCost || 0)}`} color="#374151" indent />
+                      <ReportRow label="Driver Commission" value={`${currency} ${fmtNum(data.driverCommission || 0)}`} color="#374151" indent />
+                      <ReportRow label="Agent Commission" value={`${currency} ${fmtNum(data.agentCommission || 0)}`} color="#374151" indent />
+                      <ReportRow label="Investor Commission" value={`${currency} ${fmtNum(data.investorCommission || 0)}`} color="#374151" indent />
+                      <ReportRow label="Advertisement Expense" value={`${currency} ${fmtNum(data.advertisementExpense || 0)}`} color="#374151" indent />
                     </tbody>
                   </table>
                 </div>
@@ -273,7 +281,30 @@ export default function Reports(){
         </div>
 
         {/* Footer */}
-        <div style={{borderTop: '3px solid #1e40af', paddingTop: 20, marginTop: 32}}>
+        <div style={{borderTop: '3px solid #1e40af', paddingTop: 20, marginTop: 40}}>
+          {/* Verification Statement */}
+          <div style={{
+            background: '#f8fafc',
+            border: '2px solid #e5e7eb',
+            borderRadius: 8,
+            padding: 20,
+            marginBottom: 20
+          }}>
+            <div style={{fontSize: 12, fontWeight: 700, color: '#111', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px'}}>
+              Report Verification
+            </div>
+            <div style={{fontSize: 13, color: '#374151', lineHeight: 1.6, marginBottom: 12}}>
+              This report's data and findings have been reviewed and verified for accuracy.
+            </div>
+            <div style={{display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', fontSize: 12, color: '#6b7280'}}>
+              <div style={{fontWeight: 600, color: '#111'}}>Verified by:</div>
+              <div>Qadeer Hussain, Owner of Buysial</div>
+              <div style={{fontWeight: 600, color: '#111'}}>Date:</div>
+              <div>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+            </div>
+          </div>
+          
+          {/* Company Info and Notes */}
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'start', fontSize: 11, color: '#6b7280'}}>
             <div>
               <div style={{fontWeight: 600, color: '#111', marginBottom: 4}}>BUYSIAL</div>
