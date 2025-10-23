@@ -371,8 +371,64 @@ router.post('/', auth, allowRoles('admin','user','agent','manager'), async (req,
     ...(ordTotal!=null ? { total: ordTotal } : {}),
     ...(disc!=null ? { discount: disc } : {}),
     ...(shortCode ? { invoiceNumber: shortCode } : {}),
+    shipmentStatus: 'pending', // Set initial status
   })
   await doc.save()
+  
+  // Decrease stock immediately when order is created (reserve inventory)
+  try {
+    const country = orderCountry
+    if (normItems.length > 0) {
+      // Multi-item order
+      for (const it of normItems) {
+        const p = await Product.findById(it.productId)
+        if (!p) continue
+        const qty = Math.max(1, Number(it.quantity || 1))
+        if (p.stockByCountry) {
+          const byC = p.stockByCountry
+          if (country === 'UAE' || country === 'United Arab Emirates') byC.UAE = Math.max(0, (byC.UAE || 0) - qty)
+          else if (country === 'Oman' || country === 'OM') byC.Oman = Math.max(0, (byC.Oman || 0) - qty)
+          else if (country === 'KSA' || country === 'Saudi Arabia') byC.KSA = Math.max(0, (byC.KSA || 0) - qty)
+          else if (country === 'Bahrain' || country === 'BH') byC.Bahrain = Math.max(0, (byC.Bahrain || 0) - qty)
+          else if (country === 'India' || country === 'IN') byC.India = Math.max(0, (byC.India || 0) - qty)
+          else if (country === 'Kuwait' || country === 'KW') byC.Kuwait = Math.max(0, (byC.Kuwait || 0) - qty)
+          else if (country === 'Qatar' || country === 'QA') byC.Qatar = Math.max(0, (byC.Qatar || 0) - qty)
+          const totalLeft = (byC.UAE||0) + (byC.Oman||0) + (byC.KSA||0) + (byC.Bahrain||0) + (byC.India||0) + (byC.Kuwait||0) + (byC.Qatar||0)
+          p.stockQty = totalLeft
+          p.inStock = totalLeft > 0
+        } else if (p.stockQty != null) {
+          p.stockQty = Math.max(0, (p.stockQty || 0) - qty)
+          p.inStock = p.stockQty > 0
+        }
+        await p.save()
+      }
+    } else if (prod) {
+      // Single product order
+      const qty = Math.max(1, Number(quantity || 1))
+      if (prod.stockByCountry) {
+        const byC = prod.stockByCountry
+        if (country === 'UAE' || country === 'United Arab Emirates') byC.UAE = Math.max(0, (byC.UAE || 0) - qty)
+        else if (country === 'Oman' || country === 'OM') byC.Oman = Math.max(0, (byC.Oman || 0) - qty)
+        else if (country === 'KSA' || country === 'Saudi Arabia') byC.KSA = Math.max(0, (byC.KSA || 0) - qty)
+        else if (country === 'Bahrain' || country === 'BH') byC.Bahrain = Math.max(0, (byC.Bahrain || 0) - qty)
+        else if (country === 'India' || country === 'IN') byC.India = Math.max(0, (byC.India || 0) - qty)
+        else if (country === 'Kuwait' || country === 'KW') byC.Kuwait = Math.max(0, (byC.Kuwait || 0) - qty)
+        else if (country === 'Qatar' || country === 'QA') byC.Qatar = Math.max(0, (byC.Qatar || 0) - qty)
+        const totalLeft = (byC.UAE||0) + (byC.Oman||0) + (byC.KSA||0) + (byC.Bahrain||0) + (byC.India||0) + (byC.Kuwait||0) + (byC.Qatar||0)
+        prod.stockQty = totalLeft
+        prod.inStock = totalLeft > 0
+      } else if (prod.stockQty != null) {
+        prod.stockQty = Math.max(0, (prod.stockQty || 0) - qty)
+        prod.inStock = prod.stockQty > 0
+      }
+      await prod.save()
+    }
+    doc.inventoryAdjusted = true
+    doc.inventoryAdjustedAt = new Date()
+    await doc.save()
+  } catch (err) {
+    console.error('[Order Create] Failed to adjust inventory:', err)
+  }
   // Broadcast create
   emitOrderChange(doc, 'created').catch(()=>{})
   // Removed invoice PDF generation and storage
@@ -1793,67 +1849,7 @@ router.post('/:id/deliver', auth, allowRoles('admin','user','agent','driver'), a
     ord.agentCommissionComputedAt = new Date()
   }catch{}
   await ord.save()
-  // Adjust product inventory on delivery (idempotent). Supports single or multi-item orders.
-  try{
-    if (!ord.inventoryAdjusted){
-      const country = ord.orderCountry
-      if (Array.isArray(ord.items) && ord.items.length){
-        const ids = ord.items.map(i => i.productId).filter(Boolean)
-        const prods = await Product.find({ _id: { $in: ids } })
-        const byId = new Map(prods.map(p => [String(p._id), p]))
-        for (const it of ord.items){
-          const p = byId.get(String(it.productId))
-          if (!p) continue
-          const qty = Math.max(1, Number(it.quantity||1))
-          if (p.stockByCountry){
-            const byC = p.stockByCountry
-            if (country === 'UAE' || country === 'United Arab Emirates') byC.UAE = Math.max(0, (byC.UAE || 0) - qty)
-            else if (country === 'Oman' || country === 'OM') byC.Oman = Math.max(0, (byC.Oman || 0) - qty)
-            else if (country === 'KSA' || country === 'Saudi Arabia') byC.KSA = Math.max(0, (byC.KSA || 0) - qty)
-            else if (country === 'Bahrain' || country === 'BH') byC.Bahrain = Math.max(0, (byC.Bahrain || 0) - qty)
-            else if (country === 'India' || country === 'IN') byC.India = Math.max(0, (byC.India || 0) - qty)
-            else if (country === 'Kuwait' || country === 'KW') byC.Kuwait = Math.max(0, (byC.Kuwait || 0) - qty)
-            else if (country === 'Qatar' || country === 'QA') byC.Qatar = Math.max(0, (byC.Qatar || 0) - qty)
-            const totalLeft = (byC.UAE||0) + (byC.Oman||0) + (byC.KSA||0) + (byC.Bahrain||0) + (byC.India||0) + (byC.Kuwait||0) + (byC.Qatar||0)
-            p.stockQty = totalLeft
-            p.inStock = totalLeft > 0
-          } else if (p.stockQty != null){
-            p.stockQty = Math.max(0, (p.stockQty || 0) - qty)
-            p.inStock = p.stockQty > 0
-          }
-          await p.save()
-        }
-        ord.inventoryAdjusted = true
-        ord.inventoryAdjustedAt = new Date()
-        await ord.save()
-      } else if (ord.productId) {
-        const prod = await Product.findById(ord.productId)
-        if (prod){
-          const qty = Math.max(1, ord.quantity || 1)
-          if (prod.stockByCountry){
-            const byC = prod.stockByCountry
-            if (country === 'UAE' || country === 'United Arab Emirates') byC.UAE = Math.max(0, (byC.UAE || 0) - qty)
-            else if (country === 'Oman' || country === 'OM') byC.Oman = Math.max(0, (byC.Oman || 0) - qty)
-            else if (country === 'KSA' || country === 'Saudi Arabia') byC.KSA = Math.max(0, (byC.KSA || 0) - qty)
-            else if (country === 'Bahrain' || country === 'BH') byC.Bahrain = Math.max(0, (byC.Bahrain || 0) - qty)
-            else if (country === 'India' || country === 'IN') byC.India = Math.max(0, (byC.India || 0) - qty)
-            else if (country === 'Kuwait' || country === 'KW') byC.Kuwait = Math.max(0, (byC.Kuwait || 0) - qty)
-            else if (country === 'Qatar' || country === 'QA') byC.Qatar = Math.max(0, (byC.Qatar || 0) - qty)
-            const totalLeft = (byC.UAE||0) + (byC.Oman||0) + (byC.KSA||0) + (byC.Bahrain||0) + (byC.India||0) + (byC.Kuwait||0) + (byC.Qatar||0)
-            prod.stockQty = totalLeft
-            prod.inStock = totalLeft > 0
-          } else if (prod.stockQty != null){
-            prod.stockQty = Math.max(0, (prod.stockQty || 0) - qty)
-            prod.inStock = prod.stockQty > 0
-          }
-          await prod.save()
-          ord.inventoryAdjusted = true
-          ord.inventoryAdjustedAt = new Date()
-          await ord.save()
-        }
-      }
-    }
-  }catch{}
+  // Stock was already adjusted when order was created, so no need to adjust again on delivery
   emitOrderChange(ord, 'delivered').catch(()=>{})
   res.json({ message: 'Order delivered', order: ord })
 })
