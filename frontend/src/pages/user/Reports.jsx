@@ -202,7 +202,7 @@ function Template1({ logo, selectedCountry, byCountry, filteredCountries, global
           <img 
             src={logo}
             alt="Logo" 
-            style={{height: 60, width: 'auto', objectFit: 'contain'}}
+            style={{height: 120, width: 'auto', objectFit: 'contain'}}
             onError={(e) => { e.target.style.display = 'none' }}
           />
         </div>
