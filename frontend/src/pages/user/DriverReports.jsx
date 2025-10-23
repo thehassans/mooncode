@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { apiGet } from '../../utils/api'
+import { apiGet } from '../../api'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 
