@@ -1831,7 +1831,7 @@ router.get('/driver-metrics', auth, allowRoles('user'), async (req, res) => {
       
       // Get order statistics
       const orderStats = await Order.aggregate([
-        { $match: { assignedDriver: driverId } },
+        { $match: { deliveryBoy: driverId } },
         { $group: {
             _id: null,
             ordersDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
