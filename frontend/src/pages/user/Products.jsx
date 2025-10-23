@@ -9,24 +9,44 @@ export default function UserProducts() {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [orderStats, setOrderStats] = useState({})
-
-  // Currency conversion rates to AED
-  const CURRENCY_TO_AED = {
-    'AED': 1,
-    'SAR': 1.02,
-    'OMR': 9.65,
-    'BHD': 9.83,
-    'KWD': 12.08,
-    'QAR': 1.02,
-    'INR': 0.044,
-    'USD': 3.67,
-    'CNY': 0.51
-  }
+  const [currencyRates, setCurrencyRates] = useState({})
 
   useEffect(() => {
+    loadCurrencyRates()
     loadProducts()
     loadOrderStats()
   }, [])
+
+  async function loadCurrencyRates() {
+    try {
+      const data = await apiGet('/api/settings/currency')
+      // Convert sarPerUnit to AED rates
+      // Formula: To convert X currency to AED = (amount * sarPerUnit[X]) / sarPerUnit['AED']
+      const sarPerUnit = data.sarPerUnit || {}
+      const aedInSar = sarPerUnit.AED || 1
+      
+      const rates = {}
+      Object.keys(sarPerUnit).forEach(currency => {
+        rates[currency] = sarPerUnit[currency] / aedInSar
+      })
+      
+      setCurrencyRates(rates)
+    } catch (err) {
+      console.error('Failed to load currency rates:', err)
+      // Fallback to default rates
+      setCurrencyRates({
+        'AED': 1,
+        'SAR': 1,
+        'OMR': 10,
+        'BHD': 10,
+        'KWD': 12,
+        'QAR': 1,
+        'INR': 0.045,
+        'USD': 3.67,
+        'CNY': 0.51
+      })
+    }
+  }
 
   async function loadProducts() {
     setLoading(true)
@@ -251,7 +271,7 @@ export default function UserProducts() {
                   }}>
                     <div>
                       <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>
-                        AED {(product.price * (CURRENCY_TO_AED[product.baseCurrency] || 1)).toFixed(2)}
+                        AED {(product.price * (currencyRates[product.baseCurrency] || 1)).toFixed(2)}
                       </div>
                       <div style={{ fontSize: 11, opacity: 0.5 }}>
                         Original: {product.baseCurrency} {product.price?.toFixed(2)}

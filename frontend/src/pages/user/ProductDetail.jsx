@@ -11,25 +11,45 @@ export default function ProductDetail() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [countryFilter, setCountryFilter] = useState('all')
   const [selectedOrder, setSelectedOrder] = useState(null)
-
-  // Currency conversion rates to AED
-  const CURRENCY_TO_AED = {
-    'AED': 1,
-    'SAR': 1.02,
-    'OMR': 9.65,
-    'BHD': 9.83,
-    'KWD': 12.08,
-    'QAR': 1.02,
-    'INR': 0.044,
-    'USD': 3.67,
-    'CNY': 0.51
-  }
+  const [currencyRates, setCurrencyRates] = useState({})
 
   useEffect(() => {
+    loadCurrencyRates()
     if (id) {
       loadProductAndOrders()
     }
   }, [id])
+
+  async function loadCurrencyRates() {
+    try {
+      const data = await apiGet('/api/settings/currency')
+      // Convert sarPerUnit to AED rates
+      // Formula: To convert X currency to AED = (amount * sarPerUnit[X]) / sarPerUnit['AED']
+      const sarPerUnit = data.sarPerUnit || {}
+      const aedInSar = sarPerUnit.AED || 1
+      
+      const rates = {}
+      Object.keys(sarPerUnit).forEach(currency => {
+        rates[currency] = sarPerUnit[currency] / aedInSar
+      })
+      
+      setCurrencyRates(rates)
+    } catch (err) {
+      console.error('Failed to load currency rates:', err)
+      // Fallback to default rates
+      setCurrencyRates({
+        'AED': 1,
+        'SAR': 1,
+        'OMR': 10,
+        'BHD': 10,
+        'KWD': 12,
+        'QAR': 1,
+        'INR': 0.045,
+        'USD': 3.67,
+        'CNY': 0.51
+      })
+    }
+  }
 
   async function loadProductAndOrders() {
     setLoading(true)
@@ -140,13 +160,13 @@ export default function ProductDetail() {
       
       // Calculate revenue for THIS PRODUCT ONLY (not full order total)
       const currency = o.currency || productCurrency
-      const conversionRate = CURRENCY_TO_AED[currency] || 1
+      const conversionRate = currencyRates[currency] || 1
       const productRevenue = productPrice * quantity
       totalRevenueAED += productRevenue * conversionRate
       
       // Calculate purchase price in AED
       if (product?.purchasePrice) {
-        const purchaseInAED = Number(product.purchasePrice) * (CURRENCY_TO_AED[product.baseCurrency] || 1)
+        const purchaseInAED = Number(product.purchasePrice) * (currencyRates[product.baseCurrency] || 1)
         totalPurchasePriceAED += purchaseInAED * quantity
       }
       
@@ -160,7 +180,7 @@ export default function ProductDetail() {
     })
 
     // Calculate product price in AED
-    const priceInAED = product ? Number(product.price || 0) * (CURRENCY_TO_AED[product.baseCurrency] || 1) : 0
+    const priceInAED = product ? Number(product.price || 0) * (currencyRates[product.baseCurrency] || 1) : 0
     const totalSellPriceAED = priceInAED * totalQuantity
 
     return { 
@@ -176,7 +196,7 @@ export default function ProductDetail() {
       countryStats,
       priceInAED
     }
-  }, [filteredOrders, product, id, CURRENCY_TO_AED])
+  }, [filteredOrders, product, id, currencyRates])
 
   function getTotalStock(product) {
     if (!product?.stockByCountry) return 0
@@ -516,7 +536,7 @@ export default function ProductDetail() {
                   // Calculate product-specific amount
                   const productAmount = productPrice * quantity
                   const currency = order.currency || product.baseCurrency
-                  const productAmountAED = productAmount * (CURRENCY_TO_AED[currency] || 1)
+                  const productAmountAED = productAmount * (currencyRates[currency] || 1)
 
                   return (
                     <tr
