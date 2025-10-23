@@ -281,42 +281,36 @@ export default function Reports(){
         </div>
 
         {/* Footer */}
-        <div style={{borderTop: '3px solid #1e40af', paddingTop: 20, marginTop: 40}}>
+        <div style={{borderTop: '3px solid #1e40af', paddingTop: 24, marginTop: 40}}>
           {/* Verification Statement */}
           <div style={{
-            background: '#f8fafc',
-            border: '2px solid #e5e7eb',
+            background: 'linear-gradient(to bottom, #f8fafc, #ffffff)',
+            border: '2px solid #1e40af',
             borderRadius: 8,
-            padding: 20,
-            marginBottom: 20
+            padding: 28,
+            marginBottom: 20,
+            boxShadow: '0 2px 8px rgba(30, 64, 175, 0.08)'
           }}>
-            <div style={{fontSize: 12, fontWeight: 700, color: '#111', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px'}}>
-              Report Verification
+            <div style={{fontSize: 13, fontWeight: 700, color: '#1e40af', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center'}}>
+              Report Verification & Authorization
             </div>
-            <div style={{fontSize: 13, color: '#374151', lineHeight: 1.6, marginBottom: 12}}>
+            <div style={{fontSize: 13, color: '#374151', lineHeight: 1.7, marginBottom: 20, textAlign: 'center'}}>
               This report's data and findings have been reviewed and verified for accuracy.
             </div>
-            <div style={{display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 16px', fontSize: 12, color: '#6b7280'}}>
-              <div style={{fontWeight: 600, color: '#111'}}>Verified by:</div>
-              <div>Qadeer Hussain, Owner of Buysial</div>
-              <div style={{fontWeight: 600, color: '#111'}}>Date:</div>
-              <div>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+            <div style={{borderTop: '1px solid #e5e7eb', paddingTop: 16, textAlign: 'center'}}>
+              <div style={{fontSize: 16, fontWeight: 800, color: '#111', marginBottom: 4}}>
+                Qadeer Hussain, Owner of Buysial
+              </div>
+              <div style={{fontSize: 12, color: '#6b7280', marginTop: 8}}>
+                Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </div>
             </div>
           </div>
           
-          {/* Company Info and Notes */}
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'start', fontSize: 11, color: '#6b7280'}}>
-            <div>
-              <div style={{fontWeight: 600, color: '#111', marginBottom: 4}}>BUYSIAL</div>
-              <div>Financial Business Intelligence</div>
-              <div>© {new Date().getFullYear()} All Rights Reserved</div>
-            </div>
-            <div style={{textAlign:'right'}}>
-              <div style={{fontWeight: 600, marginBottom: 4}}>Report Notes:</div>
-              <div>• All figures based on delivered orders</div>
-              <div>• Includes all operational expenses</div>
-              <div>• Currency conversions via AED standard</div>
-            </div>
+          {/* Company Info */}
+          <div style={{textAlign:'center', fontSize: 11, color: '#6b7280'}}>
+            <div>Financial Business Intelligence</div>
+            <div style={{marginTop: 4}}>© {new Date().getFullYear()} All Rights Reserved</div>
           </div>
         </div>
       </div>
