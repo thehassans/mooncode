@@ -2,19 +2,20 @@ import React, { useEffect, useRef, useState } from 'react'
 import { apiGet } from '../../api'
 
 const COUNTRIES = [
-  { code: 'KSA', name: 'Saudi Arabia', flag: '🇸🇦', currency: 'SAR' },
-  { code: 'UAE', name: 'United Arab Emirates', flag: '🇦🇪', currency: 'AED' },
-  { code: 'Oman', name: 'Oman', flag: '🇴🇲', currency: 'OMR' },
-  { code: 'Bahrain', name: 'Bahrain', flag: '🇧🇭', currency: 'BHD' },
-  { code: 'India', name: 'India', flag: '🇮🇳', currency: 'INR' },
-  { code: 'Kuwait', name: 'Kuwait', flag: '🇰🇼', currency: 'KWD' },
-  { code: 'Qatar', name: 'Qatar', flag: '🇶🇦', currency: 'QAR' },
+  { code: 'KSA', name: 'Saudi Arabia', currency: 'SAR' },
+  { code: 'UAE', name: 'United Arab Emirates', currency: 'AED' },
+  { code: 'Oman', name: 'Oman', currency: 'OMR' },
+  { code: 'Bahrain', name: 'Bahrain', currency: 'BHD' },
+  { code: 'India', name: 'India', currency: 'INR' },
+  { code: 'Kuwait', name: 'Kuwait', currency: 'KWD' },
+  { code: 'Qatar', name: 'Qatar', currency: 'QAR' },
 ]
 
 export default function Reports(){
   const [loading, setLoading] = useState(false)
   const [metrics, setMetrics] = useState(null)
   const [generating, setGenerating] = useState(false)
+  const [selectedCountry, setSelectedCountry] = useState('all')
   const reportRef = useRef(null)
 
   async function loadMetrics(){
@@ -46,7 +47,6 @@ export default function Reports(){
   const downloadPDF = async () => {
     setGenerating(true)
     try {
-      // Use html2canvas to capture the report
       const html2canvas = (await import('html2canvas')).default
       const jsPDF = (await import('jspdf')).default
       
@@ -69,7 +69,12 @@ export default function Reports(){
       const imgY = 10
       
       pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio)
-      pdf.save(`Business-Report-${new Date().toISOString().split('T')[0]}.pdf`)
+      
+      const filename = selectedCountry === 'all' 
+        ? `Buysial-Business-Report-${new Date().toISOString().split('T')[0]}.pdf`
+        : `Buysial-${selectedCountry}-Report-${new Date().toISOString().split('T')[0]}.pdf`
+      
+      pdf.save(filename)
     } catch (err) {
       console.error('Failed to generate PDF', err)
       alert('Failed to generate PDF. Please try again.')
@@ -86,54 +91,96 @@ export default function Reports(){
     )
   }
 
+  // Filter countries based on selection
+  const filteredCountries = selectedCountry === 'all' 
+    ? COUNTRIES 
+    : COUNTRIES.filter(c => c.code === selectedCountry)
+
   return (
     <div style={{maxWidth: 1400, margin: '0 auto'}}>
       {/* Header with Download Button */}
       <div style={{marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16}}>
-        <div style={{display:'flex', alignItems:'center', gap:12}}>
-          <div style={{
-            width:48, height:48, borderRadius:16,
-            background:'linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%)',
-            display:'grid', placeItems:'center', fontSize:24
-          }}>📊</div>
-          <div>
-            <h1 style={{fontSize:28, fontWeight:900, margin:0}}>Business Report</h1>
-            <p style={{fontSize:14, opacity:0.7, margin:0}}>Comprehensive financial overview with all expenses and profits</p>
-          </div>
+        <div>
+          <h1 style={{fontSize:28, fontWeight:700, margin:0, color:'#111'}}>Business Financial Report</h1>
+          <p style={{fontSize:14, color:'#6b7280', margin:'4px 0 0 0'}}>Comprehensive financial overview and analysis</p>
         </div>
-        <div style={{display: 'flex', gap: 12}}>
-          <button className="btn secondary" onClick={loadMetrics} disabled={loading}>
-            {loading ? '⟳ Loading...' : '⟳ Refresh'}
+        <div style={{display: 'flex', gap: 12, alignItems:'center', flexWrap:'wrap'}}>
+          <div style={{display:'flex', alignItems:'center', gap:8}}>
+            <label style={{fontSize:14, fontWeight:600, color:'#374151'}}>Filter:</label>
+            <select 
+              className="input" 
+              value={selectedCountry} 
+              onChange={(e) => setSelectedCountry(e.target.value)}
+              style={{minWidth:180, padding:'8px 12px', fontSize:14}}
+            >
+              <option value="all">All Countries</option>
+              {COUNTRIES.map(c => (
+                <option key={c.code} value={c.code}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <button className="btn secondary" onClick={loadMetrics} disabled={loading} style={{padding:'8px 16px'}}>
+            {loading ? 'Loading...' : 'Refresh'}
           </button>
           <button 
             className="btn" 
             onClick={downloadPDF}
             disabled={generating}
             style={{
-              background: 'linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%)',
+              background: '#1e40af',
               border: 'none',
-              padding: '10px 20px',
-              fontWeight: 700
+              padding: '8px 20px',
+              fontWeight: 600,
+              color:'#fff'
             }}
           >
-            {generating ? '⏳ Generating...' : '📥 Download PDF'}
+            {generating ? 'Generating PDF...' : 'Download PDF'}
           </button>
         </div>
       </div>
 
       {/* Report Content */}
-      <div ref={reportRef} style={{background: '#fff', padding: 24, borderRadius: 12}}>
-        {/* Report Header */}
-        <div style={{borderBottom: '2px solid #e5e7eb', paddingBottom: 16, marginBottom: 24}}>
-          <h2 style={{fontSize: 24, fontWeight: 800, margin: 0, color: '#111'}}>Financial Business Report</h2>
-          <p style={{fontSize: 14, color: '#6b7280', margin: '4px 0 0 0'}}>
-            Generated on {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
+      <div ref={reportRef} style={{background: '#fff', padding: 40, borderRadius: 12, boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
+        {/* Report Header with Logo */}
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'start', borderBottom: '3px solid #1e40af', paddingBottom: 20, marginBottom: 32}}>
+          <div>
+            <div style={{
+              fontSize: 32,
+              fontWeight: 900,
+              color: '#1e40af',
+              marginBottom: 4,
+              letterSpacing: '-0.5px'
+            }}>
+              BUYSIAL
+            </div>
+            <div style={{fontSize: 12, color: '#6b7280', fontWeight: 500, letterSpacing: '0.5px'}}>
+              BUSINESS INTELLIGENCE REPORT
+            </div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize: 11, color: '#6b7280', marginBottom: 2}}>Report Date</div>
+            <div style={{fontSize: 14, fontWeight: 700, color: '#111'}}>
+              {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </div>
+            <div style={{fontSize: 11, color: '#6b7280', marginTop: 8}}>
+              {selectedCountry === 'all' ? 'Global Report' : `${COUNTRIES.find(c => c.code === selectedCountry)?.name} Report`}
+            </div>
+          </div>
         </div>
 
-        {/* Global Summary */}
+        {/* Executive Summary */}
+        {selectedCountry === 'all' && (
         <div style={{marginBottom: 32}}>
-          <h3 style={{fontSize: 20, fontWeight: 800, marginBottom: 16, color: '#111'}}>📈 Global Summary (AED)</h3>
+          <h3 style={{
+            fontSize: 18, 
+            fontWeight: 700, 
+            marginBottom: 16, 
+            color: '#111',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            borderBottom: '2px solid #e5e7eb',
+            paddingBottom: 8
+          }}>Executive Summary</h3>
           <div style={{
             border: '2px solid ' + (globalProfit >= 0 ? '#10b981' : '#ef4444'),
             borderRadius: 12,
@@ -151,22 +198,34 @@ export default function Reports(){
               </div>
             </div>
             
-            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, paddingTop: 16, borderTop: '1px solid #e5e7eb'}}>
-              <StatBox label="Revenue" value={`AED ${fmtNum(globalRevenue)}`} color="#0ea5e9" />
-              <StatBox label="Purchase Cost" value={`AED ${fmtNum(globalPurchaseCost)}`} color="#8b5cf6" />
-              <StatBox label="Driver Commission" value={`AED ${fmtNum(globalDriverComm)}`} color="#f59e0b" />
-              <StatBox label="Agent Commission" value={`AED ${fmtNum(globalAgentComm)}`} color="#f59e0b" />
-              <StatBox label="Investor Commission" value={`AED ${fmtNum(globalInvestorComm)}`} color="#f59e0b" />
-              <StatBox label="Advertisement Expense" value={`AED ${fmtNum(globalAdExpense)}`} color="#ef4444" />
-            </div>
+            <table style={{width: '100%', fontSize: 13, marginTop: 16, borderCollapse: 'collapse'}}>
+              <tbody>
+                <ReportRow label="Total Revenue" value={`AED ${fmtNum(globalRevenue)}`} color="#0ea5e9" bold />
+                <ReportRow label="Purchase Cost" value={`AED ${fmtNum(globalPurchaseCost)}`} color="#374151" />
+                <ReportRow label="Driver Commission" value={`AED ${fmtNum(globalDriverComm)}`} color="#374151" />
+                <ReportRow label="Agent Commission" value={`AED ${fmtNum(globalAgentComm)}`} color="#374151" />
+                <ReportRow label="Investor Commission" value={`AED ${fmtNum(globalInvestorComm)}`} color="#374151" />
+                <ReportRow label="Advertisement Expense" value={`AED ${fmtNum(globalAdExpense)}`} color="#374151" />
+              </tbody>
+            </table>
           </div>
         </div>
+        )}
 
         {/* Country-wise Breakdown */}
         <div style={{marginBottom: 32}}>
-          <h3 style={{fontSize: 20, fontWeight: 800, marginBottom: 16, color: '#111'}}>🌍 Country-wise Breakdown</h3>
-          <div style={{display: 'grid', gap: 16}}>
-            {COUNTRIES.map(country => {
+          <h3 style={{
+            fontSize: 18, 
+            fontWeight: 700, 
+            marginBottom: 16, 
+            color: '#111',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            borderBottom: '2px solid #e5e7eb',
+            paddingBottom: 8
+          }}>{selectedCountry === 'all' ? 'Regional Performance Analysis' : 'Country Performance'}</h3>
+          <div style={{display: 'grid', gap: 20}}>
+            {filteredCountries.map(country => {
               const data = byCountry[country.code]
               if (!data) return null
               
@@ -176,37 +235,35 @@ export default function Reports(){
 
               return (
                 <div key={country.code} style={{
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 12,
-                  padding: 16,
-                  background: '#f9fafb'
+                  border: '2px solid #e5e7eb',
+                  borderRadius: 8,
+                  padding: 20,
+                  background: '#fafafa',
+                  pageBreakInside: 'avoid'
                 }}>
-                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 12}}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
-                      <span style={{fontSize: 24}}>{country.flag}</span>
-                      <div>
-                        <div style={{fontWeight: 800, fontSize: 16, color: '#111'}}>{country.name}</div>
-                        <div style={{fontSize: 12, color: '#6b7280'}}>Currency: {currency}</div>
-                      </div>
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid #e5e7eb'}}>
+                    <div>
+                      <div style={{fontWeight: 700, fontSize: 16, color: '#111', marginBottom: 2}}>{country.name}</div>
+                      <div style={{fontSize: 11, color: '#6b7280', fontWeight: 500}}>Reporting Currency: {currency}</div>
                     </div>
-                    <div style={{textAlign: 'right'}}>
-                      <div style={{fontSize: 12, fontWeight: 600, color: '#6b7280'}}>
-                        {isProfit ? 'PROFIT' : 'LOSS'}
+                    <div style={{textAlign: 'right', padding: '8px 16px', background: isProfit ? '#10b98115' : '#ef444415', borderRadius: 6}}>
+                      <div style={{fontSize: 10, fontWeight: 600, color: '#6b7280', marginBottom: 2}}>
+                        NET {isProfit ? 'PROFIT' : 'LOSS'}
                       </div>
-                      <div style={{fontSize: 24, fontWeight: 900, color: isProfit ? '#10b981' : '#ef4444'}}>
-                        {isProfit ? '+' : '-'} {currency} {fmtNum(Math.abs(profit))}
+                      <div style={{fontSize: 20, fontWeight: 900, color: isProfit ? '#10b981' : '#ef4444'}}>
+                        {isProfit ? '+' : ''} {currency} {fmtNum(profit)}
                       </div>
                     </div>
                   </div>
 
                   <table style={{width: '100%', fontSize: 13, borderCollapse: 'collapse'}}>
                     <tbody>
-                      <ReportRow label="Revenue (Delivered)" value={`${currency} ${fmtNum(data.revenue || 0)}`} color="#0ea5e9" />
-                      <ReportRow label="Purchase Cost" value={`${currency} ${fmtNum(data.purchaseCost || 0)}`} color="#8b5cf6" />
-                      <ReportRow label="Driver Commission" value={`${currency} ${fmtNum(data.driverCommission || 0)}`} color="#f59e0b" />
-                      <ReportRow label="Agent Commission" value={`${currency} ${fmtNum(data.agentCommission || 0)}`} color="#f59e0b" />
-                      <ReportRow label="Investor Commission" value={`${currency} ${fmtNum(data.investorCommission || 0)}`} color="#f59e0b" />
-                      <ReportRow label="Advertisement Expense" value={`${currency} ${fmtNum(data.advertisementExpense || 0)}`} color="#ef4444" />
+                      <ReportRow label="Revenue (Delivered Orders)" value={`${currency} ${fmtNum(data.revenue || 0)}`} color="#0ea5e9" bold />
+                      <ReportRow label="Less: Purchase Cost" value={`${currency} ${fmtNum(data.purchaseCost || 0)}`} color="#374151" indent />
+                      <ReportRow label="Less: Driver Commission" value={`${currency} ${fmtNum(data.driverCommission || 0)}`} color="#374151" indent />
+                      <ReportRow label="Less: Agent Commission" value={`${currency} ${fmtNum(data.agentCommission || 0)}`} color="#374151" indent />
+                      <ReportRow label="Less: Investor Commission" value={`${currency} ${fmtNum(data.investorCommission || 0)}`} color="#374151" indent />
+                      <ReportRow label="Less: Advertisement Expense" value={`${currency} ${fmtNum(data.advertisementExpense || 0)}`} color="#374151" indent />
                     </tbody>
                   </table>
                 </div>
@@ -216,9 +273,20 @@ export default function Reports(){
         </div>
 
         {/* Footer */}
-        <div style={{borderTop: '2px solid #e5e7eb', paddingTop: 16, textAlign: 'center', color: '#6b7280', fontSize: 12}}>
-          <p style={{margin: 0}}>This report includes all revenue, expenses, commissions, and advertisement costs</p>
-          <p style={{margin: '4px 0 0 0'}}>All amounts are calculated from delivered orders only</p>
+        <div style={{borderTop: '3px solid #1e40af', paddingTop: 20, marginTop: 32}}>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'start', fontSize: 11, color: '#6b7280'}}>
+            <div>
+              <div style={{fontWeight: 600, color: '#111', marginBottom: 4}}>BUYSIAL</div>
+              <div>Financial Business Intelligence</div>
+              <div>© {new Date().getFullYear()} All Rights Reserved</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontWeight: 600, marginBottom: 4}}>Report Notes:</div>
+              <div>• All figures based on delivered orders</div>
+              <div>• Includes all operational expenses</div>
+              <div>• Currency conversions via AED standard</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -234,11 +302,27 @@ function StatBox({ label, value, color }) {
   )
 }
 
-function ReportRow({ label, value, color }) {
+function ReportRow({ label, value, color, bold, indent }) {
   return (
     <tr style={{borderBottom: '1px solid #e5e7eb'}}>
-      <td style={{padding: '8px 0', color: '#374151', fontWeight: 600}}>{label}</td>
-      <td style={{padding: '8px 0', textAlign: 'right', color, fontWeight: 700}}>{value}</td>
+      <td style={{
+        padding: '10px 0', 
+        paddingLeft: indent ? '16px' : '0',
+        color: bold ? '#111' : '#374151', 
+        fontWeight: bold ? 700 : 600,
+        fontSize: bold ? '14px' : '13px'
+      }}>
+        {label}
+      </td>
+      <td style={{
+        padding: '10px 0', 
+        textAlign: 'right', 
+        color: bold ? color : '#374151', 
+        fontWeight: bold ? 800 : 600,
+        fontSize: bold ? '14px' : '13px'
+      }}>
+        {value}
+      </td>
     </tr>
   )
 }
