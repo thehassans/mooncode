@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost } from '../../api'
 import { useNavigate, useLocation } from 'react-router-dom'
-import DateRangeChips from '../../ui/DateRangeChips.jsx'
 import { useToast } from '../../ui/Toast.jsx'
 
-export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false, withFilters=false, withRange=false, showSubmitReturn=false }){
+export default function OrderListBase({ title, subtitle, endpoint, showDeliverCancel=false, showMap=true, showTotalCollected=false, withFilters=false }){
   const nav = useNavigate()
   const location = useLocation()
   const toast = useToast()
@@ -13,9 +12,6 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
   const [error, setError] = useState('')
   const [q, setQ] = useState('')
   const [ship, setShip] = useState('')
-  const [range, setRange] = useState('last7') // today | last7 | last30 | custom
-  const [customFrom, setCustomFrom] = useState('')
-  const [customTo, setCustomTo] = useState('')
   const [submitting, setSubmitting] = useState(null)
   // Initialize filters from URL on mount and when URL changes
   useEffect(()=>{
@@ -25,61 +21,11 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
       const s0 = sp.get('ship') || ''
       setQ(q0)
       setShip(s0)
-      if (withRange){
-        const from = sp.get('fromDate') || ''
-        const to = sp.get('toDate') || ''
-        if (from && to){
-          try{
-            const f = new Date(from), t = new Date(to)
-            const msInDay = 24*60*60*1000
-            const diffDays = Math.round((t.setHours(0,0,0,0) - f.setHours(0,0,0,0))/msInDay) + 1
-            const isToday = (f.toDateString() === (new Date().toDateString()))
-            if (diffDays===1 && isToday) setRange('today')
-            else if (diffDays===7) setRange('last7')
-            else if (diffDays===30) setRange('last30')
-          }catch{}
-        }
-      }
     }catch{}
-  }, [location.search, withRange])
-  const rangeDates = useMemo(()=>{
-    if (!withRange) return null
-    try{
-      if (range==='custom' && customFrom && customTo){
-        const f = new Date(customFrom); f.setHours(0,0,0,0)
-        const t = new Date(customTo); t.setHours(23,59,59,999)
-        return { from: f.toISOString(), to: t.toISOString() }
-      }
-      const now = new Date()
-      const end = new Date(now); end.setHours(23,59,59,999)
-      let from
-      if (range==='today'){
-        const s = new Date(now); s.setHours(0,0,0,0); from = s
-      } else if (range==='last30'){
-        const s = new Date(now); s.setDate(now.getDate()-29); s.setHours(0,0,0,0); from = s
-      } else { // last7
-        const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
-      }
-      return { from: from.toISOString(), to: end.toISOString() }
-    }catch{ return null }
-  }, [withRange, range, customFrom, customTo])
+  }, [location.search])
   const filteredRows = React.useMemo(()=>{
-    try{
-      let list = Array.isArray(rows)? rows : []
-      if (withRange && rangeDates && rangeDates.from && rangeDates.to){
-        const fromTs = new Date(rangeDates.from).getTime()
-        const toTs = new Date(rangeDates.to).getTime()
-        list = list.filter(o=>{
-          const dAt = o?.deliveredAt ? new Date(o.deliveredAt).getTime() : null
-          const cAt = o?.createdAt ? new Date(o.createdAt).getTime() : null
-          if (dAt!=null) return dAt>=fromTs && dAt<=toTs
-          if (cAt!=null) return cAt>=fromTs && cAt<=toTs
-          return false
-        })
-      }
-      return list
-    }catch{ return Array.isArray(rows)? rows: [] }
-  }, [rows, withRange, rangeDates?.from, rangeDates?.to])
+    return Array.isArray(rows)? rows : []
+  }, [rows])
   const totalCollected = React.useMemo(()=>{
     try{ return (filteredRows||[]).reduce((sum,o)=> sum + (Number(o?.collectedAmount)||0), 0) }catch{ return 0 }
   }, [filteredRows])
@@ -94,10 +40,6 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
           if (q.trim()) sp.set('q', q.trim())
           if (ship.trim()) sp.set('ship', ship.trim())
         }
-        if (withRange && rangeDates && rangeDates.from && rangeDates.to){
-          sp.set('fromDate', rangeDates.from)
-          sp.set('toDate', rangeDates.to)
-        }
         const qs = sp.toString()
         if (!qs) return endpoint
         return endpoint + (hasQ ? '&' : '?') + qs
@@ -108,7 +50,7 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
     catch(e){ setRows([]); setError(e?.message||'Failed to load') }
     finally{ setLoading(false) }
   }
-  useEffect(()=>{ load() },[endpoint, q, ship, withFilters, withRange, rangeDates?.from, rangeDates?.to])
+  useEffect(()=>{ load() },[endpoint, q, ship, withFilters])
 
   function mapsUrl(o){
     const lat = o?.locationLat, lng = o?.locationLng
@@ -165,22 +107,6 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
       </div>
 
       <div className="card" style={{display:'grid'}}>
-        {withRange && (
-          <div className="section" style={{display:'grid', gap:8}}>
-            <DateRangeChips value={range} onChange={setRange} options={[
-              {k:'today', label:'Today'},
-              {k:'last7', label:'Last 7 Days'},
-              {k:'last30', label:'Last 30 Days'},
-              {k:'custom', label:'Custom'}
-            ]} />
-            {range==='custom' && (
-              <div style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center'}}>
-                <input type="date" className="input" value={customFrom} onChange={e=> setCustomFrom(e.target.value)} />
-                <input type="date" className="input" value={customTo} onChange={e=> setCustomTo(e.target.value)} />
-              </div>
-            )}
-          </div>
-        )}
         {withFilters && (
           <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:8}}>
             <input 
@@ -217,7 +143,7 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
               const isSubmitting = submitting === String(o._id || o.id)
               const status = String(o.shipmentStatus || '').toLowerCase()
               const isCancelledOrReturned = ['cancelled', 'returned'].includes(status)
-              const canSubmit = showSubmitReturn && isCancelledOrReturned && !o.returnSubmittedToCompany && !o.returnVerified
+              const canSubmit = isCancelledOrReturned && !o.returnSubmittedToCompany && !o.returnVerified
               const isVerified = o.returnVerified
               const isSubmitted = o.returnSubmittedToCompany && !isVerified
               
@@ -255,7 +181,7 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
                   <div className="helper" style={{whiteSpace:'pre-wrap'}}>{o.customerAddress || o.customerLocation || '-'}</div>
                   
                   {/* Return/Cancel Verification Status - Only for cancelled/returned orders */}
-                  {showSubmitReturn && isCancelledOrReturned && (
+                  {isCancelledOrReturned && (
                     <div style={{marginTop:4}}>
                       {isVerified && (
                         <div style={{color:'#10b981', fontWeight:700, fontSize:14}}>
@@ -277,20 +203,17 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
                   
                   <div style={{display:'flex', gap:8, justifyContent:'flex-end', flexWrap:'wrap'}}>
                     {showMap ? <button className="btn secondary" onClick={()=> openMaps(o)}>Map</button> : null}
-                    {showDeliverCancel && (
-                      <>
-                        <button className="btn" onClick={()=> markDelivered(o)}>Mark Delivered</button>
-                        <button className="btn danger" onClick={()=> cancel(o)}>Cancel</button>
-                      </>
-                    )}
+                    {showDeliverCancel && !isCancelledOrReturned ? <button className="btn success" onClick={()=> markDelivered(o)}>Mark Delivered</button> : null}
+                    {showDeliverCancel && !isCancelledOrReturned ? <button className="btn danger" onClick={()=> cancel(o)}>Cancel</button> : null}
+                    {/* Show submit button for all cancelled/returned orders that aren't verified yet */}
                     {canSubmit && (
                       <button 
-                        className="btn success" 
-                        onClick={()=> submitReturn(o)}
+                        className="btn" 
+                        onClick={() => submitReturn(o)} 
                         disabled={isSubmitting}
-                        style={{minWidth:180}}
+                        style={{background:'#f59e0b', border:'none', fontWeight:600}}
                       >
-                        {isSubmitting ? 'Submitting...' : 'Submit to Company'}
+                        {isSubmitting ? '⏳ Submitting...' : '📤 Submit to Company'}
                       </button>
                     )}
                   </div>

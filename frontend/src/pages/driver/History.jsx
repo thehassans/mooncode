@@ -8,9 +8,7 @@ export default function DriverHistory(){
       subtitle="All your delivered and cancelled orders"
       endpoint="/api/orders/driver/history"
       showTotalCollected={true}
-      showSubmitReturn={true}
       withFilters
-      withRange={true}
     />
   )
 }

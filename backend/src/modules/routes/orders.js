@@ -1238,7 +1238,7 @@ router.post('/:id/assign-driver', auth, allowRoles('admin','user','manager'), as
 router.get('/driver/assigned', auth, allowRoles('driver'), async (req, res) => {
   try{
     const { q = '', ship = '' } = req.query || {}
-    const match = { deliveryBoy: req.user.id, shipmentStatus: { $nin: ['delivered','cancelled'] } }
+    const match = { deliveryBoy: req.user.id, shipmentStatus: { $nin: ['delivered','cancelled','returned'] } }
     
     // Status filter
     if (ship && String(ship).trim()) {
