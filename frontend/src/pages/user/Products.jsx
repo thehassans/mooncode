@@ -8,9 +8,24 @@ export default function UserProducts() {
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [orderStats, setOrderStats] = useState({})
+
+  // Currency conversion rates to AED
+  const CURRENCY_TO_AED = {
+    'AED': 1,
+    'SAR': 1.02,
+    'OMR': 9.65,
+    'BHD': 9.83,
+    'KWD': 12.08,
+    'QAR': 1.02,
+    'INR': 0.044,
+    'USD': 3.67,
+    'CNY': 0.51
+  }
 
   useEffect(() => {
     loadProducts()
+    loadOrderStats()
   }, [])
 
   async function loadProducts() {
@@ -29,6 +44,37 @@ export default function UserProducts() {
       console.error('Failed to load products:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadOrderStats() {
+    try {
+      const data = await apiGet('/api/orders')
+      const orders = data.orders || []
+      
+      // Calculate total bought per product
+      const stats = {}
+      orders.filter(o => o.shipmentStatus === 'delivered').forEach(order => {
+        // Handle single product orders
+        if (order.productId) {
+          const productId = String(order.productId._id || order.productId)
+          const quantity = Number(order.quantity || 1)
+          stats[productId] = (stats[productId] || 0) + quantity
+        }
+        
+        // Handle multi-item orders
+        if (Array.isArray(order.items)) {
+          order.items.forEach(item => {
+            const productId = String(item.productId?._id || item.productId)
+            const quantity = Number(item.quantity || 1)
+            stats[productId] = (stats[productId] || 0) + quantity
+          })
+        }
+      })
+      
+      setOrderStats(stats)
+    } catch (err) {
+      console.error('Failed to load order stats:', err)
     }
   }
 
@@ -200,11 +246,16 @@ export default function UserProducts() {
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     marginBottom: 12
                   }}>
-                    <div style={{ fontSize: 18, fontWeight: 800 }}>
-                      {product.baseCurrency} {product.price?.toFixed(2)}
+                    <div>
+                      <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>
+                        AED {(product.price * (CURRENCY_TO_AED[product.baseCurrency] || 1)).toFixed(2)}
+                      </div>
+                      <div style={{ fontSize: 11, opacity: 0.5 }}>
+                        Original: {product.baseCurrency} {product.price?.toFixed(2)}
+                      </div>
                     </div>
                     <div style={{
                       fontSize: 12,
@@ -225,7 +276,8 @@ export default function UserProducts() {
                     padding: 12,
                     background: isLowStock ? 'rgba(239, 68, 68, 0.05)' : 'rgba(16, 185, 129, 0.05)',
                     borderRadius: 8,
-                    border: `1px solid ${isLowStock ? '#fecaca' : '#a7f3d0'}`
+                    border: `1px solid ${isLowStock ? '#fecaca' : '#a7f3d0'}`,
+                    marginBottom: 8
                   }}>
                     <span style={{ fontSize: 13, fontWeight: 600 }}>Total Stock</span>
                     <span style={{
@@ -234,6 +286,26 @@ export default function UserProducts() {
                       color: isLowStock ? '#dc2626' : '#059669'
                     }}>
                       {totalStock}
+                    </span>
+                  </div>
+
+                  {/* Total Bought */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: 12,
+                    background: 'rgba(99, 102, 241, 0.05)',
+                    borderRadius: 8,
+                    border: '1px solid #c7d2fe'
+                  }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>Total Bought</span>
+                    <span style={{
+                      fontSize: 18,
+                      fontWeight: 800,
+                      color: '#4f46e5'
+                    }}>
+                      {orderStats[product._id] || 0}
                     </span>
                   </div>
 
