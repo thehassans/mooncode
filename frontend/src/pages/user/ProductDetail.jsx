@@ -117,18 +117,32 @@ export default function ProductDetail() {
     const countryStats = {}
     
     filteredOrders.filter(o => o.shipmentStatus === 'delivered').forEach(o => {
-      // Get quantity for this product
-      const quantity = Array.isArray(o.items)
-        ? o.items.find(item => String(item.productId?._id || item.productId) === id)?.quantity || 1
-        : o.quantity || 1
+      // Get quantity and price for this specific product
+      let quantity = 1
+      let productPrice = product?.price || 0
+      let productCurrency = product?.baseCurrency || 'SAR'
+      
+      if (Array.isArray(o.items)) {
+        // Multi-item order - find this product
+        const item = o.items.find(item => String(item.productId?._id || item.productId) === id)
+        if (item) {
+          quantity = Number(item.quantity || 1)
+          productPrice = Number(item.price || product?.price || 0)
+        }
+      } else {
+        // Single product order
+        quantity = Number(o.quantity || 1)
+        productPrice = Number(o.productPrice || product?.price || 0)
+        productCurrency = o.currency || product?.baseCurrency || 'SAR'
+      }
       
       totalQuantity += quantity
       
-      // Convert revenue to AED
-      const orderTotal = Number(o.total || 0)
-      const currency = o.currency || product?.baseCurrency || 'SAR'
+      // Calculate revenue for THIS PRODUCT ONLY (not full order total)
+      const currency = o.currency || productCurrency
       const conversionRate = CURRENCY_TO_AED[currency] || 1
-      totalRevenueAED += orderTotal * conversionRate
+      const productRevenue = productPrice * quantity
+      totalRevenueAED += productRevenue * conversionRate
       
       // Calculate purchase price in AED
       if (product?.purchasePrice) {
@@ -142,7 +156,7 @@ export default function ProductDetail() {
         countryStats[country] = { quantity: 0, revenue: 0 }
       }
       countryStats[country].quantity += quantity
-      countryStats[country].revenue += orderTotal * conversionRate
+      countryStats[country].revenue += productRevenue * conversionRate
     })
 
     // Calculate product price in AED
@@ -482,9 +496,27 @@ export default function ProductDetail() {
                 </tr>
               ) : (
                 filteredOrders.map((order, idx) => {
-                  const quantity = Array.isArray(order.items)
-                    ? order.items.find(item => String(item.productId?._id || item.productId) === id)?.quantity || 1
-                    : order.quantity || 1
+                  // Get quantity and price for this specific product
+                  let quantity = 1
+                  let productPrice = product?.price || 0
+                  
+                  if (Array.isArray(order.items)) {
+                    // Multi-item order - find this product
+                    const item = order.items.find(item => String(item.productId?._id || item.productId) === id)
+                    if (item) {
+                      quantity = Number(item.quantity || 1)
+                      productPrice = Number(item.price || product?.price || 0)
+                    }
+                  } else {
+                    // Single product order
+                    quantity = Number(order.quantity || 1)
+                    productPrice = Number(order.productPrice || product?.price || 0)
+                  }
+                  
+                  // Calculate product-specific amount
+                  const productAmount = productPrice * quantity
+                  const currency = order.currency || product.baseCurrency
+                  const productAmountAED = productAmount * (CURRENCY_TO_AED[currency] || 1)
 
                   return (
                     <tr
@@ -524,10 +556,10 @@ export default function ProductDetail() {
                       <td style={{ padding: '16px', fontWeight: 700 }}>{quantity}</td>
                       <td style={{ padding: '16px' }}>
                         <div style={{ fontWeight: 700, marginBottom: 2 }}>
-                          {order.currency || product.baseCurrency} {(Number(order.total || 0)).toFixed(2)}
+                          {currency} {productAmount.toFixed(2)}
                         </div>
                         <div style={{ fontSize: 11, opacity: 0.6 }}>
-                          AED {(Number(order.total || 0) * (CURRENCY_TO_AED[order.currency || product.baseCurrency] || 1)).toFixed(2)}
+                          AED {productAmountAED.toFixed(2)}
                         </div>
                       </td>
                       <td style={{ padding: '16px' }}>
