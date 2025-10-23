@@ -9,7 +9,21 @@ export default function ProductDetail() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [countryFilter, setCountryFilter] = useState('all')
   const [selectedOrder, setSelectedOrder] = useState(null)
+
+  // Currency conversion rates to AED
+  const CURRENCY_TO_AED = {
+    'AED': 1,
+    'SAR': 1.02,
+    'OMR': 9.65,
+    'BHD': 9.83,
+    'KWD': 12.08,
+    'QAR': 1.02,
+    'INR': 0.044,
+    'USD': 3.67,
+    'CNY': 0.51
+  }
 
   useEffect(() => {
     if (id) {
@@ -73,24 +87,82 @@ export default function ProductDetail() {
   }
 
   const filteredOrders = useMemo(() => {
-    if (statusFilter === 'all') return orders
-    return orders.filter(o => o.shipmentStatus?.toLowerCase() === statusFilter.toLowerCase())
-  }, [orders, statusFilter])
+    let filtered = orders
+
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(o => o.shipmentStatus?.toLowerCase() === statusFilter.toLowerCase())
+    }
+
+    // Filter by country
+    if (countryFilter !== 'all') {
+      filtered = filtered.filter(o => o.orderCountry === countryFilter)
+    }
+
+    return filtered
+  }, [orders, statusFilter, countryFilter])
 
   const stats = useMemo(() => {
-    const total = orders.length
-    const delivered = orders.filter(o => o.shipmentStatus === 'delivered').length
-    const cancelled = orders.filter(o => o.shipmentStatus === 'cancelled').length
-    const returned = orders.filter(o => o.shipmentStatus === 'returned').length
-    const pending = orders.filter(o => ['pending', 'assigned', 'picked_up', 'in_transit', 'out_for_delivery'].includes(o.shipmentStatus)).length
+    const total = filteredOrders.length
+    const delivered = filteredOrders.filter(o => o.shipmentStatus === 'delivered').length
+    const cancelled = filteredOrders.filter(o => o.shipmentStatus === 'cancelled').length
+    const returned = filteredOrders.filter(o => o.shipmentStatus === 'returned').length
+    const pending = filteredOrders.filter(o => ['pending', 'assigned', 'picked_up', 'in_transit', 'out_for_delivery'].includes(o.shipmentStatus)).length
 
-    let totalRevenue = 0
-    orders.filter(o => o.shipmentStatus === 'delivered').forEach(o => {
-      totalRevenue += Number(o.total || 0)
+    let totalRevenueAED = 0
+    let totalQuantity = 0
+    let totalPurchasePriceAED = 0
+    
+    // Country-wise breakdown
+    const countryStats = {}
+    
+    filteredOrders.filter(o => o.shipmentStatus === 'delivered').forEach(o => {
+      // Get quantity for this product
+      const quantity = Array.isArray(o.items)
+        ? o.items.find(item => String(item.productId?._id || item.productId) === id)?.quantity || 1
+        : o.quantity || 1
+      
+      totalQuantity += quantity
+      
+      // Convert revenue to AED
+      const orderTotal = Number(o.total || 0)
+      const currency = o.currency || product?.baseCurrency || 'SAR'
+      const conversionRate = CURRENCY_TO_AED[currency] || 1
+      totalRevenueAED += orderTotal * conversionRate
+      
+      // Calculate purchase price in AED
+      if (product?.purchasePrice) {
+        const purchaseInAED = Number(product.purchasePrice) * (CURRENCY_TO_AED[product.baseCurrency] || 1)
+        totalPurchasePriceAED += purchaseInAED * quantity
+      }
+      
+      // Country-wise stats
+      const country = o.orderCountry || 'Unknown'
+      if (!countryStats[country]) {
+        countryStats[country] = { quantity: 0, revenue: 0 }
+      }
+      countryStats[country].quantity += quantity
+      countryStats[country].revenue += orderTotal * conversionRate
     })
 
-    return { total, delivered, cancelled, returned, pending, totalRevenue }
-  }, [orders])
+    // Calculate product price in AED
+    const priceInAED = product ? Number(product.price || 0) * (CURRENCY_TO_AED[product.baseCurrency] || 1) : 0
+    const totalSellPriceAED = priceInAED * totalQuantity
+
+    return { 
+      total, 
+      delivered, 
+      cancelled, 
+      returned, 
+      pending, 
+      totalRevenueAED,
+      totalQuantity,
+      totalPurchasePriceAED,
+      totalSellPriceAED,
+      countryStats,
+      priceInAED
+    }
+  }, [filteredOrders, product, id, CURRENCY_TO_AED])
 
   function getTotalStock(product) {
     if (!product?.stockByCountry) return 0
@@ -214,9 +286,12 @@ export default function ProductDetail() {
           <div style={{ display: 'grid', gap: 16 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
               <div>
-                <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 4 }}>Price</div>
+                <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 4 }}>Price (AED)</div>
                 <div style={{ fontSize: 24, fontWeight: 800 }}>
-                  {product.baseCurrency} {product.price?.toFixed(2)}
+                  AED {stats.priceInAED.toFixed(2)}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.5, marginTop: 4 }}>
+                  Original: {product.baseCurrency} {product.price?.toFixed(2)}
                 </div>
               </div>
               <div>
@@ -273,8 +348,9 @@ export default function ProductDetail() {
         </div>
 
         <div className="card" style={{ padding: 20, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-          <div style={{ fontSize: 13, color: '#15803d', marginBottom: 4 }}>Delivered</div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: '#14532d' }}>{stats.delivered}</div>
+          <div style={{ fontSize: 13, color: '#15803d', marginBottom: 4 }}>Products Sold</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: '#14532d' }}>{stats.totalQuantity}</div>
+          <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>{stats.delivered} delivered</div>
         </div>
 
         <div className="card" style={{ padding: 20, background: '#fef2f2', border: '1px solid #fecaca' }}>
@@ -288,30 +364,97 @@ export default function ProductDetail() {
         </div>
 
         <div className="card" style={{ padding: 20, background: '#faf5ff', border: '1px solid #e9d5ff' }}>
-          <div style={{ fontSize: 13, color: '#7e22ce', marginBottom: 4 }}>Total Revenue</div>
+          <div style={{ fontSize: 13, color: '#7e22ce', marginBottom: 4 }}>Total Revenue (AED)</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: '#581c87' }}>
-            {product.baseCurrency} {stats.totalRevenue.toFixed(2)}
+            AED {stats.totalRevenueAED.toFixed(2)}
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: 20, background: '#ecfdf5', border: '1px solid #a7f3d0' }}>
+          <div style={{ fontSize: 13, color: '#047857', marginBottom: 4 }}>Total Sell Price (AED)</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#065f46' }}>
+            AED {stats.totalSellPriceAED.toFixed(2)}
+          </div>
+          <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>{stats.totalQuantity} units × AED {stats.priceInAED.toFixed(2)}</div>
+        </div>
+
+        <div className="card" style={{ padding: 20, background: '#fef3c7', border: '1px solid #fde68a' }}>
+          <div style={{ fontSize: 13, color: '#92400e', marginBottom: 4 }}>Total Purchase (AED)</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#78350f' }}>
+            AED {stats.totalPurchasePriceAED.toFixed(2)}
+          </div>
+          <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>Cost of goods sold</div>
+        </div>
+
+        <div className="card" style={{ padding: 20, background: '#dcfce7', border: '1px solid #86efac' }}>
+          <div style={{ fontSize: 13, color: '#166534', marginBottom: 4 }}>Gross Profit (AED)</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#14532d' }}>
+            AED {(stats.totalRevenueAED - stats.totalPurchasePriceAED).toFixed(2)}
+          </div>
+          <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>
+            {stats.totalRevenueAED > 0 ? ((stats.totalRevenueAED - stats.totalPurchasePriceAED) / stats.totalRevenueAED * 100).toFixed(1) : 0}% margin
           </div>
         </div>
       </div>
 
+      {/* Country-wise Breakdown */}
+      {Object.keys(stats.countryStats).length > 0 && (
+        <div className="card" style={{ padding: 24 }}>
+          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, margin: 0 }}>Sales by Country</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 16 }}>
+            {Object.entries(stats.countryStats).map(([country, data]) => (
+              <div key={country} style={{
+                padding: 16,
+                background: 'var(--panel)',
+                borderRadius: 8,
+                border: '1px solid var(--border)'
+              }}>
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>{country}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, opacity: 0.7 }}>Units Sold:</span>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>{data.quantity}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 13, opacity: 0.7 }}>Revenue (AED):</span>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>AED {data.revenue.toFixed(2)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Orders List */}
       <div className="card" style={{ padding: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 16, flexWrap: 'wrap' }}>
           <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Order History</h2>
 
-          <select
-            className="input"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ minWidth: 200 }}
-          >
-            <option value="all">All Status ({orders.length})</option>
-            <option value="delivered">Delivered ({stats.delivered})</option>
-            <option value="cancelled">Cancelled ({stats.cancelled})</option>
-            <option value="returned">Returned ({stats.returned})</option>
-            <option value="pending">Pending ({stats.pending})</option>
-          </select>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <select
+              className="input"
+              value={countryFilter}
+              onChange={(e) => setCountryFilter(e.target.value)}
+              style={{ minWidth: 180 }}
+            >
+              <option value="all">All Countries</option>
+              {Array.from(new Set(orders.map(o => o.orderCountry).filter(Boolean))).sort().map(country => (
+                <option key={country} value={country}>{country}</option>
+              ))}
+            </select>
+
+            <select
+              className="input"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ minWidth: 180 }}
+            >
+              <option value="all">All Status ({orders.length})</option>
+              <option value="delivered">Delivered ({orders.filter(o => o.shipmentStatus === 'delivered').length})</option>
+              <option value="cancelled">Cancelled ({orders.filter(o => o.shipmentStatus === 'cancelled').length})</option>
+              <option value="returned">Returned ({orders.filter(o => o.shipmentStatus === 'returned').length})</option>
+              <option value="pending">Pending ({orders.filter(o => ['pending', 'assigned', 'picked_up', 'in_transit', 'out_for_delivery'].includes(o.shipmentStatus)).length})</option>
+            </select>
+          </div>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
@@ -320,6 +463,7 @@ export default function ProductDetail() {
               <tr style={{ borderBottom: '2px solid var(--border)' }}>
                 <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 13, fontWeight: 700, opacity: 0.7 }}>ORDER ID</th>
                 <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 13, fontWeight: 700, opacity: 0.7 }}>DATE</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 13, fontWeight: 700, opacity: 0.7 }}>COUNTRY</th>
                 <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 13, fontWeight: 700, opacity: 0.7 }}>CUSTOMER</th>
                 <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 13, fontWeight: 700, opacity: 0.7 }}>QTY</th>
                 <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 13, fontWeight: 700, opacity: 0.7 }}>AMOUNT</th>
@@ -332,7 +476,7 @@ export default function ProductDetail() {
             <tbody>
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ padding: 40, textAlign: 'center', opacity: 0.6 }}>
+                  <td colSpan={10} style={{ padding: 40, textAlign: 'center', opacity: 0.6 }}>
                     No orders found
                   </td>
                 </tr>
@@ -362,12 +506,29 @@ export default function ProductDetail() {
                         {formatDate(order.createdAt)}
                       </td>
                       <td style={{ padding: '16px' }}>
+                        <span style={{
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          background: 'var(--panel)',
+                          border: '1px solid var(--border)'
+                        }}>
+                          {order.orderCountry || 'N/A'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px' }}>
                         <div style={{ fontWeight: 600, marginBottom: 2 }}>{order.customerName || 'N/A'}</div>
                         <div style={{ fontSize: 12, opacity: 0.6 }}>{order.customerPhone}</div>
                       </td>
                       <td style={{ padding: '16px', fontWeight: 700 }}>{quantity}</td>
-                      <td style={{ padding: '16px', fontWeight: 700 }}>
-                        {product.baseCurrency} {(Number(order.total || 0)).toFixed(2)}
+                      <td style={{ padding: '16px' }}>
+                        <div style={{ fontWeight: 700, marginBottom: 2 }}>
+                          {order.currency || product.baseCurrency} {(Number(order.total || 0)).toFixed(2)}
+                        </div>
+                        <div style={{ fontSize: 11, opacity: 0.6 }}>
+                          AED {(Number(order.total || 0) * (CURRENCY_TO_AED[order.currency || product.baseCurrency] || 1)).toFixed(2)}
+                        </div>
                       </td>
                       <td style={{ padding: '16px' }}>
                         {getStatusBadge(order.shipmentStatus)}
