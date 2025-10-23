@@ -22,7 +22,15 @@ export default function ProductDetail() {
     try {
       // Load product details
       const productData = await apiGet(`/api/products/${id}`)
-      setProduct(productData.product || productData)
+      const fetchedProduct = productData.product || productData
+      
+      if (!fetchedProduct || !fetchedProduct._id) {
+        setProduct(null)
+        setLoading(false)
+        return
+      }
+      
+      setProduct(fetchedProduct)
 
       // Load all orders for this product
       const ordersData = await apiGet('/api/orders')
@@ -53,6 +61,10 @@ export default function ProductDetail() {
       setOrders(enrichedOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
     } catch (err) {
       console.error('Failed to load data:', err)
+      // If product not found, set null
+      if (err.message?.includes('404') || err.message?.includes('not found')) {
+        setProduct(null)
+      }
     } finally {
       setLoading(false)
     }
