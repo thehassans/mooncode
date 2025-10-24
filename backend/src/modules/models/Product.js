@@ -18,6 +18,7 @@ const ProductSchema = new mongoose.Schema({
   inStock: { type: Boolean, default: true },
   stockQty: { type: Number, default: 0 },
   stockByCountry: { type: StockByCountrySchema, default: () => ({}) },
+  totalPurchased: { type: Number, default: 0 }, // Total inventory purchased/added (cumulative)
   imagePath: { type: String, default: '' },
   images: [{ type: String }],
   purchasePrice: { type: Number, default: 0 },

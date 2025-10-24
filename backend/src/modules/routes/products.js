@@ -119,6 +119,7 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
     price: Number(price),
     stockQty: finalStockQty,
     stockByCountry: sbc,
+    totalPurchased: finalStockQty, // Initial inventory purchased
     imagePath: imagePaths[0] || '',
     images: imagePaths,
     purchasePrice: purchasePrice != null ? Number(purchasePrice) : 0,
@@ -542,7 +543,8 @@ router.post('/:id/stock/add', auth, allowRoles('user', 'manager'), async (req, r
 
     // Add to existing stock
     const currentStock = product.stockByCountry[country] || 0
-    product.stockByCountry[country] = currentStock + Number(quantity)
+    const addedQuantity = Number(quantity)
+    product.stockByCountry[country] = currentStock + addedQuantity
 
     // Update stockQty (total across all countries)
     let totalStock = 0
@@ -552,6 +554,9 @@ router.post('/:id/stock/add', auth, allowRoles('user', 'manager'), async (req, r
     product.stockQty = totalStock
     product.inStock = totalStock > 0
 
+    // Update totalPurchased (cumulative inventory added)
+    product.totalPurchased = (product.totalPurchased || 0) + addedQuantity
+
     // Add to stock history
     if (!product.stockHistory) {
       product.stockHistory = []
@@ -559,7 +564,7 @@ router.post('/:id/stock/add', auth, allowRoles('user', 'manager'), async (req, r
 
     product.stockHistory.push({
       country,
-      quantity: Number(quantity),
+      quantity: addedQuantity,
       notes: notes || '',
       addedBy: req.user.id,
       date: new Date()

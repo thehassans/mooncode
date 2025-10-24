@@ -8,13 +8,11 @@ export default function UserProducts() {
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
-  const [orderStats, setOrderStats] = useState({})
   const [currencyRates, setCurrencyRates] = useState({})
 
   useEffect(() => {
     loadCurrencyRates()
     loadProducts()
-    loadOrderStats()
   }, [])
 
   async function loadCurrencyRates() {
@@ -67,36 +65,6 @@ export default function UserProducts() {
     }
   }
 
-  async function loadOrderStats() {
-    try {
-      const data = await apiGet('/api/orders')
-      const orders = data.orders || []
-      
-      // Calculate total bought per product (all orders except cancelled/returned)
-      const stats = {}
-      orders.filter(o => !['cancelled', 'returned'].includes(o.shipmentStatus)).forEach(order => {
-        // Handle single product orders
-        if (order.productId) {
-          const productId = String(order.productId._id || order.productId)
-          const quantity = Number(order.quantity || 1)
-          stats[productId] = (stats[productId] || 0) + quantity
-        }
-        
-        // Handle multi-item orders
-        if (Array.isArray(order.items)) {
-          order.items.forEach(item => {
-            const productId = String(item.productId?._id || item.productId)
-            const quantity = Number(item.quantity || 1)
-            stats[productId] = (stats[productId] || 0) + quantity
-          })
-        }
-      })
-      
-      setOrderStats(stats)
-    } catch (err) {
-      console.error('Failed to load order stats:', err)
-    }
-  }
 
   const filteredProducts = useMemo(() => {
     let list = products
@@ -325,7 +293,7 @@ export default function UserProducts() {
                       fontWeight: 800,
                       color: '#4f46e5'
                     }}>
-                      {orderStats[product._id] || 0}
+                      {product.totalPurchased || 0}
                     </span>
                   </div>
 
