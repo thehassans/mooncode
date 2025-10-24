@@ -459,11 +459,8 @@ export default function Warehouse(){
       deliveredQatar += Number(it?.delivered?.Qatar||0)
       deliveredTotal += Number(it?.delivered?.total||0)
       const onlyC = countryFilter && countryFilter !== 'All' ? countryFilter : null
-      if (onlyC){
-        totalBought += Number(it?.stockLeft?.[onlyC]||0) + Number(it?.delivered?.[onlyC]||0)
-      } else {
-        totalBought += Number(it?.totalBought||0)
-      }
+      // Always use totalBought from database
+      totalBought += Number(it?.totalBought||0)
       const sv = calcStockValueByCurrency(it, onlyC)
       const dr = calcDeliveredRevByCurrency(it, onlyC)
       const ds = calcDiscountByCurrency(it, onlyC)
@@ -535,6 +532,7 @@ export default function Warehouse(){
             <thead>
               <tr>
                 <th style={{textAlign:'left', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Product</th>
+                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#8b5cf6', fontWeight:700}}>Bought</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color: colorForCountry('UAE'), display: countryFilter!=='All' && countryFilter!=='UAE' ? 'none' : undefined}}>Stock UAE</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color: colorForCountry('Oman'), display: countryFilter!=='All' && countryFilter!=='Oman' ? 'none' : undefined}}>Stock Oman</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color: colorForCountry('KSA'), display: countryFilter!=='All' && countryFilter!=='KSA' ? 'none' : undefined}}>Stock KSA</th>
@@ -565,7 +563,6 @@ export default function Warehouse(){
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color: colorForCurrency('INR'), display: countryFilter!=='All' && selectedCcy!=='INR' ? 'none' : undefined}}>Delivered Revenue INR</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color: colorForCurrency('KWD'), display: countryFilter!=='All' && selectedCcy!=='KWD' ? 'none' : undefined}}>Delivered Revenue KWD</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color: colorForCurrency('QAR'), display: countryFilter!=='All' && selectedCcy!=='QAR' ? 'none' : undefined}}>Delivered Revenue QAR</th>
-                <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', display: countryFilter!=='All' ? undefined : 'none'}}>Bought</th>
                 <th style={{textAlign:'left', padding:'10px 12px', borderRight:'1px solid var(--border)'}}>Actions</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1', display:'none'}}>Buy OMR</th>
                 <th style={{textAlign:'right', padding:'10px 12px', borderRight:'1px solid var(--border)', color:'#6366f1', display:'none'}}>Buy SAR</th>
@@ -665,6 +662,7 @@ export default function Warehouse(){
                         )
                       })()}
                     </td>
+                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#8b5cf6', fontWeight:700}}>{num(it.totalBought || 0)}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color: colorForCountry('UAE'), display: countryFilter!=='All' && countryFilter!=='UAE' ? 'none' : undefined}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'UAE', 'open')}>{num(it.stockLeft?.UAE)}</span></td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color: colorForCountry('Oman'), display: countryFilter!=='All' && countryFilter!=='Oman' ? 'none' : undefined}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'Oman', 'open')}>{num(it.stockLeft?.Oman)}</span></td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color: colorForCountry('KSA'), display: countryFilter!=='All' && countryFilter!=='KSA' ? 'none' : undefined}}><span style={{cursor:'pointer'}} onClick={()=> goOrders(it.name, 'KSA', 'open')}>{num(it.stockLeft?.KSA)}</span></td>
@@ -697,7 +695,6 @@ export default function Warehouse(){
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color: colorForCurrency('INR'), display: countryFilter!=='All' && selectedCcy!=='INR' ? 'none' : undefined}}>{num(calcDeliveredRevByCurrency(it, countryFilter!=='All'? countryFilter : null).INR)}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color: colorForCurrency('KWD'), display: countryFilter!=='All' && selectedCcy!=='KWD' ? 'none' : undefined}}>{num(calcDeliveredRevByCurrency(it, countryFilter!=='All'? countryFilter : null).KWD)}</td>
                     <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color: colorForCurrency('QAR'), display: countryFilter!=='All' && selectedCcy!=='QAR' ? 'none' : undefined}}>{num(calcDeliveredRevByCurrency(it, countryFilter!=='All'? countryFilter : null).QAR)}</td>
-                    <td style={{padding:'10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', display: countryFilter!=='All' ? undefined : 'none'}}>{num(Number(it?.stockLeft?.[countryFilter]||0) + Number(it?.delivered?.[countryFilter]||0))}</td>
                     <td style={{padding:'10px 12px', borderRight:'1px solid var(--border)'}}>
                       <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
                         <button className="btn" onClick={()=>{ setDetailsRow(it); setDetailsOpen(true) }}>Details</button>
@@ -750,6 +747,7 @@ export default function Warehouse(){
               {!loading && filtered.length>0 && (
                 <tr style={{borderTop:'2px solid var(--border)', background:'var(--panel)'}}>
                   <td style={{padding:'10px 12px', fontWeight:800}}>Totals</td>
+                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right', color:'#8b5cf6'}}>{num(totals.totalBought)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right', color: colorForCountry('UAE'), display: countryFilter!=='All' && countryFilter!=='UAE' ? 'none' : undefined}}>{num(totals.stockUAE)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right', color: colorForCountry('Oman'), display: countryFilter!=='All' && countryFilter!=='Oman' ? 'none' : undefined}}>{num(totals.stockOman)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right', color: colorForCountry('KSA'), display: countryFilter!=='All' && countryFilter!=='KSA' ? 'none' : undefined}}>{num(totals.stockKSA)}</td>
@@ -780,7 +778,6 @@ export default function Warehouse(){
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right', color: colorForCurrency('INR'), display: countryFilter!=='All' && selectedCcy!=='INR' ? 'none' : undefined}}>{num(totals.deliveredRevByC.INR)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right', color: colorForCurrency('KWD'), display: countryFilter!=='All' && selectedCcy!=='KWD' ? 'none' : undefined}}>{num(totals.deliveredRevByC.KWD)}</td>
                   <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right', color: colorForCurrency('QAR'), display: countryFilter!=='All' && selectedCcy!=='QAR' ? 'none' : undefined}}>{num(totals.deliveredRevByC.QAR)}</td>
-                  <td style={{padding:'10px 12px', fontWeight:800, textAlign:'right', display: countryFilter!=='All' ? undefined : 'none'}}>{num(totals.totalBought)}</td>
                   <td style={{padding:'10px 12px'}}></td>
                   <td style={{padding:'10px 12px', display:'none'}}></td>
                   <td style={{padding:'10px 12px', display:'none'}}></td>
