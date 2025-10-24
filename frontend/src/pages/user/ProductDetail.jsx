@@ -134,11 +134,12 @@ export default function ProductDetail() {
   }, [orders, statusFilter, countryFilter])
 
   const stats = useMemo(() => {
-    const total = filteredOrders.length
-    const delivered = filteredOrders.filter(o => o.shipmentStatus === 'delivered').length
-    const cancelled = filteredOrders.filter(o => o.shipmentStatus === 'cancelled').length
-    const returned = filteredOrders.filter(o => o.shipmentStatus === 'returned').length
-    const pending = filteredOrders.filter(o => ['pending', 'assigned', 'picked_up', 'in_transit', 'out_for_delivery'].includes(o.shipmentStatus)).length
+    // Calculate stats from ALL orders, not filteredOrders
+    const total = orders.length
+    const delivered = orders.filter(o => o.shipmentStatus === 'delivered').length
+    const cancelled = orders.filter(o => o.shipmentStatus === 'cancelled').length
+    const returned = orders.filter(o => o.shipmentStatus === 'returned').length
+    const pending = orders.filter(o => ['pending', 'assigned', 'picked_up', 'in_transit', 'out_for_delivery'].includes(o.shipmentStatus)).length
 
     let totalRevenueAED = 0
     let totalQuantity = 0
@@ -147,8 +148,8 @@ export default function ProductDetail() {
     // Country-wise breakdown
     const countryStats = {}
     
-    // Calculate revenue only from delivered orders
-    filteredOrders.filter(o => o.shipmentStatus === 'delivered').forEach(o => {
+    // Calculate revenue only from delivered orders (use ALL orders, not filtered)
+    orders.filter(o => o.shipmentStatus === 'delivered').forEach(o => {
       // Get quantity and price for this specific product
       let quantity = 1
       let productPrice = product?.price || 0
@@ -211,7 +212,7 @@ export default function ProductDetail() {
       countryStats,
       priceInAED
     }
-  }, [filteredOrders, product, id, currencyRates])
+  }, [orders, product, id, currencyRates])
 
   function getTotalStock() {
     // Use warehouse data for accurate available stock (totalPurchased - active orders)
