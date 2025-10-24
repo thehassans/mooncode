@@ -1,6 +1,6 @@
 import React from 'react'
 
-// Multi-series last 7 days line chart
+// Multi-series sales line chart
 // Props: analytics = { days: [{ day:'YYYY-MM-DD', UAE:number, Oman:number, KSA:number, Bahrain:number, India:number, Kuwait:number, Qatar:number }], totals: {...} }
 export default function Chart({ analytics }){
   const days = Array.isArray(analytics?.days) ? analytics.days : []
@@ -33,7 +33,7 @@ export default function Chart({ analytics }){
   return (
     <div className="card" style={{display:'grid', gap:8}}>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8}}>
-        <div style={{fontWeight:700}}>Last 7 Days Sales</div>
+        <div style={{fontWeight:700}}>Sales Trend</div>
         <div style={{display:'flex', gap:10, flexWrap:'wrap'}}>
           {seriesKeys.map(k => (
             <span key={k} className="badge" style={{display:'inline-flex', alignItems:'center', gap:6}}>
