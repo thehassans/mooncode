@@ -1900,7 +1900,7 @@ router.post('/:id/deliver', auth, allowRoles('admin','user','agent','driver'), a
   res.json({ message: 'Order delivered', order: ord })
 })
 
-// Mark as returned
+// Mark as returned (Stock will be restored only after manager/user verification)
 router.post('/:id/return', auth, allowRoles('admin','user','agent','driver'), async (req, res) => {
   const { id } = req.params
   const { reason } = req.body || {}
@@ -1908,60 +1908,13 @@ router.post('/:id/return', auth, allowRoles('admin','user','agent','driver'), as
   if (!ord) return res.status(404).json({ message: 'Order not found' })
   ord.shipmentStatus = 'returned'
   ord.returnReason = reason || ord.returnReason
-  // If inventory was previously decremented on delivery, restore it now
-  try{
-    if (ord.inventoryAdjusted){
-      const country = ord.orderCountry
-      if (Array.isArray(ord.items) && ord.items.length){
-        const ids = ord.items.map(i => i.productId).filter(Boolean)
-        const prods = await Product.find({ _id: { $in: ids } })
-        const byId = new Map(prods.map(p => [String(p._id), p]))
-        for (const it of ord.items){
-          const p = byId.get(String(it.productId)); if (!p) continue
-          const qty = Math.max(1, Number(it.quantity||1))
-          const byC = p.stockByCountry || {}
-          if (country === 'UAE' || country === 'United Arab Emirates') byC.UAE = Math.max(0, (byC.UAE || 0) + qty)
-          else if (country === 'Oman' || country === 'OM') byC.Oman = Math.max(0, (byC.Oman || 0) + qty)
-          else if (country === 'KSA' || country === 'Saudi Arabia') byC.KSA = Math.max(0, (byC.KSA || 0) + qty)
-          else if (country === 'Bahrain' || country === 'BH') byC.Bahrain = Math.max(0, (byC.Bahrain || 0) + qty)
-          else if (country === 'India' || country === 'IN') byC.India = Math.max(0, (byC.India || 0) + qty)
-          else if (country === 'Kuwait' || country === 'KW') byC.Kuwait = Math.max(0, (byC.Kuwait || 0) + qty)
-          else if (country === 'Qatar' || country === 'QA') byC.Qatar = Math.max(0, (byC.Qatar || 0) + qty)
-          const totalLeft = (byC.UAE||0) + (byC.Oman||0) + (byC.KSA||0) + (byC.Bahrain||0) + (byC.India||0) + (byC.Kuwait||0) + (byC.Qatar||0)
-          p.stockByCountry = byC
-          p.stockQty = totalLeft
-          p.inStock = totalLeft > 0
-          await p.save()
-        }
-      } else if (ord.productId){
-        const p = await Product.findById(ord.productId)
-        if (p){
-          const qty = Math.max(1, Number(ord.quantity||1))
-          const byC = p.stockByCountry || {}
-          if (country === 'UAE' || country === 'United Arab Emirates') byC.UAE = Math.max(0, (byC.UAE || 0) + qty)
-          else if (country === 'Oman' || country === 'OM') byC.Oman = Math.max(0, (byC.Oman || 0) + qty)
-          else if (country === 'KSA' || country === 'Saudi Arabia') byC.KSA = Math.max(0, (byC.KSA || 0) + qty)
-          else if (country === 'Bahrain' || country === 'BH') byC.Bahrain = Math.max(0, (byC.Bahrain || 0) + qty)
-          else if (country === 'India' || country === 'IN') byC.India = Math.max(0, (byC.India || 0) + qty)
-          else if (country === 'Kuwait' || country === 'KW') byC.Kuwait = Math.max(0, (byC.Kuwait || 0) + qty)
-          else if (country === 'Qatar' || country === 'QA') byC.Qatar = Math.max(0, (byC.Qatar || 0) + qty)
-          const totalLeft = (byC.UAE||0) + (byC.Oman||0) + (byC.KSA||0) + (byC.Bahrain||0) + (byC.India||0) + (byC.Kuwait||0) + (byC.Qatar||0)
-          p.stockByCountry = byC
-          p.stockQty = totalLeft
-          p.inStock = totalLeft > 0
-          await p.save()
-        }
-      }
-      ord.inventoryAdjusted = false
-      ord.inventoryRestoredAt = new Date()
-    }
-  }catch{}
+  // DO NOT restore stock here - it will be restored after manager/user verification
   await ord.save()
   emitOrderChange(ord, 'returned').catch(()=>{})
-  res.json({ message: 'Order returned', order: ord })
+  res.json({ message: 'Order marked as returned. Stock will be restored after verification.', order: ord })
 })
 
-// Cancel order with reason (admin, user, agent, manager, driver)
+// Cancel order with reason (Stock will be restored only after manager/user verification)
 router.post('/:id/cancel', auth, allowRoles('admin','user','agent','manager','driver'), async (req, res) => {
   const { id } = req.params
   const { reason } = req.body || {}
@@ -1976,57 +1929,10 @@ router.post('/:id/cancel', auth, allowRoles('admin','user','agent','manager','dr
   }
   ord.shipmentStatus = 'cancelled'
   if (reason != null) ord.returnReason = String(reason)
-  // If inventory was previously decremented on delivery, restore it now
-  try{
-    if (ord.inventoryAdjusted){
-      const country = ord.orderCountry
-      if (Array.isArray(ord.items) && ord.items.length){
-        const ids = ord.items.map(i => i.productId).filter(Boolean)
-        const prods = await Product.find({ _id: { $in: ids } })
-        const byId = new Map(prods.map(p => [String(p._id), p]))
-        for (const it of ord.items){
-          const p = byId.get(String(it.productId)); if (!p) continue
-          const qty = Math.max(1, Number(it.quantity||1))
-          const byC = p.stockByCountry || {}
-          if (country === 'UAE' || country === 'United Arab Emirates') byC.UAE = Math.max(0, (byC.UAE || 0) + qty)
-          else if (country === 'Oman' || country === 'OM') byC.Oman = Math.max(0, (byC.Oman || 0) + qty)
-          else if (country === 'KSA' || country === 'Saudi Arabia') byC.KSA = Math.max(0, (byC.KSA || 0) + qty)
-          else if (country === 'Bahrain' || country === 'BH') byC.Bahrain = Math.max(0, (byC.Bahrain || 0) + qty)
-          else if (country === 'India' || country === 'IN') byC.India = Math.max(0, (byC.India || 0) + qty)
-          else if (country === 'Kuwait' || country === 'KW') byC.Kuwait = Math.max(0, (byC.Kuwait || 0) + qty)
-          else if (country === 'Qatar' || country === 'QA') byC.Qatar = Math.max(0, (byC.Qatar || 0) + qty)
-          const totalLeft = (byC.UAE||0) + (byC.Oman||0) + (byC.KSA||0) + (byC.Bahrain||0) + (byC.India||0) + (byC.Kuwait||0) + (byC.Qatar||0)
-          p.stockByCountry = byC
-          p.stockQty = totalLeft
-          p.inStock = totalLeft > 0
-          await p.save()
-        }
-      } else if (ord.productId){
-        const p = await Product.findById(ord.productId)
-        if (p){
-          const qty = Math.max(1, Number(ord.quantity||1))
-          const byC = p.stockByCountry || {}
-          if (country === 'UAE' || country === 'United Arab Emirates') byC.UAE = Math.max(0, (byC.UAE || 0) + qty)
-          else if (country === 'Oman' || country === 'OM') byC.Oman = Math.max(0, (byC.Oman || 0) + qty)
-          else if (country === 'KSA' || country === 'Saudi Arabia') byC.KSA = Math.max(0, (byC.KSA || 0) + qty)
-          else if (country === 'Bahrain' || country === 'BH') byC.Bahrain = Math.max(0, (byC.Bahrain || 0) + qty)
-          else if (country === 'India' || country === 'IN') byC.India = Math.max(0, (byC.India || 0) + qty)
-          else if (country === 'Kuwait' || country === 'KW') byC.Kuwait = Math.max(0, (byC.Kuwait || 0) + qty)
-          else if (country === 'Qatar' || country === 'QA') byC.Qatar = Math.max(0, (byC.Qatar || 0) + qty)
-          const totalLeft = (byC.UAE||0) + (byC.Oman||0) + (byC.KSA||0) + (byC.Bahrain||0) + (byC.India||0) + (byC.Kuwait||0) + (byC.Qatar||0)
-          p.stockByCountry = byC
-          p.stockQty = totalLeft
-          p.inStock = totalLeft > 0
-          await p.save()
-        }
-      }
-      ord.inventoryAdjusted = false
-      ord.inventoryRestoredAt = new Date()
-    }
-  }catch{}
+  // DO NOT restore stock here - it will be restored after manager/user verification
   await ord.save()
   emitOrderChange(ord, 'cancelled').catch(()=>{})
-  res.json({ message: 'Order cancelled', order: ord })
+  res.json({ message: 'Order cancelled. Stock will be restored after verification.', order: ord })
 })
 
 // Settle COD with courier/delivery

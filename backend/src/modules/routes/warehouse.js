@@ -58,15 +58,25 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
       }
     }
 
-    // Aggregate ALL active orders (not cancelled/returned) to calculate reserved stock
+    // Aggregate ALL active orders to calculate reserved stock
+    // Include cancelled/returned orders that are NOT yet verified (pending approval)
     const activeOrdersAgg = await Order.aggregate([
       { $match: { 
-          shipmentStatus: { $nin: ['cancelled', 'returned'] },
-          ...(createdByScope ? { createdBy: { $in: createdByScope.map(id => new mongoose.Types.ObjectId(id)) } } : {}),
-          $or: [
-            { productId: { $in: productIds } },
-            { 'items.productId': { $in: productIds } },
-          ]
+          $and: [
+            {
+              $or: [
+                { shipmentStatus: { $nin: ['cancelled', 'returned'] } },
+                { shipmentStatus: { $in: ['cancelled', 'returned'] }, returnVerified: { $ne: true } }
+              ]
+            },
+            {
+              $or: [
+                { productId: { $in: productIds } },
+                { 'items.productId': { $in: productIds } },
+              ]
+            }
+          ],
+          ...(createdByScope ? { createdBy: { $in: createdByScope.map(id => new mongoose.Types.ObjectId(id)) } } : {})
         } 
       },
       { $addFields: {
