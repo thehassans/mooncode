@@ -327,10 +327,6 @@ function DriverCard({ driver }) {
         <table style={{width: '100%', fontSize: 13, borderCollapse: 'collapse'}}>
           <tbody>
             <tr style={{borderBottom: '1px solid #e5e7eb'}}>
-              <td style={{padding: '10px 0', color: '#374151', fontWeight: 600}}>Total Commission</td>
-              <td style={{padding: '10px 0', textAlign: 'right', color: '#8b5cf6', fontWeight: 700}}>{driver.currency || 'AED'} {fmtNum(driver.totalCommission || 0)}</td>
-            </tr>
-            <tr style={{borderBottom: '1px solid #e5e7eb'}}>
               <td style={{padding: '10px 0', color: '#374151', fontWeight: 600}}>Settlement Amount</td>
               <td style={{padding: '10px 0', textAlign: 'right', color: '#111', fontWeight: 700}}>{driver.currency || 'AED'} {fmtNum(driver.settlementAmount || 0)}</td>
             </tr>
@@ -345,6 +341,14 @@ function DriverCard({ driver }) {
             <tr style={{borderBottom: '1px solid #e5e7eb'}}>
               <td style={{padding: '10px 0', color: '#374151', fontWeight: 600}}>Pending Settlement</td>
               <td style={{padding: '10px 0', textAlign: 'right', color: '#ef4444', fontWeight: 700}}>{driver.currency || 'AED'} {fmtNum(driver.pendingSettlement || 0)}</td>
+            </tr>
+            <tr style={{borderBottom: '1px solid #e5e7eb'}}>
+              <td style={{padding: '10px 0', color: '#374151', fontWeight: 600}}>Total Commission</td>
+              <td style={{padding: '10px 0', textAlign: 'right', color: '#8b5cf6', fontWeight: 700}}>
+                {driver.commissionPerOrder != null && driver.commissionPerOrder > 0 
+                  ? `${driver.commissionCurrency || driver.currency || 'AED'} ${fmtNum(driver.commissionPerOrder * (driver.ordersDelivered || 0))} (${fmtNum(driver.commissionPerOrder)}/order × ${driver.ordersDelivered || 0})` 
+                  : 'Not set'}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -457,8 +461,7 @@ function Template3({ logo, selectedCountry, selectedDriver, drivers }) {
             <tr><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Orders Delivered</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', fontWeight: 600, color: '#000'}}>{driver.ordersDelivered || 0}</td></tr>
             <tr style={{background: '#fafafa'}}><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Orders Assigned</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>{driver.ordersAssigned || 0}</td></tr>
             <tr><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Orders Pending</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>{driver.ordersPending || 0}</td></tr>
-            <tr style={{background: '#fafafa'}}><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Total Commission</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', fontWeight: 600, color: '#8b5cf6'}}>{driver.currency} {fmtNum(driver.totalCommission || 0)}</td></tr>
-            <tr><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Settlement Amount</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', fontWeight: 600, color: '#000'}}>{driver.currency} {fmtNum(driver.settlementAmount || 0)}</td></tr>
+            <tr style={{background: '#fafafa'}}><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Settlement Amount</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', fontWeight: 600, color: '#000'}}>{driver.currency} {fmtNum(driver.settlementAmount || 0)}</td></tr>
             <tr><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Pay to Company</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>{driver.currency} {fmtNum(driver.payToCompany || 0)}</td></tr>
             <tr style={{background: '#fafafa'}}><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Pay to Manager</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>{driver.currency} {fmtNum(driver.payToManager || 0)}</td></tr>
             <tr><td style={{padding: 10, border: '1px solid #000', color: '#000'}}>Pending Settlement</td><td style={{padding: 10, textAlign: 'right', border: '1px solid #000', color: '#000'}}>{driver.currency} {fmtNum(driver.pendingSettlement || 0)}</td></tr>
@@ -505,7 +508,6 @@ function Template4({ logo, selectedCountry, selectedDriver, drivers }) {
           <div style={{background: '#fff', borderRadius: 8, padding: 16}}>
             <table style={{width: '100%', fontSize: 13}}>
               <tbody>
-                <tr style={{borderBottom: '1px solid #fde68a'}}><td style={{padding: '8px 0', color: '#92400e', fontWeight: 600}}>Total Commission</td><td style={{padding: '8px 0', textAlign: 'right', fontWeight: 700, color: '#8b5cf6'}}>{driver.currency} {fmtNum(driver.totalCommission || 0)}</td></tr>
                 <tr style={{borderBottom: '1px solid #fde68a'}}><td style={{padding: '8px 0', color: '#92400e', fontWeight: 600}}>Settlement Amount</td><td style={{padding: '8px 0', textAlign: 'right', fontWeight: 700, color: '#000'}}>{driver.currency} {fmtNum(driver.settlementAmount || 0)}</td></tr>
                 <tr style={{borderBottom: '1px solid #fde68a'}}><td style={{padding: '8px 0', color: '#92400e', fontWeight: 600}}>Pay to Company</td><td style={{padding: '8px 0', textAlign: 'right', fontWeight: 700, color: '#000'}}>{driver.currency} {fmtNum(driver.payToCompany || 0)}</td></tr>
                 <tr style={{borderBottom: '1px solid #fde68a'}}><td style={{padding: '8px 0', color: '#92400e', fontWeight: 600}}>Pay to Manager</td><td style={{padding: '8px 0', textAlign: 'right', fontWeight: 700, color: '#000'}}>{driver.currency} {fmtNum(driver.payToManager || 0)}</td></tr>

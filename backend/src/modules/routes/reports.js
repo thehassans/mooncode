@@ -1823,13 +1823,13 @@ router.get('/driver-metrics', auth, allowRoles('user'), async (req, res) => {
         { createdBy: ownerId },
         { createdBy: { $in: managerIds } }
       ]
-    }).select('firstName lastName phone country city createdBy').lean();
+    }).select('firstName lastName phone country city createdBy driverProfile').lean();
     
     // Aggregate driver statistics
     const driverMetrics = await Promise.all(drivers.map(async (driver) => {
       const driverId = driver._id;
       
-      // Get order statistics and calculate commission
+      // Get order statistics
       const orderStats = await Order.aggregate([
         { $match: { deliveryBoy: driverId } },
         { $group: {
@@ -1837,7 +1837,6 @@ router.get('/driver-metrics', auth, allowRoles('user'), async (req, res) => {
             ordersDelivered: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, 1, 0 ] } },
             ordersAssigned: { $sum: 1 },
             ordersPending: { $sum: { $cond: [ { $in: ['$shipmentStatus', ['assigned','picked_up','in_transit','out_for_delivery']] }, 1, 0 ] } },
-            totalCommission: { $sum: { $cond: [ { $eq: ['$shipmentStatus', 'delivered'] }, { $multiply: [{ $ifNull: ['$total', 0] }, 0.1] }, 0 ] } }
           }
         }
       ]);
@@ -1876,7 +1875,7 @@ router.get('/driver-metrics', auth, allowRoles('user'), async (req, res) => {
         }
       }
       
-      const stats = orderStats[0] || { ordersDelivered: 0, ordersAssigned: 0, ordersPending: 0, totalCommission: 0 };
+      const stats = orderStats[0] || { ordersDelivered: 0, ordersAssigned: 0, ordersPending: 0 };
       
       // Map country to currency
       const countryCurrencyMap = {
@@ -1894,12 +1893,13 @@ router.get('/driver-metrics', auth, allowRoles('user'), async (req, res) => {
         ordersDelivered: stats.ordersDelivered,
         ordersAssigned: stats.ordersAssigned,
         ordersPending: stats.ordersPending,
-        totalCommission: stats.totalCommission || 0,
         settlementAmount,
         payToCompany,
         payToManager,
         pendingSettlement,
-        manager: managerInfo
+        manager: managerInfo,
+        commissionPerOrder: driver.driverProfile?.commissionPerOrder || null,
+        commissionCurrency: driver.driverProfile?.commissionCurrency || null
       };
     }));
     
