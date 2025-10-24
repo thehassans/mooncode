@@ -612,4 +612,46 @@ router.get('/:id/stock/history', auth, async (req, res) => {
   }
 })
 
+// Migration endpoint: Set totalPurchased for all products (admin only)
+router.post('/migrate/total-purchased', auth, allowRoles('admin'), async (req, res) => {
+  try {
+    const products = await Product.find({})
+    let updated = 0
+
+    for (const product of products) {
+      // Calculate totalPurchased from stockHistory if available
+      let totalFromHistory = 0
+      if (Array.isArray(product.stockHistory) && product.stockHistory.length > 0) {
+        totalFromHistory = product.stockHistory.reduce((sum, entry) => {
+          return sum + (Number(entry.quantity) || 0)
+        }, 0)
+      }
+
+      // If we have stockHistory, use that as totalPurchased
+      // Otherwise, use current stockQty as initial purchase
+      const totalPurchased = totalFromHistory > 0 ? totalFromHistory : (product.stockQty || 0)
+
+      if (totalPurchased > 0 || product.totalPurchased == null) {
+        product.totalPurchased = totalPurchased
+        await product.save()
+        updated++
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Migration complete! Updated ${updated} products.`,
+      totalProducts: products.length,
+      updated
+    })
+  } catch (error) {
+    console.error('Migration error:', error)
+    res.status(500).json({ 
+      success: false, 
+      message: 'Migration failed', 
+      error: error.message 
+    })
+  }
+})
+
 export default router
