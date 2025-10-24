@@ -32,9 +32,6 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
     const products = await Product.find(productQuery).sort({ name: 1 })
     const productIds = products.map(p => p._id)
 
-    // Aggregate delivered quantities per product and country, supporting both single-product orders and multi-item orders
-    const baseMatch = { shipmentStatus: 'delivered' }
-
     // Workspace scoping for Orders: include owner + agents/managers; capture manager's assigned countries
     let createdByScope = null
     let managerAssigned = []
@@ -60,6 +57,82 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
         createdByScope = [ req.user.id ]
       }
     }
+
+    // Aggregate ALL active orders (not cancelled/returned) to calculate reserved stock
+    const activeOrdersAgg = await Order.aggregate([
+      { $match: { 
+          shipmentStatus: { $nin: ['cancelled', 'returned'] },
+          ...(createdByScope ? { createdBy: { $in: createdByScope.map(id => new mongoose.Types.ObjectId(id)) } } : {}),
+          $or: [
+            { productId: { $in: productIds } },
+            { 'items.productId': { $in: productIds } },
+          ]
+        } 
+      },
+      { $addFields: {
+          _items: {
+            $cond: [
+              { $gt: [ { $size: { $ifNull: ['$items', []] } }, 0 ] },
+              '$items',
+              [ { productId: '$productId', quantity: { $ifNull: ['$quantity', 1] } } ]
+            ]
+          }
+        } 
+      },
+      { $unwind: '$_items' },
+      { $match: { '_items.productId': { $in: productIds } } },
+      { $project: {
+          productId: '$_items.productId',
+          orderCountry: { $ifNull: ['$orderCountry', ''] },
+          quantity: { $ifNull: ['$_items.quantity', 1] }
+        }
+      },
+      { $addFields: {
+          orderCountryCanon: {
+            $let: {
+              vars: { c: { $ifNull: ['$orderCountry', ''] } },
+              in: {
+                $switch: {
+                  branches: [
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KSA','SAUDI ARABIA'] ] }, then: 'KSA' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['UAE','UNITED ARAB EMIRATES'] ] }, then: 'UAE' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['OMAN','OM'] ] }, then: 'Oman' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['BAHRAIN','BH'] ] }, then: 'Bahrain' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['INDIA','IN'] ] }, then: 'India' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['KUWAIT','KW'] ] }, then: 'Kuwait' },
+                    { case: { $in: [ { $toUpper: '$$c' }, ['QATAR','QA'] ] }, then: 'Qatar' },
+                  ],
+                  default: '$$c'
+                }
+              }
+            }
+          }
+        }
+      },
+      { $group: {
+          _id: { productId: '$productId', country: '$orderCountryCanon' },
+          totalOrders: { $sum: { $ifNull: ['$quantity', 1] } }
+        }
+      }
+    ])
+
+    const activeOrdersMap = new Map()
+    for (const row of activeOrdersAgg) {
+      const pid = String(row._id.productId)
+      const country = String(row._id.country || '').trim()
+      if (!activeOrdersMap.has(pid)) activeOrdersMap.set(pid, {})
+      const normCountry = country === 'UNITED ARAB EMIRATES' || country === 'AE' ? 'UAE' : 
+                          country === 'SAUDI ARABIA' || country === 'SA' ? 'KSA' : 
+                          country === 'OMAN' || country === 'OM' ? 'Oman' :
+                          country === 'BAHRAIN' || country === 'BH' ? 'Bahrain' :
+                          country === 'INDIA' || country === 'IN' ? 'India' :
+                          country === 'KUWAIT' || country === 'KW' ? 'Kuwait' :
+                          country === 'QATAR' || country === 'QA' ? 'Qatar' : country
+      activeOrdersMap.get(pid)[normCountry] = (activeOrdersMap.get(pid)[normCountry] || 0) + Number(row.totalOrders || 0)
+    }
+
+    // Aggregate delivered quantities per product and country, supporting both single-product orders and multi-item orders
+    const baseMatch = { shipmentStatus: 'delivered' }
 
     // Internal Orders: delivered quantities and amounts
     const deliveredAgg = await Order.aggregate([
@@ -180,15 +253,49 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
     // No web aggregation: delivered maps are built from Orders only
 
     const response = products.map(p => {
-      // Current left per country comes directly from product.stockByCountry
-      const byC = p.stockByCountry || {}
-      let leftUAE = Math.max(0, Number(byC.UAE || 0))
-      let leftOman = Math.max(0, Number(byC.Oman || 0))
-      let leftKSA = Math.max(0, Number(byC.KSA || 0))
-      let leftBahrain = Math.max(0, Number(byC.Bahrain || 0))
-      let leftIndia = Math.max(0, Number(byC.India || 0))
-      let leftKuwait = Math.max(0, Number(byC.Kuwait || 0))
-      let leftQatar = Math.max(0, Number(byC.Qatar || 0))
+      // Calculate total purchased from database
+      let totalBought = p.totalPurchased || 0
+      if (totalBought === 0) {
+        if (Array.isArray(p.stockHistory) && p.stockHistory.length > 0) {
+          totalBought = p.stockHistory.reduce((sum, entry) => sum + (Number(entry.quantity) || 0), 0)
+        } else {
+          // Fallback: use current stockQty
+          totalBought = Number(p.stockQty || 0)
+        }
+      }
+      
+      // Get stockHistory by country to determine initial stock distribution
+      const stockHistoryByCountry = {}
+      if (Array.isArray(p.stockHistory) && p.stockHistory.length > 0) {
+        for (const entry of p.stockHistory) {
+          const country = String(entry.country || '').trim()
+          const normCountry = country === 'United Arab Emirates' || country === 'AE' ? 'UAE' : 
+                             country === 'Saudi Arabia' || country === 'SA' ? 'KSA' : country
+          stockHistoryByCountry[normCountry] = (stockHistoryByCountry[normCountry] || 0) + Number(entry.quantity || 0)
+        }
+      } else {
+        // Fallback: use current stockByCountry distribution
+        const byC = p.stockByCountry || {}
+        stockHistoryByCountry.UAE = Number(byC.UAE || 0)
+        stockHistoryByCountry.Oman = Number(byC.Oman || 0)
+        stockHistoryByCountry.KSA = Number(byC.KSA || 0)
+        stockHistoryByCountry.Bahrain = Number(byC.Bahrain || 0)
+        stockHistoryByCountry.India = Number(byC.India || 0)
+        stockHistoryByCountry.Kuwait = Number(byC.Kuwait || 0)
+        stockHistoryByCountry.Qatar = Number(byC.Qatar || 0)
+      }
+      
+      // Get active orders for this product
+      const activeOrders = activeOrdersMap.get(String(p._id)) || {}
+      
+      // Calculate available stock = initial stock - active orders
+      let leftUAE = Math.max(0, (stockHistoryByCountry.UAE || 0) - (activeOrders.UAE || 0))
+      let leftOman = Math.max(0, (stockHistoryByCountry.Oman || 0) - (activeOrders.Oman || 0))
+      let leftKSA = Math.max(0, (stockHistoryByCountry.KSA || 0) - (activeOrders.KSA || 0))
+      let leftBahrain = Math.max(0, (stockHistoryByCountry.Bahrain || 0) - (activeOrders.Bahrain || 0))
+      let leftIndia = Math.max(0, (stockHistoryByCountry.India || 0) - (activeOrders.India || 0))
+      let leftKuwait = Math.max(0, (stockHistoryByCountry.Kuwait || 0) - (activeOrders.Kuwait || 0))
+      let leftQatar = Math.max(0, (stockHistoryByCountry.Qatar || 0) - (activeOrders.Qatar || 0))
 
       const dMap = deliveredMap.get(String(p._id)) || {}
       let delUAE = Number(dMap.UAE || 0)
@@ -214,27 +321,14 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
       const totalDelivered = delUAE + delOman + delKSA + delBahrain + delIndia + delKuwait + delQatar
       const totalLeft = leftUAE + leftOman + leftKSA + leftBahrain + leftIndia + leftKuwait + leftQatar
       
-      // Total bought = inventory purchased from database (NOT stock + delivered!)
-      let totalBought = p.totalPurchased || 0
-      
-      // If totalPurchased not set, calculate from stockHistory or use current stock
-      if (totalBought === 0) {
-        if (Array.isArray(p.stockHistory) && p.stockHistory.length > 0) {
-          totalBought = p.stockHistory.reduce((sum, entry) => sum + (Number(entry.quantity) || 0), 0)
-        } else {
-          totalBought = totalLeft
-        }
-      }
-      
-      // Bought per country: for display purposes, distribute totalBought proportionally
-      // Or if you prefer, show as: currently in stock per country
-      const bUAE = leftUAE
-      const bOman = leftOman
-      const bKSA = leftKSA
-      const bBahrain = leftBahrain
-      const bIndia = leftIndia
-      const bKuwait = leftKuwait
-      const bQatar = leftQatar
+      // Bought per country: initial stock from history
+      const bUAE = stockHistoryByCountry.UAE || 0
+      const bOman = stockHistoryByCountry.Oman || 0
+      const bKSA = stockHistoryByCountry.KSA || 0
+      const bBahrain = stockHistoryByCountry.Bahrain || 0
+      const bIndia = stockHistoryByCountry.India || 0
+      const bKuwait = stockHistoryByCountry.Kuwait || 0
+      const bQatar = stockHistoryByCountry.Qatar || 0
 
       const baseCur = ['AED','OMR','SAR','BHD','INR','KWD','QAR'].includes(String(p.baseCurrency)) ? String(p.baseCurrency) : 'SAR'
       const deliveredRevenueByCurrency = { AED: 0, OMR: 0, SAR: 0, BHD: 0, INR: 0, KWD: 0, QAR: 0 }
