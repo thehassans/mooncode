@@ -79,16 +79,32 @@ export default function ProductDetail() {
 
       // Load all orders for this product
       const ordersData = await apiGet('/api/orders')
+      console.log('All orders loaded:', ordersData.orders?.length)
+      
       const productOrders = (ordersData.orders || []).filter(order => {
         // Check if order contains this product (single or multi-item)
-        if (String(order.productId?._id || order.productId) === id) return true
-        if (Array.isArray(order.items)) {
-          return order.items.some(item =>
-            String(item.productId?._id || item.productId) === id
-          )
+        // Handle both populated and unpopulated productId
+        const orderProductId = String(order.productId?._id || order.productId || '')
+        if (orderProductId === id) {
+          console.log('Found matching single product order:', order._id)
+          return true
+        }
+        
+        // Check multi-item orders
+        if (Array.isArray(order.items) && order.items.length > 0) {
+          const hasProduct = order.items.some(item => {
+            const itemProductId = String(item.productId?._id || item.productId || '')
+            return itemProductId === id
+          })
+          if (hasProduct) {
+            console.log('Found matching multi-item order:', order._id)
+          }
+          return hasProduct
         }
         return false
       })
+
+      console.log('Filtered orders for this product:', productOrders.length)
 
       // Populate additional info
       const enrichedOrders = await Promise.all(
@@ -97,12 +113,14 @@ export default function ProductDetail() {
             // Get full order details with populated fields
             const fullOrder = await apiGet(`/api/orders/${order._id}`)
             return fullOrder.order || fullOrder
-          } catch {
+          } catch (err) {
+            console.error('Failed to load order details:', order._id, err)
             return order
           }
         })
       )
 
+      console.log('Enriched orders:', enrichedOrders.length)
       setOrders(enrichedOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
     } catch (err) {
       // If product not found (404), handle silently
