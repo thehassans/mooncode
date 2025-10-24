@@ -33,7 +33,7 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
     const productIds = products.map(p => p._id)
 
     // Aggregate delivered quantities per product and country, supporting both single-product orders and multi-item orders
-    const baseMatch = { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] }
+    const baseMatch = { shipmentStatus: 'delivered' }
 
     // Workspace scoping for Orders: include owner + agents/managers; capture manager's assigned countries
     let createdByScope = null
@@ -213,15 +213,28 @@ router.get('/summary', auth, allowRoles('admin','user','manager'), async (req, r
 
       const totalDelivered = delUAE + delOman + delKSA + delBahrain + delIndia + delKuwait + delQatar
       const totalLeft = leftUAE + leftOman + leftKSA + leftBahrain + leftIndia + leftKuwait + leftQatar
-      // Purchased per country is left + delivered
-      const bUAE = leftUAE + delUAE
-      const bOman = leftOman + delOman
-      const bKSA = leftKSA + delKSA
-      const bBahrain = leftBahrain + delBahrain
-      const bIndia = leftIndia + delIndia
-      const bKuwait = leftKuwait + delKuwait
-      const bQatar = leftQatar + delQatar
-      const totalBought = bUAE + bOman + bKSA + bBahrain + bIndia + bKuwait + bQatar
+      
+      // Total bought = inventory purchased from database (NOT stock + delivered!)
+      let totalBought = p.totalPurchased || 0
+      
+      // If totalPurchased not set, calculate from stockHistory or use current stock
+      if (totalBought === 0) {
+        if (Array.isArray(p.stockHistory) && p.stockHistory.length > 0) {
+          totalBought = p.stockHistory.reduce((sum, entry) => sum + (Number(entry.quantity) || 0), 0)
+        } else {
+          totalBought = totalLeft
+        }
+      }
+      
+      // Bought per country: for display purposes, distribute totalBought proportionally
+      // Or if you prefer, show as: currently in stock per country
+      const bUAE = leftUAE
+      const bOman = leftOman
+      const bKSA = leftKSA
+      const bBahrain = leftBahrain
+      const bIndia = leftIndia
+      const bKuwait = leftKuwait
+      const bQatar = leftQatar
 
       const baseCur = ['AED','OMR','SAR','BHD','INR','KWD','QAR'].includes(String(p.baseCurrency)) ? String(p.baseCurrency) : 'SAR'
       const deliveredRevenueByCurrency = { AED: 0, OMR: 0, SAR: 0, BHD: 0, INR: 0, KWD: 0, QAR: 0 }
