@@ -712,6 +712,74 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
   }
 })
 
+// Get orders by product ID (admin, user, agent, manager)
+router.get('/by-product/:productId', auth, allowRoles('admin','user','agent','manager'), async (req, res) => {
+  try {
+    const { productId } = req.params
+    
+    if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({ message: 'Invalid product ID' })
+    }
+
+    // Apply workspace scoping (same as list orders endpoint)
+    let base = {}
+    if (req.user.role === 'admin') {
+      base = {}
+    } else if (req.user.role === 'user') {
+      const agents = await User.find({ role: 'agent', createdBy: req.user.id }, { _id: 1 }).lean()
+      const managers = await User.find({ role: 'manager', createdBy: req.user.id }, { _id: 1 }).lean()
+      const ids = [req.user.id, ...agents.map(a => a._id), ...managers.map(m => m._id)]
+      base.createdBy = { $in: ids }
+    } else if (req.user.role === 'manager') {
+      const mgr = await User.findById(req.user.id).select('createdBy assignedCountry assignedCountries').lean()
+      const ownerId = mgr?.createdBy
+      if (ownerId) {
+        const agents = await User.find({ role: 'agent', createdBy: ownerId }, { _id: 1 }).lean()
+        const managers = await User.find({ role: 'manager', createdBy: ownerId }, { _id: 1 }).lean()
+        const ids = [ownerId, ...agents.map(a => a._id), ...managers.map(m => m._id)]
+        base.createdBy = { $in: ids }
+        // Filter by assigned countries
+        const expand = (c) => (c === 'KSA' || c === 'Saudi Arabia') ? ['KSA', 'Saudi Arabia'] : (c === 'UAE' || c === 'United Arab Emirates') ? ['UAE', 'United Arab Emirates'] : [c]
+        const arr = (Array.isArray(mgr?.assignedCountries) && mgr.assignedCountries.length) ? mgr.assignedCountries : (mgr?.assignedCountry ? [mgr.assignedCountry] : [])
+        if (arr.length) {
+          const set = new Set()
+          for (const c of arr) {
+            for (const x of expand(c)) set.add(x)
+          }
+          base.orderCountry = { $in: Array.from(set) }
+        }
+      } else {
+        base.createdBy = req.user.id
+      }
+    } else {
+      base.createdBy = req.user.id
+    }
+
+    // Find orders with this product (single product or in items array)
+    const productObjectId = new mongoose.Types.ObjectId(productId)
+    const query = {
+      ...base,
+      $or: [
+        { productId: productObjectId },
+        { 'items.productId': productObjectId }
+      ]
+    }
+
+    const orders = await Order.find(query)
+      .populate('productId')
+      .populate('items.productId')
+      .populate('createdBy', 'firstName lastName email role')
+      .populate('deliveryBoy', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+      .lean()
+
+    res.json({ orders })
+  } catch (err) {
+    console.error('Get orders by product error:', err)
+    res.status(500).json({ message: 'Failed to get orders', error: err?.message })
+  }
+})
+
 // Summary for filtered orders (counts, quantities, amounts by currency)
 router.get('/summary', auth, allowRoles('admin','user','agent','manager'), async (req, res) => {
   try{

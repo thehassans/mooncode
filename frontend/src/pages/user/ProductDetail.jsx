@@ -77,51 +77,15 @@ export default function ProductDetail() {
         setWarehouseData(null)
       }
 
-      // Load all orders for this product
-      const ordersData = await apiGet('/api/orders')
-      console.log('All orders loaded:', ordersData.orders?.length)
-      
-      const productOrders = (ordersData.orders || []).filter(order => {
-        // Check if order contains this product (single or multi-item)
-        // Handle both populated and unpopulated productId
-        const orderProductId = String(order.productId?._id || order.productId || '')
-        if (orderProductId === id) {
-          console.log('Found matching single product order:', order._id)
-          return true
-        }
-        
-        // Check multi-item orders
-        if (Array.isArray(order.items) && order.items.length > 0) {
-          const hasProduct = order.items.some(item => {
-            const itemProductId = String(item.productId?._id || item.productId || '')
-            return itemProductId === id
-          })
-          if (hasProduct) {
-            console.log('Found matching multi-item order:', order._id)
-          }
-          return hasProduct
-        }
-        return false
-      })
-
-      console.log('Filtered orders for this product:', productOrders.length)
-
-      // Populate additional info
-      const enrichedOrders = await Promise.all(
-        productOrders.map(async (order) => {
-          try {
-            // Get full order details with populated fields
-            const fullOrder = await apiGet(`/api/orders/${order._id}`)
-            return fullOrder.order || fullOrder
-          } catch (err) {
-            console.error('Failed to load order details:', order._id, err)
-            return order
-          }
-        })
-      )
-
-      console.log('Enriched orders:', enrichedOrders.length)
-      setOrders(enrichedOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
+      // Load orders for this product using dedicated endpoint
+      try {
+        const ordersData = await apiGet(`/api/orders/by-product/${id}`)
+        console.log('Orders for this product:', ordersData.orders?.length)
+        setOrders((ordersData.orders || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
+      } catch (ordersErr) {
+        console.error('Failed to load orders:', ordersErr)
+        setOrders([])
+      }
     } catch (err) {
       // If product not found (404), handle silently
       if (err.message?.includes('404') || err.message?.includes('not found')) {
