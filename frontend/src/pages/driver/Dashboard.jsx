@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { API_BASE, apiGet, apiPost } from '../../api'
 import { io } from 'socket.io-client'
 import { useNavigate } from 'react-router-dom'
-import DateRangeChips from '../../ui/DateRangeChips.jsx'
 
 export default function DriverDashboard(){
   const nav = useNavigate()
@@ -11,27 +10,6 @@ export default function DriverDashboard(){
   const [payout, setPayout] = useState({ currency:'', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
   const [loading, setLoading] = useState(false)
   const [user, setUser] = useState(null)
-  const [range, setRange] = useState('last7') // today | last7 | last30
-
-  const rangeDates = React.useMemo(()=>{
-    try{
-      const now = new Date()
-      const end = new Date(now); end.setHours(23,59,59,999)
-      let from
-      if (range==='today'){
-        const s = new Date(now); s.setHours(0,0,0,0); from = s
-      } else if (range==='last30'){
-        const s = new Date(now); s.setDate(now.getDate()-29); s.setHours(0,0,0,0); from = s
-      } else { // last7
-        const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
-      }
-      return { from: from.toISOString(), to: end.toISOString() }
-    }catch{ return null }
-  }, [range])
-  const qsRangeBare = React.useMemo(()=>{
-    try{ return (rangeDates && rangeDates.from && rangeDates.to) ? `fromDate=${encodeURIComponent(rangeDates.from)}&toDate=${encodeURIComponent(rangeDates.to)}` : '' }catch{ return '' }
-  }, [rangeDates])
-  const appendRange = (url)=> url
 
   async function loadData(){
     setLoading(true)
@@ -154,11 +132,6 @@ export default function DriverDashboard(){
           <div className="page-title gradient heading-blue">Driver Dashboard</div>
           <div className="page-subtitle">Overview of your delivery workload</div>
         </div>
-      </div>
-
-      {/* Date Range Picker */}
-      <div className="section" style={{marginBottom:8}}>
-        <DateRangeChips value={range} onChange={setRange} />
       </div>
 
       <div className="card" style={{padding:16}}>

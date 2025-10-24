@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { API_BASE, apiGet, apiGetBlob } from '../../api.js'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
-import DateRangeChips from '../../ui/DateRangeChips.jsx'
 
 function StatusBadge({ status }){
   const s = String(status||'').toLowerCase()
@@ -32,55 +31,6 @@ export default function AgentOrdersHistory(){
   const loadingMoreRef = useRef(false)
   const endRef = useRef(null)
   const exportingRef = useRef(false)
-  const [range, setRange] = useState('last7') // today | last7 | last30 | custom
-  const [customFrom, setCustomFrom] = useState('')
-  const [customTo, setCustomTo] = useState('')
-
-  // Support preserving range via URL (?fromDate=&toDate=) when navigated from dashboard
-  const rangeFromUrl = useMemo(()=>{
-    try{
-      const sp = new URLSearchParams(location.search||'')
-      const from = sp.get('fromDate') || ''
-      const to = sp.get('toDate') || ''
-      if (from && to) return { from, to }
-      return null
-    }catch{ return null }
-  }, [location.search])
-  useEffect(()=>{
-    try{
-      if (!rangeFromUrl) return
-      const now = new Date(); now.setHours(23,59,59,999)
-      const from = new Date(rangeFromUrl.from)
-      const to = new Date(rangeFromUrl.to)
-      const msInDay = 24*60*60*1000
-      const diffDays = Math.round((to.setHours(0,0,0,0) - from.setHours(0,0,0,0))/msInDay) + 1
-      const fromToday = (from.toDateString() === (new Date().toDateString()))
-      if (diffDays===1 && fromToday) setRange('today')
-      else if (diffDays===7) setRange('last7')
-      else if (diffDays===30) setRange('last30')
-    }catch{}
-  }, [rangeFromUrl])
-
-  const rangeDates = useMemo(()=>{
-    try{
-      if (range==='custom' && customFrom && customTo){
-        const f = new Date(customFrom); f.setHours(0,0,0,0)
-        const t = new Date(customTo); t.setHours(23,59,59,999)
-        return { from: f.toISOString(), to: t.toISOString() }
-      }
-      const now = new Date()
-      const end = new Date(now); end.setHours(23,59,59,999)
-      let from
-      if (range==='today'){
-        const s = new Date(now); s.setHours(0,0,0,0); from = s
-      } else if (range==='last30'){
-        const s = new Date(now); s.setDate(now.getDate()-29); s.setHours(0,0,0,0); from = s
-      } else { // last7
-        const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
-      }
-      return { from: from.toISOString(), to: end.toISOString() }
-    }catch{ return null }
-  }, [range, customFrom, customTo])
 
   async function loadOptions(selectedCountry=''){
     try{
@@ -102,16 +52,8 @@ export default function AgentOrdersHistory(){
     if (country.trim()) params.set('country', country.trim())
     if (city.trim()) params.set('city', city.trim())
     if (shipFilter.trim()) params.set('ship', shipFilter.trim())
-    // Use explicit range passed via URL if present; else use selected chips range
-    try{
-      const src = rangeDates || rangeFromUrl
-      if (src && src.from && src.to){
-        params.set('fromDate', src.from)
-        params.set('toDate', src.to)
-      }
-    }catch{}
     return params
-  }, [query, country, city, shipFilter, rangeFromUrl, rangeDates])
+  }, [query, country, city, shipFilter])
 
   async function loadOrders(reset=false){
     if (loadingMoreRef.current) return
@@ -147,33 +89,17 @@ export default function AgentOrdersHistory(){
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endRef.current, hasMore, page, buildQuery])
 
-  // First, enforce range locally so Today is strict even if server ignores TZ
-  const rangeFiltered = useMemo(()=>{
-    try{
-      if (!rangeDates || !rangeDates.from || !rangeDates.to) return orders
-      const fromTs = new Date(rangeDates.from).getTime()
-      const toTs = new Date(rangeDates.to).getTime()
-      return (Array.isArray(orders)? orders: []).filter(o=>{
-        const dAt = o?.deliveredAt ? new Date(o.deliveredAt).getTime() : null
-        const cAt = o?.createdAt ? new Date(o.createdAt).getTime() : null
-        if (dAt!=null) return dAt>=fromTs && dAt<=toTs
-        if (cAt!=null) return cAt>=fromTs && cAt<=toTs
-        return false
-      })
-    }catch{ return orders }
-  }, [orders, rangeDates?.from, rangeDates?.to])
-
-  // Then apply product search (client-side) like user Orders
+  // Apply product search (client-side) like user Orders
   const productFiltered = useMemo(()=>{
     const pq = productQuery.trim().toLowerCase()
-    if (!pq) return rangeFiltered
-    return rangeFiltered.filter(o=>{
+    if (!pq) return orders
+    return orders.filter(o=>{
       if (Array.isArray(o.items) && o.items.length){
         return o.items.some(it => String(it?.productId?.name||'').toLowerCase().includes(pq))
       }
       return String(o?.productId?.name||'').toLowerCase().includes(pq)
     })
-  }, [rangeFiltered, productQuery])
+  }, [orders, productQuery])
 
   async function exportCsv(){
     if (exportingRef.current) return
@@ -218,22 +144,6 @@ export default function AgentOrdersHistory(){
           <div className="page-subtitle">All orders you submitted</div>
         </div>
         <button className="btn small" onClick={()=> navigate('/agent/orders')} title="Submit Order">Submit Order</button>
-      </div>
-
-      {/* Date Range */}
-      <div className="section" style={{marginBottom:8, display:'grid', gap:8}}>
-        <DateRangeChips value={range} onChange={setRange} options={[
-          {k:'today', label:'Today'},
-          {k:'last7', label:'Last 7 Days'},
-          {k:'last30', label:'Last 30 Days'},
-          {k:'custom', label:'Custom'}
-        ]} />
-        {range==='custom' && (
-          <div style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center'}}>
-            <input type="date" className="input" value={customFrom} onChange={e=> setCustomFrom(e.target.value)} />
-            <input type="date" className="input" value={customTo} onChange={e=> setCustomTo(e.target.value)} />
-          </div>
-        )}
       </div>
 
       <div className="card" style={{display:'grid', gap:10}}>

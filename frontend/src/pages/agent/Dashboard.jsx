@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import DateRangeChips from '../../ui/DateRangeChips.jsx'
 import { API_BASE, apiGet } from '../../api'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
@@ -51,27 +50,6 @@ export default function AgentDashboard(){
   const [currencyCfg, setCurrencyCfg] = useState(null) // normalized { anchor:'AED', perAED, enabled }
   const [walletAED, setWalletAED] = useState(0)
   const [walletPKR, setWalletPKR] = useState(0)
-  const [range, setRange] = useState('last7') // today | last7 | last30
-
-  const rangeDates = useMemo(()=>{
-    try{
-      const now = new Date()
-      const end = new Date(now); end.setHours(23,59,59,999)
-      let from
-      if (range==='today'){
-        const s = new Date(now); s.setHours(0,0,0,0); from = s
-      } else if (range==='last30'){
-        const s = new Date(now); s.setDate(now.getDate()-29); s.setHours(0,0,0,0); from = s
-      } else { // last7
-        const s = new Date(now); s.setDate(now.getDate()-6); s.setHours(0,0,0,0); from = s
-      }
-      return { from: from.toISOString(), to: end.toISOString() }
-    }catch{ return null }
-  }, [range])
-  const qsRangeBare = useMemo(()=>{
-    try{ return (rangeDates && rangeDates.from && rangeDates.to) ? `fromDate=${encodeURIComponent(rangeDates.from)}&toDate=${encodeURIComponent(rangeDates.to)}` : '' }catch{ return '' }
-  }, [rangeDates])
-  const appendRange = (url)=> url
 
   // Load metrics for the signed-in agent
   async function load(){
@@ -80,7 +58,7 @@ export default function AgentDashboard(){
       const [meRes, chats, perf, cfg] = await Promise.all([
         apiGet('/api/users/me').catch(()=>({})),
         apiGet('/api/wa/chats').catch(()=>[]),
-        apiGet(appendRange('/api/users/agents/me/performance')).catch(()=>({})),
+        apiGet('/api/users/agents/me/performance').catch(()=>({})),
         getCurrencyConfig().catch(()=>null),
       ])
       // meRes.user available for id checks below
@@ -90,7 +68,7 @@ export default function AgentDashboard(){
       async function fetchAllOrders(){
         let page = 1, limit = 200, out = []
         for(;;){
-          const r = await apiGet(appendRange(`/api/orders?page=${page}&limit=${limit}`)).catch(()=>({ orders: [], hasMore:false }))
+          const r = await apiGet(`/api/orders?page=${page}&limit=${limit}`).catch(()=>({ orders: [], hasMore:false }))
           const list = Array.isArray(r?.orders) ? r.orders : []
           out = out.concat(list)
           if (!r?.hasMore) break
@@ -280,11 +258,6 @@ export default function AgentDashboard(){
         </div>
       )}
 
-      {/* Date Range Picker */}
-      <div className="section" style={{marginBottom:8}}>
-        <DateRangeChips value={range} onChange={setRange} />
-      </div>
-
       {/* Top metrics (like driver tiles) */}
       <div className="card" style={{padding:16}}>
         <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px,1fr))', gap:12}}>
@@ -300,7 +273,7 @@ export default function AgentDashboard(){
               <div style={{fontSize:12, color:'var(--muted)'}}>Orders Submitted</div>
               <div style={{fontSize:28, fontWeight:800, color:'#10b981'}}>{loading? '…' : ordersSubmitted}</div>
             </div>
-            <button className="btn secondary" onClick={()=> navigate(appendRange('/agent/orders/history'))}>Order History</button>
+            <button className="btn secondary" onClick={()=> navigate('/agent/orders/history')}>Order History</button>
           </div>
           <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
             <div style={{fontSize:12, color:'var(--muted)'}}>Avg. Response Time</div>
@@ -330,7 +303,7 @@ export default function AgentDashboard(){
         <div className="card-title" style={{marginBottom:8}}>Your Orders by Status</div>
         <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px,1fr))', gap:12}}>
           {statusTiles.map(c => (
-            <button key={c.key} className="tile" onClick={()=> c.to ? navigate(appendRange(c.to)) : null} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <button key={c.key} className="tile" onClick={()=> c.to ? navigate(c.to) : null} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
               <div style={{fontSize:12, color:'var(--muted)'}}>{c.title}</div>
               <div style={{fontSize:28, fontWeight:800, color:c.color}}>{loading? '…' : c.value}</div>
             </button>
