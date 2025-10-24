@@ -131,25 +131,10 @@ export default function ProductDetail() {
 
     let totalRevenueAED = 0
     let totalQuantity = 0
-    let totalQuantityBought = 0
     let totalPurchasePriceAED = 0
     
     // Country-wise breakdown
     const countryStats = {}
-    
-    // Calculate total bought (all orders except cancelled/returned)
-    filteredOrders.filter(o => !['cancelled', 'returned'].includes(o.shipmentStatus)).forEach(o => {
-      let quantity = 1
-      if (Array.isArray(o.items)) {
-        const item = o.items.find(item => String(item.productId?._id || item.productId) === id)
-        if (item) {
-          quantity = Number(item.quantity || 1)
-        }
-      } else {
-        quantity = Number(o.quantity || 1)
-      }
-      totalQuantityBought += quantity
-    })
     
     // Calculate revenue only from delivered orders
     filteredOrders.filter(o => o.shipmentStatus === 'delivered').forEach(o => {
@@ -198,7 +183,8 @@ export default function ProductDetail() {
     // Calculate product price in AED
     const priceInAED = product ? Number(product.price || 0) * (currencyRates[product.baseCurrency] || 1) : 0
     const totalSellPriceAED = priceInAED * totalQuantity // Based on delivered only
-    const totalPotentialSellPriceAED = priceInAED * totalQuantityBought // Based on all bought
+    const totalPurchased = product?.totalPurchased || 0
+    const totalPotentialSellPriceAED = priceInAED * totalPurchased // Based on inventory purchased
 
     return { 
       total, 
@@ -208,7 +194,6 @@ export default function ProductDetail() {
       pending, 
       totalRevenueAED,
       totalQuantity,
-      totalQuantityBought,
       totalPurchasePriceAED,
       totalSellPriceAED,
       totalPotentialSellPriceAED,
@@ -402,8 +387,8 @@ export default function ProductDetail() {
 
         <div className="card" style={{ padding: 20, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
           <div style={{ fontSize: 13, color: '#15803d', marginBottom: 4 }}>Total Bought</div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: '#14532d' }}>{stats.totalQuantityBought}</div>
-          <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>All orders (excl. cancelled)</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: '#14532d' }}>{product?.totalPurchased || 0}</div>
+          <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>Inventory purchased</div>
         </div>
 
         <div className="card" style={{ padding: 20, background: '#ecfdf5', border: '1px solid #a7f3d0' }}>
@@ -434,7 +419,7 @@ export default function ProductDetail() {
           <div style={{ fontSize: 24, fontWeight: 800, color: '#1e3a8a' }}>
             AED {stats.totalPotentialSellPriceAED.toFixed(2)}
           </div>
-          <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>{stats.totalQuantityBought} units bought × AED {stats.priceInAED.toFixed(2)}</div>
+          <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>{product?.totalPurchased || 0} units purchased × AED {stats.priceInAED.toFixed(2)}</div>
         </div>
 
         <div className="card" style={{ padding: 20, background: '#fef3c7', border: '1px solid #fde68a' }}>
