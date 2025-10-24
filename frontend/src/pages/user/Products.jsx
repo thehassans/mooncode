@@ -72,9 +72,9 @@ export default function UserProducts() {
       const data = await apiGet('/api/orders')
       const orders = data.orders || []
       
-      // Calculate total bought per product
+      // Calculate total bought per product (all orders except cancelled/returned)
       const stats = {}
-      orders.filter(o => o.shipmentStatus === 'delivered').forEach(order => {
+      orders.filter(o => !['cancelled', 'returned'].includes(o.shipmentStatus)).forEach(order => {
         // Handle single product orders
         if (order.productId) {
           const productId = String(order.productId._id || order.productId)
