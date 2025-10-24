@@ -6,6 +6,7 @@ export default function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [product, setProduct] = useState(null)
+  const [warehouseData, setWarehouseData] = useState(null)
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
@@ -65,6 +66,16 @@ export default function ProductDetail() {
       }
       
       setProduct(fetchedProduct)
+
+      // Load warehouse data for this product (includes available stock calculations)
+      try {
+        const warehouseResp = await apiGet('/api/warehouse/summary')
+        const warehouseItem = warehouseResp.items?.find(item => String(item._id) === id)
+        setWarehouseData(warehouseItem || null)
+      } catch (warehouseErr) {
+        console.error('Failed to load warehouse data:', warehouseErr)
+        setWarehouseData(null)
+      }
 
       // Load all orders for this product
       const ordersData = await apiGet('/api/orders')
@@ -202,7 +213,12 @@ export default function ProductDetail() {
     }
   }, [filteredOrders, product, id, currencyRates])
 
-  function getTotalStock(product) {
+  function getTotalStock() {
+    // Use warehouse data for accurate available stock (totalPurchased - active orders)
+    if (warehouseData?.stockLeft) {
+      return Number(warehouseData.stockLeft.total || 0)
+    }
+    // Fallback to product.stockByCountry if warehouse data not available
     if (!product?.stockByCountry) return 0
     return Object.values(product.stockByCountry).reduce((sum, val) => sum + Number(val || 0), 0)
   }
@@ -338,9 +354,10 @@ export default function ProductDetail() {
               </div>
               <div>
                 <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 4 }}>Total Stock</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: getTotalStock(product) < 10 ? '#dc2626' : '#059669' }}>
-                  {getTotalStock(product)}
+                <div style={{ fontSize: 24, fontWeight: 800, color: getTotalStock() < 10 ? '#dc2626' : '#059669' }}>
+                  {getTotalStock()}
                 </div>
+                <div style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>Available (excl. active orders)</div>
               </div>
             </div>
             
@@ -374,11 +391,11 @@ export default function ProductDetail() {
             </div>
 
             {/* Stock by Country */}
-            {product.stockByCountry && (
+            {warehouseData?.stockLeft && (
               <div>
-                <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 8 }}>Stock by Country</div>
+                <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 8 }}>Stock by Country (Available)</div>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  {Object.entries(product.stockByCountry).map(([country, stock]) => (
+                  {Object.entries(warehouseData.stockLeft).filter(([country]) => country !== 'total').map(([country, stock]) => (
                     <div
                       key={country}
                       style={{
