@@ -306,6 +306,52 @@ router.post('/', auth, allowRoles('admin','user','agent','manager'), async (req,
       return res.status(400).json({ message: 'Product not available in selected country' })
     }
   }
+  
+  // Check stock availability in the order country BEFORE creating the order
+  const getCountryStock = (product, country) => {
+    if (!product.stockByCountry) return product.stockQty || 0
+    const c = String(country || '')
+    if (c === 'UAE' || c === 'United Arab Emirates') return product.stockByCountry.UAE || 0
+    if (c === 'Oman' || c === 'OM') return product.stockByCountry.Oman || 0
+    if (c === 'KSA' || c === 'Saudi Arabia') return product.stockByCountry.KSA || 0
+    if (c === 'Bahrain' || c === 'BH') return product.stockByCountry.Bahrain || 0
+    if (c === 'India' || c === 'IN') return product.stockByCountry.India || 0
+    if (c === 'Kuwait' || c === 'KW') return product.stockByCountry.Kuwait || 0
+    if (c === 'Qatar' || c === 'QA') return product.stockByCountry.Qatar || 0
+    return 0
+  }
+  
+  if (normItems.length > 0) {
+    // Check stock for multi-item orders
+    for (const it of normItems) {
+      const p = await Product.findById(it.productId)
+      if (!p) continue
+      const requestedQty = Math.max(1, Number(it.quantity || 1))
+      const availableStock = getCountryStock(p, orderCountry)
+      if (availableStock < requestedQty) {
+        return res.status(400).json({ 
+          message: `No stock available for ${p.name} in ${orderCountry}. Available: ${availableStock}, Requested: ${requestedQty}`,
+          error: 'INSUFFICIENT_STOCK',
+          product: p.name,
+          available: availableStock,
+          requested: requestedQty
+        })
+      }
+    }
+  } else if (prod) {
+    // Check stock for single product order
+    const requestedQty = Math.max(1, Number(quantity || 1))
+    const availableStock = getCountryStock(prod, orderCountry)
+    if (availableStock < requestedQty) {
+      return res.status(400).json({ 
+        message: `No stock available for ${prod.name} in ${orderCountry}. Available: ${availableStock}, Requested: ${requestedQty}`,
+        error: 'INSUFFICIENT_STOCK',
+        product: prod.name,
+        available: availableStock,
+        requested: requestedQty
+      })
+    }
+  }
   const cod = Math.max(0, Number(codAmount||0))
   const collected = Math.max(0, Number(collectedAmount||0))
   const shipFee = Math.max(0, Number((shippingFee!=null? shippingFee : req.body?.shipping)||0))
