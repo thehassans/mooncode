@@ -195,7 +195,17 @@ router.get('/public/:id', async (req, res) => {
       return res.status(404).json({ message: 'Product not found' })
     }
     
-    res.json({ product })
+    // Ensure totalPurchased is set
+    const prod = product.toObject()
+    if (prod.totalPurchased == null || prod.totalPurchased === 0) {
+      let totalFromHistory = 0
+      if (Array.isArray(prod.stockHistory) && prod.stockHistory.length > 0) {
+        totalFromHistory = prod.stockHistory.reduce((sum, entry) => sum + (Number(entry.quantity) || 0), 0)
+      }
+      prod.totalPurchased = totalFromHistory > 0 ? totalFromHistory : (prod.stockQty || 0)
+    }
+    
+    res.json({ product: prod })
   } catch (error) {
     console.error('Get product error:', error)
     res.status(500).json({ message: 'Failed to fetch product' })
@@ -264,10 +274,23 @@ router.get('/public', async (req, res) => {
       .limit(limitNum)
       .select('-createdBy -updatedAt -__v')
     
+    // Ensure totalPurchased is set for all products
+    const productsWithTotal = products.map(p => {
+      const prod = p.toObject()
+      if (prod.totalPurchased == null || prod.totalPurchased === 0) {
+        let totalFromHistory = 0
+        if (Array.isArray(prod.stockHistory) && prod.stockHistory.length > 0) {
+          totalFromHistory = prod.stockHistory.reduce((sum, entry) => sum + (Number(entry.quantity) || 0), 0)
+        }
+        prod.totalPurchased = totalFromHistory > 0 ? totalFromHistory : (prod.stockQty || 0)
+      }
+      return prod
+    })
+    
     const total = await Product.countDocuments(query)
     
     res.json({
-      products,
+      products: productsWithTotal,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -291,7 +314,25 @@ router.get('/', auth, allowRoles('admin','user','agent','manager','customer'), a
     base = { createdBy: mgr?.createdBy || '__none__' }
   }
   const products = await Product.find(base).sort({ createdAt: -1 })
-  res.json({ products })
+  
+  // Ensure totalPurchased is set (calculate from stockHistory or stockQty if missing)
+  const productsWithTotal = products.map(p => {
+    const prod = p.toObject()
+    if (prod.totalPurchased == null || prod.totalPurchased === 0) {
+      // Calculate from stockHistory if available
+      let totalFromHistory = 0
+      if (Array.isArray(prod.stockHistory) && prod.stockHistory.length > 0) {
+        totalFromHistory = prod.stockHistory.reduce((sum, entry) => {
+          return sum + (Number(entry.quantity) || 0)
+        }, 0)
+      }
+      // Use stockHistory total or current stockQty
+      prod.totalPurchased = totalFromHistory > 0 ? totalFromHistory : (prod.stockQty || 0)
+    }
+    return prod
+  })
+  
+  res.json({ products: productsWithTotal })
 })
 
 // Get single product by ID (authenticated)
@@ -319,7 +360,21 @@ router.get('/:id', auth, allowRoles('admin','user','agent','manager','customer')
     }
     // Admin, agent, customer can view all
     
-    res.json({ product })
+    // Ensure totalPurchased is set (calculate from stockHistory or stockQty if missing)
+    const prod = product.toObject()
+    if (prod.totalPurchased == null || prod.totalPurchased === 0) {
+      // Calculate from stockHistory if available
+      let totalFromHistory = 0
+      if (Array.isArray(prod.stockHistory) && prod.stockHistory.length > 0) {
+        totalFromHistory = prod.stockHistory.reduce((sum, entry) => {
+          return sum + (Number(entry.quantity) || 0)
+        }, 0)
+      }
+      // Use stockHistory total or current stockQty
+      prod.totalPurchased = totalFromHistory > 0 ? totalFromHistory : (prod.stockQty || 0)
+    }
+    
+    res.json({ product: prod })
   } catch (error) {
     console.error('Get product error:', error)
     res.status(500).json({ message: 'Failed to fetch product' })
