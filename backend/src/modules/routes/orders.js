@@ -2407,6 +2407,129 @@ router.post('/:id/return/verify', auth, allowRoles('user', 'manager'), async (re
   }
 })
 
+// Migration endpoint: Adjust stock for existing orders (admin only)
+router.post('/migrate/adjust-stock', auth, allowRoles('admin'), async (req, res) => {
+  try {
+    // Find all orders that were created but inventory was never adjusted
+    const orders = await Order.find({ 
+      inventoryAdjusted: { $ne: true },
+      shipmentStatus: { $nin: ['cancelled', 'returned'] }
+    }).sort({ createdAt: 1 })
+    
+    let adjusted = 0
+    let skipped = 0
+    const logs = []
+
+    for (const order of orders) {
+      try {
+        const country = order.orderCountry
+        
+        if (Array.isArray(order.items) && order.items.length > 0) {
+          // Multi-item order
+          logs.push(`Processing multi-item order ${order._id} in ${country}`)
+          
+          for (const item of order.items) {
+            const product = await Product.findById(item.productId)
+            if (!product) {
+              logs.push(`  - Product ${item.productId} not found, skipping`)
+              continue
+            }
+            
+            const qty = Math.max(1, Number(item.quantity || 1))
+            
+            if (product.stockByCountry) {
+              const byC = product.stockByCountry
+              const countryKey = normalizeCountry(country)
+              
+              if (countryKey && byC[countryKey] !== undefined) {
+                const before = byC[countryKey]
+                byC[countryKey] = Math.max(0, (byC[countryKey] || 0) - qty)
+                
+                // Recalculate total stock
+                const totalLeft = (byC.UAE||0) + (byC.Oman||0) + (byC.KSA||0) + 
+                                  (byC.Bahrain||0) + (byC.India||0) + (byC.Kuwait||0) + (byC.Qatar||0)
+                product.stockQty = totalLeft
+                product.inStock = totalLeft > 0
+                
+                await product.save()
+                logs.push(`  - ${product.name}: ${countryKey} stock ${before} → ${byC[countryKey]}`)
+              }
+            }
+          }
+        } else if (order.productId) {
+          // Single product order
+          const product = await Product.findById(order.productId)
+          if (!product) {
+            logs.push(`  - Product ${order.productId} not found, skipping`)
+            skipped++
+            continue
+          }
+          
+          const qty = Math.max(1, Number(order.quantity || 1))
+          logs.push(`Processing single-item order ${order._id} for ${product.name} in ${country}`)
+          
+          if (product.stockByCountry) {
+            const byC = product.stockByCountry
+            const countryKey = normalizeCountry(country)
+            
+            if (countryKey && byC[countryKey] !== undefined) {
+              const before = byC[countryKey]
+              byC[countryKey] = Math.max(0, (byC[countryKey] || 0) - qty)
+              
+              // Recalculate total stock
+              const totalLeft = (byC.UAE||0) + (byC.Oman||0) + (byC.KSA||0) + 
+                                (byC.Bahrain||0) + (byC.India||0) + (byC.Kuwait||0) + (byC.Qatar||0)
+              product.stockQty = totalLeft
+              product.inStock = totalLeft > 0
+              
+              await product.save()
+              logs.push(`  - ${product.name}: ${countryKey} stock ${before} → ${byC[countryKey]}`)
+            }
+          }
+        }
+        
+        // Mark order as inventory adjusted
+        order.inventoryAdjusted = true
+        order.inventoryAdjustedAt = new Date()
+        await order.save()
+        adjusted++
+        
+      } catch (orderError) {
+        logs.push(`Error processing order ${order._id}: ${orderError.message}`)
+        skipped++
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Migration complete! Adjusted ${adjusted} orders, skipped ${skipped}`,
+      totalOrders: orders.length,
+      adjusted,
+      skipped,
+      logs: logs.slice(0, 100) // Limit logs to first 100 entries
+    })
+  } catch (error) {
+    console.error('Migration error:', error)
+    res.status(500).json({ 
+      success: false, 
+      message: 'Migration failed', 
+      error: error.message 
+    })
+  }
+})
+
+function normalizeCountry(country) {
+  const c = String(country || '').trim()
+  if (c === 'UAE' || c === 'United Arab Emirates' || c === 'AE') return 'UAE'
+  if (c === 'Oman' || c === 'OM') return 'Oman'
+  if (c === 'KSA' || c === 'Saudi Arabia' || c === 'SA') return 'KSA'
+  if (c === 'Bahrain' || c === 'BH') return 'Bahrain'
+  if (c === 'India' || c === 'IN') return 'India'
+  if (c === 'Kuwait' || c === 'KW') return 'Kuwait'
+  if (c === 'Qatar' || c === 'QA') return 'Qatar'
+  return null
+}
+
 export default router
 
 // Analytics: last 7 days sales by country
