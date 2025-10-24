@@ -343,6 +343,35 @@ export default function ProductDetail() {
                 </div>
               </div>
             </div>
+            
+            {/* Created Info */}
+            <div style={{ 
+              padding: 12, 
+              background: 'rgba(99, 102, 241, 0.05)', 
+              borderRadius: 8, 
+              border: '1px solid rgba(99, 102, 241, 0.2)',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: 12
+            }}>
+              <div>
+                <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 2 }}>Created By</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                  {product.createdByActorName || 'N/A'}
+                </div>
+                {product.createdByRole && (
+                  <div style={{ fontSize: 11, opacity: 0.5 }}>
+                    ({product.createdByRole})
+                  </div>
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 2 }}>Created Date</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                  {formatDate(product.createdAt)}
+                </div>
+              </div>
+            </div>
 
             {/* Stock by Country */}
             {product.stockByCountry && (
