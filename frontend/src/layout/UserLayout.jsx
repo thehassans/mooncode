@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { API_BASE, apiGet } from '../api.js'
 import Sidebar from '../components/Sidebar.jsx'
 import Modal from '../components/Modal.jsx'
+import NotificationsDropdown from '../components/NotificationsDropdown.jsx'
  
 
 export default function UserLayout(){
@@ -268,10 +269,8 @@ export default function UserLayout(){
             >
               {theme==='light' ? '🌙' : '☀️'}
             </button>
-            {/* Quick access to Agents (Create Agent form lives on this page) */}
-            {!isMobile && (
-              <button className="btn secondary" onClick={()=> navigate('/user/agents')} title="Agents">Agents</button>
-            )}
+            {/* Notifications dropdown component */}
+            <NotificationsDropdown />
             {/* Settings gear replaces direct logout */}
             <button className="btn w-9 h-9 p-0 grid place-items-center" title="Settings" aria-label="Settings" onClick={()=> { setShowSettings(true); setTimeout(loadErrorLogs, 0) }}>
               ⚙️
