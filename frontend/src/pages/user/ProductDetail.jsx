@@ -138,24 +138,25 @@ export default function ProductDetail() {
       const orderCountry = o.orderCountry || 'Unknown'
       const orderCurrency = getOrderCountryCurrency(orderCountry)
       
-      if (Array.isArray(o.items)) {
+      if (Array.isArray(o.items) && o.items.length > 0) {
         // Multi-item order - find this product
         const item = o.items.find(item => String(item.productId?._id || item.productId) === id)
         if (item) {
           quantity = Number(item.quantity || 1)
-          const itemPrice = Number(item.price || product?.price || 0)
-          const itemSubtotal = itemPrice * quantity
           
-          // Calculate this item's share of the order discount
+          // Calculate total quantity in the order
+          const totalOrderQuantity = o.items.reduce((sum, i) => sum + Number(i.quantity || 1), 0)
+          
+          // Get order final amount (after discount)
           const orderTotal = Number(o.total || 0)
           const orderDiscount = Number(o.discount || 0)
+          const orderFinalAmount = orderTotal - orderDiscount
           
-          if (orderTotal > 0 && orderDiscount > 0) {
-            // Proportional discount: (item subtotal / order total) × order discount
-            const itemDiscountShare = (itemSubtotal / orderTotal) * orderDiscount
-            productRevenue = itemSubtotal - itemDiscountShare
+          // Distribute final amount based on quantity proportion
+          if (totalOrderQuantity > 0) {
+            productRevenue = (quantity / totalOrderQuantity) * orderFinalAmount
           } else {
-            productRevenue = itemSubtotal
+            productRevenue = 0
           }
         }
       } else {
@@ -593,24 +594,27 @@ export default function ProductDetail() {
                   let productAmount = 0
                   const orderCountryCurrency = getOrderCountryCurrency(order.orderCountry)
                   
-                  if (Array.isArray(order.items)) {
+                  if (Array.isArray(order.items) && order.items.length > 0) {
                     // Multi-item order - find this product
                     const item = order.items.find(item => String(item.productId?._id || item.productId) === id)
                     if (item) {
                       quantity = Number(item.quantity || 1)
-                      const itemPrice = Number(item.price || product?.price || 0)
-                      const itemSubtotal = itemPrice * quantity
                       
-                      // Calculate this item's share of the order discount
+                      // Calculate total quantity in the order
+                      const totalOrderQuantity = order.items.reduce((sum, i) => sum + Number(i.quantity || 1), 0)
+                      
+                      // Get order final amount (after discount)
                       const orderTotal = Number(order.total || 0)
                       const orderDiscount = Number(order.discount || 0)
+                      const orderFinalAmount = orderTotal - orderDiscount
                       
-                      if (orderTotal > 0 && orderDiscount > 0) {
-                        // Proportional discount: (item subtotal / order total) × order discount
-                        const itemDiscountShare = (itemSubtotal / orderTotal) * orderDiscount
-                        productAmount = itemSubtotal - itemDiscountShare
+                      // Distribute final amount based on quantity proportion
+                      // Each unit gets: orderFinalAmount / totalOrderQuantity
+                      // This product gets: (quantity / totalOrderQuantity) × orderFinalAmount
+                      if (totalOrderQuantity > 0) {
+                        productAmount = (quantity / totalOrderQuantity) * orderFinalAmount
                       } else {
-                        productAmount = itemSubtotal
+                        productAmount = 0
                       }
                     }
                   } else {
