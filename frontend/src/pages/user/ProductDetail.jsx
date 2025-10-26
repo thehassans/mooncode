@@ -144,19 +144,27 @@ export default function ProductDetail() {
         if (item) {
           quantity = Number(item.quantity || 1)
           
-          // Calculate total quantity in the order
-          const totalOrderQuantity = o.items.reduce((sum, i) => sum + Number(i.quantity || 1), 0)
-          
           // Get order final amount (after discount)
           const orderTotal = Number(o.total || 0)
           const orderDiscount = Number(o.discount || 0)
           const orderFinalAmount = orderTotal - orderDiscount
           
-          // Distribute final amount based on quantity proportion
-          if (totalOrderQuantity > 0) {
-            productRevenue = (quantity / totalOrderQuantity) * orderFinalAmount
+          // Check if this is the ONLY product in the order (all items are this product)
+          const allItemsAreThisProduct = o.items.every(i => 
+            String(i.productId?._id || i.productId) === id
+          )
+          
+          if (allItemsAreThisProduct) {
+            // All items in this order are this product, show full order amount
+            productRevenue = orderFinalAmount
           } else {
-            productRevenue = 0
+            // Multiple different products - distribute based on quantity proportion
+            const totalOrderQuantity = o.items.reduce((sum, i) => sum + Number(i.quantity || 1), 0)
+            if (totalOrderQuantity > 0) {
+              productRevenue = (quantity / totalOrderQuantity) * orderFinalAmount
+            } else {
+              productRevenue = 0
+            }
           }
         }
       } else {
@@ -600,21 +608,27 @@ export default function ProductDetail() {
                     if (item) {
                       quantity = Number(item.quantity || 1)
                       
-                      // Calculate total quantity in the order
-                      const totalOrderQuantity = order.items.reduce((sum, i) => sum + Number(i.quantity || 1), 0)
-                      
                       // Get order final amount (after discount)
                       const orderTotal = Number(order.total || 0)
                       const orderDiscount = Number(order.discount || 0)
                       const orderFinalAmount = orderTotal - orderDiscount
                       
-                      // Distribute final amount based on quantity proportion
-                      // Each unit gets: orderFinalAmount / totalOrderQuantity
-                      // This product gets: (quantity / totalOrderQuantity) × orderFinalAmount
-                      if (totalOrderQuantity > 0) {
-                        productAmount = (quantity / totalOrderQuantity) * orderFinalAmount
+                      // Check if this is the ONLY product in the order (all items are this product)
+                      const allItemsAreThisProduct = order.items.every(i => 
+                        String(i.productId?._id || i.productId) === id
+                      )
+                      
+                      if (allItemsAreThisProduct) {
+                        // All items in this order are this product, show full order amount
+                        productAmount = orderFinalAmount
                       } else {
-                        productAmount = 0
+                        // Multiple different products - distribute based on quantity proportion
+                        const totalOrderQuantity = order.items.reduce((sum, i) => sum + Number(i.quantity || 1), 0)
+                        if (totalOrderQuantity > 0) {
+                          productAmount = (quantity / totalOrderQuantity) * orderFinalAmount
+                        } else {
+                          productAmount = 0
+                        }
                       }
                     }
                   } else {
