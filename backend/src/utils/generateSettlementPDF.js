@@ -7,14 +7,21 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 /**
- * Generate a PDF for driver settlement summary
+ * Generate a premium professional PDF for driver settlement summary
  * @param {Object} data - Settlement data
  * @param {string} data.driverName - Driver's full name
+ * @param {string} data.driverPhone - Driver's phone
  * @param {string} data.managerName - Manager's name
  * @param {number} data.totalDeliveredOrders - Total delivered orders count
+ * @param {number} data.assignedOrders - Assigned orders count
+ * @param {number} data.cancelledOrders - Cancelled orders count
+ * @param {number} data.collectedAmount - Total collected from customers
  * @param {number} data.deliveredToCompany - Amount already delivered to company
  * @param {number} data.pendingDeliveryToCompany - Amount pending delivery
  * @param {number} data.amount - Current settlement amount
+ * @param {number} data.totalCommission - Total commission earned
+ * @param {number} data.paidCommission - Commission already paid
+ * @param {number} data.pendingCommission - Commission pending payment
  * @param {string} data.currency - Currency code (AED, SAR, etc.)
  * @param {string} data.method - Payment method (hand/transfer)
  * @param {string} data.receiptPath - Receipt image path (for transfer method)
@@ -43,73 +50,165 @@ export async function generateSettlementPDF(data) {
 
       doc.pipe(stream)
 
-      // Header
-      doc.fontSize(20).font('Helvetica-Bold').text('Settlement Summary', { align: 'center' })
-      doc.moveDown()
+      const pageWidth = doc.page.width
+      const pageHeight = doc.page.height
+      const margin = 50
+      let currentY = margin
 
-      // Driver Info
-      doc.fontSize(14).font('Helvetica-Bold').text('Driver Information', { underline: true })
-      doc.moveDown(0.5)
-      doc.fontSize(11).font('Helvetica')
-      doc.text(`Driver: ${data.driverName || 'N/A'}`)
-      doc.text(`Submitted to: ${data.managerName || 'N/A'}`)
-      doc.text(`Date: ${new Date().toLocaleDateString()}`)
-      doc.moveDown()
+      // Helper function to draw a box
+      const drawBox = (x, y, width, height, color = '#f3f4f6') => {
+        doc.rect(x, y, width, height).fillAndStroke(color, '#e5e7eb')
+      }
 
-      // Settlement Details
-      doc.fontSize(14).font('Helvetica-Bold').text('Settlement Details', { underline: true })
-      doc.moveDown(0.5)
+      // Helper function for table row
+      const drawTableRow = (y, label, value, isHeader = false) => {
+        const x = margin
+        const width = pageWidth - 2 * margin
+        if (isHeader) {
+          doc.rect(x, y, width, 25).fillAndStroke('#4f46e5', '#4338ca')
+          doc.fillColor('white').fontSize(11).font('Helvetica-Bold')
+          doc.text(label, x + 10, y + 8, { width: width / 2 - 20 })
+          doc.text(value, x + width / 2, y + 8, { width: width / 2 - 10, align: 'right' })
+        } else {
+          doc.rect(x, y, width, 22).stroke('#e5e7eb')
+          doc.fillColor('black').fontSize(10).font('Helvetica')
+          doc.text(label, x + 10, y + 6, { width: width / 2 - 20 })
+          doc.fillColor('#1f2937').font('Helvetica-Bold')
+          doc.text(value, x + width / 2, y + 6, { width: width / 2 - 10, align: 'right' })
+        }
+        return y + (isHeader ? 25 : 22)
+      }
+
+      // Company Header with Blue Background
+      doc.rect(0, 0, pageWidth, 80).fill('#1e40af')
+      doc.fillColor('white').fontSize(28).font('Helvetica-Bold')
+      doc.text('DRIVER SETTLEMENT REPORT', margin, 25, { align: 'center' })
       doc.fontSize(11).font('Helvetica')
-      
+      doc.text('Complete Financial Summary & Commission Details', margin, 55, { align: 'center' })
+      currentY = 100
+
+      // Document Info Box
+      doc.fillColor('black')
+      drawBox(margin, currentY, pageWidth - 2 * margin, 70, '#fef3c7')
+      doc.fontSize(10).font('Helvetica')
+      doc.fillColor('#92400e').text('Document ID:', margin + 15, currentY + 12)
+      doc.fillColor('#78350f').font('Helvetica-Bold').text(`SETTLEMENT-${Date.now()}`, margin + 120, currentY + 12)
+      doc.fillColor('#92400e').font('Helvetica').text('Generated Date:', margin + 15, currentY + 30)
+      doc.fillColor('#78350f').font('Helvetica-Bold').text(new Date().toLocaleString(), margin + 120, currentY + 30)
       if (data.fromDate && data.toDate) {
-        doc.text(`Period: ${new Date(data.fromDate).toLocaleDateString()} - ${new Date(data.toDate).toLocaleDateString()}`)
+        doc.fillColor('#92400e').font('Helvetica').text('Period:', margin + 15, currentY + 48)
+        doc.fillColor('#78350f').font('Helvetica-Bold').text(
+          `${new Date(data.fromDate).toLocaleDateString()} - ${new Date(data.toDate).toLocaleDateString()}`,
+          margin + 120, currentY + 48
+        )
       }
-      
-      doc.text(`Total Delivered Orders: ${data.totalDeliveredOrders || 0}`)
-      doc.text(`Delivered to Company: ${data.currency} ${(data.deliveredToCompany || 0).toFixed(2)}`)
-      doc.text(`Pending Delivery to Company: ${data.currency} ${(data.pendingDeliveryToCompany || 0).toFixed(2)}`)
-      doc.moveDown()
+      currentY += 90
 
-      // Current Settlement
-      doc.fontSize(14).font('Helvetica-Bold').text('Current Settlement', { underline: true })
-      doc.moveDown(0.5)
-      doc.fontSize(11).font('Helvetica')
-      doc.text(`Amount: ${data.currency} ${(data.amount || 0).toFixed(2)}`, { font: 'Helvetica-Bold' })
-      doc.text(`Payment Method: ${data.method === 'transfer' ? 'Bank Transfer' : 'Hand Delivery'}`)
-      
+      // Driver Information Section
+      doc.fillColor('#1f2937').fontSize(14).font('Helvetica-Bold').text('DRIVER INFORMATION', margin, currentY)
+      currentY += 20
+      currentY = drawTableRow(currentY, 'Information', 'Details', true)
+      currentY = drawTableRow(currentY, 'Driver Name', data.driverName || 'N/A')
+      if (data.driverPhone) {
+        currentY = drawTableRow(currentY, 'Phone Number', data.driverPhone)
+      }
+      currentY = drawTableRow(currentY, 'Submitted To', data.managerName || 'N/A')
+      currentY += 20
+
+      // Order Statistics Section
+      doc.fillColor('#1f2937').fontSize(14).font('Helvetica-Bold').text('ORDER STATISTICS', margin, currentY)
+      currentY += 20
+      currentY = drawTableRow(currentY, 'Metric', 'Count', true)
+      if (data.assignedOrders != null) {
+        currentY = drawTableRow(currentY, 'Assigned Orders', String(data.assignedOrders || 0))
+      }
+      currentY = drawTableRow(currentY, 'Delivered Orders', String(data.totalDeliveredOrders || 0))
+      if (data.cancelledOrders != null) {
+        currentY = drawTableRow(currentY, 'Cancelled Orders', String(data.cancelledOrders || 0))
+      }
+      currentY += 20
+
+      // Financial Summary Section
+      doc.fillColor('#1f2937').fontSize(14).font('Helvetica-Bold').text('FINANCIAL SUMMARY', margin, currentY)
+      currentY += 20
+      currentY = drawTableRow(currentY, 'Description', 'Amount', true)
+      if (data.collectedAmount != null) {
+        currentY = drawTableRow(currentY, 'Total Collected from Customers', `${data.currency} ${(data.collectedAmount || 0).toFixed(2)}`)
+      }
+      currentY = drawTableRow(currentY, 'Already Delivered to Company', `${data.currency} ${(data.deliveredToCompany || 0).toFixed(2)}`)
+      currentY = drawTableRow(currentY, 'Pending Delivery to Company', `${data.currency} ${(data.pendingDeliveryToCompany || 0).toFixed(2)}`)
+      currentY += 20
+
+      // Commission Details Section
+      if (data.totalCommission != null || data.paidCommission != null || data.pendingCommission != null) {
+        doc.fillColor('#1f2937').fontSize(14).font('Helvetica-Bold').text('COMMISSION DETAILS', margin, currentY)
+        currentY += 20
+        currentY = drawTableRow(currentY, 'Commission Type', 'Amount', true)
+        if (data.totalCommission != null) {
+          currentY = drawTableRow(currentY, 'Total Commission Earned', `${data.currency} ${(data.totalCommission || 0).toFixed(2)}`)
+        }
+        if (data.paidCommission != null) {
+          currentY = drawTableRow(currentY, 'Commission Already Paid', `${data.currency} ${(data.paidCommission || 0).toFixed(2)}`)
+        }
+        if (data.pendingCommission != null) {
+          currentY = drawTableRow(currentY, 'Pending Commission', `${data.currency} ${(data.pendingCommission || 0).toFixed(2)}`)
+        }
+        currentY += 20
+      }
+
+      // Current Settlement (Highlighted)
+      doc.fillColor('white').fontSize(14).font('Helvetica-Bold')
+      doc.rect(margin, currentY, pageWidth - 2 * margin, 35).fillAndStroke('#059669', '#047857')
+      doc.text('CURRENT SETTLEMENT AMOUNT', margin + 15, currentY + 10)
+      doc.fontSize(16).text(`${data.currency} ${(data.amount || 0).toFixed(2)}`, margin, currentY + 10, { 
+        align: 'right', 
+        width: pageWidth - 2 * margin - 15 
+      })
+      currentY += 50
+
+      // Payment Details
+      doc.fillColor('#1f2937').fontSize(14).font('Helvetica-Bold').text('PAYMENT DETAILS', margin, currentY)
+      currentY += 20
+      currentY = drawTableRow(currentY, 'Payment Method', data.method === 'transfer' ? 'Bank Transfer' : 'Hand Delivery')
       if (data.note) {
-        doc.text(`Note: ${data.note}`)
+        currentY = drawTableRow(currentY, 'Note', data.note)
       }
-      doc.moveDown()
+      currentY += 20
 
-      // If transfer method and has receipt, add proof section
+      // Payment Proof (if transfer)
       if (data.method === 'transfer' && data.receiptPath) {
-        doc.fontSize(14).font('Helvetica-Bold').text('Payment Proof', { underline: true })
-        doc.moveDown(0.5)
+        doc.fillColor('#1f2937').fontSize(14).font('Helvetica-Bold').text('PAYMENT PROOF', margin, currentY)
+        currentY += 20
         
         try {
           const receiptFullPath = path.join(process.cwd(), data.receiptPath)
           if (fs.existsSync(receiptFullPath)) {
-            // Add image to PDF
             doc.image(receiptFullPath, {
-              fit: [400, 400],
-              align: 'center'
+              fit: [400, 300],
+              align: 'center',
+              valign: 'center'
             })
+            currentY += 320
           } else {
-            doc.fontSize(11).font('Helvetica').text('Proof image attached separately')
+            doc.fontSize(10).font('Helvetica').fillColor('#6b7280')
+            doc.text('Payment proof image attached separately', margin, currentY, { align: 'center' })
+            currentY += 30
           }
         } catch (imgErr) {
           console.error('Error adding image to PDF:', imgErr)
-          doc.fontSize(11).font('Helvetica').text('Proof image attached separately')
+          doc.fontSize(10).font('Helvetica').fillColor('#6b7280')
+          doc.text('Payment proof image attached separately', margin, currentY, { align: 'center' })
+          currentY += 30
         }
-        doc.moveDown()
       }
 
       // Footer
-      doc.moveDown(2)
-      doc.fontSize(9).font('Helvetica').fillColor('gray')
-      doc.text('This is a system-generated document.', { align: 'center' })
-      doc.text(`Generated on ${new Date().toLocaleString()}`, { align: 'center' })
+      const footerY = pageHeight - 60
+      doc.rect(0, footerY, pageWidth, 60).fill('#f3f4f6')
+      doc.fontSize(8).font('Helvetica').fillColor('#6b7280')
+      doc.text('This is a system-generated document. No signature required.', margin, footerY + 15, { align: 'center' })
+      doc.fontSize(7).text('For any queries, please contact your manager or admin.', margin, footerY + 30, { align: 'center' })
+      doc.text(`Document generated on ${new Date().toLocaleString()}`, margin, footerY + 42, { align: 'center' })
 
       // Finalize PDF
       doc.end()

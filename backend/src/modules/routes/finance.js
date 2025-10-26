@@ -1006,18 +1006,37 @@ router.post(
       });
       await doc.save();
       
-      // Generate PDF settlement summary
+      // Generate PDF settlement summary with comprehensive data
       try {
-        const driver = await User.findById(req.user.id).select('firstName lastName');
+        const driver = await User.findById(req.user.id).select('firstName lastName phone commission paidCommission');
         const manager = await User.findById(managerRef).select('firstName lastName');
+        
+        // Get order statistics for the driver
+        const assignedCount = await Order.countDocuments({ deliveryBoy: req.user.id, shipmentStatus: 'assigned' });
+        const cancelledCount = await Order.countDocuments({ 
+          deliveryBoy: req.user.id, 
+          $or: [{ shipmentStatus: 'cancelled' }, { shipmentStatus: 'returned' }] 
+        });
+        
+        // Calculate commission
+        const totalCommission = Number(driver?.commission || 0);
+        const paidCommission = Number(driver?.paidCommission || 0);
+        const pendingCommission = Math.max(0, totalCommission - paidCommission);
         
         const pdfPath = await generateSettlementPDF({
           driverName: `${driver?.firstName || ''} ${driver?.lastName || ''}`.trim() || 'N/A',
+          driverPhone: driver?.phone || '',
           managerName: `${manager?.firstName || ''} ${manager?.lastName || ''}`.trim() || 'N/A',
           totalDeliveredOrders,
+          assignedOrders: assignedCount,
+          cancelledOrders: cancelledCount,
+          collectedAmount: totalCollectedAmount,
           deliveredToCompany,
           pendingDeliveryToCompany: pendingToCompany,
           amount: doc.amount,
+          totalCommission,
+          paidCommission,
+          pendingCommission,
           currency: doc.currency,
           method: doc.method,
           receiptPath: doc.receiptPath,
