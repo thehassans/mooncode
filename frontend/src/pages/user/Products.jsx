@@ -106,15 +106,31 @@ export default function UserProducts() {
   }
   
   function getPricesInStockCurrencies(product) {
-    if (!product?.stockByCountry || !product?.price || !product?.baseCurrency) return []
+    if (!product?.stockByCountry || !product?.price || !product?.baseCurrency) {
+      console.log('Missing data for product:', product?.name, {
+        hasStockByCountry: !!product?.stockByCountry,
+        hasPrice: !!product?.price,
+        hasBaseCurrency: !!product?.baseCurrency
+      })
+      return []
+    }
     
     const prices = []
     const baseCurrency = product.baseCurrency
     const basePrice = product.price
     
+    console.log('Processing prices for:', product.name, {
+      baseCurrency,
+      basePrice,
+      stockByCountry: product.stockByCountry,
+      currencyRatesLoaded: Object.keys(currencyRates).length
+    })
+    
     Object.entries(product.stockByCountry).forEach(([country, stock]) => {
       if (Number(stock || 0) > 0) {
         const currency = getOrderCountryCurrency(country)
+        
+        console.log('Country:', country, 'Currency:', currency, 'Base:', baseCurrency, 'Stock:', stock)
         
         // Skip if same as base currency
         if (currency === baseCurrency) return
@@ -123,12 +139,16 @@ export default function UserProducts() {
         const baseRate = currencyRates[baseCurrency] || 1
         const priceInCurrency = (basePrice * baseRate) / rate
         
+        console.log('Converted price:', priceInCurrency, 'Rate:', rate, 'BaseRate:', baseRate)
+        
         // Avoid duplicates
         if (!prices.find(p => p.currency === currency)) {
           prices.push({ currency, price: priceInCurrency, stock: Number(stock) })
         }
       }
     })
+    
+    console.log('Final prices array for', product.name, ':', prices)
     
     return prices
   }
