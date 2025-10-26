@@ -1983,30 +1983,7 @@ router.post('/:id/return', auth, allowRoles('admin','user','agent','driver'), as
   await ord.save()
   emitOrderChange(ord, 'returned').catch(()=>{})
   
-  // Create notification for user/manager when driver marks order as returned
-  if (req.user.role === 'driver') {
-    try {
-      const orderCreator = await User.findById(ord.createdBy).select('createdBy role').lean()
-      const targetId = orderCreator?.role === 'user' ? String(orderCreator._id) : String(orderCreator?.createdBy)
-      if (targetId) {
-        const driverName = ord.deliveryBoy ? `${ord.deliveryBoy.firstName} ${ord.deliveryBoy.lastName}` : 'Driver'
-        const productName = ord.productId?.name || (ord.items?.[0]?.productId?.name) || 'Product'
-        await createNotification({
-          userId: targetId,
-          type: 'order_returned',
-          title: 'Order Return Request',
-          message: `${driverName} has returned order #${ord.invoiceNumber || String(ord._id).slice(-6)} (${productName}). Reason: ${reason || 'Not specified'}`,
-          relatedId: ord._id,
-          relatedType: 'Order',
-          triggeredBy: req.user.id,
-          triggeredByRole: 'driver',
-          metadata: { requiresApproval: true, action: 'verify_return' }
-        })
-      }
-    } catch (err) {
-      console.error('Failed to create return notification:', err)
-    }
-  }
+  // No notification here - notification will be created when driver submits to company via /return/submit
   
   res.json({ message: 'Order marked as returned. Stock will be restored after verification.', order: ord })
 })
@@ -2033,30 +2010,7 @@ router.post('/:id/cancel', auth, allowRoles('admin','user','agent','manager','dr
   await ord.save()
   emitOrderChange(ord, 'cancelled').catch(()=>{})
   
-  // Create notification for user/manager when driver cancels an order
-  if (req.user.role === 'driver') {
-    try {
-      const orderCreator = await User.findById(ord.createdBy).select('createdBy role').lean()
-      const targetId = orderCreator?.role === 'user' ? String(orderCreator._id) : String(orderCreator?.createdBy)
-      if (targetId) {
-        const driverName = ord.deliveryBoy ? `${ord.deliveryBoy.firstName} ${ord.deliveryBoy.lastName}` : 'Driver'
-        const productName = ord.productId?.name || (ord.items?.[0]?.productId?.name) || 'Product'
-        await createNotification({
-          userId: targetId,
-          type: 'order_cancelled',
-          title: 'Order Cancellation Request',
-          message: `${driverName} has cancelled order #${ord.invoiceNumber || String(ord._id).slice(-6)} (${productName}). Reason: ${reason || 'Not specified'}`,
-          relatedId: ord._id,
-          relatedType: 'Order',
-          triggeredBy: req.user.id,
-          triggeredByRole: 'driver',
-          metadata: { requiresApproval: true, action: 'verify_cancellation' }
-        })
-      }
-    } catch (err) {
-      console.error('Failed to create cancellation notification:', err)
-    }
-  }
+  // No notification here - notification will be created when driver submits to company via /return/submit
   
   res.json({ message: 'Order cancelled. Stock will be restored after verification.', order: ord })
 })
