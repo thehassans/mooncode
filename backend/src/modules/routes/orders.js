@@ -1979,6 +1979,29 @@ router.post('/:id/return', auth, allowRoles('admin','user','agent','driver'), as
   // DO NOT restore stock here - it will be restored after manager/user verification
   await ord.save()
   emitOrderChange(ord, 'returned').catch(()=>{})
+  
+  // Create notification for user/manager when driver marks order as returned
+  if (req.user.role === 'driver') {
+    try {
+      const orderCreator = await User.findById(ord.createdBy).select('createdBy role').lean()
+      const targetId = orderCreator?.role === 'user' ? String(orderCreator._id) : String(orderCreator?.createdBy)
+      if (targetId) {
+        await createNotification({
+          userId: targetId,
+          type: 'order_returned',
+          title: 'Order Returned by Driver',
+          message: `Driver has marked order #${ord.invoiceNumber || String(ord._id).slice(-6)} as returned. Reason: ${reason || 'Not specified'}. Please verify to restore stock.`,
+          relatedId: ord._id,
+          relatedType: 'Order',
+          triggeredBy: req.user.id,
+          triggeredByRole: 'driver'
+        })
+      }
+    } catch (err) {
+      console.error('Failed to create return notification:', err)
+    }
+  }
+  
   res.json({ message: 'Order marked as returned. Stock will be restored after verification.', order: ord })
 })
 
@@ -2000,6 +2023,29 @@ router.post('/:id/cancel', auth, allowRoles('admin','user','agent','manager','dr
   // DO NOT restore stock here - it will be restored after manager/user verification
   await ord.save()
   emitOrderChange(ord, 'cancelled').catch(()=>{})
+  
+  // Create notification for user/manager when driver cancels an order
+  if (req.user.role === 'driver') {
+    try {
+      const orderCreator = await User.findById(ord.createdBy).select('createdBy role').lean()
+      const targetId = orderCreator?.role === 'user' ? String(orderCreator._id) : String(orderCreator?.createdBy)
+      if (targetId) {
+        await createNotification({
+          userId: targetId,
+          type: 'order_cancelled',
+          title: 'Order Cancelled by Driver',
+          message: `Driver has cancelled order #${ord.invoiceNumber || String(ord._id).slice(-6)}. Reason: ${reason || 'Not specified'}. Please verify to restore stock.`,
+          relatedId: ord._id,
+          relatedType: 'Order',
+          triggeredBy: req.user.id,
+          triggeredByRole: 'driver'
+        })
+      }
+    } catch (err) {
+      console.error('Failed to create cancellation notification:', err)
+    }
+  }
+  
   res.json({ message: 'Order cancelled. Stock will be restored after verification.', order: ord })
 })
 
@@ -2229,8 +2275,24 @@ router.post('/:id/return/submit', auth, allowRoles('driver'), async (req, res) =
       const targetId = ownerId?.role === 'user' ? String(ownerId._id) : String(ownerId?.createdBy)
       if (targetId) {
         io.to(`user:${targetId}`).emit('order.return_submitted', { orderId: String(order._id) })
+        
+        // Create persistent notification for the owner/manager
+        const notificationType = status === 'cancelled' ? 'order_cancelled' : 'order_returned'
+        const actionText = status === 'cancelled' ? 'cancellation' : 'return'
+        await createNotification({
+          userId: targetId,
+          type: notificationType,
+          title: `Order ${status === 'cancelled' ? 'Cancellation' : 'Return'} Submitted for Approval`,
+          message: `Driver has submitted order #${order.invoiceNumber || String(order._id).slice(-6)} ${actionText} request for verification. Reason: ${order.returnReason || 'Not specified'}`,
+          relatedId: order._id,
+          relatedType: 'Order',
+          triggeredBy: req.user.id,
+          triggeredByRole: 'driver'
+        })
       }
-    } catch {}
+    } catch (err) {
+      console.error('Failed to send notification:', err)
+    }
     
     res.json({ message: 'Order submitted to company for verification', order })
   } catch (err) {
