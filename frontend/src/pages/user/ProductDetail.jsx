@@ -233,6 +233,33 @@ export default function ProductDetail() {
     }
     return countryToCurrency[orderCountry] || 'AED'
   }
+  
+  function getPricesInStockCurrencies() {
+    // Get prices in currencies where stock exists
+    if (!product?.stockByCountry || !product?.price || !product?.baseCurrency) return []
+    
+    const prices = []
+    const baseCurrency = product.baseCurrency
+    const basePrice = product.price
+    
+    Object.entries(product.stockByCountry).forEach(([country, stock]) => {
+      if (Number(stock || 0) > 0) {
+        const currency = getOrderCountryCurrency(country)
+        const rate = currencyRates[currency] || 1
+        const baseRate = currencyRates[baseCurrency] || 1
+        const priceInCurrency = (basePrice * baseRate) / rate
+        
+        prices.push({
+          country,
+          currency,
+          price: priceInCurrency,
+          stock: Number(stock)
+        })
+      }
+    })
+    
+    return prices
+  }
 
   function getStatusColor(status) {
     const s = String(status || '').toLowerCase()
@@ -351,12 +378,27 @@ export default function ProductDetail() {
           <div style={{ display: 'grid', gap: 16 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
               <div>
-                <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 4 }}>Price (AED)</div>
+                <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 4 }}>Base Price</div>
                 <div style={{ fontSize: 24, fontWeight: 800 }}>
-                  AED {stats.priceInAED.toFixed(2)}
+                  {product.baseCurrency} {product.price?.toFixed(2)}
                 </div>
                 <div style={{ fontSize: 12, opacity: 0.5, marginTop: 4 }}>
-                  Original: {product.baseCurrency} {product.price?.toFixed(2)}
+                  AED {stats.priceInAED.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 4 }}>Prices (Stock Available)</div>
+                <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+                  {getPricesInStockCurrencies().length > 0 ? (
+                    getPricesInStockCurrencies().map((p, idx) => (
+                      <div key={idx} style={{ marginBottom: 4 }}>
+                        <span style={{ fontWeight: 600 }}>{p.currency} {p.price.toFixed(2)}</span>
+                        <span style={{ opacity: 0.5, fontSize: 11, marginLeft: 6 }}>({p.country}: {p.stock} units)</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ opacity: 0.5 }}>No stock available</div>
+                  )}
                 </div>
               </div>
               <div>
@@ -364,11 +406,11 @@ export default function ProductDetail() {
                 <div style={{ fontSize: 16, fontWeight: 600 }}>{product.category || 'N/A'}</div>
               </div>
               <div>
-                <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 4 }}>Total Stock</div>
+                <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 4 }}>Available Stock</div>
                 <div style={{ fontSize: 24, fontWeight: 800, color: getAvailableStock() < 10 ? '#dc2626' : '#059669' }}>
-                  {getTotalStock()}
+                  {getAvailableStock()}
                 </div>
-                <div style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>Available: {getAvailableStock()}</div>
+                <div style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>Total Purchased: {getTotalStock()}</div>
               </div>
             </div>
             
