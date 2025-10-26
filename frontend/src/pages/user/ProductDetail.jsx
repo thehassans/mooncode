@@ -81,6 +81,17 @@ export default function ProductDetail() {
       try {
         const ordersData = await apiGet(`/api/orders/by-product/${id}`)
         console.log('Orders for this product:', ordersData.orders?.length)
+        // Debug: Log first order to see structure
+        if (ordersData.orders && ordersData.orders.length > 0) {
+          console.log('Sample order structure:', {
+            invoiceNumber: ordersData.orders[0].invoiceNumber,
+            total: ordersData.orders[0].total,
+            discount: ordersData.orders[0].discount,
+            quantity: ordersData.orders[0].quantity,
+            items: ordersData.orders[0].items,
+            productId: ordersData.orders[0].productId
+          })
+        }
         setOrders((ordersData.orders || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
       } catch (ordersErr) {
         console.error('Failed to load orders:', ordersErr)
@@ -602,6 +613,19 @@ export default function ProductDetail() {
                   let productAmount = 0
                   const orderCountryCurrency = getOrderCountryCurrency(order.orderCountry)
                   
+                  // Debug first order
+                  if (idx === 0) {
+                    console.log('First order calculation:', {
+                      invoiceNumber: order.invoiceNumber,
+                      hasItems: Array.isArray(order.items) && order.items.length > 0,
+                      itemsLength: order.items?.length,
+                      total: order.total,
+                      discount: order.discount,
+                      quantity: order.quantity,
+                      productId: order.productId
+                    })
+                  }
+                  
                   if (Array.isArray(order.items) && order.items.length > 0) {
                     // Multi-item order - find this product
                     const item = order.items.find(item => String(item.productId?._id || item.productId) === id)
@@ -617,6 +641,17 @@ export default function ProductDetail() {
                       const allItemsAreThisProduct = order.items.every(i => 
                         String(i.productId?._id || i.productId) === id
                       )
+                      
+                      if (idx === 0) {
+                        console.log('Multi-item calculation:', {
+                          quantity,
+                          orderTotal,
+                          orderDiscount,
+                          orderFinalAmount,
+                          allItemsAreThisProduct,
+                          itemsInOrder: order.items.map(i => ({ id: String(i.productId?._id || i.productId), qty: i.quantity }))
+                        })
+                      }
                       
                       if (allItemsAreThisProduct) {
                         // All items in this order are this product, show full order amount
@@ -638,6 +673,15 @@ export default function ProductDetail() {
                     const orderDiscount = Number(order.discount || 0)
                     // Final amount = total - discount
                     productAmount = orderTotal - orderDiscount
+                    
+                    if (idx === 0) {
+                      console.log('Single product calculation:', {
+                        quantity,
+                        orderTotal,
+                        orderDiscount,
+                        productAmount
+                      })
+                    }
                   }
                   
                   // Convert to AED for comparison
