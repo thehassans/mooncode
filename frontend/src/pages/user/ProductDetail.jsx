@@ -197,6 +197,11 @@ export default function ProductDetail() {
   }, [orders, product, id, currencyRates])
 
   function getTotalStock() {
+    // Return total purchased inventory
+    return Number(product?.totalPurchased || 0)
+  }
+  
+  function getAvailableStock() {
     // Use warehouse data for accurate available stock (totalPurchased - active orders)
     if (warehouseData?.stockLeft) {
       return Number(warehouseData.stockLeft.total || 0)
@@ -204,6 +209,22 @@ export default function ProductDetail() {
     // Fallback to product.stockByCountry if warehouse data not available
     if (!product?.stockByCountry) return 0
     return Object.values(product.stockByCountry).reduce((sum, val) => sum + Number(val || 0), 0)
+  }
+  
+  function getOrderCountryCurrency(orderCountry) {
+    // Map order country to its currency
+    const countryToCurrency = {
+      'UAE': 'AED',
+      'United Arab Emirates': 'AED',
+      'KSA': 'SAR',
+      'Saudi Arabia': 'SAR',
+      'Oman': 'OMR',
+      'Bahrain': 'BHD',
+      'Kuwait': 'KWD',
+      'Qatar': 'QAR',
+      'India': 'INR'
+    }
+    return countryToCurrency[orderCountry] || 'AED'
   }
 
   function getStatusColor(status) {
@@ -337,10 +358,10 @@ export default function ProductDetail() {
               </div>
               <div>
                 <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 4 }}>Total Stock</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: getTotalStock() < 10 ? '#dc2626' : '#059669' }}>
+                <div style={{ fontSize: 24, fontWeight: 800, color: getAvailableStock() < 10 ? '#dc2626' : '#059669' }}>
                   {getTotalStock()}
                 </div>
-                <div style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>Available (excl. active orders)</div>
+                <div style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>Available: {getAvailableStock()}</div>
               </div>
             </div>
             
@@ -572,10 +593,15 @@ export default function ProductDetail() {
                     productPrice = Number(order.productPrice || product?.price || 0)
                   }
                   
-                  // Calculate product-specific amount
-                  const productAmount = productPrice * quantity
-                  const currency = order.currency || product.baseCurrency
-                  const productAmountAED = productAmount * (currencyRates[currency] || 1)
+                  // Calculate product-specific amount in order country's currency
+                  const orderCountryCurrency = getOrderCountryCurrency(order.orderCountry)
+                  const productBaseCurrency = product?.baseCurrency || 'SAR'
+                  
+                  // Product price is in base currency, convert to order country currency
+                  const priceInOrderCurrency = productPrice * (currencyRates[productBaseCurrency] || 1) / (currencyRates[orderCountryCurrency] || 1)
+                  const productAmount = priceInOrderCurrency * quantity
+                  
+                  const productAmountAED = productAmount * (currencyRates[orderCountryCurrency] || 1)
 
                   return (
                     <tr
@@ -615,7 +641,7 @@ export default function ProductDetail() {
                       <td style={{ padding: '16px', fontWeight: 700 }}>{quantity}</td>
                       <td style={{ padding: '16px' }}>
                         <div style={{ fontWeight: 700, marginBottom: 2 }}>
-                          {currency} {productAmount.toFixed(2)}
+                          {orderCountryCurrency} {productAmount.toFixed(2)}
                         </div>
                         <div style={{ fontSize: 11, opacity: 0.6 }}>
                           AED {productAmountAED.toFixed(2)}
