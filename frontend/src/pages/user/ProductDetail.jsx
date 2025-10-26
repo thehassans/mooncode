@@ -81,11 +81,6 @@ export default function ProductDetail() {
       try {
         const ordersData = await apiGet(`/api/orders/by-product/${id}`)
         console.log('Orders for this product:', ordersData.orders?.length)
-        // Debug: Log ENTIRE first order to see structure
-        if (ordersData.orders && ordersData.orders.length > 0) {
-          console.log('=== FULL ORDER FROM BACKEND ===')
-          console.log(JSON.stringify(ordersData.orders[0], null, 2))
-        }
         setOrders((ordersData.orders || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
       } catch (ordersErr) {
         console.error('Failed to load orders:', ordersErr)
@@ -145,7 +140,7 @@ export default function ProductDetail() {
       
       const orderTotal = Number(o.total || 0)
       const orderDiscount = Number(o.discount || 0)
-      const orderFinalAmount = orderTotal - orderDiscount
+      const orderFinalAmount = orderTotal  // Don't subtract discount, total is already final
       
       if (Array.isArray(o.items) && o.items.length > 0) {
         // Multi-item order
@@ -594,10 +589,10 @@ export default function ProductDetail() {
                   let productAmount = 0
                   const orderCountryCurrency = getOrderCountryCurrency(order.orderCountry)
                   
-                  // Calculate order final amount (after discount)
+                  // Use order.total directly - it's already the final amount
                   const orderTotal = Number(order.total || 0)
                   const orderDiscount = Number(order.discount || 0)
-                  const orderFinalAmount = orderTotal - orderDiscount
+                  const orderFinalAmount = orderTotal  // Don't subtract discount, total is already final
                   
                   // Determine quantity for this product
                   if (Array.isArray(order.items) && order.items.length > 0) {
@@ -612,65 +607,22 @@ export default function ProductDetail() {
                       order.items.map(i => String(i.productId?._id || i.productId))
                     )
                     
-                    if (idx === 0) {
-                      console.log('ID Comparison Debug:', {
-                        currentProductId: id,
-                        uniqueProducts: Array.from(uniqueProducts),
-                        uniqueProductsSize: uniqueProducts.size,
-                        hasCurrentProduct: uniqueProducts.has(id),
-                        itemsInOrder: order.items.map(i => ({
-                          productId: String(i.productId?._id || i.productId),
-                          productIdRaw: i.productId,
-                          quantity: i.quantity
-                        }))
-                      })
-                    }
-                    
                     if (uniqueProducts.size === 1 && uniqueProducts.has(id)) {
                       // Only this product in order - show full amount
                       productAmount = orderFinalAmount
-                      if (idx === 0) console.log('→ Using full order amount:', productAmount)
                     } else {
                       // Mixed products - distribute by quantity
                       const totalOrderQuantity = order.items.reduce((sum, i) => sum + Number(i.quantity || 1), 0)
                       productAmount = totalOrderQuantity > 0 ? (quantity / totalOrderQuantity) * orderFinalAmount : 0
-                      if (idx === 0) console.log('→ Distributing by quantity:', productAmount)
                     }
                   } else if (String(order.productId?._id || order.productId) === id) {
                     // Legacy single product order
                     quantity = Number(order.quantity || 1)
                     productAmount = orderFinalAmount
-                    if (idx === 0) console.log('→ Legacy single product:', productAmount)
-                  } else {
-                    if (idx === 0) console.log('→ NO MATCH! productAmount will be 0')
-                  }
-                  
-                  // Debug logging for first order
-                  if (idx === 0) {
-                    console.log('=== ORDER AMOUNT CALCULATION ==', {
-                      invoiceNumber: order.invoiceNumber,
-                      orderTotal,
-                      orderDiscount,
-                      orderFinalAmount,
-                      quantity,
-                      productAmount,
-                      hasItems: Array.isArray(order.items) && order.items.length > 0,
-                      itemsCount: order.items?.length || 0
-                    })
                   }
                   
                   // Convert to AED for comparison
                   const productAmountAED = productAmount * (currencyRates[orderCountryCurrency] || 1)
-                  
-                  if (idx === 0) {
-                    console.log('Final amount to display:', {
-                      invoiceNumber: order.invoiceNumber,
-                      quantity,
-                      productAmount,
-                      orderCountryCurrency,
-                      productAmountAED
-                    })
-                  }
 
                   return (
                     <tr
