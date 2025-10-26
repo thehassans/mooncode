@@ -13,6 +13,7 @@ const RemittanceSchema = new mongoose.Schema({
   method: { type: String, enum: ['hand','transfer'], default: 'hand' },
   paidToName: { type: String, default: '' },
   receiptPath: { type: String, default: '' },
+  pdfPath: { type: String, default: '' },
   proofOk: { type: Boolean, default: null },
   status: { type: String, enum: ['pending','accepted','rejected'], default: 'pending', index: true },
   acceptedAt: { type: Date },

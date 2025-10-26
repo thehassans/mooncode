@@ -529,7 +529,22 @@ export default function UserFinances() {
                             )}
                           </td>
                           <td style={{ padding:'8px 10px' }}>
-                            <button className="btn small" disabled={!pending} onClick={() => pending && onSendDriver(pending)}>Accept</button>
+                            <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+                              <button className="btn small" disabled={!pending} onClick={() => pending && onSendDriver(pending)}>Accept</button>
+                              {pending?.pdfPath && (
+                                <a 
+                                  href={pending.pdfPath}
+                                  download
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn small"
+                                  style={{background:'#dc2626', color:'white', padding:'4px 10px', fontSize:12, whiteSpace:'nowrap'}}
+                                  title="Download Settlement PDF"
+                                >
+                                  📄 PDF
+                                </a>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       )

@@ -14,6 +14,7 @@ import Product from "../models/Product.js";
 import { getIO } from "../config/socket.js";
 import Setting from "../models/Setting.js";
 import { generatePayoutReceiptPDF } from "../utils/payoutReceipt.js";
+import { generateSettlementPDF } from "../../utils/generateSettlementPDF.js";
 
 const router = express.Router();
 
@@ -1004,6 +1005,34 @@ router.post(
         status: "pending",
       });
       await doc.save();
+      
+      // Generate PDF settlement summary
+      try {
+        const driver = await User.findById(req.user.id).select('firstName lastName');
+        const manager = await User.findById(managerRef).select('firstName lastName');
+        
+        const pdfPath = await generateSettlementPDF({
+          driverName: `${driver?.firstName || ''} ${driver?.lastName || ''}`.trim() || 'N/A',
+          managerName: `${manager?.firstName || ''} ${manager?.lastName || ''}`.trim() || 'N/A',
+          totalDeliveredOrders,
+          deliveredToCompany,
+          pendingDeliveryToCompany: pendingToCompany,
+          amount: doc.amount,
+          currency: doc.currency,
+          method: doc.method,
+          receiptPath: doc.receiptPath,
+          fromDate: doc.fromDate,
+          toDate: doc.toDate,
+          note: doc.note
+        });
+        
+        doc.pdfPath = pdfPath;
+        await doc.save();
+      } catch (pdfErr) {
+        console.error('Failed to generate settlement PDF:', pdfErr);
+        // Don't fail the entire operation if PDF generation fails
+      }
+      
       try {
         const io = getIO();
         io.to(`user:${String(managerRef)}`).emit("remittance.created", {

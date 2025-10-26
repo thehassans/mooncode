@@ -288,14 +288,29 @@ export default function DriverFinances(){
                       <td style={{padding:'10px 12px', textAlign:'center'}}>
                         <div style={{display:'flex', gap:6, alignItems:'center', justifyContent:'center', flexWrap:'wrap'}}>
                           {pendingRemit && (
-                            <button 
-                              className="btn success"
-                              onClick={()=> openAcceptModal(pendingRemit._id, d.name, pendingRemit.amount)}
-                              disabled={accepting === pendingRemit._id}
-                              style={{padding:'6px 12px', fontSize:13, whiteSpace:'nowrap'}}
-                            >
-                              {accepting === pendingRemit._id ? '⏳ Accepting...' : `✓ Accept ${currency} ${num(pendingRemit.amount)}`}
-                            </button>
+                            <>
+                              <button 
+                                className="btn success"
+                                onClick={()=> openAcceptModal(pendingRemit._id, d.name, pendingRemit.amount)}
+                                disabled={accepting === pendingRemit._id}
+                                style={{padding:'6px 12px', fontSize:13, whiteSpace:'nowrap'}}
+                              >
+                                {accepting === pendingRemit._id ? '⏳ Accepting...' : `✓ Accept ${currency} ${num(pendingRemit.amount)}`}
+                              </button>
+                              {pendingRemit.pdfPath && (
+                                <a 
+                                  href={pendingRemit.pdfPath}
+                                  download
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn"
+                                  style={{padding:'6px 12px', fontSize:13, whiteSpace:'nowrap', background:'#dc2626', color:'white'}}
+                                  title="Download Settlement PDF"
+                                >
+                                  📄 PDF
+                                </a>
+                              )}
+                            </>
                           )}
                           <button 
                             className="btn secondary"
