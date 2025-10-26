@@ -147,16 +147,47 @@ export default function Notifications() {
   function getNotificationIcon(type) {
     switch (type) {
       case 'order_cancelled':
+        return (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+        )
       case 'order_returned':
-        return '📦'
+        return (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+            <path d="M9 10l3-3 3 3"/>
+          </svg>
+        )
       case 'amount_approval':
+      case 'expense_approval':
+        return (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+            <path d="M16.24 7.76l1.5-1.5"/>
+          </svg>
+        )
       case 'driver_settlement':
       case 'manager_remittance':
       case 'agent_remittance':
       case 'investor_remittance':
-      case 'expense_approval':
-        return '💰'
-      default: return '🔔'
+        return (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="12" y1="1" x2="12" y2="23"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        )
+      default:
+        return (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        )
     }
   }
 
@@ -171,6 +202,50 @@ export default function Notifications() {
       case 'amount_approval': return 'Amount Approval'
       case 'expense_approval': return 'Expense Approval'
       default: return 'Notification'
+    }
+  }
+
+  function getNotificationStyle(type) {
+    switch (type) {
+      case 'order_cancelled':
+        return {
+          gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+          bg: 'rgba(239, 68, 68, 0.05)',
+          border: '#ef4444',
+          color: '#ef4444'
+        }
+      case 'order_returned':
+        return {
+          gradient: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+          bg: 'rgba(249, 115, 22, 0.05)',
+          border: '#f97316',
+          color: '#f97316'
+        }
+      case 'amount_approval':
+      case 'expense_approval':
+        return {
+          gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+          bg: 'rgba(139, 92, 246, 0.05)',
+          border: '#8b5cf6',
+          color: '#8b5cf6'
+        }
+      case 'driver_settlement':
+      case 'manager_remittance':
+      case 'agent_remittance':
+      case 'investor_remittance':
+        return {
+          gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+          bg: 'rgba(16, 185, 129, 0.05)',
+          border: '#10b981',
+          color: '#10b981'
+        }
+      default:
+        return {
+          gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+          bg: 'rgba(59, 130, 246, 0.05)',
+          border: '#3b82f6',
+          color: '#3b82f6'
+        }
     }
   }
 
@@ -198,38 +273,95 @@ export default function Notifications() {
       </div>
 
       {/* Filters */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>Status:</span>
-            <select 
-              className="input" 
-              value={filter} 
-              onChange={(e) => setFilter(e.target.value)}
-              style={{ minWidth: 120 }}
+      <div 
+        className="card" 
+        style={{ 
+          marginBottom: 16,
+          background: 'linear-gradient(135deg, var(--panel) 0%, var(--panel-2) 100%)',
+          border: '2px solid var(--border)',
+          borderRadius: 16,
+          padding: 20
+        }}
+      >
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: '1 1 auto' }}>
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                flexShrink: 0
+              }}
             >
-              <option value="all">All</option>
-              <option value="unread">Unread</option>
-              <option value="read">Read</option>
-            </select>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+              </svg>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, color: 'var(--text)' }}>
+                Filter Notifications
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                Customize your view by status and type
+              </div>
+            </div>
           </div>
           
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>Type:</span>
-            <select 
-              className="input" 
-              value={typeFilter} 
-              onChange={(e) => setTypeFilter(e.target.value)}
-              style={{ minWidth: 140 }}
-            >
-              <option value="all">All Types</option>
-              <option value="order_cancelled">Order Cancellations</option>
-              <option value="order_returned">Order Returns</option>
-              <option value="amount_approval">Amount Approvals</option>
-              <option value="driver_settlement">Driver Settlements</option>
-              <option value="manager_remittance">Manager Remittances</option>
-              <option value="agent_remittance">Agent Remittances</option>
-            </select>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Status
+              </label>
+              <select 
+                className="input" 
+                value={filter} 
+                onChange={(e) => setFilter(e.target.value)}
+                style={{ 
+                  minWidth: 140,
+                  padding: '8px 12px',
+                  borderRadius: 10,
+                  border: '2px solid var(--border)',
+                  fontWeight: 600,
+                  fontSize: 13
+                }}
+              >
+                <option value="all">📋 All Status</option>
+                <option value="unread">🔵 Unread Only</option>
+                <option value="read">✓ Read Only</option>
+              </select>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Category
+              </label>
+              <select 
+                className="input" 
+                value={typeFilter} 
+                onChange={(e) => setTypeFilter(e.target.value)}
+                style={{ 
+                  minWidth: 180,
+                  padding: '8px 12px',
+                  borderRadius: 10,
+                  border: '2px solid var(--border)',
+                  fontWeight: 600,
+                  fontSize: 13
+                }}
+              >
+                <option value="all">🎯 All Categories</option>
+                <option value="order_cancelled">❌ Order Cancellations</option>
+                <option value="order_returned">📦 Order Returns</option>
+                <option value="amount_approval">⏰ Amount Approvals</option>
+                <option value="driver_settlement">💵 Driver Settlements</option>
+                <option value="manager_remittance">💰 Manager Remittances</option>
+                <option value="agent_remittance">💸 Agent Remittances</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -247,102 +379,287 @@ export default function Notifications() {
             <div>You're all caught up! New activities will appear here.</div>
           </div>
         ) : (
-          <div style={{ display: 'grid', gap: 1 }}>
-            {notifications.map((notification, index) => (
-              <div
-                key={notification._id}
-                className={`notification-item ${!notification.read ? 'unread' : ''}`}
-                style={{
-                  padding: 16,
-                  borderBottom: index < notifications.length - 1 ? '1px solid var(--border)' : 'none',
-                  background: !notification.read ? 'var(--panel-2)' : 'transparent',
-                  borderLeft: !notification.read ? '3px solid var(--primary)' : '3px solid transparent',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onClick={() => !notification.read && markAsRead(notification._id)}
-              >
-                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                  <div style={{ fontSize: 24, flexShrink: 0 }}>
-                    {getNotificationIcon(notification.type)}
-                  </div>
+          <div style={{ display: 'grid', gap: 16, padding: 16 }}>
+            {notifications.map((notification) => {
+              const style = getNotificationStyle(notification.type)
+              return (
+                <div
+                  key={notification._id}
+                  style={{
+                    position: 'relative',
+                    borderRadius: 16,
+                    border: `2px solid ${style.border}`,
+                    background: style.bg,
+                    overflow: 'hidden',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: !notification.read ? 'scale(1)' : 'scale(0.98)',
+                    opacity: !notification.read ? 1 : 0.7
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.02) translateY(-4px)'
+                    e.currentTarget.style.boxShadow = `0 20px 25px -5px ${style.color}20, 0 10px 10px -5px ${style.color}10`
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = !notification.read ? 'scale(1)' : 'scale(0.98)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                >
+                  {/* Gradient Header Bar */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 4,
+                      background: style.gradient
+                    }}
+                  />
                   
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span className="badge" style={{ fontSize: 11 }}>
-                        {getTypeLabel(notification.type)}
-                      </span>
-                      <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                        {formatDate(notification.createdAt)}
-                      </span>
-                      {!notification.read && (
-                        <div 
-                          style={{ 
-                            width: 8, 
-                            height: 8, 
-                            borderRadius: '50%', 
-                            background: 'var(--primary)' 
-                          }} 
-                        />
-                      )}
-                    </div>
-                    
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                      {notification.title}
-                    </div>
-                    
-                    <div style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.4 }}>
-                      {notification.message}
-                    </div>
-                    
-                    {notification.triggeredByRole && (
-                      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
-                        Triggered by {notification.triggeredByRole}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    {notification.metadata?.requiresApproval && (
-                      <button
-                        className="btn"
-                        style={{ padding: '4px 12px', fontSize: 12, background: '#10b981', border: 'none' }}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          approveNotification(notification)
-                        }}
-                      >
-                        ✓ Approve
-                      </button>
-                    )}
-                    {!notification.read && (
-                      <button
-                        className="btn secondary"
-                        style={{ padding: '4px 8px', fontSize: 12 }}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          markAsRead(notification._id)
-                        }}
-                      >
-                        Mark Read
-                      </button>
-                    )}
-                    <button
-                      className="btn danger"
-                      style={{ padding: '4px 8px', fontSize: 12 }}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (confirm('Delete this notification?')) {
-                          deleteNotification(notification._id)
-                        }
+                  {/* Notification Badge */}
+                  {notification.metadata?.requiresApproval && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 16,
+                        right: 16,
+                        padding: '4px 12px',
+                        background: style.gradient,
+                        color: 'white',
+                        borderRadius: 20,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        boxShadow: `0 4px 12px ${style.color}40`,
+                        animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
                       }}
                     >
-                      Delete
-                    </button>
+                      Action Required
+                    </div>
+                  )}
+                  
+                  <div style={{ padding: 20, paddingTop: 24 }}>
+                    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                      {/* Icon Container */}
+                      <div
+                        style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: 14,
+                          background: style.gradient,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          color: 'white',
+                          boxShadow: `0 8px 16px -4px ${style.color}40`
+                        }}
+                      >
+                        {getNotificationIcon(notification.type)}
+                      </div>
+                      
+                      {/* Content */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {/* Meta Info */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+                          <span
+                            style={{
+                              padding: '4px 10px',
+                              background: `${style.color}15`,
+                              color: style.color,
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px'
+                            }}
+                          >
+                            {getTypeLabel(notification.type)}
+                          </span>
+                          <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500 }}>
+                            {formatDate(notification.createdAt)}
+                          </span>
+                          {!notification.read && (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '4px 10px',
+                                background: style.gradient,
+                                color: 'white',
+                                borderRadius: 6,
+                                fontSize: 10,
+                                fontWeight: 700
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: '50%',
+                                  background: 'white',
+                                  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                                }}
+                              />
+                              NEW
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Title */}
+                        <h3
+                          style={{
+                            fontSize: 16,
+                            fontWeight: 700,
+                            marginBottom: 8,
+                            color: 'var(--text)',
+                            lineHeight: 1.3
+                          }}
+                        >
+                          {notification.title}
+                        </h3>
+                        
+                        {/* Message */}
+                        <p
+                          style={{
+                            color: 'var(--muted)',
+                            fontSize: 14,
+                            lineHeight: 1.6,
+                            marginBottom: 12
+                          }}
+                        >
+                          {notification.message}
+                        </p>
+                        
+                        {/* Triggered By */}
+                        {notification.triggeredByRole && (
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              padding: '6px 12px',
+                              background: 'var(--panel)',
+                              border: '1px solid var(--border)',
+                              borderRadius: 8,
+                              fontSize: 12,
+                              color: 'var(--muted)',
+                              marginBottom: 16
+                            }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                              <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                            Triggered by {notification.triggeredByRole}
+                          </div>
+                        )}
+                        
+                        {/* Action Buttons */}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {notification.metadata?.requiresApproval && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                approveNotification(notification)
+                              }}
+                              style={{
+                                padding: '10px 20px',
+                                background: style.gradient,
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 10,
+                                fontSize: 13,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                boxShadow: `0 4px 12px ${style.color}30`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)'
+                                e.currentTarget.style.boxShadow = `0 8px 20px ${style.color}40`
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)'
+                                e.currentTarget.style.boxShadow = `0 4px 12px ${style.color}30`
+                              }}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                              </svg>
+                              Approve Request
+                            </button>
+                          )}
+                          {!notification.read && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                markAsRead(notification._id)
+                              }}
+                              style={{
+                                padding: '10px 16px',
+                                background: 'var(--panel)',
+                                color: 'var(--text)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 10,
+                                fontSize: 13,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'var(--panel-2)'
+                                e.currentTarget.style.borderColor = style.color
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'var(--panel)'
+                                e.currentTarget.style.borderColor = 'var(--border)'
+                              }}
+                            >
+                              Mark as Read
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (confirm('Delete this notification?')) {
+                                deleteNotification(notification._id)
+                              }
+                            }}
+                            style={{
+                              padding: '10px 16px',
+                              background: 'transparent',
+                              color: '#ef4444',
+                              border: '1px solid #ef444420',
+                              borderRadius: 10,
+                              fontSize: 13,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#ef444410'
+                              e.currentTarget.style.borderColor = '#ef4444'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'transparent'
+                              e.currentTarget.style.borderColor = '#ef444420'
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
         
