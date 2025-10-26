@@ -612,18 +612,37 @@ export default function ProductDetail() {
                       order.items.map(i => String(i.productId?._id || i.productId))
                     )
                     
+                    if (idx === 0) {
+                      console.log('ID Comparison Debug:', {
+                        currentProductId: id,
+                        uniqueProducts: Array.from(uniqueProducts),
+                        uniqueProductsSize: uniqueProducts.size,
+                        hasCurrentProduct: uniqueProducts.has(id),
+                        itemsInOrder: order.items.map(i => ({
+                          productId: String(i.productId?._id || i.productId),
+                          productIdRaw: i.productId,
+                          quantity: i.quantity
+                        }))
+                      })
+                    }
+                    
                     if (uniqueProducts.size === 1 && uniqueProducts.has(id)) {
                       // Only this product in order - show full amount
                       productAmount = orderFinalAmount
+                      if (idx === 0) console.log('→ Using full order amount:', productAmount)
                     } else {
                       // Mixed products - distribute by quantity
                       const totalOrderQuantity = order.items.reduce((sum, i) => sum + Number(i.quantity || 1), 0)
                       productAmount = totalOrderQuantity > 0 ? (quantity / totalOrderQuantity) * orderFinalAmount : 0
+                      if (idx === 0) console.log('→ Distributing by quantity:', productAmount)
                     }
                   } else if (String(order.productId?._id || order.productId) === id) {
                     // Legacy single product order
                     quantity = Number(order.quantity || 1)
                     productAmount = orderFinalAmount
+                    if (idx === 0) console.log('→ Legacy single product:', productAmount)
+                  } else {
+                    if (idx === 0) console.log('→ NO MATCH! productAmount will be 0')
                   }
                   
                   // Debug logging for first order
