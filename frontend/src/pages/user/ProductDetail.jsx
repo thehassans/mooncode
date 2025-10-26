@@ -143,48 +143,33 @@ export default function ProductDetail() {
     
     // Calculate revenue only from delivered orders (use ALL orders, not filtered)
     orders.filter(o => o.shipmentStatus === 'delivered').forEach(o => {
-      // Get quantity and actual revenue for this specific product
+      // Simplified revenue calculation matching display logic
       let quantity = 1
       let productRevenue = 0
       const orderCountry = o.orderCountry || 'Unknown'
       const orderCurrency = getOrderCountryCurrency(orderCountry)
       
+      const orderTotal = Number(o.total || 0)
+      const orderDiscount = Number(o.discount || 0)
+      const orderFinalAmount = orderTotal - orderDiscount
+      
       if (Array.isArray(o.items) && o.items.length > 0) {
-        // Multi-item order - find ALL items of this product and sum quantities
+        // Multi-item order
         const matchingItems = o.items.filter(item => String(item.productId?._id || item.productId) === id)
-        if (matchingItems.length > 0) {
-          // Sum quantities from all matching items
-          quantity = matchingItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0)
-          
-          // Get order final amount (after discount)
-          const orderTotal = Number(o.total || 0)
-          const orderDiscount = Number(o.discount || 0)
-          const orderFinalAmount = orderTotal - orderDiscount
-          
-          // Check if this is the ONLY product in the order (all items are this product)
-          const allItemsAreThisProduct = o.items.every(i => 
-            String(i.productId?._id || i.productId) === id
-          )
-          
-          if (allItemsAreThisProduct) {
-            // All items in this order are this product, show full order amount
-            productRevenue = orderFinalAmount
-          } else {
-            // Multiple different products - distribute based on quantity proportion
-            const totalOrderQuantity = o.items.reduce((sum, i) => sum + Number(i.quantity || 1), 0)
-            if (totalOrderQuantity > 0) {
-              productRevenue = (quantity / totalOrderQuantity) * orderFinalAmount
-            } else {
-              productRevenue = 0
-            }
-          }
+        quantity = matchingItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0)
+        
+        const uniqueProducts = new Set(o.items.map(i => String(i.productId?._id || i.productId)))
+        
+        if (uniqueProducts.size === 1 && uniqueProducts.has(id)) {
+          productRevenue = orderFinalAmount
+        } else {
+          const totalOrderQuantity = o.items.reduce((sum, i) => sum + Number(i.quantity || 1), 0)
+          productRevenue = totalOrderQuantity > 0 ? (quantity / totalOrderQuantity) * orderFinalAmount : 0
         }
-      } else {
-        // Single product order - calculate final amount after discount
+      } else if (String(o.productId?._id || o.productId) === id) {
+        // Legacy single product order
         quantity = Number(o.quantity || 1)
-        const orderTotal = Number(o.total || 0)
-        const orderDiscount = Number(o.discount || 0)
-        productRevenue = orderTotal - orderDiscount
+        productRevenue = orderFinalAmount
       }
       
       totalQuantity += quantity
@@ -609,85 +594,70 @@ export default function ProductDetail() {
                 </tr>
               ) : (
                 filteredOrders.map((order, idx) => {
-                  // Get quantity and actual amount for this specific product
+                  // SIMPLIFIED CALCULATION: For product detail page, show full order amount
+                  // when viewing orders for this specific product
                   let quantity = 1
                   let productAmount = 0
                   const orderCountryCurrency = getOrderCountryCurrency(order.orderCountry)
                   
-                  // Debug first order
-                  if (idx === 0) {
-                    console.log('First order calculation:', {
-                      invoiceNumber: order.invoiceNumber,
-                      hasItems: Array.isArray(order.items) && order.items.length > 0,
-                      itemsLength: order.items?.length,
-                      total: order.total,
-                      discount: order.discount,
-                      quantity: order.quantity,
-                      productId: order.productId
-                    })
+                  // Calculate order final amount (after discount)
+                  const orderTotal = Number(order.total || 0)
+                  const orderDiscount = Number(order.discount || 0)
+                  const orderFinalAmount = orderTotal - orderDiscount
+                  
+                  // Determine quantity for this product
+                  if (Array.isArray(order.items) && order.items.length > 0) {
+                    // Multi-item order - sum all quantities for this product
+                    const matchingItems = order.items.filter(item => 
+                      String(item.productId?._id || item.productId) === id
+                    )
+                    quantity = matchingItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0)
+                    
+                    // Count unique products in the order
+                    const uniqueProducts = new Set(
+                      order.items.map(i => String(i.productId?._id || i.productId))
+                    )
+                    
+                    if (uniqueProducts.size === 1 && uniqueProducts.has(id)) {
+                      // Only this product in order - show full amount
+                      productAmount = orderFinalAmount
+                    } else {
+                      // Mixed products - distribute by quantity
+                      const totalOrderQuantity = order.items.reduce((sum, i) => sum + Number(i.quantity || 1), 0)
+                      productAmount = totalOrderQuantity > 0 ? (quantity / totalOrderQuantity) * orderFinalAmount : 0
+                    }
+                  } else if (String(order.productId?._id || order.productId) === id) {
+                    // Legacy single product order
+                    quantity = Number(order.quantity || 1)
+                    productAmount = orderFinalAmount
                   }
                   
-                  if (Array.isArray(order.items) && order.items.length > 0) {
-                    // Multi-item order - find ALL items of this product and sum quantities
-                    const matchingItems = order.items.filter(item => String(item.productId?._id || item.productId) === id)
-                    if (matchingItems.length > 0) {
-                      // Sum quantities from all matching items
-                      quantity = matchingItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0)
-                      
-                      // Get order final amount (after discount)
-                      const orderTotal = Number(order.total || 0)
-                      const orderDiscount = Number(order.discount || 0)
-                      const orderFinalAmount = orderTotal - orderDiscount
-                      
-                      // Check if this is the ONLY product in the order (all items are this product)
-                      const allItemsAreThisProduct = order.items.every(i => 
-                        String(i.productId?._id || i.productId) === id
-                      )
-                      
-                      if (idx === 0) {
-                        console.log('Multi-item calculation:', {
-                          quantity,
-                          orderTotal,
-                          orderDiscount,
-                          orderFinalAmount,
-                          allItemsAreThisProduct,
-                          itemsInOrder: order.items.map(i => ({ id: String(i.productId?._id || i.productId), qty: i.quantity }))
-                        })
-                      }
-                      
-                      if (allItemsAreThisProduct) {
-                        // All items in this order are this product, show full order amount
-                        productAmount = orderFinalAmount
-                      } else {
-                        // Multiple different products - distribute based on quantity proportion
-                        const totalOrderQuantity = order.items.reduce((sum, i) => sum + Number(i.quantity || 1), 0)
-                        if (totalOrderQuantity > 0) {
-                          productAmount = (quantity / totalOrderQuantity) * orderFinalAmount
-                        } else {
-                          productAmount = 0
-                        }
-                      }
-                    }
-                  } else {
-                    // Single product order - calculate final amount after discount
-                    quantity = Number(order.quantity || 1)
-                    const orderTotal = Number(order.total || 0)
-                    const orderDiscount = Number(order.discount || 0)
-                    // Final amount = total - discount
-                    productAmount = orderTotal - orderDiscount
-                    
-                    if (idx === 0) {
-                      console.log('Single product calculation:', {
-                        quantity,
-                        orderTotal,
-                        orderDiscount,
-                        productAmount
-                      })
-                    }
+                  // Debug logging for first order
+                  if (idx === 0) {
+                    console.log('=== ORDER AMOUNT CALCULATION ==', {
+                      invoiceNumber: order.invoiceNumber,
+                      orderTotal,
+                      orderDiscount,
+                      orderFinalAmount,
+                      quantity,
+                      productAmount,
+                      hasItems: Array.isArray(order.items) && order.items.length > 0,
+                      itemsCount: order.items?.length || 0
+                    })
                   }
                   
                   // Convert to AED for comparison
                   const productAmountAED = productAmount * (currencyRates[orderCountryCurrency] || 1)
+                  
+                  if (idx === 0) {
+                    console.log('Final amount to display:', {
+                      invoiceNumber: order.invoiceNumber,
+                      quantity,
+                      productAmount,
+                      orderCountryCurrency,
+                      productAmountAED
+                    })
+                  }
 
                   return (
                     <tr
