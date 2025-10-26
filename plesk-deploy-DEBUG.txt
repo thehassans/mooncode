@@ -1,0 +1,4 @@
+# DEBUG VERSION - This will show us where Node.js and npm actually are
+# Use this to find the correct paths, then we'll create the final version
+
+echo "=== PATH ===" && echo $PATH && echo "=== Finding node ===" && find /opt -name "node" -type f 2>/dev/null && find /usr -name "node" -type f 2>/dev/null && find $HOME -name "node" -type f 2>/dev/null && echo "=== Finding npm ===" && find /opt -name "npm" -type f 2>/dev/null && find /usr -name "npm" -type f 2>/dev/null && find $HOME -name "npm" -type f 2>/dev/null && echo "=== Finding pm2 ===" && find /opt -name "pm2" -type f 2>/dev/null && find /usr -name "pm2" -type f 2>/dev/null && find $HOME -name "pm2" -type f 2>/dev/null

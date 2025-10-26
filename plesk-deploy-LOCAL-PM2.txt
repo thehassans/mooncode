@@ -1,0 +1,4 @@
+# VERSION WITH LOCAL PM2 - Installs PM2 in the project, not globally
+# This avoids permission issues
+
+export PATH="/opt/plesk/node/24/bin:$PATH" && cd backend && npm ci --production && npm install pm2 && npx pm2 restart mooncode-backend || npx pm2 start src/index.js --name mooncode-backend && cd ../frontend && npm ci && npm run build && echo "✅ Deployment complete"
