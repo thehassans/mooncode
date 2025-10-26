@@ -94,6 +94,40 @@ export default function UserProducts() {
     if (!product?.stockByCountry) return 0
     return Object.values(product.stockByCountry).reduce((sum, val) => sum + Number(val || 0), 0)
   }
+  
+  function getOrderCountryCurrency(orderCountry) {
+    const countryToCurrency = {
+      'UAE': 'AED', 'United Arab Emirates': 'AED',
+      'KSA': 'SAR', 'Saudi Arabia': 'SAR',
+      'Oman': 'OMR', 'Bahrain': 'BHD',
+      'Kuwait': 'KWD', 'Qatar': 'QAR', 'India': 'INR'
+    }
+    return countryToCurrency[orderCountry] || 'AED'
+  }
+  
+  function getPricesInStockCurrencies(product) {
+    if (!product?.stockByCountry || !product?.price || !product?.baseCurrency) return []
+    
+    const prices = []
+    const baseCurrency = product.baseCurrency
+    const basePrice = product.price
+    
+    Object.entries(product.stockByCountry).forEach(([country, stock]) => {
+      if (Number(stock || 0) > 0) {
+        const currency = getOrderCountryCurrency(country)
+        const rate = currencyRates[currency] || 1
+        const baseRate = currencyRates[baseCurrency] || 1
+        const priceInCurrency = (basePrice * baseRate) / rate
+        
+        // Avoid duplicates
+        if (!prices.find(p => p.currency === currency)) {
+          prices.push({ currency, price: priceInCurrency, stock: Number(stock) })
+        }
+      }
+    })
+    
+    return prices
+  }
 
   return (
     <div style={{ display: 'grid', gap: 24, padding: 24 }}>
@@ -237,12 +271,14 @@ export default function UserProducts() {
                     alignItems: 'flex-start',
                     marginBottom: 12
                   }}>
-                    <div>
+                    <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>
-                        AED {(product.price * (currencyRates[product.baseCurrency] || 1)).toFixed(2)}
+                        {product.baseCurrency} {product.price?.toFixed(2)}
                       </div>
-                      <div style={{ fontSize: 11, opacity: 0.5 }}>
-                        Original: {product.baseCurrency} {product.price?.toFixed(2)}
+                      <div style={{ fontSize: 10, opacity: 0.5, lineHeight: 1.4 }}>
+                        {getPricesInStockCurrencies(product).map((p, idx) => (
+                          <div key={idx}>{p.currency} {p.price.toFixed(2)}</div>
+                        ))}
                       </div>
                     </div>
                     <div style={{
@@ -267,7 +303,7 @@ export default function UserProducts() {
                     border: `1px solid ${isLowStock ? '#fecaca' : '#a7f3d0'}`,
                     marginBottom: 8
                   }}>
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>Total Stock</span>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>Available Stock</span>
                     <span style={{
                       fontSize: 18,
                       fontWeight: 800,
