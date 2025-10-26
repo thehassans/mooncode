@@ -115,6 +115,10 @@ export default function UserProducts() {
     Object.entries(product.stockByCountry).forEach(([country, stock]) => {
       if (Number(stock || 0) > 0) {
         const currency = getOrderCountryCurrency(country)
+        
+        // Skip if same as base currency
+        if (currency === baseCurrency) return
+        
         const rate = currencyRates[currency] || 1
         const baseRate = currencyRates[baseCurrency] || 1
         const priceInCurrency = (basePrice * baseRate) / rate
@@ -275,11 +279,13 @@ export default function UserProducts() {
                       <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>
                         {product.baseCurrency} {product.price?.toFixed(2)}
                       </div>
-                      <div style={{ fontSize: 10, opacity: 0.5, lineHeight: 1.4 }}>
-                        {getPricesInStockCurrencies(product).map((p, idx) => (
-                          <div key={idx}>{p.currency} {p.price.toFixed(2)}</div>
-                        ))}
-                      </div>
+                      {getPricesInStockCurrencies(product).length > 0 && (
+                        <div style={{ fontSize: 10, opacity: 0.5, lineHeight: 1.5, marginTop: 4 }}>
+                          {getPricesInStockCurrencies(product).map((p, idx) => (
+                            <div key={idx}>{p.currency} {p.price.toFixed(2)}</div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div style={{
                       fontSize: 12,
