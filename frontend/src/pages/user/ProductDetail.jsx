@@ -148,9 +148,11 @@ export default function ProductDetail() {
           productRevenue = itemPrice * quantity
         }
       } else {
-        // Single product order - use order.total which includes discount
+        // Single product order - calculate final amount after discount
         quantity = Number(o.quantity || 1)
-        productRevenue = Number(o.total || 0)
+        const orderTotal = Number(o.total || 0)
+        const orderDiscount = Number(o.discount || 0)
+        productRevenue = orderTotal - orderDiscount
       }
       
       totalQuantity += quantity
@@ -590,10 +592,12 @@ export default function ProductDetail() {
                       productAmount = itemPrice * quantity
                     }
                   } else {
-                    // Single product order - use order.total which includes discount
+                    // Single product order - calculate final amount after discount
                     quantity = Number(order.quantity || 1)
-                    // Use order.total directly as it includes discount
-                    productAmount = Number(order.total || 0)
+                    const orderTotal = Number(order.total || 0)
+                    const orderDiscount = Number(order.discount || 0)
+                    // Final amount = total - discount
+                    productAmount = orderTotal - orderDiscount
                   }
                   
                   // Convert to AED for comparison
