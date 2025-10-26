@@ -22,7 +22,26 @@ export default function Notifications() {
       })
       
       const response = await apiGet(`/api/notifications?${params}`)
-      const newNotifications = response.notifications || []
+      let newNotifications = response.notifications || []
+      
+      // Filter out agent/manager creation notifications
+      newNotifications = newNotifications.filter(notification => {
+        const title = notification.title?.toLowerCase() || ''
+        const type = notification.type?.toLowerCase() || ''
+        
+        // Hide agent/manager creation notifications
+        if (type === 'agent_created' || type === 'manager_created' || 
+            title.includes('new agent created') || title.includes('new manager created')) {
+          return false
+        }
+        
+        // Keep all other notifications (especially these important ones):
+        // - order_cancelled (driver submit to company)
+        // - order_returned (driver submit to company)
+        // - amount_approval (driver/manager amount approval)
+        // - driver_settlement, manager_remittance, etc.
+        return true
+      })
       
       if (reset || pageNum === 1) {
         setNotifications(newNotifications)

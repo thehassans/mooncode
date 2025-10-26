@@ -78,21 +78,21 @@ router.post('/agents', auth, allowRoles('admin','user','manager'), async (req, r
   const agent = new User({ firstName, lastName, email, phone, password, role: 'agent', createdBy })
   await agent.save()
   
-  // Create notification for agent creation
-  try {
-    await createNotification({
-      userId: createdBy,
-      type: 'user_created',
-      title: 'New Agent Created',
-      message: `Agent ${firstName} ${lastName} (${email}) has been created`,
-      relatedId: agent._id,
-      relatedType: 'User',
-      triggeredBy: req.user.id,
-      triggeredByRole: req.user.role
-    });
-  } catch (err) {
-    console.error('Failed to create agent notification:', err);
-  }
+  // Notification disabled - users don't need to see agent creation notifications
+  // try {
+  //   await createNotification({
+  //     userId: createdBy,
+  //     type: 'user_created',
+  //     title: 'New Agent Created',
+  //     message: `Agent ${firstName} ${lastName} (${email}) has been created`,
+  //     relatedId: agent._id,
+  //     relatedType: 'User',
+  //     triggeredBy: req.user.id,
+  //     triggeredByRole: req.user.role
+  //   });
+  // } catch (err) {
+  //   console.error('Failed to create agent notification:', err);
+  // }
   
   // Try to send WhatsApp welcome message (non-blocking)
   ;(async ()=>{
@@ -565,21 +565,21 @@ router.post('/managers', auth, allowRoles('admin','user'), async (req, res) => {
   })
   await manager.save()
   
-  // Create notification for manager creation
-  try {
-    await createNotification({
-      userId: createdBy,
-      type: 'user_created',
-      title: 'New Manager Created',
-      message: `Manager ${firstName} ${lastName} (${email}) has been created with full permissions`,
-      relatedId: manager._id,
-      relatedType: 'User',
-      triggeredBy: req.user.id,
-      triggeredByRole: req.user.role
-    });
-  } catch (err) {
-    console.error('Failed to create manager notification:', err);
-  }
+  // Notification disabled - users don't need to see manager creation notifications
+  // try {
+  //   await createNotification({
+  //     userId: createdBy,
+  //     type: 'user_created',
+  //     title: 'New Manager Created',
+  //     message: `Manager ${firstName} ${lastName} (${email}) has been created with full permissions`,
+  //     relatedId: manager._id,
+  //     relatedType: 'User',
+  //     triggeredBy: req.user.id,
+  //     triggeredByRole: req.user.role
+  //   });
+  // } catch (err) {
+  //   console.error('Failed to create manager notification:', err);
+  // }
   
   // Broadcast to workspace for real-time coordination
   try{ const io = getIO(); const ownerId = req.user.id; io.to(`workspace:${ownerId}`).emit('manager.created', { id: String(manager._id) }) }catch{}
