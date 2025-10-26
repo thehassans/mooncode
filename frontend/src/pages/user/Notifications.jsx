@@ -5,7 +5,7 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all') // all, unread, read
-  const [typeFilter, setTypeFilter] = useState('all') // all, order_created, product_created, user_created
+  const [typeFilter, setTypeFilter] = useState('all') // all, order_cancelled, order_returned, amount_approval, etc.
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [stats, setStats] = useState({})
@@ -21,7 +21,24 @@ export default function Notifications() {
       })
       
       const response = await apiGet(`/api/notifications?${params}`)
-      const newNotifications = response.notifications || []
+      let newNotifications = response.notifications || []
+      
+      // Filter out agent/manager creation notifications
+      newNotifications = newNotifications.filter(notification => {
+        const title = notification.title?.toLowerCase() || ''
+        const type = notification.type || ''
+        
+        // Filter out any notification containing 'created' in title if not a necessary approval
+        if (title.includes('created') && 
+            !['order_cancelled', 'order_returned', 'amount_approval', 
+              'driver_settlement', 'manager_remittance', 'agent_remittance', 
+              'investor_remittance', 'expense_approval'].includes(type)) {
+          return false
+        }
+        
+        // Keep notifications that have the approved types
+        return true
+      })
       
       if (reset || pageNum === 1) {
         setNotifications(newNotifications)
@@ -103,18 +120,30 @@ export default function Notifications() {
 
   function getNotificationIcon(type) {
     switch (type) {
-      case 'order_created': return '🧾'
-      case 'product_created': return '🏷️'
-      case 'user_created': return '👥'
+      case 'order_cancelled':
+      case 'order_returned':
+        return '📦'
+      case 'amount_approval':
+      case 'driver_settlement':
+      case 'manager_remittance':
+      case 'agent_remittance':
+      case 'investor_remittance':
+      case 'expense_approval':
+        return '💰'
       default: return '🔔'
     }
   }
 
   function getTypeLabel(type) {
     switch (type) {
-      case 'order_created': return 'Order'
-      case 'product_created': return 'Product'
-      case 'user_created': return 'User'
+      case 'order_cancelled': return 'Order Cancel'
+      case 'order_returned': return 'Order Return'
+      case 'driver_settlement': return 'Driver Settlement'
+      case 'manager_remittance': return 'Manager Remittance'
+      case 'agent_remittance': return 'Agent Remittance'
+      case 'investor_remittance': return 'Investor Remittance'
+      case 'amount_approval': return 'Amount Approval'
+      case 'expense_approval': return 'Expense Approval'
       default: return 'Notification'
     }
   }
@@ -168,9 +197,12 @@ export default function Notifications() {
               style={{ minWidth: 140 }}
             >
               <option value="all">All Types</option>
-              <option value="order_created">Orders</option>
-              <option value="product_created">Products</option>
-              <option value="user_created">Users</option>
+              <option value="order_cancelled">Order Cancellations</option>
+              <option value="order_returned">Order Returns</option>
+              <option value="amount_approval">Amount Approvals</option>
+              <option value="driver_settlement">Driver Settlements</option>
+              <option value="manager_remittance">Manager Remittances</option>
+              <option value="agent_remittance">Agent Remittances</option>
             </select>
           </div>
         </div>
