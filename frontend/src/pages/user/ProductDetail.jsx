@@ -143,9 +143,20 @@ export default function ProductDetail() {
         const item = o.items.find(item => String(item.productId?._id || item.productId) === id)
         if (item) {
           quantity = Number(item.quantity || 1)
-          // Use item price which may include discounts
           const itemPrice = Number(item.price || product?.price || 0)
-          productRevenue = itemPrice * quantity
+          const itemSubtotal = itemPrice * quantity
+          
+          // Calculate this item's share of the order discount
+          const orderTotal = Number(o.total || 0)
+          const orderDiscount = Number(o.discount || 0)
+          
+          if (orderTotal > 0 && orderDiscount > 0) {
+            // Proportional discount: (item subtotal / order total) × order discount
+            const itemDiscountShare = (itemSubtotal / orderTotal) * orderDiscount
+            productRevenue = itemSubtotal - itemDiscountShare
+          } else {
+            productRevenue = itemSubtotal
+          }
         }
       } else {
         // Single product order - calculate final amount after discount
@@ -587,9 +598,20 @@ export default function ProductDetail() {
                     const item = order.items.find(item => String(item.productId?._id || item.productId) === id)
                     if (item) {
                       quantity = Number(item.quantity || 1)
-                      // Use item price if available, which may include discounts
                       const itemPrice = Number(item.price || product?.price || 0)
-                      productAmount = itemPrice * quantity
+                      const itemSubtotal = itemPrice * quantity
+                      
+                      // Calculate this item's share of the order discount
+                      const orderTotal = Number(order.total || 0)
+                      const orderDiscount = Number(order.discount || 0)
+                      
+                      if (orderTotal > 0 && orderDiscount > 0) {
+                        // Proportional discount: (item subtotal / order total) × order discount
+                        const itemDiscountShare = (itemSubtotal / orderTotal) * orderDiscount
+                        productAmount = itemSubtotal - itemDiscountShare
+                      } else {
+                        productAmount = itemSubtotal
+                      }
                     }
                   } else {
                     // Single product order - calculate final amount after discount
