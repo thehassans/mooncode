@@ -336,6 +336,10 @@ export default function DriverPanel() {
 
     async function saveStatus() {
       if (!status) return alert('Please select a status')
+      
+      // Save current scroll position before updating
+      const scrollY = window.scrollY || window.pageYOffset
+      
       setSaving(true)
       try {
         const id = order._id || order.id
@@ -375,6 +379,12 @@ export default function DriverPanel() {
         await loadAssigned()
         setNote('')
         setAmount('')
+        
+        // Restore scroll position after update
+        // Use requestAnimationFrame to ensure DOM has updated
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: scrollY, behavior: 'instant' })
+        })
       } catch (e) {
         alert(e?.message || 'Failed to update status')
       } finally {
@@ -564,7 +574,7 @@ export default function DriverPanel() {
                     <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={amount} onChange={e=> setAmount(e.target.value)} />
                   </>
                 )}
-                <button className="action-btn deliver-btn" disabled={saving || !status} onClick={saveStatus}>{saving ? 'Saving...' : 'Save Status'}</button>
+                <button type="button" className="action-btn deliver-btn" disabled={saving || !status} onClick={saveStatus}>{saving ? 'Saving...' : 'Save Status'}</button>
               </div>
             </div>
           )}
