@@ -149,7 +149,7 @@ export default function DriverFinances(){
     const { remittanceId, driverName } = confirmAcceptModal
     setAccepting(remittanceId)
     try{
-      await apiPost(`/api/finance/driver-remittances/${remittanceId}/send`, {})
+      await apiPost(`/api/finance/remittances/${remittanceId}/accept`, {})
       toast.success(`Payment accepted from ${driverName}`)
       setConfirmAcceptModal(null)
       await loadData()

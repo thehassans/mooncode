@@ -1048,7 +1048,7 @@ router.post(
   }
 );
 
-// Accept remittance (manager)
+// Accept remittance (manager or user/owner)
 router.post(
   "/remittances/:id/accept",
   auth,
@@ -1058,6 +1058,7 @@ router.post(
       const { id } = req.params;
       const r = await Remittance.findById(id);
       if (!r) return res.status(404).json({ message: "Remittance not found" });
+      
       // Scope: manager assigned OR owner of workspace
       if (
         req.user.role === "manager" &&
@@ -1066,19 +1067,45 @@ router.post(
         return res.status(403).json({ message: "Not allowed" });
       if (req.user.role === "user" && String(r.owner) !== String(req.user.id))
         return res.status(403).json({ message: "Not allowed" });
-      if (r.status !== "pending")
-        return res.status(400).json({ message: "Already processed" });
-      r.status = "accepted";
-      r.acceptedAt = new Date();
-      r.acceptedBy = req.user.id;
-      await r.save();
-      try {
-        const io = getIO();
-        io.to(`user:${String(r.driver)}`).emit("remittance.accepted", {
-          id: String(r._id),
-        });
-      } catch {}
-      return res.json({ message: "Remittance accepted", remittance: r });
+      
+      // Two-step approval process
+      if (req.user.role === "manager") {
+        // Manager acceptance - first step
+        if (r.status !== "pending")
+          return res.status(400).json({ message: "Already processed" });
+        r.status = "manager_accepted";
+        r.managerAcceptedAt = new Date();
+        r.managerAcceptedBy = req.user.id;
+        await r.save();
+        
+        // Notify owner that manager accepted
+        try {
+          const io = getIO();
+          io.to(`user:${String(r.owner)}`).emit("remittance.manager_accepted", {
+            id: String(r._id),
+          });
+        } catch {}
+        
+        return res.json({ message: "Remittance accepted by manager", remittance: r });
+      } else {
+        // User/owner acceptance - final step
+        if (r.status !== "pending" && r.status !== "manager_accepted")
+          return res.status(400).json({ message: "Already processed or rejected" });
+        r.status = "accepted";
+        r.acceptedAt = new Date();
+        r.acceptedBy = req.user.id;
+        await r.save();
+        
+        // Notify driver
+        try {
+          const io = getIO();
+          io.to(`user:${String(r.driver)}`).emit("remittance.accepted", {
+            id: String(r._id),
+          });
+        } catch {}
+        
+        return res.json({ message: "Remittance accepted", remittance: r });
+      }
     } catch (err) {
       return res.status(500).json({ message: "Failed to accept remittance" });
     }

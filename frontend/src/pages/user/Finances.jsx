@@ -251,25 +251,45 @@ export default function UserFinances() {
     })
   }, [metrics, comm, latestRequestByAgent])
 
-  // Driver payout send
+  // Driver payout accept/send
   async function onSendDriver(remit) {
     const remitId = String(remit._id || remit.id)
-    let amount = Number(driverSendMap[remitId] ?? remit.amount)
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return alert('Enter a valid amount')
-    }
-    try {
-      setMsg('Sending to driver...')
-      const res = await apiPost(`/api/finance/driver-remittances/${remitId}/send`, { amount })
-      if (res?.remit) {
-        setMsg('Driver payment sent')
-        setDriverRequests((reqs) => reqs.filter((r) => String(r._id || r.id) !== remitId))
-        setTimeout(() => setMsg(''), 1500)
-      } else {
-        setMsg(res?.message || 'Failed to send')
+    const status = String(remit.status || '').toLowerCase()
+    
+    // If manager_accepted or pending, use accept endpoint
+    if (status === 'manager_accepted' || status === 'pending') {
+      try {
+        setMsg('Accepting settlement...')
+        const res = await apiPost(`/api/finance/remittances/${remitId}/accept`, {})
+        if (res?.remittance) {
+          setMsg('Settlement accepted')
+          setDriverRequests((reqs) => reqs.filter((r) => String(r._id || r.id) !== remitId))
+          setTimeout(() => setMsg(''), 1500)
+        } else {
+          setMsg(res?.message || 'Failed to accept')
+        }
+      } catch (e) {
+        setMsg(e?.message || 'Failed to accept')
       }
-    } catch (e) {
-      setMsg(e?.message || 'Failed to send')
+    } else {
+      // Otherwise use send endpoint
+      let amount = Number(driverSendMap[remitId] ?? remit.amount)
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return alert('Enter a valid amount')
+      }
+      try {
+        setMsg('Sending to driver...')
+        const res = await apiPost(`/api/finance/driver-remittances/${remitId}/send`, { amount })
+        if (res?.remit) {
+          setMsg('Driver payment sent')
+          setDriverRequests((reqs) => reqs.filter((r) => String(r._id || r.id) !== remitId))
+          setTimeout(() => setMsg(''), 1500)
+        } else {
+          setMsg(res?.message || 'Failed to send')
+        }
+      } catch (e) {
+        setMsg(e?.message || 'Failed to send')
+      }
     }
   }
 
@@ -490,7 +510,11 @@ export default function UserFinances() {
                   <tbody>
                     {driverDeliveries.map(d => {
                       const drvId = String(d.id||d._id)
-                      const pending = driverRequests.find(rr => (String(rr?.driver?._id||rr?.driver?.id||'')===drvId) && String(rr?.status||'').toLowerCase()==='pending')
+                      const pending = driverRequests.find(rr => {
+                        const status = String(rr?.status||'').toLowerCase()
+                        return (String(rr?.driver?._id||rr?.driver?.id||'')===drvId) && (status==='pending' || status==='manager_accepted')
+                      })
+                      const isManagerAccepted = pending && String(pending.status||'').toLowerCase() === 'manager_accepted'
                       return (
                         <tr key={drvId} style={{ borderTop:'1px solid var(--border)' }}>
                           <td style={{ padding:'8px 10px' }}>{d.name||'—'}</td>
@@ -513,6 +537,11 @@ export default function UserFinances() {
                                       Paid to: {pending.paidToName || `${(pending?.manager?.firstName||'')} ${(pending?.manager?.lastName||'')}`.trim() || '-'}
                                     </div>
                                   </>
+                                )}
+                                {isManagerAccepted && (
+                                  <div style={{marginTop:6}}>
+                                    <span className="badge" style={{borderColor:'#10b981', color:'#059669', fontWeight:600}}>✓ Manager Accepted</span>
+                                  </div>
                                 )}
                               </>
                             ) : '—'}
