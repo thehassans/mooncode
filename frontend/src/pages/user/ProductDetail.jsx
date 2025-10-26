@@ -132,31 +132,31 @@ export default function ProductDetail() {
     
     // Calculate revenue only from delivered orders (use ALL orders, not filtered)
     orders.filter(o => o.shipmentStatus === 'delivered').forEach(o => {
-      // Get quantity and price for this specific product
+      // Get quantity and actual revenue for this specific product
       let quantity = 1
-      let productPrice = product?.price || 0
-      let productCurrency = product?.baseCurrency || 'SAR'
+      let productRevenue = 0
+      const orderCountry = o.orderCountry || 'Unknown'
+      const orderCurrency = getOrderCountryCurrency(orderCountry)
       
       if (Array.isArray(o.items)) {
         // Multi-item order - find this product
         const item = o.items.find(item => String(item.productId?._id || item.productId) === id)
         if (item) {
           quantity = Number(item.quantity || 1)
-          productPrice = Number(item.price || product?.price || 0)
+          // Use item price which may include discounts
+          const itemPrice = Number(item.price || product?.price || 0)
+          productRevenue = itemPrice * quantity
         }
       } else {
-        // Single product order
+        // Single product order - use order.total which includes discount
         quantity = Number(o.quantity || 1)
-        productPrice = Number(o.productPrice || product?.price || 0)
-        productCurrency = o.currency || product?.baseCurrency || 'SAR'
+        productRevenue = Number(o.total || 0)
       }
       
       totalQuantity += quantity
       
-      // Calculate revenue for THIS PRODUCT ONLY (not full order total)
-      const currency = o.currency || productCurrency
-      const conversionRate = currencyRates[currency] || 1
-      const productRevenue = productPrice * quantity
+      // Convert revenue to AED
+      const conversionRate = currencyRates[orderCurrency] || 1
       totalRevenueAED += productRevenue * conversionRate
       
       // Calculate purchase price in AED
@@ -166,12 +166,11 @@ export default function ProductDetail() {
       }
       
       // Country-wise stats
-      const country = o.orderCountry || 'Unknown'
-      if (!countryStats[country]) {
-        countryStats[country] = { quantity: 0, revenue: 0 }
+      if (!countryStats[orderCountry]) {
+        countryStats[orderCountry] = { quantity: 0, revenue: 0 }
       }
-      countryStats[country].quantity += quantity
-      countryStats[country].revenue += productRevenue * conversionRate
+      countryStats[orderCountry].quantity += quantity
+      countryStats[orderCountry].revenue += productRevenue * conversionRate
     })
 
     // Calculate product price in AED
@@ -576,31 +575,28 @@ export default function ProductDetail() {
                 </tr>
               ) : (
                 filteredOrders.map((order, idx) => {
-                  // Get quantity and price for this specific product
+                  // Get quantity and actual amount for this specific product
                   let quantity = 1
-                  let productPrice = product?.price || 0
+                  let productAmount = 0
+                  const orderCountryCurrency = getOrderCountryCurrency(order.orderCountry)
                   
                   if (Array.isArray(order.items)) {
                     // Multi-item order - find this product
                     const item = order.items.find(item => String(item.productId?._id || item.productId) === id)
                     if (item) {
                       quantity = Number(item.quantity || 1)
-                      productPrice = Number(item.price || product?.price || 0)
+                      // Use item price if available, which may include discounts
+                      const itemPrice = Number(item.price || product?.price || 0)
+                      productAmount = itemPrice * quantity
                     }
                   } else {
-                    // Single product order
+                    // Single product order - use order.total which includes discount
                     quantity = Number(order.quantity || 1)
-                    productPrice = Number(order.productPrice || product?.price || 0)
+                    // Use order.total directly as it includes discount
+                    productAmount = Number(order.total || 0)
                   }
                   
-                  // Calculate product-specific amount in order country's currency
-                  const orderCountryCurrency = getOrderCountryCurrency(order.orderCountry)
-                  const productBaseCurrency = product?.baseCurrency || 'SAR'
-                  
-                  // Product price is in base currency, convert to order country currency
-                  const priceInOrderCurrency = productPrice * (currencyRates[productBaseCurrency] || 1) / (currencyRates[orderCountryCurrency] || 1)
-                  const productAmount = priceInOrderCurrency * quantity
-                  
+                  // Convert to AED for comparison
                   const productAmountAED = productAmount * (currencyRates[orderCountryCurrency] || 1)
 
                   return (
