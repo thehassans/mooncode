@@ -150,10 +150,11 @@ export default function ProductDetail() {
       const orderCurrency = getOrderCountryCurrency(orderCountry)
       
       if (Array.isArray(o.items) && o.items.length > 0) {
-        // Multi-item order - find this product
-        const item = o.items.find(item => String(item.productId?._id || item.productId) === id)
-        if (item) {
-          quantity = Number(item.quantity || 1)
+        // Multi-item order - find ALL items of this product and sum quantities
+        const matchingItems = o.items.filter(item => String(item.productId?._id || item.productId) === id)
+        if (matchingItems.length > 0) {
+          // Sum quantities from all matching items
+          quantity = matchingItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0)
           
           // Get order final amount (after discount)
           const orderTotal = Number(o.total || 0)
@@ -627,10 +628,11 @@ export default function ProductDetail() {
                   }
                   
                   if (Array.isArray(order.items) && order.items.length > 0) {
-                    // Multi-item order - find this product
-                    const item = order.items.find(item => String(item.productId?._id || item.productId) === id)
-                    if (item) {
-                      quantity = Number(item.quantity || 1)
+                    // Multi-item order - find ALL items of this product and sum quantities
+                    const matchingItems = order.items.filter(item => String(item.productId?._id || item.productId) === id)
+                    if (matchingItems.length > 0) {
+                      // Sum quantities from all matching items
+                      quantity = matchingItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0)
                       
                       // Get order final amount (after discount)
                       const orderTotal = Number(order.total || 0)
