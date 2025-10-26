@@ -81,16 +81,10 @@ export default function ProductDetail() {
       try {
         const ordersData = await apiGet(`/api/orders/by-product/${id}`)
         console.log('Orders for this product:', ordersData.orders?.length)
-        // Debug: Log first order to see structure
+        // Debug: Log ENTIRE first order to see structure
         if (ordersData.orders && ordersData.orders.length > 0) {
-          console.log('Sample order structure:', {
-            invoiceNumber: ordersData.orders[0].invoiceNumber,
-            total: ordersData.orders[0].total,
-            discount: ordersData.orders[0].discount,
-            quantity: ordersData.orders[0].quantity,
-            items: ordersData.orders[0].items,
-            productId: ordersData.orders[0].productId
-          })
+          console.log('=== FULL ORDER FROM BACKEND ===')
+          console.log(JSON.stringify(ordersData.orders[0], null, 2))
         }
         setOrders((ordersData.orders || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
       } catch (ordersErr) {
