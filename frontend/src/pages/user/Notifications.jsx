@@ -22,24 +22,7 @@ export default function Notifications() {
       })
       
       const response = await apiGet(`/api/notifications?${params}`)
-      let newNotifications = response.notifications || []
-      
-      // Filter out agent/manager creation notifications
-      newNotifications = newNotifications.filter(notification => {
-        const title = notification.title?.toLowerCase() || ''
-        const type = notification.type || ''
-        
-        // Filter out any notification containing 'created' in title if not a necessary approval
-        if (title.includes('created') && 
-            !['order_cancelled', 'order_returned', 'amount_approval', 
-              'driver_settlement', 'manager_remittance', 'agent_remittance', 
-              'investor_remittance', 'expense_approval'].includes(type)) {
-          return false
-        }
-        
-        // Keep notifications that have the approved types
-        return true
-      })
+      const newNotifications = response.notifications || []
       
       if (reset || pageNum === 1) {
         setNotifications(newNotifications)
