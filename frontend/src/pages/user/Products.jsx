@@ -9,10 +9,12 @@ export default function UserProducts() {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [currencyRates, setCurrencyRates] = useState({})
+  const [warehouseData, setWarehouseData] = useState([])
 
   useEffect(() => {
     loadCurrencyRates()
     loadProducts()
+    loadWarehouseData()
   }, [])
 
   async function loadCurrencyRates() {
@@ -64,6 +66,17 @@ export default function UserProducts() {
       setLoading(false)
     }
   }
+  
+  async function loadWarehouseData() {
+    try {
+      const data = await apiGet('/api/warehouse/summary')
+      setWarehouseData(data.items || [])
+      console.log('Loaded warehouse data:', data.items?.length)
+    } catch (err) {
+      console.error('Failed to load warehouse data:', err)
+      setWarehouseData([])
+    }
+  }
 
 
   const filteredProducts = useMemo(() => {
@@ -90,9 +103,19 @@ export default function UserProducts() {
     return Array.from(cats).sort()
   }, [products])
 
-  function getTotalStock(product) {
+  function getAvailableStock(product) {
+    // Get actual available stock from warehouse data (stock left after orders)
+    const warehouseItem = warehouseData.find(item => String(item._id) === String(product._id))
+    if (warehouseItem?.stockLeft?.total) {
+      return Number(warehouseItem.stockLeft.total || 0)
+    }
+    // Fallback to stockByCountry if warehouse data not available
     if (!product?.stockByCountry) return 0
     return Object.values(product.stockByCountry).reduce((sum, val) => sum + Number(val || 0), 0)
+  }
+  
+  function getTotalBought(product) {
+    return Number(product?.totalPurchased || 0)
   }
   
   function getOrderCountryCurrency(orderCountry) {
@@ -106,31 +129,15 @@ export default function UserProducts() {
   }
   
   function getPricesInStockCurrencies(product) {
-    if (!product?.stockByCountry || !product?.price || !product?.baseCurrency) {
-      console.log('Missing data for product:', product?.name, {
-        hasStockByCountry: !!product?.stockByCountry,
-        hasPrice: !!product?.price,
-        hasBaseCurrency: !!product?.baseCurrency
-      })
-      return []
-    }
+    if (!product?.stockByCountry || !product?.price || !product?.baseCurrency) return []
     
     const prices = []
     const baseCurrency = product.baseCurrency
     const basePrice = product.price
     
-    console.log('Processing prices for:', product.name, {
-      baseCurrency,
-      basePrice,
-      stockByCountry: product.stockByCountry,
-      currencyRatesLoaded: Object.keys(currencyRates).length
-    })
-    
     Object.entries(product.stockByCountry).forEach(([country, stock]) => {
       if (Number(stock || 0) > 0) {
         const currency = getOrderCountryCurrency(country)
-        
-        console.log('Country:', country, 'Currency:', currency, 'Base:', baseCurrency, 'Stock:', stock)
         
         // Skip if same as base currency
         if (currency === baseCurrency) return
@@ -139,16 +146,12 @@ export default function UserProducts() {
         const baseRate = currencyRates[baseCurrency] || 1
         const priceInCurrency = (basePrice * baseRate) / rate
         
-        console.log('Converted price:', priceInCurrency, 'Rate:', rate, 'BaseRate:', baseRate)
-        
         // Avoid duplicates
         if (!prices.find(p => p.currency === currency)) {
           prices.push({ currency, price: priceInCurrency, stock: Number(stock) })
         }
       }
     })
-    
-    console.log('Final prices array for', product.name, ':', prices)
     
     return prices
   }
@@ -201,8 +204,8 @@ export default function UserProducts() {
           </div>
         ) : (
           filteredProducts.map(product => {
-            const totalStock = getTotalStock(product)
-            const isLowStock = totalStock < 10
+            const availableStock = getAvailableStock(product)
+            const isLowStock = availableStock < 10
 
             return (
               <div
@@ -335,7 +338,7 @@ export default function UserProducts() {
                       fontWeight: 800,
                       color: isLowStock ? '#dc2626' : '#059669'
                     }}>
-                      {totalStock}
+                      {availableStock}
                     </span>
                   </div>
 
@@ -355,7 +358,7 @@ export default function UserProducts() {
                       fontWeight: 800,
                       color: '#4f46e5'
                     }}>
-                      {product.totalPurchased || 0}
+                      {getTotalBought(product)}
                     </span>
                   </div>
 
