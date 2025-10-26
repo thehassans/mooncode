@@ -1973,6 +1973,9 @@ router.post('/:id/return', auth, allowRoles('admin','user','agent','driver'), as
   const { id } = req.params
   const { reason } = req.body || {}
   const ord = await Order.findById(id)
+    .populate('deliveryBoy', 'firstName lastName')
+    .populate('productId', 'name')
+    .populate('items.productId', 'name')
   if (!ord) return res.status(404).json({ message: 'Order not found' })
   ord.shipmentStatus = 'returned'
   ord.returnReason = reason || ord.returnReason
@@ -1986,15 +1989,18 @@ router.post('/:id/return', auth, allowRoles('admin','user','agent','driver'), as
       const orderCreator = await User.findById(ord.createdBy).select('createdBy role').lean()
       const targetId = orderCreator?.role === 'user' ? String(orderCreator._id) : String(orderCreator?.createdBy)
       if (targetId) {
+        const driverName = ord.deliveryBoy ? `${ord.deliveryBoy.firstName} ${ord.deliveryBoy.lastName}` : 'Driver'
+        const productName = ord.productId?.name || (ord.items?.[0]?.productId?.name) || 'Product'
         await createNotification({
           userId: targetId,
           type: 'order_returned',
-          title: 'Order Returned by Driver',
-          message: `Driver has marked order #${ord.invoiceNumber || String(ord._id).slice(-6)} as returned. Reason: ${reason || 'Not specified'}. Please verify to restore stock.`,
+          title: 'Order Return Request',
+          message: `${driverName} has returned order #${ord.invoiceNumber || String(ord._id).slice(-6)} (${productName}). Reason: ${reason || 'Not specified'}`,
           relatedId: ord._id,
           relatedType: 'Order',
           triggeredBy: req.user.id,
-          triggeredByRole: 'driver'
+          triggeredByRole: 'driver',
+          metadata: { requiresApproval: true, action: 'verify_return' }
         })
       }
     } catch (err) {
@@ -2010,9 +2016,12 @@ router.post('/:id/cancel', auth, allowRoles('admin','user','agent','manager','dr
   const { id } = req.params
   const { reason } = req.body || {}
   const ord = await Order.findById(id)
+    .populate('deliveryBoy', 'firstName lastName')
+    .populate('productId', 'name')
+    .populate('items.productId', 'name')
   if (!ord) return res.status(404).json({ message: 'Order not found' })
   // Permissions: drivers may cancel only their assigned orders; agents only their own created orders
-  if (req.user.role === 'driver' && String(ord.deliveryBoy||'') !== String(req.user.id)){
+  if (req.user.role === 'driver' && String(ord.deliveryBoy?._id||'') !== String(req.user.id)){
     return res.status(403).json({ message: 'Not allowed' })
   }
   if (req.user.role === 'agent' && String(ord.createdBy||'') !== String(req.user.id)){
@@ -2030,15 +2039,18 @@ router.post('/:id/cancel', auth, allowRoles('admin','user','agent','manager','dr
       const orderCreator = await User.findById(ord.createdBy).select('createdBy role').lean()
       const targetId = orderCreator?.role === 'user' ? String(orderCreator._id) : String(orderCreator?.createdBy)
       if (targetId) {
+        const driverName = ord.deliveryBoy ? `${ord.deliveryBoy.firstName} ${ord.deliveryBoy.lastName}` : 'Driver'
+        const productName = ord.productId?.name || (ord.items?.[0]?.productId?.name) || 'Product'
         await createNotification({
           userId: targetId,
           type: 'order_cancelled',
-          title: 'Order Cancelled by Driver',
-          message: `Driver has cancelled order #${ord.invoiceNumber || String(ord._id).slice(-6)}. Reason: ${reason || 'Not specified'}. Please verify to restore stock.`,
+          title: 'Order Cancellation Request',
+          message: `${driverName} has cancelled order #${ord.invoiceNumber || String(ord._id).slice(-6)} (${productName}). Reason: ${reason || 'Not specified'}`,
           relatedId: ord._id,
           relatedType: 'Order',
           triggeredBy: req.user.id,
-          triggeredByRole: 'driver'
+          triggeredByRole: 'driver',
+          metadata: { requiresApproval: true, action: 'verify_cancellation' }
         })
       }
     } catch (err) {
@@ -2242,11 +2254,14 @@ router.post('/:id/return/submit', auth, allowRoles('driver'), async (req, res) =
   try {
     const { id } = req.params
     const order = await Order.findById(id)
+      .populate('deliveryBoy', 'firstName lastName')
+      .populate('productId', 'name')
+      .populate('items.productId', 'name')
     
     if (!order) return res.status(404).json({ message: 'Order not found' })
     
     // Verify driver owns this order
-    if (String(order.deliveryBoy) !== String(req.user.id)) {
+    if (String(order.deliveryBoy?._id) !== String(req.user.id)) {
       return res.status(403).json({ message: 'Not allowed' })
     }
     
@@ -2279,15 +2294,18 @@ router.post('/:id/return/submit', auth, allowRoles('driver'), async (req, res) =
         // Create persistent notification for the owner/manager
         const notificationType = status === 'cancelled' ? 'order_cancelled' : 'order_returned'
         const actionText = status === 'cancelled' ? 'cancellation' : 'return'
+        const driverName = order.deliveryBoy ? `${order.deliveryBoy.firstName} ${order.deliveryBoy.lastName}` : 'Driver'
+        const productName = order.productId?.name || (order.items?.[0]?.productId?.name) || 'Product'
         await createNotification({
           userId: targetId,
           type: notificationType,
           title: `Order ${status === 'cancelled' ? 'Cancellation' : 'Return'} Submitted for Approval`,
-          message: `Driver has submitted order #${order.invoiceNumber || String(order._id).slice(-6)} ${actionText} request for verification. Reason: ${order.returnReason || 'Not specified'}`,
+          message: `${driverName} has submitted order #${order.invoiceNumber || String(order._id).slice(-6)} (${productName}) ${actionText} request for verification. Reason: ${order.returnReason || 'Not specified'}`,
           relatedId: order._id,
           relatedType: 'Order',
           triggeredBy: req.user.id,
-          triggeredByRole: 'driver'
+          triggeredByRole: 'driver',
+          metadata: { requiresApproval: true, action: `verify_${actionText}` }
         })
       }
     } catch (err) {

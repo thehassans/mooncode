@@ -281,7 +281,22 @@ export default function NotificationsDropdown() {
                       {getNotificationIcon(notification.type)}
                     </div>
                     <div className="notification-content">
-                      <p className="notification-title">{notification.title}</p>
+                      <p className="notification-title">
+                        {notification.title}
+                        {notification.metadata?.requiresApproval && (
+                          <span style={{
+                            marginLeft: 6,
+                            padding: '2px 6px',
+                            background: '#10b981',
+                            color: 'white',
+                            borderRadius: 4,
+                            fontSize: 10,
+                            fontWeight: 600
+                          }}>
+                            NEEDS APPROVAL
+                          </span>
+                        )}
+                      </p>
                       <p className="notification-message">{notification.message}</p>
                       <span className="notification-time">{formatDate(notification.createdAt)}</span>
                     </div>

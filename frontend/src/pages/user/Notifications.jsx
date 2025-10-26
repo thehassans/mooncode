@@ -99,6 +99,31 @@ export default function Notifications() {
     }
   }
 
+  async function approveNotification(notification) {
+    try {
+      if (!notification.relatedId) {
+        alert('Cannot approve: Order ID not found')
+        return
+      }
+      
+      const confirmed = confirm(`Approve this ${notification.type === 'order_cancelled' ? 'cancellation' : 'return'} request? This will restore stock for order #${notification.message.match(/#(\w+)/)?.[1] || notification.relatedId}`)
+      if (!confirmed) return
+
+      // Call the verify endpoint
+      await apiPost(`/api/orders/${notification.relatedId}/return/verify`, {})
+      
+      // Mark notification as read and remove from list
+      await markAsRead(notification._id)
+      await deleteNotification(notification._id)
+      
+      alert('Order verified successfully. Stock has been restored.')
+      loadNotifications(1, true)
+    } catch (error) {
+      console.error('Failed to approve:', error)
+      alert(error?.message || 'Failed to approve request')
+    }
+  }
+
   useEffect(() => {
     loadNotifications(1, true)
     loadStats()
@@ -277,7 +302,19 @@ export default function Notifications() {
                     )}
                   </div>
                   
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    {notification.metadata?.requiresApproval && (
+                      <button
+                        className="btn"
+                        style={{ padding: '4px 12px', fontSize: 12, background: '#10b981', border: 'none' }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          approveNotification(notification)
+                        }}
+                      >
+                        ✓ Approve
+                      </button>
+                    )}
                     {!notification.read && (
                       <button
                         className="btn secondary"
