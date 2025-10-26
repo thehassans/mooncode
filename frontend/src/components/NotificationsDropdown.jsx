@@ -141,31 +141,29 @@ export default function NotificationsDropdown() {
 
   function getNotificationIcon(type) {
     switch (type) {
-      case 'order_created':
-      case 'order_shipped':
-      case 'order_delivered': 
+      case 'order_cancelled':
+      case 'order_returned': 
         return (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
             <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+            <line x1="10" y1="11" x2="14" y2="15"></line>
+            <line x1="14" y1="11" x2="10" y2="15"></line>
           </svg>
         )
       
-      case 'product_created':
-      case 'product_updated':
-        return (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <path d="M16 10a4 4 0 0 1-8 0"></path>
-          </svg>
-        )
-      
-      case 'expense_added':
+      case 'driver_settlement':
+      case 'amount_approval':
+      case 'manager_remittance':
+      case 'agent_remittance':
+      case 'investor_remittance':
+      case 'expense_approval':
         return (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="5" width="20" height="14" rx="2"></rect>
             <line x1="2" y1="10" x2="22" y2="10"></line>
+            <path d="M12 15h2"></path>
+            <path d="M12 15a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"></path>
           </svg>
         )
         

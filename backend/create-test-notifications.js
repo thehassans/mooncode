@@ -28,15 +28,15 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/buysial')
 // Sample notification data
 const sampleNotifications = [
   {
-    type: 'order_created',
-    title: 'New Order Received',
-    message: 'Order #ORD-4872 has been created and is pending review.',
+    type: 'order_cancelled',
+    title: 'Order Cancellation Request',
+    message: 'Driver Ahmed has requested to cancel order #ORD-4872 due to customer unavailability.',
     relatedType: 'Order',
     relatedId: new mongoose.Types.ObjectId(),
-    triggeredByRole: 'agent'
+    triggeredByRole: 'driver'
   },
   {
-    type: 'expense_added',
+    type: 'driver_settlement',
     title: 'Driver Settlement Approval',
     message: 'Driver John has submitted AED 1,200 settlement for approval.',
     relatedType: 'Expense',
@@ -44,28 +44,28 @@ const sampleNotifications = [
     triggeredByRole: 'driver'
   },
   {
-    type: 'product_updated',
-    title: 'Product Stock Updated',
-    message: 'Inventory for "Premium Watch" has been updated to 24 units.',
-    relatedType: 'Product',
-    relatedId: new mongoose.Types.ObjectId(),
-    triggeredByRole: 'manager'
-  },
-  {
-    type: 'other',
-    title: 'Manager Remittance',
-    message: 'Manager Sarah has sent AED 5,000 to company account for approval.',
-    relatedType: 'Other',
-    relatedId: new mongoose.Types.ObjectId(),
-    triggeredByRole: 'manager'
-  },
-  {
-    type: 'other',
+    type: 'order_returned',
     title: 'Order Return Request',
-    message: 'Driver Ali has submitted a return request for order #ORD-4651.',
+    message: 'Order #ORD-5123 has been returned. Reason: Product damaged during transit.',
     relatedType: 'Order',
     relatedId: new mongoose.Types.ObjectId(),
     triggeredByRole: 'driver'
+  },
+  {
+    type: 'manager_remittance',
+    title: 'Manager Remittance Approval',
+    message: 'Manager Sarah has sent AED 5,000 to company account for approval.',
+    relatedType: 'Expense',
+    relatedId: new mongoose.Types.ObjectId(),
+    triggeredByRole: 'manager'
+  },
+  {
+    type: 'agent_remittance',
+    title: 'Agent Remittance Approval',
+    message: 'Agent Fahad has submitted AED 3,500 remittance for approval.',
+    relatedType: 'Expense',
+    relatedId: new mongoose.Types.ObjectId(),
+    triggeredByRole: 'agent'
   }
 ]
 

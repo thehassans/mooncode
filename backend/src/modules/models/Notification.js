@@ -7,7 +7,7 @@ const NotificationSchema = new mongoose.Schema({
   // Notification details
   type: { 
     type: String, 
-    enum: ['order_created', 'order_shipped', 'order_delivered', 'product_created', 'product_updated', 'user_created', 'agent_created', 'manager_created', 'driver_created', 'expense_added', 'other'], 
+    enum: ['order_cancelled', 'order_returned', 'amount_approval', 'driver_settlement', 'manager_remittance', 'agent_remittance', 'investor_remittance', 'expense_approval', 'other'], 
     required: true,
     index: true
   },
