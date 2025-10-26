@@ -4,6 +4,7 @@ import { API_BASE, apiGet } from '../../api'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
 import { getCurrencyConfig, toAEDByCode, aedToPKR } from '../../util/currency'
+import { qsRangeBare } from '../../utils/queryString.js'
 
 export default function AgentDashboard(){
   const navigate = useNavigate()

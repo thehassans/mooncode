@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { API_BASE, apiGet, apiPost } from '../../api'
 import { io } from 'socket.io-client'
 import { useNavigate } from 'react-router-dom'
+import { qsRangeBare } from '../../utils/queryString.js'
 
 export default function DriverDashboard(){
   const nav = useNavigate()
