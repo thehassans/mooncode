@@ -153,6 +153,7 @@ export default function DriverPayout(){
                   <th style={{textAlign:'left', padding:'8px 10px'}}>Approver</th>
                   <th style={{textAlign:'left', padding:'8px 10px'}}>Amount</th>
                   <th style={{textAlign:'left', padding:'8px 10px'}}>Status</th>
+                  <th style={{textAlign:'left', padding:'8px 10px'}}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -162,7 +163,48 @@ export default function DriverPayout(){
                     <td style={{ padding:'8px 10px' }}>{(r.method||'hand').toUpperCase()}</td>
                     <td style={{ padding:'8px 10px' }}>{r?.manager?.role==='user' ? 'Owner' : (r?.manager?.role==='manager' ? 'Manager' : '-')}</td>
                     <td style={{ padding:'8px 10px' }}>{summary.currency||'SAR'} {Number(r.amount||0).toFixed(2)}</td>
-                    <td style={{ padding:'8px 10px' }}>{r.status}</td>
+                    <td style={{ padding:'8px 10px' }}>
+                      {r.status === 'accepted' ? (
+                        <span style={{color:'#10b981', fontWeight:700}}>✓ {r.status}</span>
+                      ) : r.status === 'manager_accepted' ? (
+                        <span style={{color:'#3b82f6', fontWeight:700}}>Manager Accepted</span>
+                      ) : (
+                        <span style={{color:'#f59e0b', fontWeight:600}}>{r.status}</span>
+                      )}
+                    </td>
+                    <td style={{ padding:'8px 10px' }}>
+                      <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+                        {r.pdfPath && (
+                          <a 
+                            href={r.pdfPath}
+                            download
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn small"
+                            style={{background:'#3b82f6', color:'white', padding:'4px 10px', fontSize:12, whiteSpace:'nowrap', textDecoration:'none'}}
+                            title="Download Settlement PDF"
+                          >
+                            📄 PDF
+                          </a>
+                        )}
+                        {r.status === 'accepted' && r.acceptedPdfPath && (
+                          <a 
+                            href={r.acceptedPdfPath}
+                            download
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn small"
+                            style={{background:'#10b981', color:'white', padding:'4px 10px', fontSize:12, whiteSpace:'nowrap', textDecoration:'none'}}
+                            title="Download Accepted Settlement PDF"
+                          >
+                            ✓ Accepted PDF
+                          </a>
+                        )}
+                        {!r.pdfPath && !r.acceptedPdfPath && (
+                          <span className="helper" style={{fontSize:12}}>—</span>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

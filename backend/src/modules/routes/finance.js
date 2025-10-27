@@ -14,7 +14,7 @@ import Product from "../models/Product.js";
 import { getIO } from "../config/socket.js";
 import Setting from "../models/Setting.js";
 import { generatePayoutReceiptPDF } from "../utils/payoutReceipt.js";
-import { generateSettlementPDF } from "../../utils/generateSettlementPDF.js";
+import { generateSettlementPDF, generateAcceptedSettlementPDF } from "../../utils/generateSettlementPDF.js";
 
 const router = express.Router();
 
@@ -1126,13 +1126,78 @@ router.post(
         r.status = "accepted";
         r.acceptedAt = new Date();
         r.acceptedBy = req.user.id;
+        
+        // Generate accepted PDF with ACCEPTED stamp for driver
+        try {
+          const driver = await User.findById(r.driver).select('firstName lastName phone commission paidCommission driverProfile');
+          const manager = await User.findById(r.manager).select('firstName lastName');
+          const acceptedByUser = await User.findById(req.user.id).select('firstName lastName');
+          
+          // Get order statistics for the driver
+          const assignedCount = await Order.countDocuments({ deliveryBoy: r.driver });
+          const cancelledCount = await Order.countDocuments({ 
+            deliveryBoy: r.driver, 
+            $or: [{ shipmentStatus: 'cancelled' }, { shipmentStatus: 'returned' }] 
+          });
+          
+          // Calculate commission
+          const commissionPerOrder = Number(driver?.driverProfile?.commissionPerOrder || 0);
+          const totalCommission = r.totalDeliveredOrders * commissionPerOrder;
+          const paidRemittances = await Remittance.find({
+            driver: r.driver,
+            status: 'accepted'
+          });
+          const paidCommission = paidRemittances.reduce((sum, rem) => sum + (Number(rem.amount) || 0), 0);
+          const pendingCommission = Math.max(0, totalCommission - paidCommission);
+          
+          // Get financial data from original remittance
+          const deliveredOrders = await Order.find({
+            deliveryBoy: r.driver,
+            shipmentStatus: 'delivered',
+            paymentCollected: true
+          });
+          const totalCollectedAmount = deliveredOrders.reduce((sum, o) => sum + (Number(o.grandTotal) || 0), 0);
+          const deliveredToCompany = paidCommission;
+          const pendingToCompany = Math.max(0, totalCollectedAmount - deliveredToCompany);
+          
+          const acceptedPdfPath = await generateAcceptedSettlementPDF({
+            driverName: `${driver?.firstName || ''} ${driver?.lastName || ''}`.trim() || 'N/A',
+            driverPhone: driver?.phone || '',
+            managerName: `${manager?.firstName || ''} ${manager?.lastName || ''}`.trim() || 'N/A',
+            totalDeliveredOrders: r.totalDeliveredOrders,
+            assignedOrders: assignedCount,
+            cancelledOrders: cancelledCount,
+            collectedAmount: totalCollectedAmount,
+            deliveredToCompany,
+            pendingDeliveryToCompany: pendingToCompany,
+            amount: r.amount,
+            totalCommission,
+            paidCommission,
+            pendingCommission,
+            currency: r.currency,
+            method: r.method,
+            receiptPath: r.receiptPath,
+            fromDate: r.fromDate,
+            toDate: r.toDate,
+            note: r.note,
+            acceptedDate: r.acceptedAt,
+            acceptedBy: `${acceptedByUser?.firstName || ''} ${acceptedByUser?.lastName || ''}`.trim() || 'Company'
+          });
+          
+          r.acceptedPdfPath = acceptedPdfPath;
+        } catch (pdfErr) {
+          console.error('Failed to generate accepted settlement PDF:', pdfErr);
+          // Don't fail the entire operation if PDF generation fails
+        }
+        
         await r.save();
         
-        // Notify driver
+        // Notify driver with accepted PDF
         try {
           const io = getIO();
           io.to(`user:${String(r.driver)}`).emit("remittance.accepted", {
             id: String(r._id),
+            acceptedPdfPath: r.acceptedPdfPath
           });
         } catch {}
         
