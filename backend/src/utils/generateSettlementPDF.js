@@ -144,86 +144,86 @@ export async function generateSettlementPDF(data) {
       drawBox(margin, currentY, pageWidth - 2 * margin, infoBoxHeight, '#fefce8', '#fbbf24')
       
       doc.fontSize(9).font('Helvetica').fillColor('#92400e')
-      doc.text('📄 Document ID:', margin + 15, currentY + 14)
+      doc.text('Document ID:', margin + 15, currentY + 14)
       doc.fontSize(10).font('Helvetica-Bold').fillColor('#78350f')
-      doc.text(`SETTLEMENT-${Date.now()}`, margin + 125, currentY + 14)
+      doc.text(`SETTLEMENT-${Date.now()}`, margin + 110, currentY + 14)
       
       doc.fontSize(9).font('Helvetica').fillColor('#92400e')
-      doc.text('📅 Generated:', margin + 15, currentY + 32)
+      doc.text('Generated:', margin + 15, currentY + 32)
       doc.fontSize(10).font('Helvetica-Bold').fillColor('#78350f')
       doc.text(new Date().toLocaleString('en-US', { 
         year: 'numeric', month: 'short', day: 'numeric', 
         hour: '2-digit', minute: '2-digit' 
-      }), margin + 125, currentY + 32)
+      }), margin + 110, currentY + 32)
       
       if (data.fromDate && data.toDate) {
         doc.fontSize(9).font('Helvetica').fillColor('#92400e')
-        doc.text('📊 Period:', margin + 15, currentY + 50)
+        doc.text('Period:', margin + 15, currentY + 50)
         doc.fontSize(10).font('Helvetica-Bold').fillColor('#78350f')
         doc.text(
           `${new Date(data.fromDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})} - ${new Date(data.toDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}`,
-          margin + 125, currentY + 50
+          margin + 110, currentY + 50
         )
       }
       currentY += infoBoxHeight + 15
 
       // Driver Information Section with Icon
       doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b')
-      doc.text('👤 DRIVER INFORMATION', margin, currentY)
+      doc.text('DRIVER INFORMATION', margin, currentY)
       doc.moveTo(margin, currentY + 16).lineTo(pageWidth - margin, currentY + 16).lineWidth(2).strokeColor('#3b82f6').stroke()
       currentY += 22
       
       currentY = drawTableRow(currentY, 'Information', 'Details', true)
-      currentY = drawTableRow(currentY, '👤 Driver Name', data.driverName || 'N/A')
+      currentY = drawTableRow(currentY, 'Driver Name', data.driverName || 'N/A')
       if (data.driverPhone) {
-        currentY = drawTableRow(currentY, '📱 Phone Number', data.driverPhone)
+        currentY = drawTableRow(currentY, 'Phone Number', data.driverPhone)
       }
-      currentY = drawTableRow(currentY, '👨‍💼 Submitted To', data.managerName || 'N/A')
+      currentY = drawTableRow(currentY, 'Submitted To', data.managerName || 'N/A')
       currentY += 18
 
       // Order Statistics Section with Icon
       doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b')
-      doc.text('📦 ORDER STATISTICS', margin, currentY)
+      doc.text('ORDER STATISTICS', margin, currentY)
       doc.moveTo(margin, currentY + 16).lineTo(pageWidth - margin, currentY + 16).lineWidth(2).strokeColor('#8b5cf6').stroke()
       currentY += 22
       
       currentY = drawTableRow(currentY, 'Metric', 'Count', true)
       if (data.assignedOrders != null) {
-        currentY = drawTableRow(currentY, '📋 Total Assigned Orders', String(data.assignedOrders || 0))
+        currentY = drawTableRow(currentY, 'Total Assigned Orders', String(data.assignedOrders || 0))
       }
-      currentY = drawTableRow(currentY, '✅ Delivered Orders', String(data.totalDeliveredOrders || 0))
+      currentY = drawTableRow(currentY, 'Delivered Orders', String(data.totalDeliveredOrders || 0))
       if (data.cancelledOrders != null) {
-        currentY = drawTableRow(currentY, '❌ Cancelled Orders', String(data.cancelledOrders || 0))
+        currentY = drawTableRow(currentY, 'Cancelled Orders', String(data.cancelledOrders || 0))
       }
       currentY += 18
 
       // Financial Summary Section with Icon
       doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b')
-      doc.text('💰 FINANCIAL SUMMARY', margin, currentY)
+      doc.text('FINANCIAL SUMMARY', margin, currentY)
       doc.moveTo(margin, currentY + 16).lineTo(pageWidth - margin, currentY + 16).lineWidth(2).strokeColor('#10b981').stroke()
       currentY += 22
       
       currentY = drawTableRow(currentY, 'Description', 'Amount', true)
       if (data.collectedAmount != null) {
-        currentY = drawTableRow(currentY, '💵 Total Collected from Customers', formatCurrency(data.collectedAmount, data.currency))
+        currentY = drawTableRow(currentY, 'Total Collected from Customers', formatCurrency(data.collectedAmount, data.currency))
       }
-      currentY = drawTableRow(currentY, '✅ Already Delivered to Company', formatCurrency(data.deliveredToCompany, data.currency))
-      currentY = drawTableRow(currentY, '⏳ Pending Delivery to Company', formatCurrency(data.pendingDeliveryToCompany, data.currency))
+      currentY = drawTableRow(currentY, 'Already Delivered to Company', formatCurrency(data.deliveredToCompany, data.currency))
+      currentY = drawTableRow(currentY, 'Pending Delivery to Company', formatCurrency(data.pendingDeliveryToCompany, data.currency))
       currentY += 18
 
       // Commission Details Section with Icon and Highlight
       if (data.totalCommission != null || data.paidCommission != null || data.pendingCommission != null) {
         doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b')
-        doc.text('💎 COMMISSION DETAILS', margin, currentY)
+        doc.text('COMMISSION DETAILS', margin, currentY)
         doc.moveTo(margin, currentY + 16).lineTo(pageWidth - margin, currentY + 16).lineWidth(2).strokeColor('#f59e0b').stroke()
         currentY += 22
         
         currentY = drawTableRow(currentY, 'Commission Type', 'Amount', true)
         if (data.totalCommission != null) {
-          currentY = drawTableRow(currentY, '💰 Total Commission Earned', formatCurrency(data.totalCommission, data.currency))
+          currentY = drawTableRow(currentY, 'Total Commission Earned', formatCurrency(data.totalCommission, data.currency))
         }
         if (data.paidCommission != null) {
-          currentY = drawTableRow(currentY, '✅ Commission Already Paid', formatCurrency(data.paidCommission, data.currency))
+          currentY = drawTableRow(currentY, 'Commission Already Paid', formatCurrency(data.paidCommission, data.currency))
         }
         if (data.pendingCommission != null) {
           // Highlight pending commission
@@ -232,7 +232,7 @@ export async function generateSettlementPDF(data) {
           const y = currentY
           doc.rect(x, y, width, 24).fillAndStroke('#fef3c7', '#fbbf24')
           doc.fillColor('#78350f').fontSize(10).font('Helvetica-Bold')
-          doc.text('⏳ Pending Commission', x + 12, y + 7, { width: width / 2 - 20 })
+          doc.text('Pending Commission', x + 12, y + 7, { width: width / 2 - 20 })
           doc.fillColor('#92400e').font('Helvetica-Bold').fontSize(11)
           doc.text(formatCurrency(data.pendingCommission, data.currency), x + width / 2, y + 7, { width: width / 2 - 12, align: 'right' })
           currentY += 24
@@ -252,7 +252,7 @@ export async function generateSettlementPDF(data) {
       doc.roundedRect(margin, currentY, pageWidth - 2 * margin, 42, 6).fillAndStroke(settlementGradient, '#065f46')
       
       doc.fillColor('white').fontSize(13).font('Helvetica-Bold')
-      doc.text('💵 CURRENT SETTLEMENT AMOUNT', margin + 18, currentY + 12)
+      doc.text('CURRENT SETTLEMENT AMOUNT', margin + 18, currentY + 12)
       doc.fontSize(20).font('Helvetica-Bold')
       doc.text(formatCurrency(data.amount, data.currency), margin, currentY + 12, { 
         align: 'right', 
@@ -262,21 +262,21 @@ export async function generateSettlementPDF(data) {
 
       // Payment Details
       doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b')
-      doc.text('💳 PAYMENT DETAILS', margin, currentY)
+      doc.text('PAYMENT DETAILS', margin, currentY)
       doc.moveTo(margin, currentY + 16).lineTo(pageWidth - margin, currentY + 16).lineWidth(2).strokeColor('#6366f1').stroke()
       currentY += 22
       
       rowIndex = 0
-      currentY = drawTableRow(currentY, '💳 Payment Method', data.method === 'transfer' ? '🏦 Bank Transfer' : '🤝 Hand Delivery')
+      currentY = drawTableRow(currentY, 'Payment Method', data.method === 'transfer' ? 'Bank Transfer' : 'Hand Delivery')
       if (data.note) {
-        currentY = drawTableRow(currentY, '📝 Note', data.note)
+        currentY = drawTableRow(currentY, 'Note', data.note)
       }
       currentY += 18
 
       // Payment Proof (if transfer)
       if (data.method === 'transfer' && data.receiptPath) {
         doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b')
-        doc.text('📸 PAYMENT PROOF', margin, currentY)
+        doc.text('PAYMENT PROOF', margin, currentY)
         doc.moveTo(margin, currentY + 16).lineTo(pageWidth - margin, currentY + 16).lineWidth(2).strokeColor('#ec4899').stroke()
         currentY += 22
         
@@ -316,13 +316,13 @@ export async function generateSettlementPDF(data) {
       doc.moveTo(0, footerY).lineTo(pageWidth, footerY).lineWidth(1).strokeColor('#d1d5db').stroke()
       
       doc.fontSize(8).font('Helvetica-Bold').fillColor('#4b5563')
-      doc.text('🔒 CONFIDENTIAL DOCUMENT', margin, footerY + 12, { align: 'center' })
+      doc.text('CONFIDENTIAL DOCUMENT', margin, footerY + 12, { align: 'center' })
       doc.fontSize(8).font('Helvetica').fillColor('#6b7280')
       doc.text('This is a system-generated document. No signature required.', margin, footerY + 26, { align: 'center' })
       doc.fontSize(7).fillColor('#9ca3af')
       doc.text('For any queries, please contact your manager or admin.', margin, footerY + 38, { align: 'center' })
       doc.fontSize(7).fillColor('#9ca3af')
-      doc.text(`📅 Generated: ${new Date().toLocaleString('en-US', {dateStyle: 'medium', timeStyle: 'short'})} • BuySial Commerce`, margin, footerY + 50, { align: 'center' })
+      doc.text(`Generated: ${new Date().toLocaleString('en-US', {dateStyle: 'medium', timeStyle: 'short'})} | BuySial Commerce`, margin, footerY + 50, { align: 'center' })
 
       // Finalize PDF
       doc.end()
@@ -531,12 +531,12 @@ export async function generateAcceptedSettlementPDF(data) {
       drawBox(margin, currentY, pageWidth - 2 * margin, infoBoxHeight, '#d1fae5', '#10b981')
       
       doc.fontSize(9).font('Helvetica').fillColor('#065f46')
-      doc.text('📄 Document ID:', margin + 15, currentY + 14)
+      doc.text('Document ID:', margin + 15, currentY + 14)
       doc.fontSize(10).font('Helvetica-Bold').fillColor('#047857')
       doc.text(`SETTLEMENT-${Date.now()}`, margin + 125, currentY + 14)
       
       doc.fontSize(9).font('Helvetica').fillColor('#065f46')
-      doc.text('📅 Generated:', margin + 15, currentY + 32)
+      doc.text('Generated:', margin + 15, currentY + 32)
       doc.fontSize(10).font('Helvetica-Bold').fillColor('#047857')
       doc.text(new Date().toLocaleString('en-US', { 
         year: 'numeric', month: 'short', day: 'numeric', 
@@ -544,7 +544,7 @@ export async function generateAcceptedSettlementPDF(data) {
       }), margin + 125, currentY + 32)
       
       doc.fontSize(9).font('Helvetica').fillColor('#065f46')
-      doc.text('✅ Accepted:', margin + 15, currentY + 50)
+      doc.text('Accepted:', margin + 15, currentY + 50)
       doc.fontSize(10).font('Helvetica-Bold').fillColor('#047857')
       doc.text(new Date(data.acceptedDate || Date.now()).toLocaleString('en-US', { 
         year: 'numeric', month: 'short', day: 'numeric', 
@@ -553,7 +553,7 @@ export async function generateAcceptedSettlementPDF(data) {
       
       if (data.fromDate && data.toDate) {
         doc.fontSize(9).font('Helvetica').fillColor('#065f46')
-        doc.text('📊 Period:', margin + 15, currentY + 68)
+        doc.text('Period:', margin + 15, currentY + 68)
         doc.fontSize(10).font('Helvetica-Bold').fillColor('#047857')
         doc.text(
           `${new Date(data.fromDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})} - ${new Date(data.toDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}`,
@@ -565,67 +565,67 @@ export async function generateAcceptedSettlementPDF(data) {
       doc.roundedRect(margin + 15, currentY + infoBoxHeight - 22, 100, 18, 4)
          .fillAndStroke('#059669', '#047857')
       doc.fontSize(10).font('Helvetica-Bold').fillColor('white')
-      doc.text('✓ ACCEPTED', margin + 32, currentY + infoBoxHeight - 18)
+      doc.text('ACCEPTED', margin + 32, currentY + infoBoxHeight - 18)
       
       currentY += infoBoxHeight + 15
 
       // Driver Information Section with Icon
       doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b')
-      doc.text('👤 DRIVER INFORMATION', margin, currentY)
+      doc.text('DRIVER INFORMATION', margin, currentY)
       doc.moveTo(margin, currentY + 16).lineTo(pageWidth - margin, currentY + 16).lineWidth(2).strokeColor('#3b82f6').stroke()
       currentY += 22
       
       currentY = drawTableRow(currentY, 'Information', 'Details', true)
-      currentY = drawTableRow(currentY, '👤 Driver Name', data.driverName || 'N/A')
+      currentY = drawTableRow(currentY, 'Driver Name', data.driverName || 'N/A')
       if (data.driverPhone) {
-        currentY = drawTableRow(currentY, '📱 Phone Number', data.driverPhone)
+        currentY = drawTableRow(currentY, 'Phone Number', data.driverPhone)
       }
-      currentY = drawTableRow(currentY, '👨‍💼 Submitted To', data.managerName || 'N/A')
+      currentY = drawTableRow(currentY, 'Submitted To', data.managerName || 'N/A')
       currentY += 18
 
       // Order Statistics Section with Icon
       doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b')
-      doc.text('📦 ORDER STATISTICS', margin, currentY)
+      doc.text('ORDER STATISTICS', margin, currentY)
       doc.moveTo(margin, currentY + 16).lineTo(pageWidth - margin, currentY + 16).lineWidth(2).strokeColor('#8b5cf6').stroke()
       currentY += 22
       
       currentY = drawTableRow(currentY, 'Metric', 'Count', true)
       if (data.assignedOrders != null) {
-        currentY = drawTableRow(currentY, '📋 Total Assigned Orders', String(data.assignedOrders || 0))
+        currentY = drawTableRow(currentY, 'Total Assigned Orders', String(data.assignedOrders || 0))
       }
-      currentY = drawTableRow(currentY, '✅ Delivered Orders', String(data.totalDeliveredOrders || 0))
+      currentY = drawTableRow(currentY, 'Delivered Orders', String(data.totalDeliveredOrders || 0))
       if (data.cancelledOrders != null) {
-        currentY = drawTableRow(currentY, '❌ Cancelled Orders', String(data.cancelledOrders || 0))
+        currentY = drawTableRow(currentY, 'Cancelled Orders', String(data.cancelledOrders || 0))
       }
       currentY += 18
 
       // Financial Summary Section with Icon
       doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b')
-      doc.text('💰 FINANCIAL SUMMARY', margin, currentY)
+      doc.text('FINANCIAL SUMMARY', margin, currentY)
       doc.moveTo(margin, currentY + 16).lineTo(pageWidth - margin, currentY + 16).lineWidth(2).strokeColor('#10b981').stroke()
       currentY += 22
       
       currentY = drawTableRow(currentY, 'Description', 'Amount', true)
       if (data.collectedAmount != null) {
-        currentY = drawTableRow(currentY, '💵 Total Collected from Customers', formatCurrency(data.collectedAmount, data.currency))
+        currentY = drawTableRow(currentY, 'Total Collected from Customers', formatCurrency(data.collectedAmount, data.currency))
       }
-      currentY = drawTableRow(currentY, '✅ Already Delivered to Company', formatCurrency(data.deliveredToCompany, data.currency))
-      currentY = drawTableRow(currentY, '⏳ Pending Delivery to Company', formatCurrency(data.pendingDeliveryToCompany, data.currency))
+      currentY = drawTableRow(currentY, 'Already Delivered to Company', formatCurrency(data.deliveredToCompany, data.currency))
+      currentY = drawTableRow(currentY, 'Pending Delivery to Company', formatCurrency(data.pendingDeliveryToCompany, data.currency))
       currentY += 18
 
       // Commission Details Section with Icon and Highlight
       if (data.totalCommission != null || data.paidCommission != null || data.pendingCommission != null) {
         doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b')
-        doc.text('💎 COMMISSION DETAILS', margin, currentY)
+        doc.text('COMMISSION DETAILS', margin, currentY)
         doc.moveTo(margin, currentY + 16).lineTo(pageWidth - margin, currentY + 16).lineWidth(2).strokeColor('#f59e0b').stroke()
         currentY += 22
         
         currentY = drawTableRow(currentY, 'Commission Type', 'Amount', true)
         if (data.totalCommission != null) {
-          currentY = drawTableRow(currentY, '💰 Total Commission Earned', formatCurrency(data.totalCommission, data.currency))
+          currentY = drawTableRow(currentY, 'Total Commission Earned', formatCurrency(data.totalCommission, data.currency))
         }
         if (data.paidCommission != null) {
-          currentY = drawTableRow(currentY, '✅ Commission Already Paid', formatCurrency(data.paidCommission, data.currency))
+          currentY = drawTableRow(currentY, 'Commission Already Paid', formatCurrency(data.paidCommission, data.currency))
         }
         if (data.pendingCommission != null) {
           // Highlight pending commission
@@ -634,7 +634,7 @@ export async function generateAcceptedSettlementPDF(data) {
           const y = currentY
           doc.rect(x, y, width, 24).fillAndStroke('#fef3c7', '#fbbf24')
           doc.fillColor('#78350f').fontSize(10).font('Helvetica-Bold')
-          doc.text('⏳ Pending Commission', x + 12, y + 7, { width: width / 2 - 20 })
+          doc.text('Pending Commission', x + 12, y + 7, { width: width / 2 - 20 })
           doc.fillColor('#92400e').font('Helvetica-Bold').fontSize(11)
           doc.text(formatCurrency(data.pendingCommission, data.currency), x + width / 2, y + 7, { width: width / 2 - 12, align: 'right' })
           currentY += 24
@@ -654,7 +654,7 @@ export async function generateAcceptedSettlementPDF(data) {
       doc.roundedRect(margin, currentY, pageWidth - 2 * margin, 42, 6).fillAndStroke(settlementGradient, '#065f46')
       
       doc.fillColor('white').fontSize(13).font('Helvetica-Bold')
-      doc.text('💵 ACCEPTED SETTLEMENT AMOUNT', margin + 18, currentY + 12)
+      doc.text('ACCEPTED SETTLEMENT AMOUNT', margin + 18, currentY + 12)
       doc.fontSize(20).font('Helvetica-Bold')
       doc.text(formatCurrency(data.amount, data.currency), margin, currentY + 12, { 
         align: 'right', 
@@ -664,24 +664,24 @@ export async function generateAcceptedSettlementPDF(data) {
 
       // Payment Details
       doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b')
-      doc.text('💳 PAYMENT DETAILS', margin, currentY)
+      doc.text('PAYMENT DETAILS', margin, currentY)
       doc.moveTo(margin, currentY + 16).lineTo(pageWidth - margin, currentY + 16).lineWidth(2).strokeColor('#6366f1').stroke()
       currentY += 22
       
       rowIndex = 0
-      currentY = drawTableRow(currentY, '💳 Payment Method', data.method === 'transfer' ? '🏦 Bank Transfer' : '🤝 Hand Delivery')
+      currentY = drawTableRow(currentY, 'Payment Method', data.method === 'transfer' ? 'Bank Transfer' : 'Hand Delivery')
       if (data.note) {
-        currentY = drawTableRow(currentY, '📝 Note', data.note)
+        currentY = drawTableRow(currentY, 'Note', data.note)
       }
       if (data.acceptedBy) {
-        currentY = drawTableRow(currentY, '✅ Accepted By', data.acceptedBy)
+        currentY = drawTableRow(currentY, 'Accepted By', data.acceptedBy)
       }
       currentY += 18
 
       // Payment Proof (if transfer)
       if (data.method === 'transfer' && data.receiptPath) {
         doc.fontSize(13).font('Helvetica-Bold').fillColor('#1e293b')
-        doc.text('📸 PAYMENT PROOF', margin, currentY)
+        doc.text('PAYMENT PROOF', margin, currentY)
         doc.moveTo(margin, currentY + 16).lineTo(pageWidth - margin, currentY + 16).lineWidth(2).strokeColor('#ec4899').stroke()
         currentY += 22
         
@@ -721,13 +721,13 @@ export async function generateAcceptedSettlementPDF(data) {
       doc.moveTo(0, footerY).lineTo(pageWidth, footerY).lineWidth(1).strokeColor('#10b981').stroke()
       
       doc.fontSize(8).font('Helvetica-Bold').fillColor('#047857')
-      doc.text('✓ ACCEPTED & VERIFIED DOCUMENT', margin, footerY + 12, { align: 'center' })
+      doc.text('ACCEPTED & VERIFIED DOCUMENT', margin, footerY + 12, { align: 'center' })
       doc.fontSize(8).font('Helvetica').fillColor('#065f46')
       doc.text('This settlement has been accepted and verified by the company.', margin, footerY + 26, { align: 'center' })
       doc.fontSize(7).fillColor('#059669')
       doc.text('For any queries, please contact your manager or admin.', margin, footerY + 38, { align: 'center' })
       doc.fontSize(7).fillColor('#059669')
-      doc.text(`📅 Accepted: ${new Date(data.acceptedDate || Date.now()).toLocaleString('en-US', {dateStyle: 'medium', timeStyle: 'short'})} • BuySial Commerce`, margin, footerY + 50, { align: 'center' })
+      doc.text(`Accepted: ${new Date(data.acceptedDate || Date.now()).toLocaleString('en-US', {dateStyle: 'medium', timeStyle: 'short'})} | BuySial Commerce`, margin, footerY + 50, { align: 'center' })
 
       // Finalize PDF
       doc.end()
