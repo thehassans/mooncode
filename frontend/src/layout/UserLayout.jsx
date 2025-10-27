@@ -265,10 +265,10 @@ export default function UserLayout(){
             <button
               className="btn secondary w-9 h-9 p-0 grid place-items-center"
               onClick={toggleTheme}
-              title={theme==='light' ? 'Switch to dark mode' : 'Switch to light mode'}
-              aria-label={theme==='light' ? 'Dark mode' : 'Light mode'}
+              title={theme==='light' ? 'Light mode (click for dark)' : 'Dark mode (click for light)'}
+              aria-label={theme==='light' ? 'Light mode' : 'Dark mode'}
             >
-              {theme==='light' ? '🌙' : '☀️'}
+              {theme==='light' ? '☀️' : '🌙'}
             </button>
             {/* Notifications dropdown component */}
             <NotificationsDropdown />
