@@ -167,21 +167,13 @@ export default function DriverFinances(){
           <div className="page-title gradient heading-cyan">Manager Payable to Company</div>
           <div className="page-subtitle">Monitor driver's delivered collections and remittances</div>
         </div>
-        <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-          <button 
-            className="btn secondary" 
-            onClick={()=> navigate('/manager/finances/history/drivers')}
-          >
-            📜 History
-          </button>
-          <button 
-            className="btn success" 
-            disabled={!country || summary.toPayCompany <= 0 || loading}
-            onClick={handlePayToCompany}
-          >
-            Pay to Company
-          </button>
-        </div>
+        <button 
+          className="btn success" 
+          disabled={!country || summary.toPayCompany <= 0 || loading}
+          onClick={handlePayToCompany}
+        >
+          Pay to Company
+        </button>
       </div>
 
       {/* Filters */}
@@ -287,7 +279,7 @@ export default function DriverFinances(){
                       </td>
                       <td style={{padding:'10px 12px', textAlign:'center'}}>
                         <div style={{display:'flex', gap:6, alignItems:'center', justifyContent:'center', flexWrap:'wrap'}}>
-                          {pendingRemit && (
+                          {pendingRemit ? (
                             <>
                               <button 
                                 className="btn success"
@@ -311,14 +303,9 @@ export default function DriverFinances(){
                                 </a>
                               )}
                             </>
+                          ) : (
+                            <span style={{color:'var(--muted)', fontSize:13}}>No pending payments</span>
                           )}
-                          <button 
-                            className="btn secondary"
-                            onClick={()=> navigate(`/manager/finances/history/drivers?driver=${d.id}`)}
-                            style={{padding:'6px 12px', fontSize:13, whiteSpace:'nowrap'}}
-                          >
-                            📜 History
-                          </button>
                         </div>
                       </td>
                     </tr>
