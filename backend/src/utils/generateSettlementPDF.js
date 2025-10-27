@@ -98,104 +98,113 @@ export async function generateSettlementPDF(data) {
       doc.text('DRIVER SETTLEMENT REPORT', margin + 45, 16, { align: 'left' })
       currentY = 60
 
-      // === DOCUMENT INFO BOX (30px) ===
-      doc.rect(margin, currentY, pageWidth - 2 * margin, 30).fillAndStroke('#fef9c3', '#eab308')
-      doc.fontSize(7).font('Helvetica').fillColor('#713f12')
-      doc.text('Doc ID:', margin + 8, currentY + 8)
-      doc.font('Helvetica-Bold').text(`SETTLEMENT-${timestamp}`, margin + 45, currentY + 8)
-      doc.font('Helvetica').text('Generated:', margin + 8, currentY + 18)
-      doc.font('Helvetica-Bold').text(new Date().toLocaleString('en-US', {month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'}), margin + 52, currentY + 18)
+      // === DOCUMENT INFO BOX (45px) ===
+      doc.rect(margin, currentY, pageWidth - 2 * margin, 45).fillAndStroke('#fef9c3', '#eab308')
+      doc.fontSize(8).font('Helvetica').fillColor('#713f12')
+      doc.text('Document ID:', margin + 12, currentY + 12)
+      doc.font('Helvetica-Bold').text(`SETTLEMENT-${timestamp}`, margin + 80, currentY + 12)
+      doc.font('Helvetica').text('Generated:', margin + 12, currentY + 26)
+      doc.font('Helvetica-Bold').text(new Date().toLocaleString('en-US', {month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'}), margin + 80, currentY + 26)
       if (data.fromDate && data.toDate) {
-        doc.font('Helvetica').text('Period:', pageWidth / 2 + 10, currentY + 8)
-        doc.font('Helvetica-Bold').text(`${new Date(data.fromDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} - ${new Date(data.toDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}`, pageWidth / 2 + 40, currentY + 8)
+        doc.font('Helvetica').text('Period:', pageWidth / 2 + 20, currentY + 12)
+        doc.font('Helvetica-Bold').text(`${new Date(data.fromDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} - ${new Date(data.toDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}`, pageWidth / 2 + 65, currentY + 12)
       }
-      currentY += 40
+      currentY += 60
 
-      // === TWO COLUMNS: DRIVER INFO + ORDER STATS (60px) ===
+      // === TWO COLUMNS: DRIVER INFO + ORDER STATS (80px) ===
       const colWidth = (pageWidth - 3 * margin) / 2
       const col1X = margin
       const col2X = margin * 2 + colWidth
 
       // Column 1: Driver Information
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e293b')
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b')
       doc.text('DRIVER INFORMATION', col1X, currentY)
-      doc.rect(col1X, currentY + 13, colWidth, 60).fillAndStroke('#f8fafc', '#cbd5e1')
-      let y1 = currentY + 18
-      y1 = drawInfoRow(doc, y1, 'Driver Name', data.driverName || 'N/A', col1X + 8, colWidth - 16)
-      if (data.driverPhone) y1 = drawInfoRow(doc, y1, 'Phone', data.driverPhone, col1X + 8, colWidth - 16)
-      drawInfoRow(doc, y1, 'Submitted To', data.managerName || 'N/A', col1X + 8, colWidth - 16)
+      doc.rect(col1X, currentY + 16, colWidth, 80).fillAndStroke('#f8fafc', '#cbd5e1')
+      let y1 = currentY + 24
+      y1 = drawInfoRow(doc, y1, 'Driver Name', data.driverName || 'N/A', col1X + 12, colWidth - 24)
+      if (data.driverPhone) y1 = drawInfoRow(doc, y1, 'Phone', data.driverPhone, col1X + 12, colWidth - 24)
+      drawInfoRow(doc, y1, 'Submitted To', data.managerName || 'N/A', col1X + 12, colWidth - 24)
 
       // Column 2: Order Statistics
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e293b')
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b')
       doc.text('ORDER STATISTICS', col2X, currentY)
-      doc.rect(col2X, currentY + 13, colWidth, 60).fillAndStroke('#faf5ff', '#d8b4fe')
-      let y2 = currentY + 18
-      if (data.assignedOrders != null) y2 = drawInfoRow(doc, y2, 'Total Assigned', String(data.assignedOrders || 0), col2X + 8, colWidth - 16)
-      y2 = drawInfoRow(doc, y2, 'Delivered', String(data.totalDeliveredOrders || 0), col2X + 8, colWidth - 16)
-      if (data.cancelledOrders != null) drawInfoRow(doc, y2, 'Cancelled', String(data.cancelledOrders || 0), col2X + 8, colWidth - 16)
-      currentY += 83
+      doc.rect(col2X, currentY + 16, colWidth, 80).fillAndStroke('#faf5ff', '#d8b4fe')
+      let y2 = currentY + 24
+      if (data.assignedOrders != null) y2 = drawInfoRow(doc, y2, 'Total Assigned', String(data.assignedOrders || 0), col2X + 12, colWidth - 24)
+      y2 = drawInfoRow(doc, y2, 'Delivered', String(data.totalDeliveredOrders || 0), col2X + 12, colWidth - 24)
+      if (data.cancelledOrders != null) drawInfoRow(doc, y2, 'Cancelled', String(data.cancelledOrders || 0), col2X + 12, colWidth - 24)
+      currentY += 108
 
-      // === TWO COLUMNS: FINANCIAL + COMMISSION (70px) ===
+      // === TWO COLUMNS: FINANCIAL + COMMISSION (90px) ===
       // Column 1: Financial Summary
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e293b')
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b')
       doc.text('FINANCIAL SUMMARY', col1X, currentY)
-      doc.rect(col1X, currentY + 13, colWidth, 70).fillAndStroke('#ecfdf5', '#86efac')
-      y1 = currentY + 18
-      if (data.collectedAmount != null) y1 = drawInfoRow(doc, y1, 'Total Collected', formatCurrency(data.collectedAmount, data.currency), col1X + 8, colWidth - 16)
-      y1 = drawInfoRow(doc, y1, 'Delivered to Company', formatCurrency(data.deliveredToCompany, data.currency), col1X + 8, colWidth - 16)
-      drawInfoRow(doc, y1, 'Pending Delivery', formatCurrency(data.pendingDeliveryToCompany, data.currency), col1X + 8, colWidth - 16)
+      doc.rect(col1X, currentY + 16, colWidth, 90).fillAndStroke('#ecfdf5', '#86efac')
+      y1 = currentY + 24
+      if (data.collectedAmount != null) y1 = drawInfoRow(doc, y1, 'Total Collected', formatCurrency(data.collectedAmount, data.currency), col1X + 12, colWidth - 24)
+      y1 = drawInfoRow(doc, y1, 'Delivered to Company', formatCurrency(data.deliveredToCompany, data.currency), col1X + 12, colWidth - 24)
+      drawInfoRow(doc, y1, 'Pending Delivery', formatCurrency(data.pendingDeliveryToCompany, data.currency), col1X + 12, colWidth - 24)
 
       // Column 2: Commission Details
       if (data.totalCommission != null || data.paidCommission != null || data.pendingCommission != null) {
-        doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e293b')
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b')
         doc.text('COMMISSION DETAILS', col2X, currentY)
-        doc.rect(col2X, currentY + 13, colWidth, 70).fillAndStroke('#fef3c7', '#fde047')
-        y2 = currentY + 18
-        if (data.totalCommission != null) y2 = drawInfoRow(doc, y2, 'Total Earned', formatCurrency(data.totalCommission, data.currency), col2X + 8, colWidth - 16)
-        if (data.paidCommission != null) y2 = drawInfoRow(doc, y2, 'Already Paid', formatCurrency(data.paidCommission, data.currency), col2X + 8, colWidth - 16)
+        doc.rect(col2X, currentY + 16, colWidth, 90).fillAndStroke('#fef3c7', '#fde047')
+        y2 = currentY + 24
+        if (data.totalCommission != null) y2 = drawInfoRow(doc, y2, 'Total Earned', formatCurrency(data.totalCommission, data.currency), col2X + 12, colWidth - 24)
+        if (data.paidCommission != null) y2 = drawInfoRow(doc, y2, 'Already Paid', formatCurrency(data.paidCommission, data.currency), col2X + 12, colWidth - 24)
         if (data.pendingCommission != null) {
           doc.fontSize(8).font('Helvetica-Bold').fillColor('#92400e')
-          doc.text('Pending Commission', col2X + 8, y2, { width: colWidth * 0.4 - 8 })
+          doc.text('Pending Commission', col2X + 12, y2, { width: colWidth * 0.4 - 12 })
           doc.fillColor('#78350f')
-          doc.text(formatCurrency(data.pendingCommission, data.currency), col2X + colWidth * 0.4, y2, { width: colWidth * 0.6 - 8, align: 'right' })
+          doc.text(formatCurrency(data.pendingCommission, data.currency), col2X + colWidth * 0.4, y2, { width: colWidth * 0.6 - 12, align: 'right' })
         }
       }
-      currentY += 93
+      currentY += 118
 
-      // === SETTLEMENT AMOUNT BOX (35px) ===
-      const settlementGrad = doc.linearGradient(margin, currentY, margin, currentY + 35)
+      // === SETTLEMENT AMOUNT BOX (50px) ===
+      const settlementGrad = doc.linearGradient(margin, currentY, margin, currentY + 50)
       settlementGrad.stop(0, '#059669')
       settlementGrad.stop(1, '#047857')
-      doc.roundedRect(margin, currentY, pageWidth - 2 * margin, 35, 4).fillAndStroke(settlementGrad, '#065f46')
-      doc.fillColor('white').fontSize(11).font('Helvetica-Bold')
-      doc.text('CURRENT SETTLEMENT AMOUNT', margin + 12, currentY + 10)
-      doc.fontSize(16).font('Helvetica-Bold')
-      doc.text(formatCurrency(data.amount, data.currency), margin, currentY + 10, { 
+      doc.roundedRect(margin, currentY, pageWidth - 2 * margin, 50, 5).fillAndStroke(settlementGrad, '#065f46')
+      doc.fillColor('white').fontSize(13).font('Helvetica-Bold')
+      doc.text('CURRENT SETTLEMENT AMOUNT', margin + 16, currentY + 15)
+      doc.fontSize(20).font('Helvetica-Bold')
+      doc.text(formatCurrency(data.amount, data.currency), margin, currentY + 15, { 
         align: 'right', 
-        width: pageWidth - 2 * margin - 12 
+        width: pageWidth - 2 * margin - 16 
       })
-      currentY += 45
+      currentY += 65
 
-      // === PAYMENT DETAILS (25px) ===
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e293b')
+      // === PAYMENT DETAILS (40px) ===
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b')
       doc.text('PAYMENT DETAILS', margin, currentY)
-      doc.rect(margin, currentY + 13, pageWidth - 2 * margin, 25).fillAndStroke('#ede9fe', '#a78bfa')
-      y1 = currentY + 18
+      doc.rect(margin, currentY + 16, pageWidth - 2 * margin, 40).fillAndStroke('#ede9fe', '#a78bfa')
+      y1 = currentY + 24
       doc.fontSize(8).font('Helvetica').fillColor('#4c1d95')
-      doc.text('Method:', margin + 8, y1, { width: 60 })
+      doc.text('Method:', margin + 12, y1, { width: 60 })
       doc.font('Helvetica-Bold')
-      doc.text(data.method === 'transfer' ? 'Bank Transfer' : 'Hand Delivery', margin + 70, y1, { width: 150 })
+      doc.text(data.method === 'transfer' ? 'Bank Transfer' : 'Hand Delivery', margin + 80, y1, { width: 150 })
       if (data.note) {
-        doc.font('Helvetica').text('Note:', pageWidth / 2 + 10, y1, { width: 40 })
-        doc.font('Helvetica-Bold').text(data.note, pageWidth / 2 + 52, y1, { width: colWidth - 60 })
+        doc.font('Helvetica').text('Note:', pageWidth / 2 + 20, y1, { width: 40 })
+        doc.font('Helvetica-Bold').text(data.note, pageWidth / 2 + 65, y1, { width: colWidth - 75 })
       }
-      currentY += 48
+      currentY += 70
 
-      // === FOOTER (20px) ===
-      doc.fontSize(7).font('Helvetica').fillColor('#64748b')
-      doc.text('CONFIDENTIAL DOCUMENT | System-generated, no signature required', margin, currentY, { align: 'center' })
-      doc.fontSize(6).fillColor('#94a3b8')
-      doc.text(`Generated: ${new Date().toLocaleString('en-US', {dateStyle: 'medium', timeStyle: 'short'})} | BuySial Commerce`, margin, currentY + 10, { align: 'center' })
+      // === SIGNATURE BLOCK ===
+      const pageHeight = doc.page.height
+      const signatureY = pageHeight - 110
+      doc.rect(margin, signatureY, pageWidth - 2 * margin, 60).fillAndStroke('#f8fafc', '#cbd5e1')
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#1e293b')
+      doc.text('Qadeer Hussain, Owner of Buysial', margin, signatureY + 20, { align: 'center', width: pageWidth - 2 * margin })
+      doc.fontSize(9).font('Helvetica').fillColor('#64748b')
+      doc.text(`Date: ${new Date().toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'})}`, margin, signatureY + 38, { align: 'center', width: pageWidth - 2 * margin })
+      
+      // === FOOTER ===
+      doc.fontSize(7).font('Helvetica').fillColor('#94a3b8')
+      doc.text('CONFIDENTIAL DOCUMENT | BuySial Commerce', margin, pageHeight - 35, { align: 'center' })
+      doc.fontSize(6).fillColor('#cbd5e1')
+      doc.text(`Generated: ${new Date().toLocaleString('en-US', {dateStyle: 'medium', timeStyle: 'short'})}`, margin, pageHeight - 22, { align: 'center' })
 
       doc.end()
 
@@ -251,115 +260,123 @@ export async function generateAcceptedSettlementPDF(data) {
       doc.text('DRIVER SETTLEMENT REPORT', margin + 45, 16, { align: 'left' })
       currentY = 60
 
-      // === DOCUMENT INFO BOX (40px) - Green for accepted ===
-      doc.rect(margin, currentY, pageWidth - 2 * margin, 40).fillAndStroke('#d1fae5', '#10b981')
-      doc.fontSize(7).font('Helvetica').fillColor('#065f46')
-      doc.text('Doc ID:', margin + 8, currentY + 8)
-      doc.font('Helvetica-Bold').text(`SETTLEMENT-${timestamp}`, margin + 45, currentY + 8)
-      doc.font('Helvetica').text('Generated:', margin + 8, currentY + 18)
-      doc.font('Helvetica-Bold').text(new Date().toLocaleString('en-US', {month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'}), margin + 52, currentY + 18)
-      doc.font('Helvetica').text('Accepted:', margin + 8, currentY + 28)
-      doc.font('Helvetica-Bold').text(new Date(data.acceptedDate || Date.now()).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}), margin + 52, currentY + 28)
+      // === DOCUMENT INFO BOX (50px) - Green for accepted ===
+      doc.rect(margin, currentY, pageWidth - 2 * margin, 50).fillAndStroke('#d1fae5', '#10b981')
+      doc.fontSize(8).font('Helvetica').fillColor('#065f46')
+      doc.text('Document ID:', margin + 12, currentY + 10)
+      doc.font('Helvetica-Bold').text(`SETTLEMENT-${timestamp}`, margin + 90, currentY + 10)
+      doc.font('Helvetica').text('Generated:', margin + 12, currentY + 24)
+      doc.font('Helvetica-Bold').text(new Date().toLocaleString('en-US', {month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'}), margin + 90, currentY + 24)
+      doc.font('Helvetica').text('Accepted:', margin + 12, currentY + 38)
+      doc.font('Helvetica-Bold').text(new Date(data.acceptedDate || Date.now()).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}), margin + 90, currentY + 38)
       if (data.fromDate && data.toDate) {
-        doc.font('Helvetica').text('Period:', pageWidth / 2 + 10, currentY + 8)
-        doc.font('Helvetica-Bold').text(`${new Date(data.fromDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} - ${new Date(data.toDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}`, pageWidth / 2 + 40, currentY + 8)
+        doc.font('Helvetica').text('Period:', pageWidth / 2 + 20, currentY + 10)
+        doc.font('Helvetica-Bold').text(`${new Date(data.fromDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} - ${new Date(data.toDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}`, pageWidth / 2 + 65, currentY + 10)
       }
       // ACCEPTED badge
-      doc.roundedRect(pageWidth / 2 + 10, currentY + 24, 80, 14, 3).fillAndStroke('#059669', '#047857')
-      doc.fontSize(8).font('Helvetica-Bold').fillColor('white')
-      doc.text('ACCEPTED', pageWidth / 2 + 20, currentY + 27)
-      currentY += 50
+      doc.roundedRect(pageWidth / 2 + 20, currentY + 30, 90, 16, 3).fillAndStroke('#059669', '#047857')
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('white')
+      doc.text('ACCEPTED', pageWidth / 2 + 33, currentY + 34)
+      currentY += 65
 
-
-      // === TWO COLUMNS: DRIVER INFO + ORDER STATS (60px) ===
+      // === TWO COLUMNS: DRIVER INFO + ORDER STATS (80px) ===
       const colWidth = (pageWidth - 3 * margin) / 2
       const col1X = margin
       const col2X = margin * 2 + colWidth
 
       // Column 1: Driver Information
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e293b')
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b')
       doc.text('DRIVER INFORMATION', col1X, currentY)
-      doc.rect(col1X, currentY + 13, colWidth, 60).fillAndStroke('#f8fafc', '#cbd5e1')
-      let y1 = currentY + 18
-      y1 = drawInfoRow(doc, y1, 'Driver Name', data.driverName || 'N/A', col1X + 8, colWidth - 16)
-      if (data.driverPhone) y1 = drawInfoRow(doc, y1, 'Phone', data.driverPhone, col1X + 8, colWidth - 16)
-      drawInfoRow(doc, y1, 'Submitted To', data.managerName || 'N/A', col1X + 8, colWidth - 16)
+      doc.rect(col1X, currentY + 16, colWidth, 80).fillAndStroke('#f8fafc', '#cbd5e1')
+      let y1 = currentY + 24
+      y1 = drawInfoRow(doc, y1, 'Driver Name', data.driverName || 'N/A', col1X + 12, colWidth - 24)
+      if (data.driverPhone) y1 = drawInfoRow(doc, y1, 'Phone', data.driverPhone, col1X + 12, colWidth - 24)
+      drawInfoRow(doc, y1, 'Submitted To', data.managerName || 'N/A', col1X + 12, colWidth - 24)
 
       // Column 2: Order Statistics
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e293b')
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b')
       doc.text('ORDER STATISTICS', col2X, currentY)
-      doc.rect(col2X, currentY + 13, colWidth, 60).fillAndStroke('#faf5ff', '#d8b4fe')
-      let y2 = currentY + 18
-      if (data.assignedOrders != null) y2 = drawInfoRow(doc, y2, 'Total Assigned', String(data.assignedOrders || 0), col2X + 8, colWidth - 16)
-      y2 = drawInfoRow(doc, y2, 'Delivered', String(data.totalDeliveredOrders || 0), col2X + 8, colWidth - 16)
-      if (data.cancelledOrders != null) drawInfoRow(doc, y2, 'Cancelled', String(data.cancelledOrders || 0), col2X + 8, colWidth - 16)
-      currentY += 83
+      doc.rect(col2X, currentY + 16, colWidth, 80).fillAndStroke('#faf5ff', '#d8b4fe')
+      let y2 = currentY + 24
+      if (data.assignedOrders != null) y2 = drawInfoRow(doc, y2, 'Total Assigned', String(data.assignedOrders || 0), col2X + 12, colWidth - 24)
+      y2 = drawInfoRow(doc, y2, 'Delivered', String(data.totalDeliveredOrders || 0), col2X + 12, colWidth - 24)
+      if (data.cancelledOrders != null) drawInfoRow(doc, y2, 'Cancelled', String(data.cancelledOrders || 0), col2X + 12, colWidth - 24)
+      currentY += 108
 
-      // === TWO COLUMNS: FINANCIAL + COMMISSION (70px) ===
+      // === TWO COLUMNS: FINANCIAL + COMMISSION (90px) ===
       // Column 1: Financial Summary
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e293b')
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b')
       doc.text('FINANCIAL SUMMARY', col1X, currentY)
-      doc.rect(col1X, currentY + 13, colWidth, 70).fillAndStroke('#ecfdf5', '#86efac')
-      y1 = currentY + 18
-      if (data.collectedAmount != null) y1 = drawInfoRow(doc, y1, 'Total Collected', formatCurrency(data.collectedAmount, data.currency), col1X + 8, colWidth - 16)
-      y1 = drawInfoRow(doc, y1, 'Delivered to Company', formatCurrency(data.deliveredToCompany, data.currency), col1X + 8, colWidth - 16)
-      drawInfoRow(doc, y1, 'Pending Delivery', formatCurrency(data.pendingDeliveryToCompany, data.currency), col1X + 8, colWidth - 16)
+      doc.rect(col1X, currentY + 16, colWidth, 90).fillAndStroke('#ecfdf5', '#86efac')
+      y1 = currentY + 24
+      if (data.collectedAmount != null) y1 = drawInfoRow(doc, y1, 'Total Collected', formatCurrency(data.collectedAmount, data.currency), col1X + 12, colWidth - 24)
+      y1 = drawInfoRow(doc, y1, 'Delivered to Company', formatCurrency(data.deliveredToCompany, data.currency), col1X + 12, colWidth - 24)
+      drawInfoRow(doc, y1, 'Pending Delivery', formatCurrency(data.pendingDeliveryToCompany, data.currency), col1X + 12, colWidth - 24)
 
       // Column 2: Commission Details
       if (data.totalCommission != null || data.paidCommission != null || data.pendingCommission != null) {
-        doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e293b')
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b')
         doc.text('COMMISSION DETAILS', col2X, currentY)
-        doc.rect(col2X, currentY + 13, colWidth, 70).fillAndStroke('#fef3c7', '#fde047')
-        y2 = currentY + 18
-        if (data.totalCommission != null) y2 = drawInfoRow(doc, y2, 'Total Earned', formatCurrency(data.totalCommission, data.currency), col2X + 8, colWidth - 16)
-        if (data.paidCommission != null) y2 = drawInfoRow(doc, y2, 'Already Paid', formatCurrency(data.paidCommission, data.currency), col2X + 8, colWidth - 16)
+        doc.rect(col2X, currentY + 16, colWidth, 90).fillAndStroke('#fef3c7', '#fde047')
+        y2 = currentY + 24
+        if (data.totalCommission != null) y2 = drawInfoRow(doc, y2, 'Total Earned', formatCurrency(data.totalCommission, data.currency), col2X + 12, colWidth - 24)
+        if (data.paidCommission != null) y2 = drawInfoRow(doc, y2, 'Already Paid', formatCurrency(data.paidCommission, data.currency), col2X + 12, colWidth - 24)
         if (data.pendingCommission != null) {
           doc.fontSize(8).font('Helvetica-Bold').fillColor('#92400e')
-          doc.text('Pending Commission', col2X + 8, y2, { width: colWidth * 0.4 - 8 })
+          doc.text('Pending Commission', col2X + 12, y2, { width: colWidth * 0.4 - 12 })
           doc.fillColor('#78350f')
-          doc.text(formatCurrency(data.pendingCommission, data.currency), col2X + colWidth * 0.4, y2, { width: colWidth * 0.6 - 8, align: 'right' })
+          doc.text(formatCurrency(data.pendingCommission, data.currency), col2X + colWidth * 0.4, y2, { width: colWidth * 0.6 - 12, align: 'right' })
         }
       }
-      currentY += 93
+      currentY += 118
 
-      // === SETTLEMENT AMOUNT BOX (35px) - GREEN FOR ACCEPTED ===
-      const settlementGrad = doc.linearGradient(margin, currentY, margin, currentY + 35)
+      // === SETTLEMENT AMOUNT BOX (50px) - GREEN FOR ACCEPTED ===
+      const settlementGrad = doc.linearGradient(margin, currentY, margin, currentY + 50)
       settlementGrad.stop(0, '#059669')
       settlementGrad.stop(1, '#047857')
-      doc.roundedRect(margin, currentY, pageWidth - 2 * margin, 35, 4).fillAndStroke(settlementGrad, '#065f46')
-      doc.fillColor('white').fontSize(11).font('Helvetica-Bold')
-      doc.text('ACCEPTED SETTLEMENT AMOUNT', margin + 12, currentY + 10)
-      doc.fontSize(16).font('Helvetica-Bold')
-      doc.text(formatCurrency(data.amount, data.currency), margin, currentY + 10, { 
+      doc.roundedRect(margin, currentY, pageWidth - 2 * margin, 50, 5).fillAndStroke(settlementGrad, '#065f46')
+      doc.fillColor('white').fontSize(13).font('Helvetica-Bold')
+      doc.text('ACCEPTED SETTLEMENT AMOUNT', margin + 16, currentY + 15)
+      doc.fontSize(20).font('Helvetica-Bold')
+      doc.text(formatCurrency(data.amount, data.currency), margin, currentY + 15, { 
         align: 'right', 
-        width: pageWidth - 2 * margin - 12 
+        width: pageWidth - 2 * margin - 16 
       })
-      currentY += 45
+      currentY += 65
 
-      // === PAYMENT DETAILS (35px) ===
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e293b')
+      // === PAYMENT DETAILS (45px) ===
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b')
       doc.text('PAYMENT DETAILS', margin, currentY)
-      doc.rect(margin, currentY + 13, pageWidth - 2 * margin, 35).fillAndStroke('#ede9fe', '#a78bfa')
-      y1 = currentY + 18
+      doc.rect(margin, currentY + 16, pageWidth - 2 * margin, 45).fillAndStroke('#ede9fe', '#a78bfa')
+      y1 = currentY + 22
       doc.fontSize(8).font('Helvetica').fillColor('#4c1d95')
-      doc.text('Method:', margin + 8, y1, { width: 60 })
+      doc.text('Method:', margin + 12, y1, { width: 60 })
       doc.font('Helvetica-Bold')
-      doc.text(data.method === 'transfer' ? 'Bank Transfer' : 'Hand Delivery', margin + 70, y1, { width: 150 })
+      doc.text(data.method === 'transfer' ? 'Bank Transfer' : 'Hand Delivery', margin + 80, y1, { width: 150 })
       if (data.note) {
-        doc.font('Helvetica').text('Note:', pageWidth / 2 + 10, y1, { width: 40 })
-        doc.font('Helvetica-Bold').text(data.note, pageWidth / 2 + 52, y1, { width: colWidth - 60 })
+        doc.font('Helvetica').text('Note:', pageWidth / 2 + 20, y1, { width: 40 })
+        doc.font('Helvetica-Bold').text(data.note, pageWidth / 2 + 65, y1, { width: colWidth - 75 })
       }
       if (data.acceptedBy) {
-        doc.font('Helvetica').text('Accepted By:', margin + 8, y1 + 12, { width: 70 })
-        doc.font('Helvetica-Bold').text(data.acceptedBy, margin + 78, y1 + 12, { width: 180 })
+        doc.font('Helvetica').text('Accepted By:', margin + 12, y1 + 14, { width: 70 })
+        doc.font('Helvetica-Bold').text(data.acceptedBy, margin + 90, y1 + 14, { width: 180 })
       }
-      currentY += 58
+      currentY += 75
 
-      // === FOOTER (20px) ===
-      doc.fontSize(7).font('Helvetica').fillColor('#059669')
-      doc.text('ACCEPTED & VERIFIED DOCUMENT | This settlement has been accepted and verified by the company', margin, currentY, { align: 'center' })
-      doc.fontSize(6).fillColor('#10b981')
-      doc.text(`Accepted: ${new Date(data.acceptedDate || Date.now()).toLocaleString('en-US', {dateStyle: 'medium', timeStyle: 'short'})} | BuySial Commerce`, margin, currentY + 10, { align: 'center' })
+      // === SIGNATURE BLOCK ===
+      const pageHeight = doc.page.height
+      const signatureY = pageHeight - 110
+      doc.rect(margin, signatureY, pageWidth - 2 * margin, 60).fillAndStroke('#d1fae5', '#10b981')
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#047857')
+      doc.text('Qadeer Hussain, Owner of Buysial', margin, signatureY + 20, { align: 'center', width: pageWidth - 2 * margin })
+      doc.fontSize(9).font('Helvetica').fillColor('#065f46')
+      doc.text(`Date: ${new Date().toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'})}`, margin, signatureY + 38, { align: 'center', width: pageWidth - 2 * margin })
+      
+      // === FOOTER ===
+      doc.fontSize(7).font('Helvetica').fillColor('#10b981')
+      doc.text('ACCEPTED & VERIFIED DOCUMENT | BuySial Commerce', margin, pageHeight - 35, { align: 'center' })
+      doc.fontSize(6).fillColor('#86efac')
+      doc.text(`Accepted: ${new Date(data.acceptedDate || Date.now()).toLocaleString('en-US', {dateStyle: 'medium', timeStyle: 'short'})}`, margin, pageHeight - 22, { align: 'center' })
 
       // Finalize PDF
       doc.end()
