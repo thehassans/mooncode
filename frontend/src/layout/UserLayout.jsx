@@ -235,29 +235,71 @@ export default function UserLayout(){
       <div className={`main ${closed ? 'full' : ''}`}>
         <div className="topbar" style={{background:'var(--sidebar-bg)', borderBottom:'1px solid var(--sidebar-border)', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'nowrap', minHeight:'60px', padding:'0 1rem'}}>
           <div className="flex items-center gap-3" style={{flexShrink:0}}>
-            {/* Always-visible hamburger + logo */}
-            <button
-              className="btn secondary w-9 h-9 p-0 grid place-items-center"
-              onClick={()=> setClosed(c=>!c)}
-              title={closed ? 'Open menu' : 'Close menu'}
-              aria-label={closed ? 'Open menu' : 'Close menu'}
-              style={{flexShrink:0}}
-            >
-              ☰
-            </button>
+            {/* Logo */}
             <img src={branding.headerLogo || `${import.meta.env.BASE_URL}BuySial2.png`} alt="BuySial" className="h-7 w-auto object-contain" style={{maxWidth:'120px', flexShrink:0}} />
             {!isMobile && (
-              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-[var(--panel)] border border-[var(--border)] shadow-[inset_0_1px_0_rgba(0,0,0,0.15)]" style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
-                <span aria-hidden className="inline-flex items-center text-[var(--muted)]" style={{flexShrink:0}}>
-                  {/* User/hand icon */}
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                    <circle cx="10" cy="7" r="3"/>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '8px 20px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                boxShadow: '0 4px 12px rgba(139, 92, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {/* Premium Crown Icon */}
+                <span aria-hidden style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                  boxShadow: '0 2px 8px rgba(251, 191, 36, 0.3)',
+                  flexShrink: 0
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 20h20v-8L18 4l-4 6-4-6-4 8z"/>
+                    <path d="M6 20v-8"/>
+                    <path d="M10 20v-8"/>
+                    <path d="M14 20v-8"/>
+                    <path d="M18 20v-8"/>
                   </svg>
                 </span>
-                <span className="font-extrabold tracking-tight" style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
-                  {`Welcome ${me.firstName||''} ${me.lastName||''}`.trim()}
-                </span>
+                <div style={{display: 'flex', flexDirection: 'column', gap: '2px'}}>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}>
+                    Elite Member
+                  </span>
+                  <span style={{
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    letterSpacing: '-0.02em',
+                    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {`Welcome ${me.firstName||''} ${me.lastName||''}`.trim()}
+                  </span>
+                </div>
               </div>
             )}
           </div>
