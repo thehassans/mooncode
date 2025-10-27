@@ -176,6 +176,23 @@ export default function UserLayout(){
   const [showSettings, setShowSettings] = useState(false)
   const [testMsg, setTestMsg] = useState('')
   const [errorLogs, setErrorLogs] = useState([])
+  
+  // Settings dropdown state
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false)
+  
+  // Close dropdown when clicking outside
+  useEffect(()=>{
+    if (!showSettingsDropdown) return
+    function handleClick(e){
+      const dropdown = document.getElementById('settings-dropdown')
+      const button = document.getElementById('settings-button')
+      if (dropdown && !dropdown.contains(e.target) && button && !button.contains(e.target)){
+        setShowSettingsDropdown(false)
+      }
+    }
+    document.addEventListener('click', handleClick)
+    return ()=> document.removeEventListener('click', handleClick)
+  },[showSettingsDropdown])
 
   function loadErrorLogs(){
     try{ setErrorLogs(JSON.parse(localStorage.getItem('error_logs') || '[]')) }catch{ setErrorLogs([]) }
@@ -244,22 +261,6 @@ export default function UserLayout(){
             )}
           </div>
           <div className="flex items-center gap-2">
-            {/* Swatches positioned left to the theme toggle */}
-            {!isMobile && (
-              <div role="group" aria-label="Theme colors" className="flex items-center gap-2">
-                {navPresets.map(p => (
-                  <button
-                    key={p.title}
-                    type="button"
-                    title={p.title}
-                    aria-label={p.title}
-                    onClick={()=> applyNavColors(p.cfg)}
-                    className="w-4 h-4 rounded-full border border-white/30 shadow-inner cursor-pointer"
-                    style={{ background: p.sample }}
-                  />
-                ))}
-              </div>
-            )}
             <button
               className="btn secondary w-9 h-9 p-0 grid place-items-center"
               onClick={toggleTheme}
@@ -270,10 +271,180 @@ export default function UserLayout(){
             </button>
             {/* Notifications dropdown component */}
             <NotificationsDropdown />
-            {/* Settings gear replaces direct logout */}
-            <button className="btn w-9 h-9 p-0 grid place-items-center" title="Settings" aria-label="Settings" onClick={()=> { setShowSettings(true); setTimeout(loadErrorLogs, 0) }}>
-              ⚙️
-            </button>
+            {/* Settings dropdown */}
+            <div style={{ position: 'relative' }}>
+              <button 
+                id="settings-button"
+                className="btn w-9 h-9 p-0 grid place-items-center" 
+                title="Settings" 
+                aria-label="Settings" 
+                onClick={()=> setShowSettingsDropdown(prev => !prev)}
+              >
+                ⚙️
+              </button>
+              {showSettingsDropdown && (
+                <div 
+                  id="settings-dropdown"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    width: '280px',
+                    background: 'var(--panel)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+                    zIndex: 1000,
+                    overflow: 'hidden'
+                  }}
+                >
+                  {/* User info header */}
+                  <div style={{
+                    padding: '16px',
+                    borderBottom: '1px solid var(--border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
+                  }}>
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      background: 'var(--panel-2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px'
+                    }}>
+                      👤
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: '15px' }}>
+                        {`${me.firstName||''} ${me.lastName||''}`.trim()}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Menu items */}
+                  <div style={{ padding: '8px 0' }}>
+                    <button
+                      onClick={()=> {
+                        setShowSettingsDropdown(false)
+                        navigate('/user/profile')
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text)',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        fontSize: '14px'
+                      }}
+                      onMouseEnter={(e)=> e.currentTarget.style.background = 'var(--panel-2)'}
+                      onMouseLeave={(e)=> e.currentTarget.style.background = 'transparent'}
+                    >
+                      <span style={{ fontSize: '18px' }}>👤</span>
+                      My Profile
+                    </button>
+                    
+                    <button
+                      onClick={()=> {
+                        setShowSettingsDropdown(false)
+                        navigate('/user/change-password')
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text)',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        fontSize: '14px'
+                      }}
+                      onMouseEnter={(e)=> e.currentTarget.style.background = 'var(--panel-2)'}
+                      onMouseLeave={(e)=> e.currentTarget.style.background = 'transparent'}
+                    >
+                      <span style={{ fontSize: '18px' }}>🔑</span>
+                      Change Password
+                    </button>
+                    
+                    <div style={{ 
+                      padding: '16px', 
+                      borderTop: '1px solid var(--border)',
+                      borderBottom: '1px solid var(--border)'
+                    }}>
+                      <div style={{ 
+                        fontSize: '13px', 
+                        fontWeight: 600, 
+                        marginBottom: '12px',
+                        color: 'var(--muted)'
+                      }}>
+                        My preferences
+                      </div>
+                      {/* Color grid - 6 columns x 3 rows */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(6, 1fr)',
+                        gap: '8px'
+                      }}>
+                        {navPresets.map(p => (
+                          <button
+                            key={p.title}
+                            type="button"
+                            title={p.title}
+                            aria-label={p.title}
+                            onClick={()=> applyNavColors(p.cfg)}
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '4px',
+                              border: '1px solid rgba(255,255,255,0.2)',
+                              cursor: 'pointer',
+                              background: p.sample,
+                              padding: 0
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={()=> {
+                        setShowSettingsDropdown(false)
+                        doLogout()
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text)',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        fontSize: '14px'
+                      }}
+                      onMouseEnter={(e)=> e.currentTarget.style.background = 'var(--panel-2)'}
+                      onMouseLeave={(e)=> e.currentTarget.style.background = 'transparent'}
+                    >
+                      <span style={{ fontSize: '18px' }}>🚪</span>
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div className={`container ${location.pathname.includes('/inbox/whatsapp') ? 'edge-to-edge' : ''}`}>
