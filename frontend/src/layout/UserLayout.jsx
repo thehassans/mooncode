@@ -289,52 +289,60 @@ export default function UserLayout(){
                     position: 'absolute',
                     top: 'calc(100% + 8px)',
                     right: 0,
-                    width: '280px',
+                    width: '320px',
                     background: 'var(--panel)',
                     border: '1px solid var(--border)',
-                    borderRadius: '12px',
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+                    borderRadius: '16px',
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)',
                     zIndex: 1000,
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    backdropFilter: 'blur(20px)'
                   }}
                 >
                   {/* User info header */}
                   <div style={{
-                    padding: '16px',
+                    padding: '20px',
                     borderBottom: '1px solid var(--border)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px'
+                    gap: '14px',
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05))'
                   }}>
                     <div style={{
-                      width: '48px',
-                      height: '48px',
+                      width: '52px',
+                      height: '52px',
                       borderRadius: '50%',
-                      background: 'var(--panel-2)',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '24px'
+                      fontSize: '20px',
+                      fontWeight: 600,
+                      color: '#fff',
+                      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
                     }}>
-                      👤
+                      {((me.firstName||'')[0]||(me.lastName||'')[0]||'U').toUpperCase()}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: '15px' }}>
-                        {`${me.firstName||''} ${me.lastName||''}`.trim()}
+                      <div style={{ fontWeight: 600, fontSize: '16px', marginBottom: '2px' }}>
+                        {`${me.firstName||''} ${me.lastName||''}`.trim() || 'User'}
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                        {me.email || ''}
                       </div>
                     </div>
                   </div>
                   
                   {/* Menu items */}
-                  <div style={{ padding: '8px 0' }}>
+                  <div style={{ padding: '8px' }}>
                     <button
                       onClick={()=> {
                         setShowSettingsDropdown(false)
-                        navigate('/user/profile')
+                        navigate('/user/profile-settings')
                       }}
                       style={{
                         width: '100%',
-                        padding: '12px 16px',
+                        padding: '14px 16px',
                         background: 'transparent',
                         border: 'none',
                         color: 'var(--text)',
@@ -342,13 +350,25 @@ export default function UserLayout(){
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
-                        fontSize: '14px'
+                        gap: '14px',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        borderRadius: '10px',
+                        transition: 'all 0.2s ease'
                       }}
-                      onMouseEnter={(e)=> e.currentTarget.style.background = 'var(--panel-2)'}
-                      onMouseLeave={(e)=> e.currentTarget.style.background = 'transparent'}
+                      onMouseEnter={(e)=> {
+                        e.currentTarget.style.background = 'var(--panel-2)'
+                        e.currentTarget.style.transform = 'translateX(4px)'
+                      }}
+                      onMouseLeave={(e)=> {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.transform = 'translateX(0)'
+                      }}
                     >
-                      <span style={{ fontSize: '18px' }}>👤</span>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
                       My Profile
                     </button>
                     
@@ -359,7 +379,7 @@ export default function UserLayout(){
                       }}
                       style={{
                         width: '100%',
-                        padding: '12px 16px',
+                        padding: '14px 16px',
                         background: 'transparent',
                         border: 'none',
                         color: 'var(--text)',
@@ -367,34 +387,50 @@ export default function UserLayout(){
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
-                        fontSize: '14px'
+                        gap: '14px',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        borderRadius: '10px',
+                        transition: 'all 0.2s ease'
                       }}
-                      onMouseEnter={(e)=> e.currentTarget.style.background = 'var(--panel-2)'}
-                      onMouseLeave={(e)=> e.currentTarget.style.background = 'transparent'}
+                      onMouseEnter={(e)=> {
+                        e.currentTarget.style.background = 'var(--panel-2)'
+                        e.currentTarget.style.transform = 'translateX(4px)'
+                      }}
+                      onMouseLeave={(e)=> {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.transform = 'translateX(0)'
+                      }}
                     >
-                      <span style={{ fontSize: '18px' }}>🔑</span>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                      </svg>
                       Change Password
                     </button>
                     
                     <div style={{ 
                       padding: '16px', 
+                      margin: '8px 0',
                       borderTop: '1px solid var(--border)',
-                      borderBottom: '1px solid var(--border)'
+                      borderBottom: '1px solid var(--border)',
+                      background: 'rgba(99, 102, 241, 0.02)'
                     }}>
                       <div style={{ 
-                        fontSize: '13px', 
+                        fontSize: '12px', 
                         fontWeight: 600, 
-                        marginBottom: '12px',
-                        color: 'var(--muted)'
+                        marginBottom: '14px',
+                        color: 'var(--muted)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
                       }}>
-                        My preferences
+                        Theme Preferences
                       </div>
-                      {/* Color grid - 6 columns x 3 rows */}
+                      {/* Color grid - 6 columns */}
                       <div style={{
                         display: 'grid',
                         gridTemplateColumns: 'repeat(6, 1fr)',
-                        gap: '8px'
+                        gap: '10px'
                       }}>
                         {navPresets.map(p => (
                           <button
@@ -404,13 +440,23 @@ export default function UserLayout(){
                             aria-label={p.title}
                             onClick={()=> applyNavColors(p.cfg)}
                             style={{
-                              width: '32px',
-                              height: '32px',
-                              borderRadius: '4px',
-                              border: '1px solid rgba(255,255,255,0.2)',
+                              width: '38px',
+                              height: '38px',
+                              borderRadius: '8px',
+                              border: '2px solid rgba(255,255,255,0.15)',
                               cursor: 'pointer',
                               background: p.sample,
-                              padding: 0
+                              padding: 0,
+                              transition: 'all 0.2s ease',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                            }}
+                            onMouseEnter={(e)=> {
+                              e.currentTarget.style.transform = 'scale(1.1)'
+                              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3)'
+                            }}
+                            onMouseLeave={(e)=> {
+                              e.currentTarget.style.transform = 'scale(1)'
+                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'
                             }}
                           />
                         ))}
@@ -424,21 +470,34 @@ export default function UserLayout(){
                       }}
                       style={{
                         width: '100%',
-                        padding: '12px 16px',
+                        padding: '14px 16px',
                         background: 'transparent',
                         border: 'none',
-                        color: 'var(--text)',
+                        color: '#ef4444',
                         textAlign: 'left',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
-                        fontSize: '14px'
+                        gap: '14px',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        borderRadius: '10px',
+                        transition: 'all 0.2s ease'
                       }}
-                      onMouseEnter={(e)=> e.currentTarget.style.background = 'var(--panel-2)'}
-                      onMouseLeave={(e)=> e.currentTarget.style.background = 'transparent'}
+                      onMouseEnter={(e)=> {
+                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
+                        e.currentTarget.style.transform = 'translateX(4px)'
+                      }}
+                      onMouseLeave={(e)=> {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.transform = 'translateX(0)'
+                      }}
                     >
-                      <span style={{ fontSize: '18px' }}>🚪</span>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                      </svg>
                       Sign Out
                     </button>
                   </div>

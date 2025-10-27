@@ -312,3 +312,53 @@ router.post('/ai', auth, allowRoles('admin','user'), async (req, res) => {
     res.status(500).json({ error: e?.message || 'failed' }) 
   }
 })
+
+// GET /api/settings/api-keys - Simplified API keys for profile settings
+router.get('/api-keys', auth, allowRoles('admin','user'), async (_req, res) => {
+  try {
+    const doc = await Setting.findOne({ key: 'ai' }).lean()
+    const val = (doc && doc.value) || {}
+    
+    // Mask secrets when returning
+    const mask = (s) => typeof s === 'string' && s ? s.slice(0, 4) + '••••' + s.slice(-2) : ''
+    
+    res.json({
+      geminiKey: val.geminiApiKey ? mask(val.geminiApiKey) : '',
+      openaiKey: val.openaiApiKey ? mask(val.openaiApiKey) : '',
+      mapsKey: val.googleMapsApiKey ? mask(val.googleMapsApiKey) : ''
+    })
+  } catch (e) {
+    res.status(500).json({ error: e?.message || 'failed' })
+  }
+})
+
+// POST /api/settings/api-keys - Save API keys from profile settings
+router.post('/api-keys', auth, allowRoles('admin','user'), async (req, res) => {
+  try {
+    const { geminiKey, openaiKey, mapsKey } = req.body || {}
+    
+    let doc = await Setting.findOne({ key: 'ai' })
+    if (!doc) doc = new Setting({ key: 'ai', value: {} })
+    
+    const value = (doc.value && typeof doc.value === 'object') ? doc.value : {}
+    
+    // Only update if provided and not masked
+    if (typeof geminiKey === 'string' && geminiKey.trim() && !geminiKey.includes('••')) {
+      value.geminiApiKey = geminiKey.trim()
+    }
+    if (typeof openaiKey === 'string' && openaiKey.trim() && !openaiKey.includes('••')) {
+      value.openaiApiKey = openaiKey.trim()
+    }
+    if (typeof mapsKey === 'string' && mapsKey.trim() && !mapsKey.includes('••')) {
+      value.googleMapsApiKey = mapsKey.trim()
+    }
+    
+    doc.value = value
+    await doc.save()
+    
+    res.json({ success: true })
+  } catch (e) {
+    console.error('Error saving API keys:', e)
+    res.status(500).json({ error: e?.message || 'failed' })
+  }
+})

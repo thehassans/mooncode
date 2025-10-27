@@ -49,6 +49,7 @@ import DriverCancelled from './pages/driver/Cancelled.jsx'
 import DriverHistory from './pages/driver/History.jsx'
 import UserOrders from './pages/user/Orders.jsx'
 import UserAPISetup from './pages/user/APISetup.jsx'
+import ProfileSettings from './pages/user/ProfileSettings.jsx'
 import ErrorLogs from './pages/user/ErrorLogs.jsx'
 import InhouseProducts from './pages/products/InhouseProducts.jsx'
 import Warehouse from './pages/warehouse/Warehouse.jsx'
@@ -362,6 +363,7 @@ export default function App() {
         <Route path="finances" element={<UserFinances />} />
         <Route path="currency" element={<CurrencySettings />} />
         <Route path="api-setup" element={<UserAPISetup />} />
+        <Route path="profile-settings" element={<ProfileSettings />} />
         <Route path="error-logs" element={<ErrorLogs />} />
         <Route path="support" element={<Support />} />
       </Route>

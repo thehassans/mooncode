@@ -475,6 +475,34 @@ router.patch('/me/payout-profile', auth, allowRoles('agent','driver'), async (re
   }
 })
 
+// Update user profile (firstName, lastName, phone)
+router.post('/update-profile', auth, async (req, res) => {
+  try {
+    const { firstName, lastName, phone } = req.body || {}
+    if (!firstName || !lastName) {
+      return res.status(400).json({ message: 'First name and last name are required' })
+    }
+    
+    const update = {
+      firstName: String(firstName).trim(),
+      lastName: String(lastName).trim(),
+      phone: phone ? String(phone).trim() : ''
+    }
+    
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: update },
+      { new: true, projection: '-password' }
+    )
+    
+    if (!user) return res.status(404).json({ message: 'User not found' })
+    
+    return res.json({ ok: true, user })
+  } catch (err) {
+    return res.status(500).json({ message: err?.message || 'Failed to update profile' })
+  }
+})
+
 // Agent self performance: avg response time and quick counts
 router.get('/agents/me/performance', auth, async (req, res) => {
   const userId = req.user.id
