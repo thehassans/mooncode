@@ -145,7 +145,7 @@ export default function Transactions(){
     return () => { alive = false }
   }, [country, role])
 
-  // Live updates: refresh remittances on create/accept/reject
+  // Live updates: refresh remittances on create/accept/reject/manager_accepted
   useEffect(()=>{
     let socket
     try{
@@ -155,11 +155,13 @@ export default function Transactions(){
       socket.on('remittance.created', onRemit)
       socket.on('remittance.accepted', onRemit)
       socket.on('remittance.rejected', onRemit)
+      socket.on('remittance.manager_accepted', onRemit)
     }catch{}
     return ()=>{
       try{ socket && socket.off('remittance.created') }catch{}
       try{ socket && socket.off('remittance.accepted') }catch{}
       try{ socket && socket.off('remittance.rejected') }catch{}
+      try{ socket && socket.off('remittance.manager_accepted') }catch{}
       try{ socket && socket.disconnect() }catch{}
     }
   }, [])
@@ -199,10 +201,16 @@ export default function Transactions(){
 
   function latestPendingRemitForDriver(driverId){
     try{
+      // For managers: show only 'pending' status
+      // For owners: show both 'pending' and 'manager_accepted' status
+      const statusFilter = role === 'manager' 
+        ? (r) => String(r?.status||'').toLowerCase() === 'pending'
+        : (r) => ['pending', 'manager_accepted'].includes(String(r?.status||'').toLowerCase())
+      
       const list = driverRemits
         .filter(r => String(r?.driver?._id || r?.driver || '') === String(driverId))
         .filter(r => String(r?.country||'').trim().toLowerCase() === String(country||'').trim().toLowerCase())
-        .filter(r => String(r?.status||'').toLowerCase() === 'pending')
+        .filter(statusFilter)
         .filter(r => role==='manager' ? (String(r?.manager?._id || r?.manager || '') === String(me?._id||me?.id||'')) : true)
         .filter(r => (fromDate || toDate) ? dateInRange(r?.createdAt || r?.acceptedAt, fromDate, toDate) : true)
         .sort((a,b)=> new Date(b.createdAt||b.acceptedAt||0) - new Date(a.createdAt||a.acceptedAt||0))
@@ -616,9 +624,27 @@ export default function Transactions(){
                         {(()=>{
                           const pending = latestPendingRemitForDriver(r.id)
                           if (!pending) return <span className="helper">—</span>
+                          const status = String(pending?.status||'').toLowerCase()
+                          const isManagerAccepted = status === 'manager_accepted'
                           return (
-                            <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
-                              <button className="btn" onClick={()=> setAcceptModal(pending)}>Accept Pending</button>
+                            <div style={{display:'flex', gap:6, flexWrap:'wrap', alignItems:'center'}}>
+                              {isManagerAccepted && (
+                                <span style={{
+                                  padding: '6px 12px',
+                                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                  color: '#fff',
+                                  borderRadius: '8px',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  ✓ Manager Accepted
+                                </span>
+                              )}
+                              <button className="btn" onClick={()=> setAcceptModal(pending)}>
+                                {isManagerAccepted ? 'Final Approve' : 'Accept Pending'}
+                              </button>
                               {pending.pdfPath && (
                                 <a 
                                   href={pending.pdfPath}
@@ -678,25 +704,47 @@ export default function Transactions(){
                   <div key={r.id} className="card" style={{ display:'grid', gap:8, padding:10 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                       <div style={{ fontWeight:800 }}>{userName(r.driver)}</div>
-                      <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
-                        {latestPendingRemitForDriver(r.id) && (
-                          <>
-                            <button className="btn small" onClick={()=> setAcceptModal(latestPendingRemitForDriver(r.id))}>Accept</button>
-                            {latestPendingRemitForDriver(r.id).pdfPath && (
-                              <a 
-                                href={latestPendingRemitForDriver(r.id).pdfPath}
-                                download
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn small"
-                                style={{background:'#dc2626', color:'white', textDecoration:'none'}}
-                                title="Download Settlement PDF"
-                              >
-                                📄 PDF
-                              </a>
-                            )}
-                          </>
-                        )}
+                      <div style={{display:'flex', gap:6, flexWrap:'wrap', alignItems:'center'}}>
+                        {(()=>{
+                          const pending = latestPendingRemitForDriver(r.id)
+                          if (!pending) return null
+                          const status = String(pending?.status||'').toLowerCase()
+                          const isManagerAccepted = status === 'manager_accepted'
+                          return (
+                            <>
+                              {isManagerAccepted && (
+                                <span style={{
+                                  padding: '4px 8px',
+                                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                  color: '#fff',
+                                  borderRadius: '6px',
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  boxShadow: '0 2px 6px rgba(16, 185, 129, 0.25)',
+                                  whiteSpace:'nowrap'
+                                }}>
+                                  ✓ Manager OK
+                                </span>
+                              )}
+                              <button className="btn small" onClick={()=> setAcceptModal(pending)}>
+                                {isManagerAccepted ? 'Approve' : 'Accept'}
+                              </button>
+                              {pending.pdfPath && (
+                                <a 
+                                  href={pending.pdfPath}
+                                  download
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn small"
+                                  style={{background:'#dc2626', color:'white', textDecoration:'none'}}
+                                  title="Download Settlement PDF"
+                                >
+                                  📄 PDF
+                                </a>
+                              )}
+                            </>
+                          )
+                        })()}
                         <button className="btn secondary" onClick={()=> setDetailModalFor(r.id)}>Details</button>
                       </div>
                     </div>
