@@ -617,7 +617,22 @@ export default function Transactions(){
                           const pending = latestPendingRemitForDriver(r.id)
                           if (!pending) return <span className="helper">—</span>
                           return (
-                            <button className="btn" onClick={()=> setAcceptModal(pending)}>Accept Pending</button>
+                            <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+                              <button className="btn" onClick={()=> setAcceptModal(pending)}>Accept Pending</button>
+                              {pending.pdfPath && (
+                                <a 
+                                  href={pending.pdfPath}
+                                  download
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn"
+                                  style={{background:'#dc2626', color:'white', padding:'6px 12px', fontSize:13, whiteSpace:'nowrap', textDecoration:'none'}}
+                                  title="Download Settlement PDF"
+                                >
+                                  📄 PDF
+                                </a>
+                              )}
+                            </div>
                           )
                         })()}
                       </td>
@@ -663,9 +678,24 @@ export default function Transactions(){
                   <div key={r.id} className="card" style={{ display:'grid', gap:8, padding:10 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                       <div style={{ fontWeight:800 }}>{userName(r.driver)}</div>
-                      <div style={{display:'flex', gap:6}}>
+                      <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
                         {latestPendingRemitForDriver(r.id) && (
-                          <button className="btn small" onClick={()=> setAcceptModal(latestPendingRemitForDriver(r.id))}>Accept</button>
+                          <>
+                            <button className="btn small" onClick={()=> setAcceptModal(latestPendingRemitForDriver(r.id))}>Accept</button>
+                            {latestPendingRemitForDriver(r.id).pdfPath && (
+                              <a 
+                                href={latestPendingRemitForDriver(r.id).pdfPath}
+                                download
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn small"
+                                style={{background:'#dc2626', color:'white', textDecoration:'none'}}
+                                title="Download Settlement PDF"
+                              >
+                                📄 PDF
+                              </a>
+                            )}
+                          </>
                         )}
                         <button className="btn secondary" onClick={()=> setDetailModalFor(r.id)}>Details</button>
                       </div>
