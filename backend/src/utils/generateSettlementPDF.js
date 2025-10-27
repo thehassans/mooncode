@@ -437,28 +437,93 @@ export async function generateAcceptedSettlementPDF(data) {
       doc.text('Complete Financial Summary & Commission Details', margin, 58, { align: 'center' })
       currentY = 105
 
-      // === ACCEPTED STAMP ===
-      // Add prominent ACCEPTED stamp overlay
+      // === ACCEPTED SEAL WATERMARK ===
+      // Add transparent circular "ACCEPTED" seal as watermark overlay
       doc.save()
-      doc.rotate(-45, { origin: [pageWidth / 2, 180] })
       
-      // Shadow for stamp
-      doc.fontSize(80).font('Helvetica-Bold').fillColor('#00000020')
-      doc.text('ACCEPTED', pageWidth / 2 - 220, 182, { width: 400, align: 'center' })
+      // Center position for seal
+      const sealCenterX = pageWidth / 2 + 120
+      const sealCenterY = 250
+      const sealRadius = 65
       
-      // Main stamp with green border
-      doc.roundedRect(pageWidth / 2 - 180, 155, 360, 80, 10)
-         .lineWidth(8)
+      // Outer decorative circle (badge style)
+      for (let i = 0; i < 24; i++) {
+        const angle = (i * 15) * Math.PI / 180
+        const x1 = sealCenterX + Math.cos(angle) * (sealRadius + 8)
+        const y1 = sealCenterY + Math.sin(angle) * (sealRadius + 8)
+        const x2 = sealCenterX + Math.cos(angle) * (sealRadius + 12)
+        const y2 = sealCenterY + Math.sin(angle) * (sealRadius + 12)
+        doc.moveTo(x1, y1).lineTo(x2, y2).lineWidth(3).strokeColor('#059669').fillOpacity(0.15).stroke()
+      }
+      
+      // Outer circle
+      doc.circle(sealCenterX, sealCenterY, sealRadius + 5)
+         .lineWidth(4)
          .strokeColor('#059669')
+         .fillOpacity(0.05)
+         .fillAndStroke('#059669', '#047857')
+      
+      // Middle circle
+      doc.circle(sealCenterX, sealCenterY, sealRadius - 5)
+         .lineWidth(2)
+         .strokeColor('#10b981')
+         .fillOpacity(0)
          .stroke()
       
-      // Stamp text
-      doc.fontSize(80).font('Helvetica-Bold').fillColor('#059669').fillOpacity(0.3)
-      doc.text('ACCEPTED', pageWidth / 2 - 220, 180, { width: 400, align: 'center' })
+      // Inner circle (background for checkmark)
+      doc.circle(sealCenterX, sealCenterY, sealRadius - 18)
+         .lineWidth(0)
+         .fillColor('#059669')
+         .fillOpacity(0.15)
+         .fill()
+      
+      // Draw checkmark
+      doc.lineWidth(8)
+         .strokeColor('#059669')
+         .fillOpacity(0.2)
+      doc.moveTo(sealCenterX - 20, sealCenterY)
+         .lineTo(sealCenterX - 8, sealCenterY + 15)
+         .lineTo(sealCenterX + 20, sealCenterY - 20)
+         .stroke()
+      
+      // "ACCEPTED" text on top arc
+      doc.fillOpacity(0.18)
+      doc.fillColor('#059669')
+      doc.fontSize(14).font('Helvetica-Bold')
+      
+      // Top text "ACCEPTED"
+      const topText = 'ACCEPTED'
+      for (let i = 0; i < topText.length; i++) {
+        const angle = -75 + (i * 18) // Spread letters along arc
+        const rad = angle * Math.PI / 180
+        const x = sealCenterX + Math.sin(rad) * (sealRadius - 15)
+        const y = sealCenterY - Math.cos(rad) * (sealRadius - 15)
+        
+        doc.save()
+        doc.translate(x, y)
+        doc.rotate(angle, { origin: [0, 0] })
+        doc.text(topText[i], -4, -6, { width: 10, align: 'center' })
+        doc.restore()
+      }
+      
+      // Bottom text "ACCEPTED"
+      const bottomText = 'ACCEPTED'
+      for (let i = 0; i < bottomText.length; i++) {
+        const angle = 105 + (i * 18) // Spread letters along arc
+        const rad = angle * Math.PI / 180
+        const x = sealCenterX + Math.sin(rad) * (sealRadius - 15)
+        const y = sealCenterY - Math.cos(rad) * (sealRadius - 15)
+        
+        doc.save()
+        doc.translate(x, y)
+        doc.rotate(angle, { origin: [0, 0] })
+        doc.text(bottomText[i], -4, -6, { width: 10, align: 'center' })
+        doc.restore()
+      }
       
       doc.restore()
       doc.fillOpacity(1)
-      // === END STAMP ===
+      // === END SEAL ===
 
       // Professional Document Info Box with Icon
       doc.fillColor('black')

@@ -174,20 +174,8 @@ export default function DriverPayout(){
                     </td>
                     <td style={{ padding:'8px 10px' }}>
                       <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
-                        {r.pdfPath && (
-                          <a 
-                            href={r.pdfPath}
-                            download
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn small"
-                            style={{background:'#3b82f6', color:'white', padding:'4px 10px', fontSize:12, whiteSpace:'nowrap', textDecoration:'none'}}
-                            title="Download Settlement PDF"
-                          >
-                            📄 PDF
-                          </a>
-                        )}
-                        {r.status === 'accepted' && r.acceptedPdfPath && (
+                        {r.status === 'accepted' && r.acceptedPdfPath ? (
+                          // Show only accepted PDF for accepted settlements
                           <a 
                             href={r.acceptedPdfPath}
                             download
@@ -197,10 +185,22 @@ export default function DriverPayout(){
                             style={{background:'#10b981', color:'white', padding:'4px 10px', fontSize:12, whiteSpace:'nowrap', textDecoration:'none'}}
                             title="Download Accepted Settlement PDF"
                           >
-                            ✓ Accepted PDF
+                            ✓ Download PDF
                           </a>
-                        )}
-                        {!r.pdfPath && !r.acceptedPdfPath && (
+                        ) : r.pdfPath ? (
+                          // Show pending PDF for non-accepted settlements
+                          <a 
+                            href={r.pdfPath}
+                            download
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn small"
+                            style={{background:'#3b82f6', color:'white', padding:'4px 10px', fontSize:12, whiteSpace:'nowrap', textDecoration:'none'}}
+                            title="Download Settlement PDF"
+                          >
+                            📄 Download PDF
+                          </a>
+                        ) : (
                           <span className="helper" style={{fontSize:12}}>—</span>
                         )}
                       </div>
