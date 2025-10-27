@@ -235,8 +235,6 @@ export default function UserLayout(){
       <div className={`main ${closed ? 'full' : ''}`}>
         <div className="topbar" style={{background:'var(--sidebar-bg)', borderBottom:'1px solid var(--sidebar-border)', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'nowrap', minHeight:'60px', padding:'0 1rem'}}>
           <div className="flex items-center gap-3" style={{flexShrink:0}}>
-            {/* Logo */}
-            <img src={branding.headerLogo || `${import.meta.env.BASE_URL}BuySial2.png`} alt="BuySial" className="h-7 w-auto object-contain" style={{maxWidth:'120px', flexShrink:0}} />
             {!isMobile && (
               <div style={{
                 display: 'inline-flex',
