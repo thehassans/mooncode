@@ -98,6 +98,27 @@ export default function Sidebar({ links = [], closed, onToggle }){
     if (n.includes('support')) return (
       <svg {...common} className={className}><circle cx="12" cy="12" r="10"/><path d="M8 15a4 4 0 0 0 8 0V9a4 4 0 0 0-8 0z"/></svg>
     )
+    if (n.includes('currency')) return (
+      // Dollar sign with circle for currency conversion
+      <svg {...common} className={className}>
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 6v12M16 10H9.5a2.5 2.5 0 0 0 0 5h5a2.5 2.5 0 0 1 0 5H8"/>
+      </svg>
+    )
+    if (n.includes('amount') || n.includes('office')) return (
+      // Office building icon
+      <svg {...common} className={className}>
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    )
+    if (n.includes('finance')) return (
+      // Dollar sign for finances
+      <svg {...common} className={className}>
+        <line x1="12" y1="1" x2="12" y2="23"/>
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    )
     // Default dot
     return (<svg {...common} className={className}><circle cx="12" cy="12" r="3" fill={stroke} stroke="none"/></svg>)
   }

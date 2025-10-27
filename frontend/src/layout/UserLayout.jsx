@@ -233,34 +233,35 @@ export default function UserLayout(){
     <div>
       <Sidebar closed={closed} links={links} onToggle={()=>setClosed(c=>!c)} />
       <div className={`main ${closed ? 'full' : ''}`}>
-        <div className="topbar" style={{background:'var(--sidebar-bg)', borderBottom:'1px solid var(--sidebar-border)'}}>
-          <div className="flex items-center gap-3">
+        <div className="topbar" style={{background:'var(--sidebar-bg)', borderBottom:'1px solid var(--sidebar-border)', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'nowrap', minHeight:'60px', padding:'0 1rem'}}>
+          <div className="flex items-center gap-3" style={{flexShrink:0}}>
             {/* Always-visible hamburger + logo */}
             <button
               className="btn secondary w-9 h-9 p-0 grid place-items-center"
               onClick={()=> setClosed(c=>!c)}
               title={closed ? 'Open menu' : 'Close menu'}
               aria-label={closed ? 'Open menu' : 'Close menu'}
+              style={{flexShrink:0}}
             >
               ☰
             </button>
-            <img src={branding.headerLogo || `${import.meta.env.BASE_URL}BuySial2.png`} alt="BuySial" className="h-7 w-auto object-contain" />
+            <img src={branding.headerLogo || `${import.meta.env.BASE_URL}BuySial2.png`} alt="BuySial" className="h-7 w-auto object-contain" style={{maxWidth:'120px', flexShrink:0}} />
             {!isMobile && (
-              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-[var(--panel)] border border-[var(--border)] shadow-[inset_0_1px_0_rgba(0,0,0,0.15)]">
-                <span aria-hidden className="inline-flex items-center text-[var(--muted)]">
+              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-[var(--panel)] border border-[var(--border)] shadow-[inset_0_1px_0_rgba(0,0,0,0.15)]" style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                <span aria-hidden className="inline-flex items-center text-[var(--muted)]" style={{flexShrink:0}}>
                   {/* User/hand icon */}
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                     <circle cx="10" cy="7" r="3"/>
                   </svg>
                 </span>
-                <span className="font-extrabold tracking-tight">
+                <span className="font-extrabold tracking-tight" style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
                   {`Welcome ${me.firstName||''} ${me.lastName||''}`.trim()}
                 </span>
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" style={{flexShrink:0}}>
             <button
               className="btn secondary w-9 h-9 p-0 grid place-items-center"
               onClick={toggleTheme}
