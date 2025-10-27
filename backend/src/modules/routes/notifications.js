@@ -22,7 +22,24 @@ router.get('/', auth, allowRoles('admin', 'user', 'agent', 'manager'), async (re
   try {
     const { page = 1, limit = 20, unreadOnly = false } = req.query
     
-    let match = { userId: req.user.id }
+    // Only show approval-related notifications
+    const allowedTypes = [
+      'order_cancelled',
+      'order_returned',
+      'amount_approval',
+      'driver_settlement',
+      'manager_remittance',
+      'agent_remittance',
+      'investor_remittance',
+      'expense_approval',
+      'driver_remittance',
+      'return_request'
+    ]
+    
+    let match = { 
+      userId: req.user.id,
+      type: { $in: allowedTypes }
+    }
     if (unreadOnly === 'true') {
       match.read = false
     }
@@ -35,7 +52,11 @@ router.get('/', auth, allowRoles('admin', 'user', 'agent', 'manager'), async (re
       .lean()
 
     const total = await Notification.countDocuments(match)
-    const unreadCount = await Notification.countDocuments({ userId: req.user.id, read: false })
+    const unreadCount = await Notification.countDocuments({ 
+      userId: req.user.id, 
+      read: false,
+      type: { $in: allowedTypes }
+    })
 
     res.json({
       notifications,
@@ -113,8 +134,27 @@ router.delete('/:id', auth, allowRoles('admin', 'user', 'agent', 'manager'), asy
 // Get notification statistics
 router.get('/stats', auth, allowRoles('admin', 'user', 'agent', 'manager'), async (req, res) => {
   try {
+    // Only show approval-related notifications
+    const allowedTypes = [
+      'order_cancelled',
+      'order_returned',
+      'amount_approval',
+      'driver_settlement',
+      'manager_remittance',
+      'agent_remittance',
+      'investor_remittance',
+      'expense_approval',
+      'driver_remittance',
+      'return_request'
+    ]
+    
     const stats = await Notification.aggregate([
-      { $match: { userId: req.user.id } },
+      { 
+        $match: { 
+          userId: req.user.id,
+          type: { $in: allowedTypes }
+        } 
+      },
       {
         $group: {
           _id: '$type',
@@ -126,8 +166,15 @@ router.get('/stats', auth, allowRoles('admin', 'user', 'agent', 'manager'), asyn
       }
     ])
 
-    const totalCount = await Notification.countDocuments({ userId: req.user.id })
-    const totalUnreadCount = await Notification.countDocuments({ userId: req.user.id, read: false })
+    const totalCount = await Notification.countDocuments({ 
+      userId: req.user.id,
+      type: { $in: allowedTypes }
+    })
+    const totalUnreadCount = await Notification.countDocuments({ 
+      userId: req.user.id, 
+      read: false,
+      type: { $in: allowedTypes }
+    })
 
     res.json({
       byType: stats,

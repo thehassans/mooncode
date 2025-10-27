@@ -66,33 +66,11 @@ export default function NotificationsDropdown() {
       setLoading(true)
       const params = new URLSearchParams({
         page: 1,
-        limit: 10 // Get more than needed so we can filter and still have enough
+        limit: 5 // Backend now filters, so we only need 5
       })
       
       const response = await apiGet(`/api/notifications?${params}`)
-      let notifs = response.notifications || []
-      
-      // Filter out agent/manager creation notifications
-      notifs = notifs.filter(notification => {
-        const title = notification.title?.toLowerCase() || ''
-        const type = notification.type || ''
-        
-        // Filter out any notification containing 'created' in title if not necessary approval
-        if ((title.includes('new agent') || 
-             title.includes('new manager') || 
-             title.includes('agent created') || 
-             title.includes('manager created')) && 
-            !['order_cancelled', 'order_returned', 'amount_approval', 
-              'driver_settlement', 'manager_remittance', 'agent_remittance', 
-              'investor_remittance', 'expense_approval'].includes(type)) {
-          return false
-        }
-        
-        return true
-      })
-      
-      // Take only the first 5 after filtering
-      notifs = notifs.slice(0, 5)
+      const notifs = response.notifications || []
       
       setNotifications(notifs)
       setUnreadCount(response.unreadCount || 0)
