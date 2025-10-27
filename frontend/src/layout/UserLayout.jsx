@@ -283,7 +283,7 @@ export default function UserLayout(){
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text'
                   }}>
-                    Elite Member
+                    Owner
                   </span>
                   <span style={{
                     fontSize: '15px',
