@@ -1442,7 +1442,7 @@ router.get('/driver/assigned', auth, allowRoles('driver'), async (req, res) => {
     }
     
     const orders = await Order.find(match)
-      .sort({ createdAt: -1 })
+      .sort({ updatedAt: -1 })
       .populate('productId')
       .populate('items.productId')
     res.json({ orders })
