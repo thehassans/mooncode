@@ -6,6 +6,23 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// Try to load the Buysial logo
+function getLogoPath(){
+  const candidates = [
+    path.resolve(process.cwd(), 'backend/assets/BuySial2.png'),
+    path.resolve(process.cwd(), 'assets/BuySial2.png'),
+    path.resolve(process.cwd(), 'BuySial2.png'),
+    path.resolve(process.cwd(), '../frontend/public/BuySial2.png'),
+    path.resolve(process.cwd(), 'frontend/public/BuySial2.png'),
+  ]
+  for (const p of candidates){ 
+    try{ 
+      if (fs.existsSync(p)) return p 
+    }catch{} 
+  }
+  return null
+}
+
 /**
  * Generate a premium professional PDF for driver settlement summary
  * @param {Object} data - Settlement data
@@ -81,6 +98,17 @@ export async function generateSettlementPDF(data) {
 
       // Company Header with Blue Background
       doc.rect(0, 0, pageWidth, 80).fill('#1e40af')
+      
+      // Add logo in top left corner
+      const logoPath = getLogoPath()
+      if (logoPath) {
+        try {
+          doc.image(logoPath, 15, 15, { width: 50, height: 50, fit: [50, 50] })
+        } catch (err) {
+          console.error('Failed to add logo to PDF:', err)
+        }
+      }
+      
       doc.fillColor('white').fontSize(28).font('Helvetica-Bold')
       doc.text('DRIVER SETTLEMENT REPORT', margin, 25, { align: 'center' })
       doc.fontSize(11).font('Helvetica')

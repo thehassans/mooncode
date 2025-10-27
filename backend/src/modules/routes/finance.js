@@ -1012,7 +1012,8 @@ router.post(
         const manager = await User.findById(managerRef).select('firstName lastName');
         
         // Get order statistics for the driver
-        const assignedCount = await Order.countDocuments({ deliveryBoy: req.user.id, shipmentStatus: 'assigned' });
+        // Count ALL orders ever assigned to this driver (not just currently assigned)
+        const assignedCount = await Order.countDocuments({ deliveryBoy: req.user.id });
         const cancelledCount = await Order.countDocuments({ 
           deliveryBoy: req.user.id, 
           $or: [{ shipmentStatus: 'cancelled' }, { shipmentStatus: 'returned' }] 
