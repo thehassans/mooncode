@@ -274,10 +274,24 @@ export default function UserOrders(){
   async function verifyReturn(orderId){
     setVerifying(orderId)
     try{
+      // Save current scroll position
+      const scrollY = window.scrollY
+      
       const response = await apiPost(`/api/orders/${orderId}/return/verify`, {})
       toast.success(response?.message || 'Order verified successfully and stock refilled')
-      loadPendingReturns() // Reload pending returns
-      loadOrders(true) // Refresh main orders list
+      
+      // Update states locally to preserve scroll position
+      setPendingReturns(prev => prev.filter(o => String(o._id) !== String(orderId)))
+      setOrders(prev => prev.map(o => 
+        String(o._id) === String(orderId)
+          ? { ...o, returnVerified: true, returnVerifiedAt: new Date().toISOString() }
+          : o
+      ))
+      
+      // Restore scroll position after state update
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollY)
+      })
     }catch(e){
       toast.error(e?.message || 'Failed to verify order')
     }finally{
