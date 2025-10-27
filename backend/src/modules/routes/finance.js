@@ -1019,9 +1019,21 @@ router.post(
           $or: [{ shipmentStatus: 'cancelled' }, { shipmentStatus: 'returned' }] 
         });
         
-        // Calculate commission
-        const totalCommission = Number(driver?.commission || 0);
-        const paidCommission = Number(driver?.paidCommission || 0);
+        // Calculate commission based on commission per order
+        const commissionPerOrder = Number(driver?.driverProfile?.commissionPerOrder || 0);
+        const commissionCurrency = driver?.driverProfile?.commissionCurrency || doc.currency || 'SAR';
+        
+        // Total commission = delivered orders * commission per order
+        const totalCommission = totalDeliveredOrders * commissionPerOrder;
+        
+        // Get total paid commission from accepted remittances
+        const paidRemittances = await Remittance.find({
+          driver: req.user.id,
+          status: 'accepted'
+        });
+        const paidCommission = paidRemittances.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+        
+        // Pending commission = total earned - already paid
         const pendingCommission = Math.max(0, totalCommission - paidCommission);
         
         const pdfPath = await generateSettlementPDF({
