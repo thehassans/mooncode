@@ -41,12 +41,12 @@ export default function UserLayout(){
         { to: '/user/warehouses', label: 'Warehouses', icon: '🏬' },
         { to: '/user/shipments', label: 'Shipments', icon: '🚚' },
         { to: '/user/expense', label: 'Expense Management', icon: '💸' },
-        { to: '/user/currency', label: 'Currency Conversion', icon: '💱' },
+        { to: '/user/currency', label: 'Currency Conversion', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M16 10H9.5a2.5 2.5 0 0 0 0 5h5a2.5 2.5 0 0 1 0 5H8"/></svg> },
       ]
     },
     {
       label: 'Amount Office', 
-      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><line x1="2" y1="10" x2="22" y2="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
       children: [
         { to: '/user/transactions', label: 'Driver Settlement', icon: '💳' },
         { to: '/user/manager-finances', label: 'Manager Finances', icon: '📊' },
@@ -62,7 +62,7 @@ export default function UserLayout(){
         { to: '/user/reports', label: 'Business Reports', icon: '📑' },
         { to: '/user/driver-reports', label: 'Driver Reports', icon: '🚗' },
         { to: '/user/campaigns', label: 'Campaigns', icon: '📢' },
-        { to: '/user/finances', label: 'Finances', icon: '💰' },
+        { to: '/user/finances', label: 'Finances', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> },
       ] 
     },
     { to: '/user/support', label: 'Support', icon: '🛟' },
