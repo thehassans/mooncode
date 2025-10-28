@@ -1764,8 +1764,11 @@ router.get(
         }).select('driverCommission').lean();
         
         // Calculate total actual commission from orders
+        // If order has driverCommission set, use it; otherwise use default rate
         const actualTotalCommission = deliveredOrdersWithCommission.reduce((sum, o) => {
-          return sum + (Number(o.driverCommission) || 0)
+          const orderComm = Number(o.driverCommission) || 0
+          // Use order's commission if set, otherwise use driver's default rate
+          return sum + (orderComm > 0 ? orderComm : commissionPerOrder)
         }, 0);
         
         // Base commission (default rate × delivered count)
@@ -1774,10 +1777,8 @@ router.get(
         // Extra commission (difference between actual and base)
         const extraCommission = Math.max(0, actualTotalCommission - baseCommission);
         
-        // Use calculated totalCommission (or fallback to profile)
-        const driverCommission = Math.round(
-          actualTotalCommission || Number(d.driverProfile?.totalCommission ?? 0)
-        );
+        // Total commission is the actual commission from orders
+        const driverCommission = Math.round(actualTotalCommission);
 
         // Use paidCommission from driver profile (updated when remittances are accepted)
         const withdrawnCommission = Math.round(
