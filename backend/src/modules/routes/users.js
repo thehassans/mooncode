@@ -1110,7 +1110,9 @@ router.patch('/drivers/:id', auth, allowRoles('admin','user'), async (req, res) 
     {
       const COUNTRY_TO_CCY = { 'UAE':'AED', 'Oman':'OMR', 'KSA':'SAR', 'Bahrain':'BHD', 'India':'INR', 'Kuwait':'KWD', 'Qatar':'QAR' }
       const cpoRaw = req.body?.commissionPerOrder
-      const cpo = (cpoRaw !== undefined) ? (Number.isFinite(Number(cpoRaw)) && Number(cpoRaw) > 0 ? Number(cpoRaw) : 0) : (driver.driverProfile?.commissionPerOrder ?? 0)
+      console.log('📝 Updating driver commission - Raw value:', cpoRaw, 'Type:', typeof cpoRaw)
+      const cpo = (cpoRaw !== undefined) ? (Number.isFinite(Number(cpoRaw)) && Number(cpoRaw) >= 0 ? Number(cpoRaw) : 0) : (driver.driverProfile?.commissionPerOrder ?? 0)
+      console.log('💰 Final commission value to save:', cpo)
       const curRaw = req.body?.commissionCurrency
       const cur = curRaw ? String(curRaw).toUpperCase() : (COUNTRY_TO_CCY[String(country || driver.country)] || driver.driverProfile?.commissionCurrency || 'SAR')
       // Commission rate as percentage (e.g., 8 for 8%)
@@ -1121,6 +1123,7 @@ router.patch('/drivers/:id', auth, allowRoles('admin','user'), async (req, res) 
         commissionCurrency: cur,
         commissionRate: cRate,
       }
+      console.log('✅ Driver profile set:', driver.driverProfile)
     }
     await driver.save()
     
