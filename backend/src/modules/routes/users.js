@@ -1009,8 +1009,18 @@ router.get('/drivers', auth, allowRoles('admin','user','manager'), async (req, r
     { country: { $regex: text, $options: 'i' } },
     { city: { $regex: text, $options: 'i' } },
   ] } : base
-  const users = await User.find(cond, '-password').sort({ createdAt: -1 })
-  console.log('📋 Returning', users.length, 'drivers, first driver driverProfile:', users[0]?.driverProfile)
+  
+  // Explicitly select fields to ensure driverProfile is included
+  const users = await User.find(cond)
+    .select('-password')
+    .select('+driverProfile')
+    .sort({ createdAt: -1 })
+  
+  console.log('📋 Returning', users.length, 'drivers')
+  if (users.length > 0) {
+    console.log('🔍 First driver driverProfile:', JSON.stringify(users[0].driverProfile))
+    console.log('📝 Full first driver:', JSON.stringify(users[0], null, 2))
+  }
   res.json({ users })
 })
 
@@ -1127,6 +1137,7 @@ router.patch('/drivers/:id', auth, allowRoles('admin','user'), async (req, res) 
       console.log('✅ Driver profile set:', driver.driverProfile)
     }
     await driver.save()
+    console.log('💾 Driver saved successfully, ID:', driver._id)
     
     // Broadcast to workspace for real-time updates
     try{
@@ -1136,6 +1147,7 @@ router.patch('/drivers/:id', auth, allowRoles('admin','user'), async (req, res) 
     }catch{}
     
     const out = await User.findById(driver._id, '-password')
+    console.log('📤 Returning updated driver, driverProfile:', JSON.stringify(out.driverProfile))
     return res.json({ ok:true, user: out })
   }catch(err){
     return res.status(500).json({ message: err?.message || 'Failed to update driver' })
