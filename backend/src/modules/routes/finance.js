@@ -16,6 +16,7 @@ import Setting from "../models/Setting.js";
 import { generatePayoutReceiptPDF } from "../utils/payoutReceipt.js";
 import { generateSettlementPDF, generateAcceptedSettlementPDF } from "../../utils/generateSettlementPDF.js";
 import { generateCommissionPayoutPDF } from "../../utils/generateCommissionPayoutPDF.js";
+import { generateAgentCommissionReceiptPDF } from "../../utils/generateAgentCommissionReceiptPDF.js";
 
 const router = express.Router();
 
@@ -1517,6 +1518,93 @@ router.post(
         String(agent.createdBy) !== String(req.user.id)
       ) {
         return res.status(403).json({ message: "Not allowed" });
+      }
+
+      // Fetch agent's orders for PDF
+      let orders = [];
+      let totalSubmitted = 0;
+      let totalDelivered = 0;
+      try {
+        const agentOrders = await Order.find({ agent: id })
+          .populate('productId', 'price baseCurrency')
+          .lean();
+        
+        orders = agentOrders
+          .filter(o => String(o.shipmentStatus || '').toLowerCase() === 'delivered')
+          .map(o => {
+            const price = o.total || o.productId?.price || 0;
+            const currency = o.items?.[0]?.productId?.baseCurrency || o.productId?.baseCurrency || 'AED';
+            return {
+              orderId: o.invoiceId || o._id.toString().slice(-8),
+              date: o.updatedAt || o.createdAt,
+              amount: price,
+              currency: currency
+            };
+          });
+        
+        totalSubmitted = agentOrders.length;
+        totalDelivered = orders.length;
+      } catch (err) {
+        console.error('Error fetching agent orders:', err);
+      }
+
+      // Currency conversion (PKR to AED at ~76 PKR = 1 AED)
+      const pkrToAed = 0.0132; // Approximate rate
+      const amountAED = amt * pkrToAed;
+
+      // Generate PDF receipt
+      let pdfPath = null;
+      try {
+        pdfPath = await generateAgentCommissionReceiptPDF({
+          agentName: `${agent.firstName || ''} ${agent.lastName || ''}`.trim() || 'Agent',
+          agentPhone: agent.phone || '',
+          totalSubmitted,
+          totalDelivered,
+          amountAED,
+          amountPKR: amt,
+          orders
+        });
+      } catch (err) {
+        console.error('Error generating commission receipt PDF:', err);
+      }
+
+      // Send PDF via WhatsApp
+      if (pdfPath && agent.phone) {
+        try {
+          const getWA = async () => {
+            const enabled = process.env.ENABLE_WA !== 'false';
+            if (!enabled) return { sendDocument: async () => ({ ok: true }), sendText: async () => ({ ok: true }) };
+            try {
+              const mod = await import('../services/whatsapp.js');
+              return mod?.default || mod;
+            } catch {
+              return { sendDocument: async () => ({ ok: true }), sendText: async () => ({ ok: true }) };
+            }
+          };
+          const wa = await getWA();
+          const digits = String(agent.phone || '').replace(/\D/g, '');
+          if (digits) {
+            const jid = `${digits}@s.whatsapp.net`;
+            const fullPath = path.join(process.cwd(), pdfPath);
+            
+            // Send document
+            await wa.sendDocument(jid, fullPath, `Commission_Receipt_${Date.now()}.pdf`, 
+              `🎉 *Commission Payment Received!*\n\n` +
+              `Amount: PKR ${amt.toLocaleString()}\n` +
+              `Thank you for your excellent work!\n\n` +
+              `BuySial Commerce`
+            );
+            
+            // Clean up file after sending
+            setTimeout(() => {
+              try {
+                if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+              } catch {}
+            }, 5000);
+          }
+        } catch (err) {
+          console.error('Error sending commission receipt via WhatsApp:', err);
+        }
       }
 
       // Create an agent remittance record marking commission payment
