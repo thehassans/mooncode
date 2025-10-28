@@ -377,11 +377,15 @@ router.get('/me', auth, async (req, res) => {
         shipmentStatus: 'delivered'
       }).select('driverCommission')
       
-      // Sum all order commissions, using driver's default rate as fallback
-      const defaultCommission = Number(u.driverProfile?.commissionPerOrder || 0)
+      // Driver's default commission rate
+      const defaultCommissionRate = Number(u.driverProfile?.commissionPerOrder || 0)
+      
+      // Calculate total commission: use order-specific rate OR driver's default rate
       const totalCommission = deliveredOrders.reduce((sum, order) => {
         const orderCommission = Number(order.driverCommission) || 0
-        return sum + orderCommission
+        // If order has a commission set, use it; otherwise use driver's default rate
+        const commissionForThisOrder = orderCommission > 0 ? orderCommission : defaultCommissionRate
+        return sum + commissionForThisOrder
       }, 0)
       
       // Update if changed

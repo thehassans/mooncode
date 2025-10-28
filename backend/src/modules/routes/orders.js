@@ -81,16 +81,22 @@ async function updateDriverCommission(driverId){
     const driver = await User.findOne({ _id: driverId, role: 'driver' })
     if (!driver) return
     
+    // Get driver's default commission rate
+    const defaultRate = Number(driver.driverProfile?.commissionPerOrder || 0)
+    
     // Get all delivered orders for this driver
     const deliveredOrders = await Order.find({
       deliveryBoy: driverId,
       shipmentStatus: 'delivered'
     }).select('driverCommission')
     
-    // Sum up all order commissions
+    // Calculate total commission: use order-specific commission OR default rate
+    // Each order gets either its custom commission or the driver's default rate
     const totalCommission = deliveredOrders.reduce((sum, order) => {
       const orderCommission = Number(order.driverCommission) || 0
-      return sum + orderCommission
+      // Use order commission if set, otherwise use driver's default rate
+      const commissionForThisOrder = orderCommission > 0 ? orderCommission : defaultRate
+      return sum + commissionForThisOrder
     }, 0)
     
     // Update driver's total commission
