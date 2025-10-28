@@ -1865,6 +1865,80 @@ router.post(
   }
 );
 
+// Generate commission PDF for current driver
+router.get(
+  "/drivers/me/commission-pdf",
+  auth,
+  allowRoles("driver"),
+  async (req, res) => {
+    try {
+      const driverId = req.user.id;
+      const driver = await User.findById(driverId);
+      if (!driver || driver.role !== 'driver') {
+        return res.status(404).json({ message: 'Driver not found' });
+      }
+
+      // Get delivered orders
+      const deliveredOrders = await Order.find({
+        deliveryBoy: driverId,
+        shipmentStatus: 'delivered'
+      })
+        .select('invoiceNumber deliveredAt driverCommission')
+        .sort({ deliveredAt: -1 })
+        .lean();
+
+      // Calculate commission data
+      const defaultRate = Number(driver.driverProfile?.commissionPerOrder || 0);
+      const totalCommission = Number(driver.driverProfile?.totalCommission || 0);
+      const paidCommission = Number(driver.driverProfile?.paidCommission || 0);
+      const pendingCommission = Math.max(0, totalCommission - paidCommission);
+      const currency = driver.driverProfile?.commissionCurrency || 'SAR';
+
+      // Prepare PDF data
+      const pdfData = {
+        driverName: `${driver.firstName || ''} ${driver.lastName || ''}`.trim() || 'Driver',
+        driverPhone: driver.phone || '',
+        totalDeliveredOrders: deliveredOrders.length,
+        totalCommissionPaid: paidCommission > 0 ? paidCommission : totalCommission,
+        currency: currency,
+        orders: deliveredOrders.map(order => ({
+          orderId: order.invoiceNumber || String(order._id).slice(-6),
+          deliveryDate: order.deliveredAt,
+          commission: Number(order.driverCommission) > 0 ? Number(order.driverCommission) : defaultRate
+        }))
+      };
+
+      // Generate PDF
+      const { generateCommissionPayoutPDF } = await import('../../utils/generateCommissionPayoutPDF.js');
+      const pdfPath = await generateCommissionPayoutPDF(pdfData);
+      
+      // Send PDF file
+      const fs = await import('fs');
+      const path = await import('path');
+      const fullPath = path.join(process.cwd(), pdfPath);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="commission-statement.pdf"`);
+      
+      const fileStream = fs.createReadStream(fullPath);
+      fileStream.pipe(res);
+      
+      // Clean up file after sending
+      fileStream.on('end', () => {
+        try {
+          fs.unlinkSync(fullPath);
+        } catch (err) {
+          console.error('Failed to delete temp PDF:', err);
+        }
+      });
+
+    } catch (err) {
+      console.error('Generate driver PDF error:', err);
+      return res.status(500).json({ message: 'Failed to generate commission PDF' });
+    }
+  }
+);
+
 // GET /api/finance/driver-remittances — alias to remittances list within scope
 router.get(
   "/driver-remittances",
