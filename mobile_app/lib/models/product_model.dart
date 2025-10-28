@@ -45,23 +45,33 @@ class ProductModel {
   String get mainImage => images.isNotEmpty ? images.first : '';
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    // Handle both single image string and array of images
+    List<String> imageList = [];
+    if (json['images'] != null) {
+      if (json['images'] is List) {
+        imageList = List<String>.from(json['images']);
+      } else if (json['images'] is String) {
+        imageList = [json['images']];
+      }
+    } else if (json['image'] != null) {
+      imageList = [json['image']];
+    }
+    
     return ProductModel(
       id: json['_id'] ?? json['id'] ?? '',
-      name: json['name'] ?? '',
-      description: json['description'] ?? '',
-      price: (json['price'] ?? 0).toDouble(),
+      name: json['name'] ?? json['title'] ?? '',
+      description: json['description'] ?? json['desc'] ?? '',
+      price: _parsePrice(json['price']),
       originalPrice: json['originalPrice'] != null
-          ? (json['originalPrice']).toDouble()
-          : null,
+          ? _parsePrice(json['originalPrice'])
+          : (json['compareAtPrice'] != null ? _parsePrice(json['compareAtPrice']) : null),
       currency: json['currency'] ?? 'AED',
-      images: json['images'] != null
-          ? List<String>.from(json['images'])
-          : [],
-      category: json['category'] ?? '',
+      images: imageList,
+      category: json['category'] ?? json['categoryId'] ?? '',
       brand: json['brand'],
-      stock: json['stock'] ?? 0,
-      isForMobile: json['isForMobile'] ?? false,
-      isActive: json['isActive'] ?? true,
+      stock: json['stock'] ?? json['quantity'] ?? 0,
+      isForMobile: json['isForMobile'] ?? true, // Default to true for mobile app
+      isActive: json['isActive'] ?? json['active'] ?? true,
       variants: json['variants'] != null
           ? (json['variants'] as List)
               .map((v) => ProductVariant.fromJson(v))
@@ -69,12 +79,29 @@ class ProductModel {
           : null,
       rating: json['rating'] != null
           ? ProductRating.fromJson(json['rating'])
-          : null,
-      specifications: json['specifications'],
+          : (json['reviews'] != null ? _parseRating(json['reviews']) : null),
+      specifications: json['specifications'] ?? json['specs'],
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
     );
+  }
+  
+  static double _parsePrice(dynamic price) {
+    if (price == null) return 0;
+    if (price is num) return price.toDouble();
+    if (price is String) return double.tryParse(price) ?? 0;
+    return 0;
+  }
+  
+  static ProductRating? _parseRating(dynamic reviews) {
+    if (reviews is Map) {
+      return ProductRating(
+        average: _parsePrice(reviews['average'] ?? reviews['rating']),
+        count: reviews['count'] ?? reviews['total'] ?? 0,
+      );
+    }
+    return null;
   }
 
   Map<String, dynamic> toJson() {

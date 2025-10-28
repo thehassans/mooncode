@@ -29,15 +29,30 @@ class ProductProvider with ChangeNotifier {
 
     try {
       final response = await ProductService.getMobileProducts();
-      _products = response.map((json) => ProductModel.fromJson(json)).toList();
+      
+      // Handle both array and object responses
+      List<dynamic> productList;
+      if (response is List) {
+        productList = response;
+      } else if (response is Map && response['products'] != null) {
+        productList = response['products'];
+      } else if (response is Map && response['data'] != null) {
+        productList = response['data'];
+      } else {
+        productList = [];
+      }
+      
+      _products = productList.map((json) => ProductModel.fromJson(json)).toList();
       _filteredProducts = List.from(_products);
       _error = null;
+      
+      debugPrint('✅ Loaded ${_products.length} products from backend');
     } catch (e) {
-      // Use mock products for demonstration when API fails
-      debugPrint('API Error: $e - Using mock products for demonstration');
+      // Use mock products as fallback for development
+      debugPrint('⚠️ API Error: $e - Using mock products');
       _products = MockProducts.getSampleProducts();
       _filteredProducts = List.from(_products);
-      _error = null; // Don't show error, just use mock data
+      _error = null;
     } finally {
       _isLoading = false;
       notifyListeners();
