@@ -1010,6 +1010,7 @@ router.get('/drivers', auth, allowRoles('admin','user','manager'), async (req, r
     { city: { $regex: text, $options: 'i' } },
   ] } : base
   const users = await User.find(cond, '-password').sort({ createdAt: -1 })
+  console.log('📋 Returning', users.length, 'drivers, first driver driverProfile:', users[0]?.driverProfile)
   res.json({ users })
 })
 

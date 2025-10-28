@@ -52,6 +52,7 @@ const UserSchema = new mongoose.Schema({
   driverProfile: {
     commissionPerOrder: { type: Number, default: 0 },
     commissionCurrency: { type: String, enum: ['AED','OMR','SAR','BHD','INR','KWD','QAR'], default: 'SAR' },
+    commissionRate: { type: Number, default: 8 },
   },
   // Workspace/user-level settings
   settings: {
