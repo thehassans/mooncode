@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
 import '../core/constants/app_strings.dart';
-import '../providers/auth_provider.dart';
 import '../providers/cart_provider.dart';
-import 'auth/login_screen.dart';
+import '../providers/product_provider.dart';
 import 'home/main_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -22,28 +21,22 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initializeApp() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    final productProvider = Provider.of<ProductProvider>(context, listen: false);
 
     // Load cart from storage
     await cartProvider.loadCart();
 
-    // Check authentication
-    await authProvider.checkAuthStatus();
+    // Load products
+    await productProvider.loadProducts();
 
-    // Navigate based on auth status
+    // Navigate directly to main screen (no login required)
     if (mounted) {
       await Future.delayed(const Duration(seconds: 2));
       
-      if (authProvider.isAuthenticated) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
-      } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
-      }
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+      );
     }
   }
 
