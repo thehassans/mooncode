@@ -1876,6 +1876,15 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), async (req, res
       if (deliveryBoy && (!ord.shipmentStatus || ord.shipmentStatus === 'pending')) {
         ord.shipmentStatus = 'assigned'
       }
+      // Set driver commission from driver profile if driver is being assigned and commission not already set
+      if (deliveryBoy && !previousDriver && (!ord.driverCommission || ord.driverCommission === 0)) {
+        try {
+          const driver = await User.findById(deliveryBoy).select('driverProfile')
+          if (driver && driver.driverProfile?.commissionPerOrder) {
+            ord.driverCommission = Number(driver.driverProfile.commissionPerOrder)
+          }
+        } catch {}
+      }
     }
     if (driverCommission !== undefined) ord.driverCommission = Math.max(0, Number(driverCommission || 0))
     if (customerName !== undefined) ord.customerName = customerName

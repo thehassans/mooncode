@@ -1752,14 +1752,31 @@ router.get(
           remitRows && remitRows[0] ? Number(remitRows[0].total || 0) : 0;
         const pendingToCompany = Math.max(0, collected - deliveredToCompany);
 
-        // Driver commission calculation: use totalCommission from profile (sum of all order commissions)
+        // Driver commission calculation
         const commissionPerOrder = Number(
           d.driverProfile?.commissionPerOrder ?? 0
         );
         
-        // Use totalCommission from driver profile (calculated from actual order commissions)
+        // Get actual commissions from all delivered orders
+        const deliveredOrdersWithCommission = await Order.find({
+          deliveryBoy: d._id,
+          shipmentStatus: 'delivered'
+        }).select('driverCommission').lean();
+        
+        // Calculate total actual commission from orders
+        const actualTotalCommission = deliveredOrdersWithCommission.reduce((sum, o) => {
+          return sum + (Number(o.driverCommission) || 0)
+        }, 0);
+        
+        // Base commission (default rate × delivered count)
+        const baseCommission = deliveredCount * commissionPerOrder;
+        
+        // Extra commission (difference between actual and base)
+        const extraCommission = Math.max(0, actualTotalCommission - baseCommission);
+        
+        // Use calculated totalCommission (or fallback to profile)
         const driverCommission = Math.round(
-          Number(d.driverProfile?.totalCommission ?? 0)
+          actualTotalCommission || Number(d.driverProfile?.totalCommission ?? 0)
         );
 
         // Use paidCommission from driver profile (updated when remittances are accepted)
@@ -1788,6 +1805,8 @@ router.get(
           collected: Math.round(collected),
           deliveredToCompany: Math.round(deliveredToCompany),
           pendingToCompany: Math.round(pendingToCompany),
+          baseCommission: Math.round(baseCommission),
+          extraCommission: Math.round(extraCommission),
           driverCommission: Math.round(driverCommission),
           withdrawnCommission: Math.round(withdrawnCommission),
           pendingCommission: Math.round(pendingCommission),
