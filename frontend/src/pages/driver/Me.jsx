@@ -107,7 +107,8 @@ export default function DriverMe() {
   const deliveredCount = Number(drvMetrics?.status?.delivered || 0)
   const commissionPerOrder = Number((me?.driverProfile?.commissionPerOrder ?? me?.commissionPerOrder) || 0)
   const commissionCurrency = (String((me?.driverProfile?.commissionCurrency ?? me?.commissionCurrency) || '').toUpperCase() || String(payout?.currency||'').toUpperCase() || 'SAR')
-  const walletAmount = (commissionPerOrder > 0 && deliveredCount >= 0) ? (commissionPerOrder * deliveredCount) : 0
+  // Use totalCommission from profile (includes base + extra), fallback to calculated base commission
+  const walletAmount = Number(me?.driverProfile?.totalCommission ?? 0) || ((commissionPerOrder > 0 && deliveredCount >= 0) ? (commissionPerOrder * deliveredCount) : 0)
   // Driver achievement level by delivered count
   const levels = useMemo(()=>[
     { count: 0, title: 'New Driver' },

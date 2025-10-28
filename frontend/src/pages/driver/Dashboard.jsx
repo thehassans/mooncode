@@ -89,9 +89,10 @@ export default function DriverDashboard(){
     { key:'cancelled', title:'Cancelled', value: metrics.status.cancelled, to:'/driver/orders/cancelled', color:'#b91c1c' },
   ]
   const deliveredCount = Number(metrics?.status?.delivered||0)
-  const commissionPerOrder = Number(user?.commissionPerOrder||0)
-  const commissionCurrency = (user?.commissionCurrency ? String(user.commissionCurrency).toUpperCase() : (payout.currency||'')).trim() || 'SAR'
-  const walletDelivered = (commissionPerOrder>0 && deliveredCount>=0) ? (commissionPerOrder * deliveredCount) : 0
+  const commissionPerOrder = Number(user?.driverProfile?.commissionPerOrder ?? user?.commissionPerOrder ?? 0)
+  const commissionCurrency = (user?.driverProfile?.commissionCurrency ?? user?.commissionCurrency ? String(user?.driverProfile?.commissionCurrency ?? user?.commissionCurrency).toUpperCase() : (payout.currency||'')).trim() || 'SAR'
+  // Use totalCommission from profile (includes base + extra), fallback to calculated base commission
+  const walletDelivered = Number(user?.driverProfile?.totalCommission ?? 0) || ((commissionPerOrder>0 && deliveredCount>=0) ? (commissionPerOrder * deliveredCount) : 0)
   const payoutCards = [
     { key:'wallet_delivered', title:'Wallet (Delivered Commission)', value: `${commissionCurrency} ${walletDelivered.toFixed(2)}`, to:'/driver/orders/delivered', color:'#22c55e' },
     { key:'collected_amount', title:'Total Collected (Delivered)', value: money(payout.totalCollectedAmount), to:'/driver/orders/delivered', color:'#0ea5e9' },
