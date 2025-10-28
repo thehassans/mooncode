@@ -793,6 +793,9 @@ export default function UserOrders(){
                   const discountConv = convert(discountLocal, localCode, targetCode, curCfg)
                   const price = Math.max(0, itemsSubtotalConv + shipConv - discountConv)
                   
+                  // Address
+                  const fullAddress = [o.customerAddress, o.customerArea, o.city, o.orderCountry].filter(Boolean).join(', ')
+                  
                   // Driver, status, and commission
                   const currentDriver = editingDriver[id] !== undefined ? editingDriver[id] : (o.deliveryBoy?._id || o.deliveryBoy || '')
                   const currentStatus = editingStatus[id] || o.shipmentStatus || 'pending'
