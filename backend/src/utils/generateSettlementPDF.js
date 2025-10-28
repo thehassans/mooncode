@@ -59,6 +59,8 @@ const drawInfoRow = (doc, y, label, value, x, width, labelColor = '#64748b', val
  * @param {string} data.fromDate - Date range from
  * @param {string} data.toDate - Date range to
  * @param {string} data.note - Settlement note
+ * @param {Array} data.deliveredOrders - Array of delivered orders with details
+ * @param {number} data.commissionPerOrder - Commission amount per order
  * @returns {Promise<string>} PDF file path
  */
 export async function generateSettlementPDF(data) {
@@ -151,6 +153,12 @@ export async function generateSettlementPDF(data) {
         doc.text('COMMISSION DETAILS', col2X, currentY)
         doc.rect(col2X, currentY + 16, colWidth, 90).fillAndStroke('#fef3c7', '#fde047')
         y2 = currentY + 24
+        // Show commission calculation
+        if (data.commissionPerOrder != null && data.totalDeliveredOrders != null) {
+          doc.fontSize(7).font('Helvetica').fillColor('#92400e')
+          doc.text(`${data.totalDeliveredOrders} \u00d7 ${formatCurrency(data.commissionPerOrder, data.currency)}`, col2X + 12, y2, { width: colWidth * 0.4 - 12 })
+          y2 += 12
+        }
         if (data.totalCommission != null) y2 = drawInfoRow(doc, y2, 'Total Earned', formatCurrency(data.totalCommission, data.currency), col2X + 12, colWidth - 24)
         if (data.paidCommission != null) y2 = drawInfoRow(doc, y2, 'Already Paid', formatCurrency(data.paidCommission, data.currency), col2X + 12, colWidth - 24)
         if (data.pendingCommission != null) {
@@ -161,6 +169,68 @@ export async function generateSettlementPDF(data) {
         }
       }
       currentY += 118
+
+      // === ORDERS DETAIL SECTION (if delivered orders provided) ===
+      if (data.deliveredOrders && data.deliveredOrders.length > 0) {
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b')
+        doc.text('ORDERS DETAIL', margin, currentY)
+        doc.fontSize(8).font('Helvetica').fillColor('#64748b')
+        doc.text(`Showing ${Math.min(data.deliveredOrders.length, 100)} of ${data.totalDeliveredOrders} delivered orders`, margin, currentY + 14)
+        currentY += 28
+        
+        // Orders table
+        const tableTop = currentY
+        const tableWidth = pageWidth - 2 * margin
+        const colWidths = { no: 30, invoice: 80, date: 75, customer: 120, amount: 70 }
+        
+        // Table header
+        doc.rect(margin, currentY, tableWidth, 20).fillAndStroke('#f8fafc', '#cbd5e1')
+        doc.fontSize(7).font('Helvetica-Bold').fillColor('#475569')
+        let xPos = margin + 8
+        doc.text('#', xPos, currentY + 6, { width: colWidths.no })
+        xPos += colWidths.no
+        doc.text('Invoice', xPos, currentY + 6, { width: colWidths.invoice })
+        xPos += colWidths.invoice
+        doc.text('Delivered', xPos, currentY + 6, { width: colWidths.date })
+        xPos += colWidths.date
+        doc.text('Customer', xPos, currentY + 6, { width: colWidths.customer })
+        xPos += colWidths.customer
+        doc.text('Amount', xPos, currentY + 6, { width: colWidths.amount, align: 'right' })
+        currentY += 20
+        
+        // Table rows (limit to first 15 to avoid overflow)
+        const ordersToShow = data.deliveredOrders.slice(0, 15)
+        doc.fontSize(7).font('Helvetica')
+        ordersToShow.forEach((order, idx) => {
+          if (currentY > doc.page.height - 200) return // Stop if near page end
+          
+          const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc'
+          doc.rect(margin, currentY, tableWidth, 16).fillAndStroke(rowBg, '#e2e8f0')
+          
+          doc.fillColor('#334155')
+          xPos = margin + 8
+          doc.text(String(idx + 1), xPos, currentY + 4, { width: colWidths.no })
+          xPos += colWidths.no
+          doc.text(order.invoiceNumber || 'N/A', xPos, currentY + 4, { width: colWidths.invoice })
+          xPos += colWidths.invoice
+          const deliveredDate = order.deliveredAt ? new Date(order.deliveredAt).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : 'N/A'
+          doc.text(deliveredDate, xPos, currentY + 4, { width: colWidths.date })
+          xPos += colWidths.date
+          doc.text(order.customerName || 'N/A', xPos, currentY + 4, { width: colWidths.customer })
+          xPos += colWidths.customer
+          doc.text(formatCurrency(order.grandTotal || 0, order.currency || data.currency), xPos, currentY + 4, { width: colWidths.amount, align: 'right' })
+          currentY += 16
+        })
+        
+        if (data.deliveredOrders.length > 15) {
+          currentY += 4
+          doc.fontSize(7).font('Helvetica-Oblique').fillColor('#64748b')
+          doc.text(`+ ${data.deliveredOrders.length - 15} more orders...`, margin + 8, currentY)
+          currentY += 12
+        }
+        
+        currentY += 10
+      }
 
       // === SETTLEMENT AMOUNT BOX (50px) ===
       const settlementGrad = doc.linearGradient(margin, currentY, margin, currentY + 50)
@@ -319,6 +389,12 @@ export async function generateAcceptedSettlementPDF(data) {
         doc.text('COMMISSION DETAILS', col2X, currentY)
         doc.rect(col2X, currentY + 16, colWidth, 90).fillAndStroke('#fef3c7', '#fde047')
         y2 = currentY + 24
+        // Show commission calculation
+        if (data.commissionPerOrder != null && data.totalDeliveredOrders != null) {
+          doc.fontSize(7).font('Helvetica').fillColor('#92400e')
+          doc.text(`${data.totalDeliveredOrders} × ${formatCurrency(data.commissionPerOrder, data.currency)}`, col2X + 12, y2, { width: colWidth * 0.4 - 12 })
+          y2 += 12
+        }
         if (data.totalCommission != null) y2 = drawInfoRow(doc, y2, 'Total Earned', formatCurrency(data.totalCommission, data.currency), col2X + 12, colWidth - 24)
         if (data.paidCommission != null) y2 = drawInfoRow(doc, y2, 'Already Paid', formatCurrency(data.paidCommission, data.currency), col2X + 12, colWidth - 24)
         if (data.pendingCommission != null) {
@@ -329,6 +405,68 @@ export async function generateAcceptedSettlementPDF(data) {
         }
       }
       currentY += 118
+
+      // === ORDERS DETAIL SECTION (if delivered orders provided) ===
+      if (data.deliveredOrders && data.deliveredOrders.length > 0) {
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b')
+        doc.text('ORDERS DETAIL', margin, currentY)
+        doc.fontSize(8).font('Helvetica').fillColor('#64748b')
+        doc.text(`Showing ${Math.min(data.deliveredOrders.length, 100)} of ${data.totalDeliveredOrders} delivered orders`, margin, currentY + 14)
+        currentY += 28
+        
+        // Orders table
+        const tableTop = currentY
+        const tableWidth = pageWidth - 2 * margin
+        const colWidths = { no: 30, invoice: 80, date: 75, customer: 120, amount: 70 }
+        
+        // Table header
+        doc.rect(margin, currentY, tableWidth, 20).fillAndStroke('#f8fafc', '#cbd5e1')
+        doc.fontSize(7).font('Helvetica-Bold').fillColor('#475569')
+        let xPos = margin + 8
+        doc.text('#', xPos, currentY + 6, { width: colWidths.no })
+        xPos += colWidths.no
+        doc.text('Invoice', xPos, currentY + 6, { width: colWidths.invoice })
+        xPos += colWidths.invoice
+        doc.text('Delivered', xPos, currentY + 6, { width: colWidths.date })
+        xPos += colWidths.date
+        doc.text('Customer', xPos, currentY + 6, { width: colWidths.customer })
+        xPos += colWidths.customer
+        doc.text('Amount', xPos, currentY + 6, { width: colWidths.amount, align: 'right' })
+        currentY += 20
+        
+        // Table rows (limit to first 15 to avoid overflow)
+        const ordersToShow = data.deliveredOrders.slice(0, 15)
+        doc.fontSize(7).font('Helvetica')
+        ordersToShow.forEach((order, idx) => {
+          if (currentY > doc.page.height - 200) return // Stop if near page end
+          
+          const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc'
+          doc.rect(margin, currentY, tableWidth, 16).fillAndStroke(rowBg, '#e2e8f0')
+          
+          doc.fillColor('#334155')
+          xPos = margin + 8
+          doc.text(String(idx + 1), xPos, currentY + 4, { width: colWidths.no })
+          xPos += colWidths.no
+          doc.text(order.invoiceNumber || 'N/A', xPos, currentY + 4, { width: colWidths.invoice })
+          xPos += colWidths.invoice
+          const deliveredDate = order.deliveredAt ? new Date(order.deliveredAt).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : 'N/A'
+          doc.text(deliveredDate, xPos, currentY + 4, { width: colWidths.date })
+          xPos += colWidths.date
+          doc.text(order.customerName || 'N/A', xPos, currentY + 4, { width: colWidths.customer })
+          xPos += colWidths.customer
+          doc.text(formatCurrency(order.grandTotal || 0, order.currency || data.currency), xPos, currentY + 4, { width: colWidths.amount, align: 'right' })
+          currentY += 16
+        })
+        
+        if (data.deliveredOrders.length > 15) {
+          currentY += 4
+          doc.fontSize(7).font('Helvetica-Oblique').fillColor('#64748b')
+          doc.text(`+ ${data.deliveredOrders.length - 15} more orders...`, margin + 8, currentY)
+          currentY += 12
+        }
+        
+        currentY += 10
+      }
 
       // === SETTLEMENT AMOUNT BOX (50px) - GREEN FOR ACCEPTED ===
       const settlementGrad = doc.linearGradient(margin, currentY, margin, currentY + 50)
