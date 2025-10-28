@@ -11,6 +11,9 @@ export default function DriverMe() {
   const [loading, setLoading] = useState(true)
   const [drvMetrics, setDrvMetrics] = useState(null)
   const [payout, setPayout] = useState({ currency:'SAR', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
+  // Commission history
+  const [commissionHistory, setCommissionHistory] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
   // Password change modal
   const [showPassModal, setShowPassModal] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
@@ -23,10 +26,11 @@ export default function DriverMe() {
     const loadAll = async()=>{
       setLoading(true)
       try {
-        const [u, m, s] = await Promise.all([
+        const [u, m, s, h] = await Promise.all([
           apiGet('/api/users/me').catch(()=>({})),
           apiGet('/api/orders/driver/metrics').catch(()=>null),
           apiGet('/api/finance/remittances/summary').catch(()=>null),
+          apiGet('/api/finance/commission-history').catch(()=>({ history: [] })),
         ])
         if (alive) setMe(u?.user || {})
         if (alive) setDrvMetrics(m||null)
@@ -38,6 +42,7 @@ export default function DriverMe() {
             pendingToCompany: Number(s?.pendingToCompany||0),
           })
         }
+        if (alive) setCommissionHistory(h?.history || [])
       } finally {
         if (alive) setLoading(false)
       }
@@ -86,6 +91,11 @@ export default function DriverMe() {
       socket.on('remittance.accepted', async () => {
         await refreshMetrics()
         await refreshUserProfile() // Refresh for paidCommission updates
+        // Refresh commission history
+        try {
+          const h = await apiGet('/api/finance/commission-history').catch(()=>({ history: [] }))
+          setCommissionHistory(h?.history || [])
+        } catch {}
       })
       socket.on('remittance.rejected', refreshMetrics)
       
@@ -227,6 +237,100 @@ export default function DriverMe() {
         <div style={{marginTop: '8px', textAlign: 'right', fontSize: '12px', color: 'var(--muted)'}}>
           {levelInfo.pct}% to next level
         </div>
+      </div>
+
+      {/* Commission History */}
+      <div className="card" style={{padding: '20px', borderRadius: '16px'}}>
+        <h2 style={{fontSize: '16px', fontWeight: 700, marginBottom: '8px', color: 'var(--text)'}}>Commission History</h2>
+        <p style={{fontSize: '14px', color: 'var(--muted)', marginBottom: '16px'}}>Your commission payment receipts</p>
+        
+        {loading || loadingHistory ? (
+          <div style={{padding: '20px', textAlign: 'center', color: 'var(--muted)'}}>Loading...</div>
+        ) : commissionHistory.length === 0 ? (
+          <div style={{padding: '40px 20px', textAlign: 'center', background: 'var(--panel-2)', borderRadius: '12px'}}>
+            <div style={{fontSize: '48px', marginBottom: '12px'}}>📋</div>
+            <div style={{fontSize: '14px', color: 'var(--muted)'}}>No commission payments yet</div>
+          </div>
+        ) : (
+          <div style={{display: 'grid', gap: '12px'}}>
+            {commissionHistory.map(item => (
+              <div 
+                key={item.id}
+                style={{
+                  padding: '16px',
+                  border: '1px solid var(--border)',
+                  borderRadius: '12px',
+                  background: 'var(--panel-2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '12px'
+                }}
+              >
+                <div style={{flex: 1, minWidth: '200px'}}>
+                  <div style={{fontSize: '18px', fontWeight: 700, color: '#22c55e', marginBottom: '4px'}}>
+                    {item.currency} {Number(item.amount).toFixed(2)}
+                  </div>
+                  <div style={{fontSize: '12px', color: 'var(--muted)'}}>
+                    Paid on {new Date(item.paidAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </div>
+                </div>
+                <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                  {item.receiptPath && (
+                    <a 
+                      href={`${API_BASE}${item.receiptPath}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn secondary"
+                      style={{
+                        fontSize: '13px',
+                        padding: '8px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                      </svg>
+                      Receipt
+                    </a>
+                  )}
+                  {item.settlementPath && (
+                    <a 
+                      href={`${API_BASE}${item.settlementPath}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn primary"
+                      style={{
+                        fontSize: '13px',
+                        padding: '8px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="12" y1="18" x2="12" y2="12"/>
+                        <line x1="9" y1="15" x2="15" y2="15"/>
+                      </svg>
+                      Settlement
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Security Section */}
