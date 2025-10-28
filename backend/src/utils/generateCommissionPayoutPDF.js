@@ -51,177 +51,264 @@ export async function generateCommissionPayoutPDF(data) {
 
       const doc = new PDFDocument({ 
         size: 'A4', 
-        margin: 60,
-        bufferPages: true
+        margin: 50,
+        bufferPages: true,
+        info: {
+          Title: 'Commission Payout Statement',
+          Author: 'BuySial Commerce',
+          Subject: 'Driver Commission Statement'
+        }
       })
       const stream = fs.createWriteStream(filepath)
       doc.pipe(stream)
 
       const pageWidth = doc.page.width
       const pageHeight = doc.page.height
-      const margin = 60
+      const margin = 50
       const contentWidth = pageWidth - (2 * margin)
       let y = margin
+      
+      // Premium color palette
+      const colors = {
+        primary: '#1a1f36',      // Deep navy
+        secondary: '#0f172a',    // Rich black
+        accent: '#d4af37',       // Elegant gold
+        success: '#059669',      // Rich green
+        muted: '#64748b',        // Slate gray
+        lightBg: '#f8fafc',      // Soft white
+        border: '#cbd5e1'        // Light border
+      }
 
-      // === LOGO (Top Left) ===
+      // === PREMIUM HEADER WITH GRADIENT EFFECT ===
+      // Top accent bar - gold gradient effect
+      doc.rect(0, 0, pageWidth, 8)
+         .fillAndStroke(colors.accent, colors.accent)
+      
+      // Logo and company info
       const logoPath = getLogoPath()
       if (logoPath) {
         try {
-          doc.image(logoPath, margin, y, { width: 50, height: 50, fit: [50, 50] })
+          doc.image(logoPath, margin, y, { width: 60, height: 60, fit: [60, 60] })
         } catch(err) {
           console.error('Logo error:', err)
         }
       }
-      y += 80
-
-      // === TITLE ===
-      doc.fontSize(28)
+      
+      // Company name and tagline (right side)
+      doc.fontSize(18)
          .font('Helvetica-Bold')
-         .fillColor('#1e293b')
-         .text('Commission Payout Statement', margin, y, {
+         .fillColor(colors.primary)
+         .text('BuySial Commerce', pageWidth - margin - 160, y + 5, {
+           width: 160,
+           align: 'right'
+         })
+      doc.fontSize(9)
+         .font('Helvetica')
+         .fillColor(colors.muted)
+         .text('Premium Logistics Solutions', pageWidth - margin - 160, y + 30, {
+           width: 160,
+           align: 'right'
+         })
+      
+      y += 90
+
+      // === ELEGANT TITLE WITH UNDERLINE ===
+      doc.fontSize(32)
+         .font('Helvetica-Bold')
+         .fillColor(colors.primary)
+         .text('Commission Statement', margin, y, {
            width: contentWidth,
-           align: 'left'
+           align: 'center'
+         })
+      y += 45
+      
+      // Premium gold underline
+      doc.rect(margin + (contentWidth / 2) - 100, y, 200, 3)
+         .fill(colors.accent)
+      y += 3
+      
+      // Document ID and date in elegant box
+      doc.fontSize(9)
+         .font('Helvetica')
+         .fillColor(colors.muted)
+         .text(`Statement ID: ${timestamp}  |  Generated: ${new Date().toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'})}`, margin, y + 15, {
+           width: contentWidth,
+           align: 'center'
          })
       y += 50
 
-      // Subtle divider line
-      doc.strokeColor('#e2e8f0')
-         .lineWidth(1)
-         .moveTo(margin, y)
-         .lineTo(pageWidth - margin, y)
-         .stroke()
-      y += 40
-
-      // === DRIVER DETAILS ===
-      doc.fontSize(12)
+      // === PREMIUM DRIVER DETAILS CARD ===
+      const detailsBoxHeight = data.driverPhone ? 100 : 80
+      
+      // Elegant border box with shadow effect
+      doc.roundedRect(margin, y, contentWidth, detailsBoxHeight, 12)
+         .lineWidth(2)
+         .strokeOpacity(0.1)
+         .fillAndStroke(colors.lightBg, colors.border)
+      
+      // Gold accent bar on left
+      doc.rect(margin + 1, y + 1, 4, detailsBoxHeight - 2)
+         .fill(colors.accent)
+      
+      const detailsPadding = 30
+      let detailsY = y + 25
+      
+      // Section title
+      doc.fontSize(11)
          .font('Helvetica-Bold')
-         .fillColor('#64748b')
-         .text('DRIVER DETAILS', margin, y)
-      y += 25
+         .fillColor(colors.accent)
+         .text('DRIVER INFORMATION', margin + detailsPadding, detailsY)
+      detailsY += 25
 
-      // Driver Name
+      // Driver Name with icon-like bullet
       doc.fontSize(10)
          .font('Helvetica')
-         .fillColor('#475569')
-         .text('Name:', margin, y, { width: 100 })
+         .fillColor(colors.muted)
+         .text('• ', margin + detailsPadding, detailsY)
+      doc.text('Driver Name:', margin + detailsPadding + 10, detailsY, { continued: true })
       doc.font('Helvetica-Bold')
-         .fillColor('#0f172a')
-         .text(data.driverName || 'N/A', margin + 100, y, { width: contentWidth - 100 })
-      y += 25
+         .fillColor(colors.secondary)
+         .text('  ' + (data.driverName || 'N/A'))
+      detailsY += 20
 
       // Driver Phone
       if (data.driverPhone) {
         doc.fontSize(10)
            .font('Helvetica')
-           .fillColor('#475569')
-           .text('Phone:', margin, y, { width: 100 })
+           .fillColor(colors.muted)
+           .text('• ', margin + detailsPadding, detailsY)
+        doc.text('Contact:', margin + detailsPadding + 10, detailsY, { continued: true })
         doc.font('Helvetica-Bold')
-           .fillColor('#0f172a')
-           .text(data.driverPhone, margin + 100, y, { width: contentWidth - 100 })
-        y += 30
-      } else {
-        y += 5
+           .fillColor(colors.secondary)
+           .text('  ' + data.driverPhone)
       }
+      
+      y += detailsBoxHeight + 35
 
-      // Divider
-      doc.strokeColor('#e2e8f0')
-         .lineWidth(1)
-         .moveTo(margin, y)
-         .lineTo(pageWidth - margin, y)
-         .stroke()
-      y += 40
-
-      // === PAYOUT SUMMARY (Prominent Box) ===
-      const summaryBoxHeight = 120
-      doc.roundedRect(margin, y, contentWidth, summaryBoxHeight, 8)
-         .fillAndStroke('#f8fafc', '#cbd5e1')
-
-      y += 25
-
-      // Total Delivered Orders
-      doc.fontSize(11)
-         .font('Helvetica')
-         .fillColor('#64748b')
-         .text('Total Delivered Orders', margin + 30, y)
-      doc.fontSize(32)
-         .font('Helvetica-Bold')
-         .fillColor('#0f172a')
-         .text(String(data.totalDeliveredOrders || 0), margin + 30, y + 20)
-
-      // Total Commission Paid (Right side)
-      const rightX = margin + (contentWidth / 2) + 20
-      doc.fontSize(11)
-         .font('Helvetica')
-         .fillColor('#64748b')
-         .text('Total Commission Paid', rightX, y)
-      doc.fontSize(32)
-         .font('Helvetica-Bold')
-         .fillColor('#10b981')
-         .text(formatCurrency(data.totalCommissionPaid || 0, data.currency || 'SAR'), rightX, y + 20)
-
-      y += summaryBoxHeight + 40
-
-      // === ORDER DETAILS TABLE ===
-      doc.fontSize(12)
-         .font('Helvetica-Bold')
-         .fillColor('#64748b')
-         .text('ORDER DETAILS', margin, y)
+      // === PREMIUM SUMMARY CARD WITH GOLD ACCENTS ===
+      const summaryBoxHeight = 140
+      
+      // Main summary box with gradient-like effect (layered rectangles)
+      doc.roundedRect(margin, y, contentWidth, summaryBoxHeight, 15)
+         .lineWidth(2)
+         .strokeOpacity(0.1)
+         .fillAndStroke('#ffffff', colors.border)
+      
+      // Gold top border accent
+      doc.roundedRect(margin, y, contentWidth, 6, 15)
+         .fill(colors.accent)
+      
       y += 30
 
-      // Table Header
+      // Left section - Total Orders
+      const leftX = margin + 40
+      doc.fontSize(10)
+         .font('Helvetica')
+         .fillColor(colors.muted)
+         .text('TOTAL DELIVERED ORDERS', leftX, y)
+      y += 20
+      doc.fontSize(40)
+         .font('Helvetica-Bold')
+         .fillColor(colors.primary)
+         .text(String(data.totalDeliveredOrders || 0), leftX, y)
+      
+      // Right section - Total Commission with premium styling
+      const rightX = margin + (contentWidth / 2) + 40
+      doc.fontSize(10)
+         .font('Helvetica')
+         .fillColor(colors.muted)
+         .text('TOTAL COMMISSION EARNED', rightX, y - 20)
+      
+      // Large commission amount with gold color
+      const commissionText = formatCurrency(data.totalCommissionPaid || 0, data.currency || 'SAR')
+      doc.fontSize(40)
+         .font('Helvetica-Bold')
+         .fillColor(colors.success)
+         .text(commissionText, rightX, y)
+      
+      // Gold checkmark icon (premium verified indicator)
+      doc.fontSize(16)
+         .fillColor(colors.accent)
+         .text('✓ ', rightX + doc.widthOfString(commissionText, { fontSize: 40 }) - 20, y + 10)
+
+      y += 65
+
+      // === PREMIUM ORDER DETAILS TABLE ===
+      // Section header with gold accent
+      doc.fontSize(13)
+         .font('Helvetica-Bold')
+         .fillColor(colors.primary)
+         .text('ORDER BREAKDOWN', margin, y)
+      
+      // Gold underline for section
+      doc.rect(margin, y + 18, 80, 2)
+         .fill(colors.accent)
+      y += 35
+
+      // Table Header with premium styling
       const tableTop = y
       const col1X = margin
       const col2X = margin + 150
       const col3X = margin + 340
 
-      doc.rect(margin, y, contentWidth, 35)
-         .fill('#f1f5f9')
+      // Header background with gradient effect
+      doc.roundedRect(margin, y, contentWidth, 40, 8)
+         .fill(colors.primary)
 
+      // Header text in white
       doc.fontSize(10)
          .font('Helvetica-Bold')
-         .fillColor('#475569')
-         .text('Order ID', col1X + 15, y + 12)
-         .text('Delivery Date', col2X + 15, y + 12)
-         .text('Commission Earned', col3X + 15, y + 12)
+         .fillColor('#ffffff')
+         .text('ORDER ID', col1X + 20, y + 14)
+         .text('DELIVERY DATE', col2X + 20, y + 14)
+         .text('COMMISSION', col3X + 20, y + 14)
 
-      y += 35
+      y += 40
 
-      // Table Rows
+      // Premium Table Rows
       const orders = data.orders || []
-      const rowHeight = 40
+      const rowHeight = 45
       
       orders.forEach((order, index) => {
         // Check if we need a new page
-        if (y + rowHeight + 100 > pageHeight - margin) {
+        if (y + rowHeight + 150 > pageHeight - margin) {
           doc.addPage()
-          y = margin
+          
+          // Add gold accent bar on new page
+          doc.rect(0, 0, pageWidth, 8)
+             .fill(colors.accent)
+          
+          y = margin + 20
         }
 
-        // Alternating row colors
+        // Elegant alternating row background
         if (index % 2 === 0) {
           doc.rect(margin, y, contentWidth, rowHeight)
              .fill('#ffffff')
         } else {
           doc.rect(margin, y, contentWidth, rowHeight)
-             .fill('#f8fafc')
+             .fill(colors.lightBg)
         }
 
-        // Row border
-        doc.strokeColor('#e2e8f0')
-           .lineWidth(0.5)
-           .rect(margin, y, contentWidth, rowHeight)
+        // Subtle row border (bottom only for cleaner look)
+        doc.strokeColor(colors.border)
+           .strokeOpacity(0.3)
+           .lineWidth(1)
+           .moveTo(margin, y + rowHeight)
+           .lineTo(margin + contentWidth, y + rowHeight)
            .stroke()
+           .strokeOpacity(1)
 
-        // Order ID
+        // Order ID with monospace-like styling
         doc.fontSize(10)
-           .font('Helvetica')
-           .fillColor('#0f172a')
-           .text(order.orderId || 'N/A', col1X + 15, y + 14, {
-             width: 135,
+           .font('Helvetica-Bold')
+           .fillColor(colors.secondary)
+           .text(order.orderId || 'N/A', col1X + 20, y + 15, {
+             width: 130,
              ellipsis: true
            })
 
-        // Delivery Date
+        // Delivery Date with elegant formatting
         const deliveryDate = order.deliveryDate ? 
           new Date(order.deliveryDate).toLocaleDateString('en-US', {
             month: 'short',
@@ -231,41 +318,81 @@ export async function generateCommissionPayoutPDF(data) {
         
         doc.fontSize(10)
            .font('Helvetica')
-           .fillColor('#475569')
-           .text(deliveryDate, col2X + 15, y + 14)
+           .fillColor(colors.muted)
+           .text(deliveryDate, col2X + 20, y + 15)
 
-        // Commission Earned
-        doc.fontSize(11)
+        // Commission with premium green and bold styling
+        doc.fontSize(12)
            .font('Helvetica-Bold')
-           .fillColor('#10b981')
-           .text(formatCurrency(order.commission || 0, data.currency || 'SAR'), col3X + 15, y + 14)
+           .fillColor(colors.success)
+           .text(formatCurrency(order.commission || 0, data.currency || 'SAR'), col3X + 20, y + 15)
 
         y += rowHeight
       })
 
-      // === FOOTER / SIGNATURE ===
-      const footerY = pageHeight - 120
+      // === PREMIUM FOOTER WITH SIGNATURE ===
+      const footerY = pageHeight - 140
 
       // Ensure we're on the same page or add new page if needed
       if (y > footerY - 50) {
         doc.addPage()
-        y = margin
+        
+        // Add gold accent bar on new page
+        doc.rect(0, 0, pageWidth, 8)
+           .fill(colors.accent)
+        
+        y = margin + 20
       } else {
         y = footerY
       }
 
-      // Divider line
-      doc.strokeColor('#cbd5e1')
-         .lineWidth(1)
-         .moveTo(margin, y)
-         .lineTo(pageWidth - margin, y)
+      // Elegant signature box with border
+      doc.roundedRect(margin, y, contentWidth, 100, 12)
+         .lineWidth(2)
+         .strokeOpacity(0.1)
+         .fillAndStroke(colors.lightBg, colors.border)
+      
+      // Gold accent at top of signature box
+      doc.roundedRect(margin, y, contentWidth, 5, 12)
+         .fill(colors.accent)
+      
+      y += 25
+      
+      // Signature line
+      const sigLineY = y + 30
+      const sigLineWidth = 200
+      const sigLineX = margin + (contentWidth / 2) - (sigLineWidth / 2)
+      
+      doc.moveTo(sigLineX, sigLineY)
+         .lineTo(sigLineX + sigLineWidth, sigLineY)
+         .strokeColor(colors.muted)
+         .lineWidth(1.5)
          .stroke()
-      y += 30
-
-      // Signature section
+      
+      // Authorized signature text
+      doc.fontSize(11)
+         .font('Helvetica-Bold')
+         .fillColor(colors.primary)
+         .text('Authorized Signature', margin, sigLineY + 8, {
+           width: contentWidth,
+           align: 'center'
+         })
+      
+      y += 60
+      
+      // Company name and date
       doc.fontSize(9)
          .font('Helvetica')
-         .fillColor('#64748b')
+         .fillColor(colors.muted)
+         .text('BuySial Commerce  |  Premium Logistics Solutions', margin, y, {
+           width: contentWidth,
+           align: 'center'
+         })
+      
+      y += 14
+      
+      doc.fontSize(8)
+         .fillColor(colors.muted)
          .text('Generated on ' + new Date().toLocaleDateString('en-US', {
            month: 'long',
            day: 'numeric',
@@ -274,28 +401,24 @@ export async function generateCommissionPayoutPDF(data) {
            width: contentWidth,
            align: 'center'
          })
-      
-      y += 20
 
-      doc.fontSize(10)
-         .font('Helvetica-Bold')
-         .fillColor('#475569')
-         .text('BuySial Commerce', margin, y, {
-           width: contentWidth,
-           align: 'center'
-         })
-
-      // Page numbers
+      // Premium page numbers with gold accent
       const range = doc.bufferedPageRange()
       for (let i = 0; i < range.count; i++) {
         doc.switchToPage(i)
+        
+        // Bottom gold accent bar
+        doc.rect(0, pageHeight - 8, pageWidth, 8)
+           .fill(colors.accent)
+        
+        // Page number with elegant styling
         doc.fontSize(8)
            .font('Helvetica')
-           .fillColor('#94a3b8')
+           .fillColor(colors.muted)
            .text(
-             `Page ${i + 1} of ${range.count}`,
+             `— Page ${i + 1} of ${range.count} —`,
              margin,
-             pageHeight - 30,
+             pageHeight - 25,
              {
                width: contentWidth,
                align: 'center'
