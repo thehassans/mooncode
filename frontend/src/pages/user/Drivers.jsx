@@ -35,7 +35,7 @@ export default function Drivers(){
   const [loadingList, setLoadingList] = useState(false)
   const [phoneError, setPhoneError] = useState('')
   const [delModal, setDelModal] = useState({ open:false, busy:false, error:'', confirm:'', driver:null })
-  const [editModal, setEditModal] = useState({ open:false, busy:false, error:'', driver:null, firstName:'', lastName:'', email:'', phone:'', country: DEFAULT_COUNTRY.name, city:'', password:'' })
+  const [editModal, setEditModal] = useState({ open:false, busy:false, error:'', driver:null, firstName:'', lastName:'', email:'', phone:'', country: DEFAULT_COUNTRY.name, city:'', password:'', commissionPerOrder:'' })
 
   const currentCountryKey = useMemo(()=>{
     const byName = COUNTRY_OPTS.find(c=>c.name===form.country)
@@ -61,6 +61,7 @@ export default function Drivers(){
 
   function openEdit(driver){
     const d = driver || {}
+    console.log('Opening edit for driver:', d.firstName, d.lastName, 'Commission:', d.commissionPerOrder)
     setEditModal({
       open:true, busy:false, error:'', driver: d,
       firstName: d.firstName||'', lastName: d.lastName||'', email: d.email||'', phone: d.phone||'', country: d.country||DEFAULT_COUNTRY.name, city: d.city||'', password:'',
@@ -74,7 +75,7 @@ export default function Drivers(){
     setEditModal(m=>({ ...m, busy:true, error:'' }))
     try{
       const uid = String(d.id || d._id || '')
-      await apiPatch(`/api/users/drivers/${uid}`, {
+      const payload = {
         firstName: editModal.firstName,
         lastName: editModal.lastName,
         email: editModal.email,
@@ -84,10 +85,14 @@ export default function Drivers(){
         ...(editModal.password ? { password: editModal.password } : {}),
         commissionPerOrder: Number(editModal.commissionPerOrder||0),
         commissionCurrency: COUNTRY_TO_CCY[editModal.country] || 'SAR',
-      })
-      setEditModal({ open:false, busy:false, error:'', driver:null, firstName:'', lastName:'', email:'', phone:'', country: DEFAULT_COUNTRY.name, city:'', password:'' })
+      }
+      console.log('Saving driver with commission:', payload.commissionPerOrder)
+      const response = await apiPatch(`/api/users/drivers/${uid}`, payload)
+      console.log('Driver saved, response:', response)
+      setEditModal({ open:false, busy:false, error:'', driver:null, firstName:'', lastName:'', email:'', phone:'', country: DEFAULT_COUNTRY.name, city:'', password:'', commissionPerOrder:'' })
       await loadDrivers(q)
     }catch(e){
+      console.error('Failed to save driver:', e)
       setEditModal(m=>({ ...m, busy:false, error: e?.message || 'Failed to update driver' }))
     }
   }
@@ -324,15 +329,16 @@ export default function Drivers(){
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Phone</th>
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Country</th>
                 <th style={{textAlign:'left', padding:'10px 12px'}}>City</th>
+                <th style={{textAlign:'left', padding:'10px 12px'}}>Commission</th>
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Created</th>
                 <th style={{textAlign:'right', padding:'10px 12px'}}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loadingList ? (
-                <tr><td colSpan={7} style={{padding:12, opacity:0.7}}>Loading...</td></tr>
+                <tr><td colSpan={8} style={{padding:12, opacity:0.7}}>Loading...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={7} style={{padding:12, opacity:0.7}}>No drivers found</td></tr>
+                <tr><td colSpan={8} style={{padding:12, opacity:0.7}}>No drivers found</td></tr>
               ) : (
                 rows.map(u=> (
                   <tr key={u.id} style={{borderTop:'1px solid var(--border)'}}>
@@ -341,6 +347,9 @@ export default function Drivers(){
                     <td style={{padding:'10px 12px'}}>{u.phone||'-'}</td>
                     <td style={{padding:'10px 12px'}}>{u.country||'-'}</td>
                     <td style={{padding:'10px 12px'}}>{u.city||'-'}</td>
+                    <td style={{padding:'10px 12px'}}>
+                      <span style={{fontWeight:600, color:'#10b981'}}>{u.commissionCurrency} {Number(u.commissionPerOrder||0).toFixed(2)}</span>
+                    </td>
                     <td style={{padding:'10px 12px'}}>{fmtDate(u.createdAt)}</td>
                     <td style={{padding:'10px 12px', textAlign:'right'}}>
                       <div style={{display:'inline-flex', gap:8}}>
