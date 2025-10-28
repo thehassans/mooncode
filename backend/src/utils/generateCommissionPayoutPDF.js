@@ -245,7 +245,7 @@ export async function generateCommissionPayoutPDF(data) {
       doc.fontSize(10)
          .font('Helvetica-Bold')
          .fillColor('#ffffff')
-         .text('ORDER ID', col1X + 20, y + 14)
+         .text('ORDER NUMBER', col1X + 20, y + 14)
          .text('DELIVERY DATE', col2X + 20, y + 14)
          .text('COMMISSION', col3X + 20, y + 14)
 

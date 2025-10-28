@@ -228,7 +228,7 @@ export async function generateAgentCommissionReceiptPDF(data) {
         doc.fontSize(10)
            .font('Helvetica-Bold')
            .fillColor('#ffffff')
-           .text('ORDER ID', col1X + 15, y + 12)
+           .text('ORDER NUMBER', col1X + 15, y + 12)
            .text('DATE', col2X + 15, y + 12)
            .text('AMOUNT', col3X + 15, y + 12)
 
@@ -298,7 +298,7 @@ export async function generateAgentCommissionReceiptPDF(data) {
           doc.fontSize(9)
              .font('Helvetica-Oblique')
              .fillColor(colors.muted)
-             .text(`... and ${data.orders.length - 10} more orders`, margin, y, {
+             .text(`... and ${data.orders.length - 10} more orders (${data.orders.length} orders total)`, margin, y, {
                width: contentWidth,
                align: 'center'
              })
