@@ -35,6 +35,8 @@ export default function DriverLayout() {
   }, [])
 
   const me = JSON.parse(localStorage.getItem('me') || '{}')
+  // Settings modal
+  const [showSettings, setShowSettings] = useState(false)
   // Driver level for badge (based on delivered orders)
   const [deliveredCount, setDeliveredCount] = useState(0)
   const levelThresholds = useMemo(()=>[0,10,50,100,250,500], [])
@@ -174,25 +176,22 @@ export default function DriverLayout() {
       <div
         className={`main ${hideSidebar ? 'full-mobile' : closed ? 'full' : ''} ${tabsVisible ? 'with-mobile-tabs' : ''}`}
       >
-        {/* Show topbar on all viewports to allow theme toggle and identity on mobile */}
+        {/* Professional topbar matching user panel */}
         {(
           <div
             className="topbar"
             style={{
               background: 'var(--sidebar-bg)',
               borderBottom: '1px solid var(--sidebar-border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'nowrap',
+              minHeight: '60px',
+              padding: '0 1rem'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 48 }}>
-              <button
-                className="btn secondary"
-                onClick={() => setClosed((c) => !c)}
-                title={closed ? 'Open menu' : 'Close menu'}
-                aria-label={closed ? 'Open menu' : 'Close menu'}
-                style={{ width: 36, height: 36, padding: 0, display: 'grid', placeItems: 'center' }}
-              >
-                ☰
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
               {(() => {
                 const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
                 const src = me.headerLogo ? `${API_BASE}${me.headerLogo}` : fallback
@@ -200,7 +199,7 @@ export default function DriverLayout() {
                   <img
                     src={src}
                     alt="BuySial"
-                    style={{ height: 28, width: 'auto', objectFit: 'contain' }}
+                    style={{ height: 36, width: 'auto', objectFit: 'contain' }}
                   />
                 )
               })()}
@@ -208,42 +207,106 @@ export default function DriverLayout() {
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 12px',
-                  borderRadius: 999,
-                  background: 'var(--panel)',
-                  border: '1px solid var(--border)',
+                  gap: '10px',
+                  padding: '8px 16px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%)',
+                  border: '1px solid rgba(34, 197, 94, 0.2)',
+                  boxShadow: '0 4px 12px rgba(34, 197, 94, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  whiteSpace: 'nowrap'
                 }}
               >
-                <span aria-hidden>🚚</span>
-                <span style={{ fontWeight: 800, letterSpacing: 0.3 }}>
-                  {(String(me.firstName||'').split(' ')[0]||'').trim()} Driver
-                </span>
+                <span aria-hidden style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, #22c55e 0%, #10b981 100%)',
+                  boxShadow: '0 2px 8px rgba(34, 197, 94, 0.3)',
+                  fontSize: '16px'
+                }}>🚚</span>
+                <div style={{display: 'flex', flexDirection: 'column', gap: '1px'}}>
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    background: 'linear-gradient(135deg, #22c55e 0%, #10b981 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}>Driver</span>
+                  <span style={{
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    letterSpacing: '-0.02em',
+                    background: 'linear-gradient(135deg, #22c55e 0%, #10b981 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}>{me.firstName || 'Driver'} {me.lastName || ''}</span>
+                </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              {/* Premium Theme Toggle */}
               <button
-                className="icon-btn secondary"
                 onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
-                title={theme === 'light' ? 'Switch to dark' : 'Switch to light'}
-                aria-label={theme === 'light' ? 'Switch to dark' : 'Switch to light'}
-                style={{ width: 36, height: 36, borderRadius: 10, padding: 0 }}
+                title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+                aria-label={theme === 'light' ? 'Dark mode' : 'Light mode'}
+                style={{
+                  position: 'relative',
+                  width: '60px',
+                  height: '30px',
+                  background: theme === 'dark' ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' : 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+                  borderRadius: '15px',
+                  border: theme === 'dark' ? '2px solid #334155' : '2px solid #cbd5e1',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: theme === 'dark' ? 'inset 0 2px 4px rgba(0,0,0,0.3)' : 'inset 0 2px 4px rgba(0,0,0,0.1)',
+                  padding: 0,
+                  overflow: 'hidden'
+                }}
               >
-                {theme === 'light' ? (
-                  // Moon icon
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                  </svg>
-                ) : (
-                  // Sun icon
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="4" />
-                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-                  </svg>
-                )}
+                <div style={{
+                  position: 'absolute',
+                  top: '2px',
+                  left: theme === 'dark' ? '2px' : '30px',
+                  width: '22px',
+                  height: '22px',
+                  background: theme === 'dark' ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)' : 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)',
+                  borderRadius: '50%',
+                  transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {theme === 'light' ? '🌙' : '☀️'}
+                </div>
               </button>
-              <button type="button" className="btn danger" onClick={doLogout}>
-                Logout
+              {/* Settings Button */}
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => setShowSettings(true)}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M12 1v6m0 6v6M5.6 5.6l4.2 4.2m4.2 4.2l4.2 4.2M1 12h6m6 0h6M5.6 18.4l4.2-4.2m4.2-4.2l4.2-4.2"/>
+                </svg>
+                Settings
               </button>
             </div>
           </div>
@@ -278,6 +341,89 @@ export default function DriverLayout() {
             )
           })}
         </nav>
+      )}
+      {/* Settings Modal */}
+      {showSettings && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '1rem'
+          }}
+          onClick={() => setShowSettings(false)}
+        >
+          <div
+            style={{
+              background: 'var(--panel)',
+              border: '1px solid var(--border)',
+              borderRadius: '16px',
+              padding: '24px',
+              maxWidth: '400px',
+              width: '100%',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>Settings</h2>
+              <button
+                onClick={() => setShowSettings(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: 'var(--text)',
+                  padding: 0,
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <div style={{ padding: '12px', background: 'var(--panel-2)', borderRadius: '8px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '4px' }}>Name</div>
+                <div style={{ fontSize: '16px', fontWeight: 600 }}>{me.firstName || 'Driver'} {me.lastName || ''}</div>
+              </div>
+              <div style={{ padding: '12px', background: 'var(--panel-2)', borderRadius: '8px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '4px' }}>Email</div>
+                <div style={{ fontSize: '14px' }}>{me.email || 'N/A'}</div>
+              </div>
+              <div style={{ padding: '12px', background: 'var(--panel-2)', borderRadius: '8px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '4px' }}>Phone</div>
+                <div style={{ fontSize: '14px' }}>{me.phone || 'N/A'}</div>
+              </div>
+              <div style={{ marginTop: '8px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+                <button
+                  type="button"
+                  className="btn danger"
+                  onClick={doLogout}
+                  style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                  </svg>
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
