@@ -552,115 +552,96 @@ export default function Transactions(){
 
       {/* Drivers table */}
       <div className="card">
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-          <div style={{ fontWeight: 700 }}>Drivers {country ? `in ${country}` : ''}</div>
+        <div className="card-header">
+          <div className="card-title">Drivers {country ? `in ${country}` : ''}</div>
           <div className="helper">Currency: {country ? countryCurrency(country) : '-'}</div>
         </div>
         <div style={{ overflowX: 'auto' }}>
           {!isMobile && (
-          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr>
-                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)' }}>Driver</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b' }}>Assigned (Open)</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#6366f1' }}>Total Assigned</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6' }}>Delivered Orders</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e' }}>Total Collected ({ccy})</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e' }}>Delivered to Company ({ccy})</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#ef4444' }}>Pending ({ccy})</th>
-                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#3b82f6' }}>Details</th>
-                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#6366f1' }}>History</th>
-                <th style={{ padding: '10px 12px', textAlign:'left' }}>Actions</th>
+              <tr style={{ borderBottom: '2px solid var(--border)', background: 'var(--panel)' }}>
+                <th style={{ padding: '12px', textAlign:'left', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.5px' }}>Driver</th>
+                <th style={{ padding: '12px', textAlign:'right', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.5px' }}>Open</th>
+                <th style={{ padding: '12px', textAlign:'right', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.5px' }}>Assigned</th>
+                <th style={{ padding: '12px', textAlign:'right', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.5px' }}>Delivered</th>
+                <th style={{ padding: '12px', textAlign:'right', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.5px' }}>Collected</th>
+                <th style={{ padding: '12px', textAlign:'right', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.5px' }}>Remitted</th>
+                <th style={{ padding: '12px', textAlign:'right', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.5px' }}>Pending</th>
+                <th style={{ padding: '12px', textAlign:'right', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.5px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({length:5}).map((_,i)=> (
                   <tr key={`sk${i}`}>
-                    <td colSpan={9} style={{ padding:'10px 12px' }}>
+                    <td colSpan={8} style={{ padding:'12px' }}>
                       <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
                     </td>
                   </tr>
                 ))
               ) : !country ? (
-                <tr><td colSpan={9} style={{ padding: '10px 12px', opacity: 0.7 }}>Select a country to view driver finances</td></tr>
+                <tr><td colSpan={8} style={{ padding: '12px', opacity: 0.7 }}>Select a country to view driver finances</td></tr>
               ) : drivers.length === 0 ? (
-                <tr><td colSpan={9} style={{ padding: '10px 12px', opacity: 0.7 }}>No drivers found</td></tr>
+                <tr><td colSpan={8} style={{ padding: '12px', opacity: 0.7 }}>No drivers found</td></tr>
               ) : (
                 rows.map((r, idx) => {
                   const varianceColor = r.variance > 0 ? 'var(--warning)' : (r.variance < 0 ? 'var(--success)' : 'var(--muted)')
                   const barPct = r.collectedSum > 0 ? Math.min(100, Math.max(0, (r.remittedSum / r.collectedSum) * 100)) : 0
                   return (
-                    <tr key={r.id} style={{ borderTop: '1px solid var(--border)', background: idx % 2 ? 'transparent' : 'var(--panel)' }}>
-                      <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
-                        <span onClick={()=> goAllOrders(r.id)} title="View all orders" style={{ cursor:'pointer', fontWeight:700 }}>{userName(r.driver)}</span>
-                        <div className="helper">{r.driver.email || ''}</div>
+                    <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
+                      <td style={{ padding: '12px' }}>
+                        <span onClick={()=> goAllOrders(r.id)} title="View all orders" style={{ cursor:'pointer', fontWeight:600 }}>{userName(r.driver)}</span>
+                        <div className="helper" style={{fontSize:11}}>{r.driver.email || ''}</div>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <span onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} title="View open assigned" style={{ cursor:'pointer', color:'#f59e0b', fontWeight:700 }}>{num(r.openAssigned)}</span>
+                      <td style={{ padding: '12px', textAlign:'right' }}>
+                        <span onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} title="View open assigned" style={{ cursor:'pointer', color:'#f59e0b', fontWeight:600 }}>{num(r.openAssigned)}</span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <span onClick={()=> goAllOrders(r.id)} title="View all assigned" style={{ cursor:'pointer', color:'#6366f1', fontWeight:700 }}>{num(r.totalAssigned)}</span>
+                      <td style={{ padding: '12px', textAlign:'right' }}>
+                        <span onClick={()=> goAllOrders(r.id)} title="View all assigned" style={{ cursor:'pointer', color:'#6366f1', fontWeight:600 }}>{num(r.totalAssigned)}</span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <span onClick={()=> goDelivered(r.id)} title="View delivered orders" style={{ cursor:'pointer', color:'#3b82f6', fontWeight:700 }}>{num(r.deliveredCount)}</span>
+                      <td style={{ padding: '12px', textAlign:'right' }}>
+                        <span onClick={()=> goDelivered(r.id)} title="View delivered orders" style={{ cursor:'pointer', color:'#3b82f6', fontWeight:600 }}>{num(r.deliveredCount)}</span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <span onClick={()=> goDeliveredCollected(r.id)} title="View delivered orders with collected payments" style={{ cursor:'pointer', color:'#22c55e', fontWeight:700 }}>{num(r.collectedSum)}</span>
+                      <td style={{ padding: '12px', textAlign:'right' }}>
+                        <span onClick={()=> goDeliveredCollected(r.id)} title="View delivered orders with collected payments" style={{ cursor:'pointer', color:'#22c55e', fontWeight:600 }}>{num(r.collectedSum)}</span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <span onClick={()=> { setDetailModalFor(''); setRemitModalFor(r.id) }} title="View remittances" style={{ cursor:'pointer', color:'#22c55e', fontWeight:800 }}>{num(r.remittedSum)}</span>
+                      <td style={{ padding: '12px', textAlign:'right' }}>
+                        <span onClick={()=> { setDetailModalFor(''); setRemitModalFor(r.id) }} title="View remittances" style={{ cursor:'pointer', color:'#22c55e', fontWeight:600 }}>{num(r.remittedSum)}</span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#ef4444', fontWeight:800 }}>
-                        <span onClick={()=> { setDetailModalFor(''); setRemitModalFor(r.id) }} title="View pending remittances" style={{ cursor:'pointer', color:'#ef4444', fontWeight:800 }}>{num(r.variance)}</span>
+                      <td style={{ padding: '12px', textAlign:'right' }}>
+                        <span onClick={()=> { setDetailModalFor(''); setRemitModalFor(r.id) }} title="View pending remittances" style={{ cursor:'pointer', color:'#ef4444', fontWeight:600 }}>{num(r.variance)}</span>
                       </td>
-                      <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn" onClick={()=> { setRemitModalFor(''); setDetailModalFor(r.id) }}>Details</button>
-                      </td>
-                      <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
-                        <button className="btn secondary" onClick={()=> { setDetailModalFor(''); setRemitModalFor(r.id) }}>History</button>
-                      </td>
-                      <td style={{ padding: '10px 12px' }}>
-                        {(()=>{
-                          const pending = latestPendingRemitForDriver(r.id)
-                          if (!pending) return <span className="helper">—</span>
-                          const status = String(pending?.status||'').toLowerCase()
-                          const isManagerAccepted = status === 'manager_accepted'
-                          return (
-                            <div style={{display:'flex', gap:6, flexWrap:'wrap', alignItems:'center'}}>
-                              {isManagerAccepted && (
-                                <span style={{
-                                  padding: '6px 12px',
-                                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                  color: '#fff',
-                                  borderRadius: '8px',
-                                  fontSize: '12px',
-                                  fontWeight: 600,
-                                  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
-                                  whiteSpace: 'nowrap'
-                                }}>
-                                  ✓ Manager Accepted
-                                </span>
-                              )}
-                              <button className="btn" onClick={()=> setAcceptModal(pending)}>
-                                {isManagerAccepted ? 'Final Approve' : 'Accept Pending'}
-                              </button>
-                              {pending.pdfPath && (
-                                <a 
-                                  href={pending.pdfPath}
-                                  download
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="btn"
-                                  style={{background:'#dc2626', color:'white', padding:'6px 12px', fontSize:13, whiteSpace:'nowrap', textDecoration:'none'}}
-                                  title="Download Settlement PDF"
-                                >
-                                  📄 PDF
-                                </a>
-                              )}
-                            </div>
-                          )
-                        })()}
+                      <td style={{ padding: '12px', textAlign:'right' }}>
+                        <div style={{display:'inline-flex', gap:8, alignItems:'center', justifyContent:'flex-end', flexWrap:'wrap'}}>
+                          <button className="btn" style={{fontSize:13, padding:'6px 12px'}} onClick={()=> { setRemitModalFor(''); setDetailModalFor(r.id) }}>Details</button>
+                          <button className="btn secondary" style={{fontSize:13, padding:'6px 12px'}} onClick={()=> { setDetailModalFor(''); setRemitModalFor(r.id) }}>History</button>
+                          {(()=>{
+                            const pending = latestPendingRemitForDriver(r.id)
+                            if (!pending) return null
+                            const status = String(pending?.status||'').toLowerCase()
+                            const isManagerAccepted = status === 'manager_accepted'
+                            return (
+                              <>
+                                <button className="btn" style={{fontSize:13, padding:'6px 12px', background: isManagerAccepted ? '#10b981' : undefined}} onClick={()=> setAcceptModal(pending)}>
+                                  {isManagerAccepted ? '✓ Approve' : 'Pending'}
+                                </button>
+                                {pending.pdfPath && (
+                                  <a 
+                                    href={pending.pdfPath}
+                                    download
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn"
+                                    style={{background:'#dc2626', color:'white', padding:'6px 12px', fontSize:13, textDecoration:'none'}}
+                                  >
+                                    📄 PDF
+                                  </a>
+                                )}
+                              </>
+                            )
+                          })()}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -669,22 +650,21 @@ export default function Transactions(){
             </tbody>
             <tfoot>
               <tr style={{ borderTop:'2px solid var(--border)', background:'var(--panel)' }}>
-                <td style={{ padding:'10px 12px', fontWeight:800 }}>Totals</td>
-                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#f59e0b' }}>
+                <td style={{ padding:'12px', fontWeight:700 }}>Totals</td>
+                <td style={{ padding:'12px', textAlign:'right', fontWeight:700, color:'#f59e0b' }}>
                   <span style={{ cursor:'pointer' }} onClick={()=>{ const p=new URLSearchParams(); if(country) p.set('country', country); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }}>{num(totals.openA)}</span>
                 </td>
-                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#6366f1' }}>
+                <td style={{ padding:'12px', textAlign:'right', fontWeight:700, color:'#6366f1' }}>
                   <span style={{ cursor:'pointer' }} onClick={()=>{ const p=new URLSearchParams(); if(country) p.set('country', country); navigate(`/user/orders?${p.toString()}`) }}>{num(totals.totalA)}</span>
                 </td>
-                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#3b82f6' }}>
+                <td style={{ padding:'12px', textAlign:'right', fontWeight:700, color:'#3b82f6' }}>
                   <span style={{ cursor:'pointer' }} onClick={()=>{ const p=new URLSearchParams(); if(country) p.set('country', country); p.set('ship','delivered'); navigate(`/user/orders?${p.toString()}`) }}>{num(totals.delivered)}</span>
                 </td>
-                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#22c55e' }}>
+                <td style={{ padding:'12px', textAlign:'right', fontWeight:700, color:'#22c55e' }}>
                   <span style={{ cursor:'pointer' }} onClick={()=>{ const p=new URLSearchParams(); if(country) p.set('country', country); p.set('ship','delivered'); p.set('collected','true'); navigate(`/user/orders?${p.toString()}`) }}>{num(totals.collected)}</span>
                 </td>
-                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#22c55e' }}>{num(totals.remitted)}</td>
-                <td style={{ padding:'10px 12px', textAlign:'right', fontWeight:800, color:'#ef4444' }}>{num(totals.pending)}</td>
-                <td></td>
+                <td style={{ padding:'12px', textAlign:'right', fontWeight:700, color:'#22c55e' }}>{num(totals.remitted)}</td>
+                <td style={{ padding:'12px', textAlign:'right', fontWeight:700, color:'#ef4444' }}>{num(totals.pending)}</td>
                 <td></td>
               </tr>
             </tfoot>
