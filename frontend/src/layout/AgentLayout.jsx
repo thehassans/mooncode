@@ -453,7 +453,7 @@ export default function AgentLayout() {
   // Settings functions
   async function updateAvailability(val) {
     try {
-      await apiPatch('/api/users/me', { availability: val })
+      await apiPatch('/api/users/me/availability', { availability: val })
       setAvailability(val)
       setMe(n => {
         const updated = { ...n, availability: val }
@@ -806,7 +806,7 @@ export default function AgentLayout() {
                       className="btn small danger"
                       onClick={() => {
                         setShowSettings(false)
-                        logout()
+                        doLogout()
                       }}
                       style={{width: '100%', fontSize: '12px', padding: '6px 12px'}}
                     >
