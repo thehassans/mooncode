@@ -465,6 +465,10 @@ export default function ManagerOrders(){
     const driverId = String(o?.deliveryBoy?._id || o?.deliveryBoy || '')
     // Get drivers from the same country as the order
     const countryDrivers = driversByCountry[o.orderCountry] || []
+    // Get current driver and their commission
+    const currentDriverId = editingDriver[id] !== undefined ? editingDriver[id] : driverId
+    const selectedDriver = countryDrivers.find(d => String(d._id) === String(currentDriverId))
+    const driverCommissionRate = selectedDriver?.driverProfile?.commissionPerOrder || 0
     const fullAddress = [o.customerAddress, o.customerArea, o.city, o.orderCountry, o.customerLocation].filter(Boolean).filter((v,i,a)=> a.indexOf(v)===i).join(', ')
     const driverName = o?.deliveryBoy ? `${o.deliveryBoy.firstName||''} ${o.deliveryBoy.lastName||''}`.trim() : ''
     function orderCountryCurrency(c){
@@ -629,21 +633,6 @@ export default function ManagerOrders(){
               ))}
               {countryDrivers.length === 0 && <option disabled>No drivers in {o.orderCountry}</option>}
             </select>
-            <div style={{display:'grid', gap:4}}>
-              <label style={{fontSize:12, fontWeight:600, color:'var(--text)'}}>Driver Commission</label>
-              <input 
-                type="number" 
-                className="input" 
-                value={editingCommission[id] !== undefined ? editingCommission[id] : (o.driverCommission || 0)} 
-                onChange={(e)=> handleCommissionChange(id, e.target.value)} 
-                placeholder="0" 
-                min="0" 
-                step="0.01"
-                disabled={updating[`save-${id}`]}
-                style={{fontSize:14}}
-              />
-              <div className="helper" style={{fontSize:11}}>Commission for this order</div>
-            </div>
             <select 
               className="input" 
               value={editingStatus[id] || (o.shipmentStatus || 'pending')} 
@@ -661,12 +650,33 @@ export default function ManagerOrders(){
               <option value="returned">Returned</option>
               <option value="cancelled">Cancelled</option>
             </select>
+          </div>
+        </div>
+        
+        {/* Driver Commission - Bottom Left */}
+        <div className="section" style={{padding:16, background:'#fef9c3', borderRadius:8}}>
+          <div style={{display:'flex', alignItems:'center', gap:16}}>
+            <div style={{flex:1}}>
+              <label style={{fontSize:13, fontWeight:700, color:'#92400e', marginBottom:6, display:'block'}}>💰 Driver Commission</label>
+              <input 
+                type="number" 
+                className="input" 
+                value={editingCommission[id] !== undefined ? editingCommission[id] : (o.driverCommission || driverCommissionRate)} 
+                onChange={(e)=> handleCommissionChange(id, e.target.value)} 
+                placeholder="0" 
+                min="0" 
+                step="0.01"
+                disabled={updating[`save-${id}`]}
+                style={{fontSize:14, maxWidth:250}}
+              />
+              <div className="helper" style={{fontSize:11, marginTop:4, color:'#92400e'}}>Commission for this order ({orderCountryCurrency(o.orderCountry)})</div>
+            </div>
             {(editingDriver[id] !== undefined || editingStatus[id] !== undefined || editingCommission[id] !== undefined) && (
               <button 
                 className="btn success" 
                 onClick={()=> saveOrder(id)} 
                 disabled={updating[`save-${id}`]}
-                style={{width:'100%', padding:'10px', fontWeight:600}}
+                style={{padding:'10px 20px', fontWeight:600, height:'fit-content', alignSelf:'flex-end', marginBottom:24}}
               >
                 💾 Save Changes
               </button>

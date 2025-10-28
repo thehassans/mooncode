@@ -812,7 +812,10 @@ export default function UserOrders(){
                   // Driver, status, and commission
                   const currentDriver = editingDriver[id] !== undefined ? editingDriver[id] : (o.deliveryBoy?._id || o.deliveryBoy || '')
                   const currentStatus = editingStatus[id] || o.shipmentStatus || 'pending'
-                  const currentCommission = editingCommission[id] !== undefined ? editingCommission[id] : (o.driverCommission || 0)
+                  // Get driver's commission from profile if driver is selected
+                  const selectedDriver = countryDrivers.find(d => String(d._id) === String(currentDriver))
+                  const driverCommissionRate = selectedDriver?.driverProfile?.commissionPerOrder || 0
+                  const currentCommission = editingCommission[id] !== undefined ? editingCommission[id] : (o.driverCommission || driverCommissionRate)
                   const saveKey = `save-${id}`
                   const hasChanges = (currentDriver !== (o.deliveryBoy?._id || o.deliveryBoy || '')) || (currentStatus !== (o.shipmentStatus || 'pending')) || (Number(currentCommission) !== Number(o.driverCommission || 0))
                   const isReturnSubmitted = o.returnSubmittedToCompany && !o.returnVerified
@@ -867,21 +870,6 @@ export default function UserOrders(){
                                 <option key={String(d._id)} value={String(d._id)}>{`${d.firstName||''} ${d.lastName||''}${d.city? ' • '+d.city:''}`}</option>
                               ))}
                             </select>
-                            <div>
-                              <div className="label">Driver Commission</div>
-                              <input 
-                                type="number" 
-                                className="input" 
-                                value={currentCommission} 
-                                onChange={(e)=> setEditingCommission(prev => ({...prev, [id]: e.target.value}))} 
-                                placeholder="0" 
-                                min="0" 
-                                step="0.01"
-                                disabled={updating[saveKey]}
-                                style={{width:'100%'}}
-                              />
-                              <div className="helper" style={{marginTop:4}}>Commission for this order ({targetCode})</div>
-                            </div>
                             <div style={{display:'flex', gap:8}}>
                               <select className="input" value={currentStatus} onChange={(e)=> setEditingStatus(prev => ({...prev, [id]: e.target.value}))} disabled={updating[saveKey]}>
                                 <option value="pending">Pending</option>
@@ -894,11 +882,44 @@ export default function UserOrders(){
                                 <option value="returned">Returned</option>
                                 <option value="cancelled">Cancelled</option>
                               </select>
-                              {hasChanges && (
-                                <button className="btn success" onClick={()=> { saveOrder(id, editingDriver[id], editingStatus[id], editingCommission[id]); setEditingDriver(prev=>{const n={...prev}; delete n[id]; return n}); setEditingStatus(prev=>{const n={...prev}; delete n[id]; return n}); setEditingCommission(prev=>{const n={...prev}; delete n[id]; return n}) }} disabled={updating[saveKey]}>💾 Save</button>
-                              )}
                             </div>
                           </div>
+                        </div>
+                      </div>
+                      
+                      {/* Driver Commission - Bottom Left */}
+                      <div className="section" style={{padding:12, background:'#fef9c3', borderRadius:8, display:'grid', gap:8}}>
+                        <div style={{display:'flex', alignItems:'center', gap:12}}>
+                          <div style={{flex:1}}>
+                            <div className="label" style={{fontWeight:700, color:'#92400e', marginBottom:4}}>💰 Driver Commission</div>
+                            <input 
+                              type="number" 
+                              className="input" 
+                              value={currentCommission} 
+                              onChange={(e)=> setEditingCommission(prev => ({...prev, [id]: e.target.value}))} 
+                              placeholder="0" 
+                              min="0" 
+                              step="0.01"
+                              disabled={updating[saveKey]}
+                              style={{width:'100%', maxWidth:200}}
+                            />
+                            <div className="helper" style={{marginTop:4, color:'#92400e'}}>Commission for this order ({targetCode})</div>
+                          </div>
+                          {hasChanges && (
+                            <button 
+                              className="btn success" 
+                              onClick={()=> { 
+                                saveOrder(id, editingDriver[id], editingStatus[id], editingCommission[id]); 
+                                setEditingDriver(prev=>{const n={...prev}; delete n[id]; return n}); 
+                                setEditingStatus(prev=>{const n={...prev}; delete n[id]; return n}); 
+                                setEditingCommission(prev=>{const n={...prev}; delete n[id]; return n})
+                              }} 
+                              disabled={updating[saveKey]}
+                              style={{height:'fit-content', alignSelf:'flex-end', marginBottom:24}}
+                            >
+                              💾 Save Changes
+                            </button>
+                          )}
                         </div>
                       </div>
                       
