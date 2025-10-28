@@ -38,6 +38,7 @@ const OrderSchema = new mongoose.Schema({
   courierName: { type: String },
   trackingNumber: { type: String },
   deliveryBoy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  driverCommission: { type: Number, default: 0 },
   shippingFee: { type: Number, default: 0 },
   codAmount: { type: Number, default: 0 },
   collectedAmount: { type: Number, default: 0 },

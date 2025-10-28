@@ -382,6 +382,7 @@ export default function ManagerOrders(){
   // Save handler like user Orders page
   const [editingDriver, setEditingDriver] = useState({})
   const [editingStatus, setEditingStatus] = useState({})
+  const [editingCommission, setEditingCommission] = useState({})
   const [updating, setUpdating] = useState({})
   
   // Helper to preserve scroll on dropdown changes
@@ -402,6 +403,15 @@ export default function ManagerOrders(){
       setTimeout(() => window.scrollTo(0, y), 0)
     })
   }
+  
+  const handleCommissionChange = (orderId, value) => {
+    const y = window.scrollY
+    setEditingCommission(prev => ({...prev, [orderId]: value}))
+    requestAnimationFrame(() => {
+      window.scrollTo(0, y)
+      setTimeout(() => window.scrollTo(0, y), 0)
+    })
+  }
   async function saveOrder(orderId){
     const key = `save-${orderId}`
     setUpdating(prev => ({ ...prev, [key]: true }))
@@ -409,44 +419,26 @@ export default function ManagerOrders(){
       await preserveScroll(async ()=>{
         const driverEdited = Object.prototype.hasOwnProperty.call(editingDriver, orderId)
         const statusEdited = Object.prototype.hasOwnProperty.call(editingStatus, orderId)
+        const commissionEdited = Object.prototype.hasOwnProperty.call(editingCommission, orderId)
 
-        if (driverEdited && !statusEdited){
-          const drv = editingDriver[orderId]
-          if (drv && String(drv).trim()){
-            // Use dedicated endpoint which also flips pending -> assigned
-            const r = await apiPost(`/api/orders/${orderId}/assign-driver`, { driverId: drv })
-            const updated = r?.order
-            if (updated){
-              setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
-            } else {
-              await loadOrders(false)
-            }
-          } else {
-            // Unassign driver
-            const r = await apiPatch(`/api/orders/${orderId}`, { deliveryBoy: null })
-            const updated = r?.order
-            if (updated){
-              setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
-            } else {
-              await loadOrders(false)
-            }
-          }
+        // Always use PATCH to support commission updates
+        const payload = {}
+        if (driverEdited) payload.deliveryBoy = editingDriver[orderId] || null
+        if (statusEdited) payload.shipmentStatus = editingStatus[orderId]
+        if (commissionEdited) payload.driverCommission = Number(editingCommission[orderId]) || 0
+        
+        const r = await apiPatch(`/api/orders/${orderId}`, payload)
+        const updated = r?.order
+        if (updated){
+          setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
         } else {
-          const payload = {}
-          if (driverEdited) payload.deliveryBoy = editingDriver[orderId] || null
-          if (statusEdited) payload.shipmentStatus = editingStatus[orderId]
-          const r = await apiPatch(`/api/orders/${orderId}`, payload)
-          const updated = r?.order
-          if (updated){
-            setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
-          } else {
-            await loadOrders(false)
-          }
+          await loadOrders(false)
         }
       })
       // clear local edits
       setEditingDriver(prev=>{ const n={...prev}; delete n[orderId]; return n })
       setEditingStatus(prev=>{ const n={...prev}; delete n[orderId]; return n })
+      setEditingCommission(prev=>{ const n={...prev}; delete n[orderId]; return n })
     }catch(err){ alert(err?.message || 'Failed to save') }
     finally{ setUpdating(prev => ({ ...prev, [key]: false })) }
   }
@@ -627,6 +619,21 @@ export default function ManagerOrders(){
               ))}
               {countryDrivers.length === 0 && <option disabled>No drivers in {o.orderCountry}</option>}
             </select>
+            <div style={{display:'grid', gap:4}}>
+              <label style={{fontSize:12, fontWeight:600, color:'var(--text)'}}>Driver Commission</label>
+              <input 
+                type="number" 
+                className="input" 
+                value={editingCommission[id] !== undefined ? editingCommission[id] : (o.driverCommission || 0)} 
+                onChange={(e)=> handleCommissionChange(id, e.target.value)} 
+                placeholder="0" 
+                min="0" 
+                step="0.01"
+                disabled={updating[`save-${id}`]}
+                style={{fontSize:14}}
+              />
+              <div className="helper" style={{fontSize:11}}>Commission for this order</div>
+            </div>
             <select 
               className="input" 
               value={editingStatus[id] || (o.shipmentStatus || 'pending')} 
@@ -644,7 +651,7 @@ export default function ManagerOrders(){
               <option value="returned">Returned</option>
               <option value="cancelled">Cancelled</option>
             </select>
-            {(editingDriver[id] !== undefined || editingStatus[id] !== undefined) && (
+            {(editingDriver[id] !== undefined || editingStatus[id] !== undefined || editingCommission[id] !== undefined) && (
               <button 
                 className="btn success" 
                 onClick={()=> saveOrder(id)} 

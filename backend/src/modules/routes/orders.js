@@ -1396,6 +1396,10 @@ router.post('/:id/assign-driver', auth, allowRoles('admin','user','manager'), as
     return res.status(400).json({ message: 'Driver city does not match order city' })
   }
   ord.deliveryBoy = driver._id
+  // Set driver commission from driver profile if not already set
+  if (!ord.driverCommission || ord.driverCommission === 0) {
+    ord.driverCommission = Number(driver.driverProfile?.commissionPerOrder || 0)
+  }
   if (!ord.shipmentStatus || ord.shipmentStatus === 'pending') ord.shipmentStatus = 'assigned'
   await ord.save()
   await ord.populate('deliveryBoy','firstName lastName email')
@@ -1819,7 +1823,7 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), async (req, res
     
     // Update fields
     const { 
-      deliveryBoy, shipmentStatus, items, productId, quantity, total, discount, shippingFee,
+      deliveryBoy, driverCommission, shipmentStatus, items, productId, quantity, total, discount, shippingFee,
       customerName, customerPhone, phoneCountryCode, orderCountry, city, customerArea, 
       customerAddress, locationLat, locationLng, customerLocation, details
     } = req.body || {}
@@ -1828,6 +1832,7 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), async (req, res
     const previousDriver = ord.deliveryBoy ? String(ord.deliveryBoy) : null
     const newDriver = deliveryBoy !== undefined ? (deliveryBoy || null) : undefined
     if (deliveryBoy !== undefined) ord.deliveryBoy = deliveryBoy || null
+    if (driverCommission !== undefined) ord.driverCommission = Math.max(0, Number(driverCommission || 0))
     if (customerName !== undefined) ord.customerName = customerName
     if (customerPhone !== undefined) ord.customerPhone = customerPhone
     if (phoneCountryCode !== undefined) ord.phoneCountryCode = phoneCountryCode

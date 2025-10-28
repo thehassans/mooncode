@@ -92,6 +92,7 @@ export default function UserOrders(){
   const [updating, setUpdating] = useState({})
   const [editingDriver, setEditingDriver] = useState({}) // Track edited driver per order
   const [editingStatus, setEditingStatus] = useState({}) // Track edited status per order
+  const [editingCommission, setEditingCommission] = useState({}) // Track edited commission per order
   const [curCfg, setCurCfg] = useState(null)
   // Infinite scroll state
   const [page, setPage] = useState(1)
@@ -518,31 +519,22 @@ export default function UserOrders(){
     return ()=>{ try{ socket && socket.off('orders.changed') }catch{}; try{ socket && socket.disconnect() }catch{} }
   }, [API_BASE])
 
-  async function saveOrder(orderId, driverId, status){
+  async function saveOrder(orderId, driverId, status, commission){
     const key = `save-${orderId}`
     setUpdating(prev => ({ ...prev, [key]: true }))
     try{
       await preserveScroll(async ()=>{
-        // If only driver is provided and no explicit shipment status, use dedicated endpoint to preserve pending->assigned behavior
-        if (driverId !== undefined && (status == null || String(status).trim() === '')){
-          const r = await apiPost(`/api/orders/${orderId}/assign-driver`, { driverId })
-          const updated = r?.order
-          if (updated){
-            setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
-          } else {
-            await loadOrders(false)
-          }
+        // Always use PATCH endpoint to support commission updates
+        const payload = {}
+        if (driverId !== undefined) payload.deliveryBoy = driverId || null
+        if (status) payload.shipmentStatus = status
+        if (commission !== undefined) payload.driverCommission = Number(commission) || 0
+        const r = await apiPatch(`/api/orders/${orderId}`, payload)
+        const updated = r?.order
+        if (updated){
+          setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
         } else {
-          const payload = {}
-          if (driverId !== undefined) payload.deliveryBoy = driverId || null
-          if (status) payload.shipmentStatus = status
-          const r = await apiPatch(`/api/orders/${orderId}`, payload)
-          const updated = r?.order
-          if (updated){
-            setOrders(prev => prev.map(o => String(o._id) === String(orderId) ? updated : o))
-          } else {
-            await loadOrders(false)
-          }
+          await loadOrders(false)
         }
       })
       toast.success('Order updated')
@@ -801,18 +793,12 @@ export default function UserOrders(){
                   const discountConv = convert(discountLocal, localCode, targetCode, curCfg)
                   const price = Math.max(0, itemsSubtotalConv + shipConv - discountConv)
                   
-                  // Driver and status
+                  // Driver, status, and commission
                   const currentDriver = editingDriver[id] !== undefined ? editingDriver[id] : (o.deliveryBoy?._id || o.deliveryBoy || '')
                   const currentStatus = editingStatus[id] || o.shipmentStatus || 'pending'
-                  
+                  const currentCommission = editingCommission[id] !== undefined ? editingCommission[id] : (o.driverCommission || 0)
                   const saveKey = `save-${id}`
-                  const hasChanges = editingDriver[id] !== undefined || editingStatus[id] !== undefined
-                  const countryDrivers = driversByCountry[o.orderCountry] || []
-                  const fullAddress = [o.customerAddress, o.customerArea, o.city, o.orderCountry, o.customerLocation].filter(Boolean).filter((v,i,a)=> a.indexOf(v)===i).join(', ')
-                  
-                  // Check return submission status
-                  const status = String(o.shipmentStatus || '').toLowerCase()
-                  const isCancelledOrReturned = ['cancelled', 'returned'].includes(status)
+                  const hasChanges = (currentDriver !== (o.deliveryBoy?._id || o.deliveryBoy || '')) || (currentStatus !== (o.shipmentStatus || 'pending')) || (Number(currentCommission) !== Number(o.driverCommission || 0))
                   const isReturnSubmitted = o.returnSubmittedToCompany && !o.returnVerified
                   const isReturnVerified = o.returnVerified
                   
@@ -865,6 +851,21 @@ export default function UserOrders(){
                                 <option key={String(d._id)} value={String(d._id)}>{`${d.firstName||''} ${d.lastName||''}${d.city? ' • '+d.city:''}`}</option>
                               ))}
                             </select>
+                            <div>
+                              <div className="label">Driver Commission</div>
+                              <input 
+                                type="number" 
+                                className="input" 
+                                value={currentCommission} 
+                                onChange={(e)=> setEditingCommission(prev => ({...prev, [id]: e.target.value}))} 
+                                placeholder="0" 
+                                min="0" 
+                                step="0.01"
+                                disabled={updating[saveKey]}
+                                style={{width:'100%'}}
+                              />
+                              <div className="helper" style={{marginTop:4}}>Commission for this order ({targetCode})</div>
+                            </div>
                             <div style={{display:'flex', gap:8}}>
                               <select className="input" value={currentStatus} onChange={(e)=> setEditingStatus(prev => ({...prev, [id]: e.target.value}))} disabled={updating[saveKey]}>
                                 <option value="pending">Pending</option>
@@ -878,7 +879,7 @@ export default function UserOrders(){
                                 <option value="cancelled">Cancelled</option>
                               </select>
                               {hasChanges && (
-                                <button className="btn success" onClick={()=> { saveOrder(id, editingDriver[id], editingStatus[id]); setEditingDriver(prev=>{const n={...prev}; delete n[id]; return n}); setEditingStatus(prev=>{const n={...prev}; delete n[id]; return n}) }} disabled={updating[saveKey]}>💾 Save</button>
+                                <button className="btn success" onClick={()=> { saveOrder(id, editingDriver[id], editingStatus[id], editingCommission[id]); setEditingDriver(prev=>{const n={...prev}; delete n[id]; return n}); setEditingStatus(prev=>{const n={...prev}; delete n[id]; return n}); setEditingCommission(prev=>{const n={...prev}; delete n[id]; return n}) }} disabled={updating[saveKey]}>💾 Save</button>
                               )}
                             </div>
                           </div>
