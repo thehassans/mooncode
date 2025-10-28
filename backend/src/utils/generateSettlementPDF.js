@@ -170,8 +170,8 @@ export async function generateSettlementPDF(data) {
         doc.text('ORDER DETAILS', margin, currentY, { underline: true })
         currentY += 25
         
-        // Limit to first 3 orders to keep PDF on one page
-        const displayOrders = data.orders.slice(0, 3)
+        // Show up to 7 orders (allows up to 2 pages)
+        const displayOrders = data.orders.slice(0, 7)
         
         displayOrders.forEach((order, idx) => {
           // Order Header Box
@@ -242,9 +242,9 @@ export async function generateSettlementPDF(data) {
           }
         })
         
-        if (data.orders.length > 3) {
+        if (data.orders.length > 7) {
           doc.fontSize(8).font('Helvetica-Oblique').fillColor('#64748b')
-          doc.text(`Showing first 3 of ${data.orders.length} total orders`, margin, currentY, { align: 'center' })
+          doc.text(`Showing first 7 of ${data.orders.length} total orders`, margin, currentY, { align: 'center' })
           currentY += 20
         } else {
           currentY += 12
@@ -279,27 +279,6 @@ export async function generateSettlementPDF(data) {
         doc.font('Helvetica-Bold').text(data.note, pageWidth / 2 + 65, y1, { width: colWidth - 75 })
       }
       currentY += 70
-
-      // === COMMISSION CALCULATION EXPLANATION ===
-      if (data.driverCommissionRate && data.totalDeliveredOrders) {
-        doc.fontSize(9).font('Helvetica-Bold').fillColor('#1e293b')
-        doc.text('COMMISSION CALCULATION', margin, currentY)
-        doc.rect(margin, currentY + 14, pageWidth - 2 * margin, 35).fillAndStroke('#f0fdf4', '#86efac')
-        doc.fontSize(8).font('Helvetica').fillColor('#166534')
-        doc.text(
-          `Commission per order: ${formatCurrency(data.driverCommissionRate, data.currency)} \u00d7 ${data.totalDeliveredOrders} orders = ${formatCurrency(data.totalCommission, data.currency)}`,
-          margin + 12,
-          currentY + 22,
-          { width: pageWidth - 2 * margin - 24 }
-        )
-        doc.text(
-          `This commission is calculated based on the driver's commission rate set at driver creation.`,
-          margin + 12,
-          currentY + 34,
-          { width: pageWidth - 2 * margin - 24, oblique: true }
-        )
-        currentY += 60
-      }
 
       // === SIGNATURE BLOCK ===
       const pageHeight = doc.page.height
@@ -446,8 +425,8 @@ export async function generateAcceptedSettlementPDF(data) {
         doc.text('ORDER DETAILS', margin, currentY, { underline: true })
         currentY += 25
         
-        // Limit to first 3 orders to keep PDF on one page
-        const displayOrders = data.orders.slice(0, 3)
+        // Show up to 7 orders (allows up to 2 pages)
+        const displayOrders = data.orders.slice(0, 7)
         
         displayOrders.forEach((order, idx) => {
           // Order Header Box
@@ -518,9 +497,9 @@ export async function generateAcceptedSettlementPDF(data) {
           }
         })
         
-        if (data.orders.length > 3) {
+        if (data.orders.length > 7) {
           doc.fontSize(8).font('Helvetica-Oblique').fillColor('#64748b')
-          doc.text(`Showing first 3 of ${data.orders.length} total orders`, margin, currentY, { align: 'center' })
+          doc.text(`Showing first 7 of ${data.orders.length} total orders`, margin, currentY, { align: 'center' })
           currentY += 20
         } else {
           currentY += 12
