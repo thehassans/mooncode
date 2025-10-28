@@ -170,10 +170,20 @@ export async function generateSettlementPDF(data) {
         doc.text('ORDER DETAILS', margin, currentY, { underline: true })
         currentY += 25
         
-        // Show up to 7 orders (allows up to 2 pages)
-        const displayOrders = data.orders.slice(0, 7)
+        // Track rendered orders and enforce 2-page limit
+        let renderedOrders = 0
+        const maxOrders = Math.min(7, data.orders.length)
+        const pageHeight = doc.page.height
+        const reservedSpace = 250 // Space for settlement, payment, signature
         
-        displayOrders.forEach((order, idx) => {
+        for (let idx = 0; idx < maxOrders; idx++) {
+          const order = data.orders[idx]
+          
+          // Stop if on page 2 and approaching bottom
+          const currentPage = doc.bufferedPageRange().count
+          if (currentPage >= 2 && currentY > pageHeight - reservedSpace) {
+            break
+          }
           // Order Header Box
           doc.roundedRect(margin, currentY, pageWidth - 2 * margin, 30, 4)
             .fillAndStroke('#f0f9ff', '#0284c7')
@@ -237,14 +247,15 @@ export async function generateSettlementPDF(data) {
           currentY += 28
           
           // Add spacing between orders
-          if (idx < displayOrders.length - 1) {
+          renderedOrders++
+          if (idx < maxOrders - 1) {
             currentY += 8
           }
-        })
+        }
         
-        if (data.orders.length > 7) {
+        if (data.orders.length > renderedOrders) {
           doc.fontSize(8).font('Helvetica-Oblique').fillColor('#64748b')
-          doc.text(`Showing first 7 of ${data.orders.length} total orders`, margin, currentY, { align: 'center' })
+          doc.text(`Showing first ${renderedOrders} of ${data.orders.length} total orders`, margin, currentY, { align: 'center' })
           currentY += 20
         } else {
           currentY += 12
@@ -425,10 +436,20 @@ export async function generateAcceptedSettlementPDF(data) {
         doc.text('ORDER DETAILS', margin, currentY, { underline: true })
         currentY += 25
         
-        // Show up to 7 orders (allows up to 2 pages)
-        const displayOrders = data.orders.slice(0, 7)
+        // Track rendered orders and enforce 2-page limit
+        let renderedOrders = 0
+        const maxOrders = Math.min(7, data.orders.length)
+        const pageHeight = doc.page.height
+        const reservedSpace = 250 // Space for settlement, payment, signature
         
-        displayOrders.forEach((order, idx) => {
+        for (let idx = 0; idx < maxOrders; idx++) {
+          const order = data.orders[idx]
+          
+          // Stop if on page 2 and approaching bottom
+          const currentPage = doc.bufferedPageRange().count
+          if (currentPage >= 2 && currentY > pageHeight - reservedSpace) {
+            break
+          }
           // Order Header Box
           doc.roundedRect(margin, currentY, pageWidth - 2 * margin, 30, 4)
             .fillAndStroke('#f0f9ff', '#0284c7')
@@ -492,14 +513,15 @@ export async function generateAcceptedSettlementPDF(data) {
           currentY += 28
           
           // Add spacing between orders
-          if (idx < displayOrders.length - 1) {
+          renderedOrders++
+          if (idx < maxOrders - 1) {
             currentY += 8
           }
-        })
+        }
         
-        if (data.orders.length > 7) {
+        if (data.orders.length > renderedOrders) {
           doc.fontSize(8).font('Helvetica-Oblique').fillColor('#64748b')
-          doc.text(`Showing first 7 of ${data.orders.length} total orders`, margin, currentY, { align: 'center' })
+          doc.text(`Showing first ${renderedOrders} of ${data.orders.length} total orders`, margin, currentY, { align: 'center' })
           currentY += 20
         } else {
           currentY += 12
