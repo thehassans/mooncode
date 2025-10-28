@@ -170,8 +170,8 @@ export async function generateSettlementPDF(data) {
         doc.text('ORDER DETAILS', margin, currentY, { underline: true })
         currentY += 25
         
-        // Limit to first 10 orders to avoid PDF overflow
-        const displayOrders = data.orders.slice(0, 10)
+        // Limit to first 5 orders to avoid PDF overflow (fixed 99 pages issue)
+        const displayOrders = data.orders.slice(0, 5)
         
         displayOrders.forEach((order, idx) => {
           // Order Header Box
@@ -219,14 +219,18 @@ export async function generateSettlementPDF(data) {
             currentY += 14
           })
           
-          // Order Total and Commission Row
+          // Order Total and Commission Row - properly aligned
           doc.rect(margin, currentY, pageWidth - 2 * margin, 20).fillAndStroke('#fef9c3', '#eab308')
           doc.fontSize(8).font('Helvetica-Bold').fillColor('#713f12')
+          
+          // Left side: Order Subtotal
           doc.text('Order Subtotal:', margin + 8, currentY + 6)
-          doc.text(formatCurrency(order.subTotal || orderSubtotal, data.currency), margin + 285, currentY + 6, { width: 80, align: 'right' })
-          doc.text('Commission:', pageWidth - margin - 180, currentY + 6)
+          doc.text(formatCurrency(order.subTotal || orderSubtotal, data.currency), margin + 250, currentY + 6, { width: 90, align: 'right' })
+          
+          // Right side: Commission (using actual order commission)
+          doc.text('Commission:', margin + 360, currentY + 6)
           doc.fillColor('#047857')
-          doc.text(formatCurrency(order.commission || data.driverCommissionRate || 0, data.currency), pageWidth - margin - 90, currentY + 6, { width: 80, align: 'right' })
+          doc.text(formatCurrency(Number(order.commission) || 0, data.currency), margin + 460, currentY + 6, { width: 90, align: 'right' })
           currentY += 28
           
           // Add spacing between orders
@@ -235,9 +239,9 @@ export async function generateSettlementPDF(data) {
           }
         })
         
-        if (data.orders.length > 10) {
+        if (data.orders.length > 5) {
           doc.fontSize(8).font('Helvetica-Oblique').fillColor('#64748b')
-          doc.text(`... and ${data.orders.length - 10} more orders`, margin, currentY, { align: 'center' })
+          doc.text(`Showing first 5 of ${data.orders.length} total orders`, margin, currentY, { align: 'center' })
           currentY += 20
         } else {
           currentY += 12
@@ -439,8 +443,8 @@ export async function generateAcceptedSettlementPDF(data) {
         doc.text('ORDER DETAILS', margin, currentY, { underline: true })
         currentY += 25
         
-        // Limit to first 10 orders to avoid PDF overflow
-        const displayOrders = data.orders.slice(0, 10)
+        // Limit to first 5 orders to avoid PDF overflow (fixed 99 pages issue)
+        const displayOrders = data.orders.slice(0, 5)
         
         displayOrders.forEach((order, idx) => {
           // Order Header Box
@@ -488,14 +492,18 @@ export async function generateAcceptedSettlementPDF(data) {
             currentY += 14
           })
           
-          // Order Total and Commission Row
+          // Order Total and Commission Row - properly aligned
           doc.rect(margin, currentY, pageWidth - 2 * margin, 20).fillAndStroke('#fef9c3', '#eab308')
           doc.fontSize(8).font('Helvetica-Bold').fillColor('#713f12')
+          
+          // Left side: Order Subtotal
           doc.text('Order Subtotal:', margin + 8, currentY + 6)
-          doc.text(formatCurrency(order.subTotal || orderSubtotal, data.currency), margin + 285, currentY + 6, { width: 80, align: 'right' })
-          doc.text('Commission:', pageWidth - margin - 180, currentY + 6)
+          doc.text(formatCurrency(order.subTotal || orderSubtotal, data.currency), margin + 250, currentY + 6, { width: 90, align: 'right' })
+          
+          // Right side: Commission (using actual order commission)
+          doc.text('Commission:', margin + 360, currentY + 6)
           doc.fillColor('#047857')
-          doc.text(formatCurrency(order.commission || data.driverCommissionRate || 0, data.currency), pageWidth - margin - 90, currentY + 6, { width: 80, align: 'right' })
+          doc.text(formatCurrency(Number(order.commission) || 0, data.currency), margin + 460, currentY + 6, { width: 90, align: 'right' })
           currentY += 28
           
           // Add spacing between orders
@@ -504,9 +512,9 @@ export async function generateAcceptedSettlementPDF(data) {
           }
         })
         
-        if (data.orders.length > 10) {
+        if (data.orders.length > 5) {
           doc.fontSize(8).font('Helvetica-Oblique').fillColor('#64748b')
-          doc.text(`... and ${data.orders.length - 10} more orders`, margin, currentY, { align: 'center' })
+          doc.text(`Showing first 5 of ${data.orders.length} total orders`, margin, currentY, { align: 'center' })
           currentY += 20
         } else {
           currentY += 12
