@@ -971,13 +971,12 @@ router.post(
       }
       const totalDeliveredOrders = await Order.countDocuments(matchOrders);
       
-      // Fetch delivered orders with details for PDF
+      // Fetch actual delivered orders for PDF details
       const deliveredOrders = await Order.find(matchOrders)
-        .select('invoiceNumber deliveredAt grandTotal currency customerName')
+        .select('invoiceNumber customerName customerPhone totalPrice deliveredAt city orderCountry commission')
         .sort({ deliveredAt: -1 })
-        .limit(100)
+        .limit(100) // Limit to 100 orders for PDF
         .lean();
-      
       // Extract receipt file (any image)
       const files = Array.isArray(req.files) ? req.files : [];
       const receiptFile =
@@ -1016,7 +1015,7 @@ router.post(
       
       // Generate PDF settlement summary with comprehensive data
       try {
-        const driver = await User.findById(req.user.id).select('firstName lastName phone driverProfile');
+        const driver = await User.findById(req.user.id).select('firstName lastName phone commission paidCommission');
         const manager = await User.findById(managerRef).select('firstName lastName');
         
         // Get order statistics for the driver
@@ -1027,20 +1026,23 @@ router.post(
           $or: [{ shipmentStatus: 'cancelled' }, { shipmentStatus: 'returned' }] 
         });
         
-        // Calculate commission based on commission per order
+        // Calculate commission based on actual order commissions
         const commissionPerOrder = Number(driver?.driverProfile?.commissionPerOrder || 0);
         const commissionCurrency = driver?.driverProfile?.commissionCurrency || doc.currency || 'SAR';
         
-        // Total commission = delivered orders * commission per order
-        const totalCommission = totalDeliveredOrders * commissionPerOrder;
+        // Calculate total commission from delivered orders
+        // Use order-specific commission if available, otherwise use driver's default rate
+        const totalCommission = deliveredOrders.reduce((sum, order) => {
+          const orderCommission = Number(order.commission || commissionPerOrder || 0);
+          return sum + orderCommission;
+        }, 0);
         
-        // Get total paid commission from previous accepted remittances
+        // Get total paid commission from accepted remittances
         const paidRemittances = await Remittance.find({
           driver: req.user.id,
-          status: 'accepted',
-          _id: { $ne: doc._id } // Exclude current remittance
+          status: 'accepted'
         });
-        const paidCommission = paidRemittances.reduce((sum, r) => sum + (Number(r.commissionPaid) || 0), 0);
+        const paidCommission = paidRemittances.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
         
         // Pending commission = total earned - already paid
         const pendingCommission = Math.max(0, totalCommission - paidCommission);
@@ -1065,8 +1067,7 @@ router.post(
           fromDate: doc.fromDate,
           toDate: doc.toDate,
           note: doc.note,
-          deliveredOrders: deliveredOrders || [], // Add delivered orders details
-          commissionPerOrder // Add commission per order for display
+          deliveredOrders: deliveredOrders // Add order details
         });
         
         doc.pdfPath = pdfPath;
@@ -1151,18 +1152,7 @@ router.post(
             $or: [{ shipmentStatus: 'cancelled' }, { shipmentStatus: 'returned' }] 
           });
           
-          // Calculate commission
-          const commissionPerOrder = Number(driver?.driverProfile?.commissionPerOrder || 0);
-          const totalCommission = r.totalDeliveredOrders * commissionPerOrder;
-          const paidRemittances = await Remittance.find({
-            driver: r.driver,
-            status: 'accepted',
-            _id: { $ne: r._id } // Exclude current remittance
-          });
-          const paidCommission = paidRemittances.reduce((sum, rem) => sum + (Number(rem.commissionPaid) || 0), 0);
-          const pendingCommission = Math.max(0, totalCommission - paidCommission);
-          
-          // Get financial data and delivered orders details
+          // Fetch delivered orders in the date range for this remittance
           const matchOrders = {
             deliveryBoy: r.driver,
             shipmentStatus: 'delivered'
@@ -1172,12 +1162,28 @@ router.post(
             if (r.fromDate) matchOrders.deliveredAt.$gte = new Date(r.fromDate);
             if (r.toDate) matchOrders.deliveredAt.$lte = new Date(r.toDate);
           }
-          const deliveredOrders = await Order.find(matchOrders)
-            .select('invoiceNumber deliveredAt grandTotal currency customerName')
+          const deliveredOrdersInRange = await Order.find(matchOrders)
+            .select('invoiceNumber customerName customerPhone totalPrice deliveredAt city orderCountry commission grandTotal')
             .sort({ deliveredAt: -1 })
             .limit(100)
             .lean();
-          const totalCollectedAmount = deliveredOrders.reduce((sum, o) => sum + (Number(o.grandTotal) || 0), 0);
+          
+          // Calculate commission from actual delivered orders
+          const commissionPerOrder = Number(driver?.driverProfile?.commissionPerOrder || 0);
+          const totalCommission = deliveredOrdersInRange.reduce((sum, order) => {
+            const orderCommission = Number(order.commission || commissionPerOrder || 0);
+            return sum + orderCommission;
+          }, 0);
+          
+          const paidRemittances = await Remittance.find({
+            driver: r.driver,
+            status: 'accepted'
+          });
+          const paidCommission = paidRemittances.reduce((sum, rem) => sum + (Number(rem.amount) || 0), 0);
+          const pendingCommission = Math.max(0, totalCommission - paidCommission);
+          
+          // Get financial data
+          const totalCollectedAmount = deliveredOrdersInRange.reduce((sum, o) => sum + (Number(o.grandTotal) || 0), 0);
           const deliveredToCompany = paidCommission;
           const pendingToCompany = Math.max(0, totalCollectedAmount - deliveredToCompany);
           
@@ -1203,8 +1209,7 @@ router.post(
             note: r.note,
             acceptedDate: r.acceptedAt,
             acceptedBy: `${acceptedByUser?.firstName || ''} ${acceptedByUser?.lastName || ''}`.trim() || 'Company',
-            deliveredOrders: deliveredOrders || [], // Add delivered orders details
-            commissionPerOrder // Add commission per order for display
+            deliveredOrders: deliveredOrdersInRange // Add order details
           });
           
           r.acceptedPdfPath = acceptedPdfPath;
