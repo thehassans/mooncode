@@ -1123,6 +1123,14 @@ router.patch('/drivers/:id', auth, allowRoles('admin','user'), async (req, res) 
       }
     }
     await driver.save()
+    
+    // Broadcast to workspace for real-time updates
+    try{
+      const io = getIO()
+      const ownerId = String(driver.createdBy || req.user.id)
+      if (ownerId) io.to(`workspace:${ownerId}`).emit('driver.updated', { id: String(driver._id) })
+    }catch{}
+    
     const out = await User.findById(driver._id, '-password')
     return res.json({ ok:true, user: out })
   }catch(err){
