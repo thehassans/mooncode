@@ -688,7 +688,7 @@ export default function AgentLayout() {
                   transform: 'translateY(-50%)',
                   width: '22px',
                   height: '22px',
-                  background: theme === 'dark' ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)' : 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)',
+                  background: theme === 'dark' ? 'linear-gradient(135deg, #818cf8 0%, #6366f1 100%)' : 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
                   borderRadius: '50%',
                   transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
@@ -697,7 +697,7 @@ export default function AgentLayout() {
                   justifyContent: 'center',
                   fontSize: '10px'
                 }}>
-                  {theme === 'dark' ? '☀️' : '🌙'}
+                  {theme === 'dark' ? '🌙' : '☀️'}
                 </div>
               </button>
               
