@@ -220,9 +220,33 @@ app.get('*', (req, res, next) => {
         </body>
       </html>
     `);
-  } catch {
-    return next();
+  } catch (err) {
+    console.error('Error serving SPA:', err);
+    return res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+        <head><title>Server Error</title></head>
+        <body style="font-family:system-ui;padding:40px;max-width:600px;margin:0 auto;">
+          <h1>⚠️ Server Error</h1>
+          <p>An error occurred while trying to serve the application.</p>
+          <p>Please try refreshing the page or contact support if the problem persists.</p>
+          <p style="color:#666;margin-top:30px;">Error: ${err.message || 'Unknown error'}</p>
+        </body>
+      </html>
+    `);
   }
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(err.status || 500).json({
+    message: err.message || 'Internal server error',
+    error: process.env.NODE_ENV === 'production' ? {} : err
+  });
 });
 
 // Start HTTP server immediately; connect to DB in background so endpoints are reachable during DB spin-up
