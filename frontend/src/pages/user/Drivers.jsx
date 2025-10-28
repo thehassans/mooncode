@@ -110,19 +110,30 @@ export default function Drivers(){
     setLoadingList(true)
     try{
       const data = await apiGet(`/api/users/drivers?q=${encodeURIComponent(query)}`)
-      setRows((data.users||[]).map(u => ({
-        id: u._id || u.id,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        email: u.email,
-        phone: u.phone,
-        country: u.country,
-        city: u.city,
-        createdAt: u.createdAt,
-        commissionPerOrder: Number(u?.driverProfile?.commissionPerOrder || 0),
-        commissionCurrency: String(u?.driverProfile?.commissionCurrency || (COUNTRY_TO_CCY[u.country] || 'SAR')),
-      })))
-    }catch(_e){ setRows([]) }
+      console.log('📥 Loaded drivers from API:', data.users?.length, 'drivers')
+      if (data.users && data.users.length > 0) {
+        console.log('🔍 First driver driverProfile:', data.users[0].driverProfile)
+      }
+      setRows((data.users||[]).map(u => {
+        const commission = Number(u?.driverProfile?.commissionPerOrder || 0)
+        console.log(`Driver ${u.firstName} ${u.lastName} - Commission:`, commission, 'Full driverProfile:', u.driverProfile)
+        return {
+          id: u._id || u.id,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          email: u.email,
+          phone: u.phone,
+          country: u.country,
+          city: u.city,
+          createdAt: u.createdAt,
+          commissionPerOrder: commission,
+          commissionCurrency: String(u?.driverProfile?.commissionCurrency || (COUNTRY_TO_CCY[u.country] || 'SAR')),
+        }
+      }))
+    }catch(_e){ 
+      console.error('Failed to load drivers:', _e)
+      setRows([]) 
+    }
     finally{ setLoadingList(false) }
   }
 
