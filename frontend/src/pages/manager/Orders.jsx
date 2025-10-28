@@ -654,34 +654,32 @@ export default function ManagerOrders(){
         </div>
         
         {/* Driver Commission - Bottom Left */}
-        <div className="section" style={{padding:16, background:'#fef9c3', borderRadius:8}}>
-          <div style={{display:'flex', alignItems:'center', gap:16}}>
-            <div style={{flex:1}}>
-              <label style={{fontSize:13, fontWeight:700, color:'#92400e', marginBottom:6, display:'block'}}>💰 Driver Commission</label>
-              <input 
-                type="number" 
-                className="input" 
-                value={editingCommission[id] !== undefined ? editingCommission[id] : (o.driverCommission || driverCommissionRate)} 
-                onChange={(e)=> handleCommissionChange(id, e.target.value)} 
-                placeholder="0" 
-                min="0" 
-                step="0.01"
-                disabled={updating[`save-${id}`]}
-                style={{fontSize:14, maxWidth:250}}
-              />
-              <div className="helper" style={{fontSize:11, marginTop:4, color:'#92400e'}}>Commission for this order ({orderCountryCurrency(o.orderCountry)})</div>
-            </div>
-            {(editingDriver[id] !== undefined || editingStatus[id] !== undefined || editingCommission[id] !== undefined) && (
-              <button 
-                className="btn success" 
-                onClick={()=> saveOrder(id)} 
-                disabled={updating[`save-${id}`]}
-                style={{padding:'10px 20px', fontWeight:600, height:'fit-content', alignSelf:'flex-end', marginBottom:24}}
-              >
-                💾 Save Changes
-              </button>
-            )}
+        <div style={{padding:'16px 0', borderTop:'1px solid var(--border)', display:'flex', alignItems:'center', gap:16}}>
+          <div style={{flex:1}}>
+            <label style={{fontSize:12, fontWeight:600, color:'var(--muted)', marginBottom:6, display:'block', textTransform:'uppercase', letterSpacing:'0.5px'}}>Driver Commission</label>
+            <input 
+              type="number" 
+              className="input" 
+              value={editingCommission[id] !== undefined ? editingCommission[id] : (o.driverCommission || driverCommissionRate)} 
+              onChange={(e)=> handleCommissionChange(id, e.target.value)} 
+              placeholder="0.00" 
+              min="0" 
+              step="0.01"
+              disabled={updating[`save-${id}`]}
+              style={{fontSize:16, fontWeight:600, maxWidth:180}}
+            />
+            <div className="helper" style={{fontSize:11, marginTop:4}}>{orderCountryCurrency(o.orderCountry)}</div>
           </div>
+          {(editingDriver[id] !== undefined || editingStatus[id] !== undefined || editingCommission[id] !== undefined) && (
+            <button 
+              className="btn success" 
+              onClick={()=> saveOrder(id)} 
+              disabled={updating[`save-${id}`]}
+              style={{padding:'8px 16px', fontSize:14, height:'fit-content'}}
+            >
+              Save Changes
+            </button>
+          )}
         </div>
         
         {/* Return Verification Action */}

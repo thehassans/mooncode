@@ -888,39 +888,37 @@ export default function UserOrders(){
                       </div>
                       
                       {/* Driver Commission - Bottom Left */}
-                      <div className="section" style={{padding:12, background:'#fef9c3', borderRadius:8, display:'grid', gap:8}}>
-                        <div style={{display:'flex', alignItems:'center', gap:12}}>
-                          <div style={{flex:1}}>
-                            <div className="label" style={{fontWeight:700, color:'#92400e', marginBottom:4}}>💰 Driver Commission</div>
-                            <input 
-                              type="number" 
-                              className="input" 
-                              value={currentCommission} 
-                              onChange={(e)=> setEditingCommission(prev => ({...prev, [id]: e.target.value}))} 
-                              placeholder="0" 
-                              min="0" 
-                              step="0.01"
-                              disabled={updating[saveKey]}
-                              style={{width:'100%', maxWidth:200}}
-                            />
-                            <div className="helper" style={{marginTop:4, color:'#92400e'}}>Commission for this order ({targetCode})</div>
-                          </div>
-                          {hasChanges && (
-                            <button 
-                              className="btn success" 
-                              onClick={()=> { 
-                                saveOrder(id, editingDriver[id], editingStatus[id], editingCommission[id]); 
-                                setEditingDriver(prev=>{const n={...prev}; delete n[id]; return n}); 
-                                setEditingStatus(prev=>{const n={...prev}; delete n[id]; return n}); 
-                                setEditingCommission(prev=>{const n={...prev}; delete n[id]; return n})
-                              }} 
-                              disabled={updating[saveKey]}
-                              style={{height:'fit-content', alignSelf:'flex-end', marginBottom:24}}
-                            >
-                              💾 Save Changes
-                            </button>
-                          )}
+                      <div style={{padding:'16px 0', borderTop:'1px solid var(--border)', display:'flex', alignItems:'center', gap:16}}>
+                        <div style={{flex:1}}>
+                          <div className="label" style={{fontSize:12, fontWeight:600, color:'var(--muted)', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.5px'}}>Driver Commission</div>
+                          <input 
+                            type="number" 
+                            className="input" 
+                            value={currentCommission} 
+                            onChange={(e)=> setEditingCommission(prev => ({...prev, [id]: e.target.value}))} 
+                            placeholder="0.00" 
+                            min="0" 
+                            step="0.01"
+                            disabled={updating[saveKey]}
+                            style={{width:'100%', maxWidth:180, fontSize:16, fontWeight:600}}
+                          />
+                          <div className="helper" style={{marginTop:4, fontSize:11}}>{targetCode}</div>
                         </div>
+                        {hasChanges && (
+                          <button 
+                            className="btn success" 
+                            onClick={()=> { 
+                              saveOrder(id, editingDriver[id], editingStatus[id], editingCommission[id]); 
+                              setEditingDriver(prev=>{const n={...prev}; delete n[id]; return n}); 
+                              setEditingStatus(prev=>{const n={...prev}; delete n[id]; return n}); 
+                              setEditingCommission(prev=>{const n={...prev}; delete n[id]; return n})
+                            }} 
+                            disabled={updating[saveKey]}
+                            style={{height:'fit-content', padding:'8px 16px', fontSize:14}}
+                          >
+                            Save Changes
+                          </button>
+                        )}
                       </div>
                       
                       {/* Return Verification Action */}
