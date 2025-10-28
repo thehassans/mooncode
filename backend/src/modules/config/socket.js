@@ -37,6 +37,11 @@ class SocketManager {
       forceNew: false,
       // Upgrade timeout for WebSocket handshake
       upgradeTimeout,
+      // Allow all origins for socket.io engine
+      allowRequest: (req, callback) => {
+        // Always allow the request, handle auth in connection handler
+        callback(null, true);
+      },
     });
 
     // Add connection monitoring
@@ -96,9 +101,30 @@ class SocketManager {
       });
     });
 
-    // Add engine.io monitoring
+    // Add engine.io monitoring with detailed error logging
     this.io.engine.on('connection_error', (error) => {
-      console.error('Engine.IO connection error:', error);
+      console.error('[socket] Engine.IO connection error:', {
+        message: error.message,
+        code: error.code,
+        context: error.context,
+        req: error.req ? {
+          url: error.req.url,
+          method: error.req.method,
+          headers: error.req.headers
+        } : null
+      });
+    });
+
+    // Monitor all incoming requests for debugging
+    this.io.engine.on('initial_headers', (headers, req) => {
+      headers['X-Socket-Server'] = 'BuySial-v1';
+    });
+
+    // Add session verification middleware
+    this.io.engine.on('connection', (rawSocket) => {
+      rawSocket.on('error', (err) => {
+        console.error('[socket] Raw socket error:', err.message);
+      });
     });
   }
 

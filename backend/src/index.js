@@ -75,8 +75,20 @@ const corsOptions = {
   credentials: true,
 }
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '5mb' }));
-app.use(morgan('dev'));
+// Skip body parsing for Socket.IO requests
+app.use((req, res, next) => {
+  if (req.path.startsWith('/socket.io')) {
+    return next();
+  }
+  express.json({ limit: '5mb' })(req, res, next);
+});
+// Skip morgan logging for Socket.IO requests (reduces noise)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/socket.io')) {
+    return next();
+  }
+  morgan('dev')(req, res, next);
+});
 
 // Fix for Android ERR_QUIC_PROTOCOL_ERROR - disable HTTP/3
 app.use((req, res, next) => {
