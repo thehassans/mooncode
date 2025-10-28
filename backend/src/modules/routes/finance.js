@@ -1510,7 +1510,7 @@ router.post(
       if (Number.isNaN(amt) || amt <= 0)
         return res.status(400).json({ message: "Invalid amount" });
 
-      const agent = await User.findOne({ _id: id, role: "agent" }).lean();
+      const agent = await User.findOne({ _id: id, role: "agent" });
       if (!agent) return res.status(404).json({ message: "Agent not found" });
       if (
         req.user.role !== "admin" &&
@@ -1522,12 +1522,15 @@ router.post(
       // Create an agent remittance record marking commission payment
       const remit = new AgentRemit({
         agent: id,
+        owner: agent.createdBy || req.user.id,
         approver: req.user.id,
+        approverRole: req.user.role === "user" ? "user" : "manager",
         amount: amt,
         currency: "PKR",
-        method: "transfer",
         note: "Commission payment",
         status: "sent",
+        sentAt: new Date(),
+        sentBy: req.user.id,
       });
       await remit.save();
 
