@@ -113,9 +113,24 @@ export default function DriverMe() {
   const commissionCurrency = (String((me?.driverProfile?.commissionCurrency ?? me?.commissionCurrency) || '').toUpperCase() || String(payout?.currency||'').toUpperCase() || 'SAR')
   
   // Commission calculations (integrated with backend)
-  const totalCommission = Number(me?.driverProfile?.totalCommission ?? 0) || ((commissionPerOrder > 0 && deliveredCount >= 0) ? (commissionPerOrder * deliveredCount) : 0)
+  // Always use backend totalCommission if available (includes extra commission from order-specific rates)
+  const backendTotalCommission = me?.driverProfile?.totalCommission
+  const totalCommission = backendTotalCommission != null && backendTotalCommission >= 0 
+    ? Number(backendTotalCommission) 
+    : ((commissionPerOrder > 0 && deliveredCount > 0) ? (commissionPerOrder * deliveredCount) : 0)
+  
   const baseCommission = deliveredCount * commissionPerOrder
   const extraCommission = Math.max(0, totalCommission - baseCommission)
+  
+  // Debug log for commission tracking
+  console.log('Driver Commission Debug:', {
+    backendTotal: backendTotalCommission,
+    calculatedTotal: totalCommission,
+    baseCommission,
+    extraCommission,
+    deliveredCount,
+    commissionPerOrder
+  })
 
   // Driver achievement level by delivered count
   const levels = useMemo(()=>[
