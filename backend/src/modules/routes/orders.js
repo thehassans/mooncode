@@ -74,6 +74,45 @@ async function emitOrderChange(ord, action = 'updated'){
   }catch{ /* ignore socket errors */ }
 }
 
+// Helper: recalculate and update driver's total commission from all their delivered orders
+async function updateDriverCommission(driverId){
+  try{
+    if (!driverId) return
+    const driver = await User.findOne({ _id: driverId, role: 'driver' })
+    if (!driver) return
+    
+    // Get all delivered orders for this driver
+    const deliveredOrders = await Order.find({
+      deliveryBoy: driverId,
+      shipmentStatus: 'delivered'
+    }).select('driverCommission')
+    
+    // Sum up all order commissions
+    const totalCommission = deliveredOrders.reduce((sum, order) => {
+      const orderCommission = Number(order.driverCommission) || 0
+      return sum + orderCommission
+    }, 0)
+    
+    // Update driver's total commission
+    if (!driver.driverProfile) driver.driverProfile = {}
+    driver.driverProfile.totalCommission = totalCommission
+    driver.markModified('driverProfile')
+    await driver.save()
+    
+    // Broadcast update to all panels
+    try{
+      const io = getIO()
+      const ownerId = String(driver.createdBy || driverId)
+      io.to(`workspace:${ownerId}`).emit('driver.commission.updated', { 
+        driverId: String(driverId),
+        totalCommission
+      })
+    }catch{}
+  }catch(err){
+    console.error('Failed to update driver commission:', err)
+  }
+}
+
 // Create order (admin, user, agent, manager with permission)
 router.post('/', auth, allowRoles('admin','user','agent','manager'), async (req, res) => {
   const { customerName, customerPhone, customerLocation, details, phoneCountryCode, orderCountry, city, customerArea, customerAddress, locationLat, locationLng, productId, quantity,
@@ -1884,6 +1923,19 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), async (req, res
     
     await ord.save()
     emitOrderChange(ord, 'updated').catch(()=>{})
+    
+    // Update driver commission if:
+    // 1. Commission was changed AND order is delivered
+    // 2. Status changed to delivered
+    const shouldUpdateCommission = (
+      (driverCommission !== undefined && ord.shipmentStatus === 'delivered') ||
+      (shipmentStatus === 'delivered')
+    )
+    if (shouldUpdateCommission && ord.deliveryBoy) {
+      updateDriverCommission(ord.deliveryBoy).catch((err) => {
+        console.error('Failed to update driver commission:', err)
+      })
+    }
     
     // Send WhatsApp notification to driver if assigned (non-blocking)
     if (newDriver !== undefined && newDriver && newDriver !== previousDriver) {

@@ -1252,6 +1252,24 @@ router.post(
         
         await r.save();
         
+        // Update driver's paid commission
+        try {
+          const driver = await User.findById(r.driver);
+          if (driver && driver.role === 'driver') {
+            const acceptedRemittances = await Remittance.find({
+              driver: r.driver,
+              status: 'accepted'
+            }).select('amount');
+            const totalPaid = acceptedRemittances.reduce((sum, rem) => sum + (Number(rem.amount) || 0), 0);
+            if (!driver.driverProfile) driver.driverProfile = {};
+            driver.driverProfile.paidCommission = totalPaid;
+            driver.markModified('driverProfile');
+            await driver.save();
+          }
+        } catch (updateErr) {
+          console.error('Failed to update driver paidCommission:', updateErr);
+        }
+        
         // Notify driver with accepted PDF
         try {
           const io = getIO();
@@ -1734,34 +1752,20 @@ router.get(
           remitRows && remitRows[0] ? Number(remitRows[0].total || 0) : 0;
         const pendingToCompany = Math.max(0, collected - deliveredToCompany);
 
-        // Driver commission calculation: commission per order × number of delivered orders
+        // Driver commission calculation: use totalCommission from profile (sum of all order commissions)
         const commissionPerOrder = Number(
           d.driverProfile?.commissionPerOrder ?? 0
         );
+        
+        // Use totalCommission from driver profile (calculated from actual order commissions)
         const driverCommission = Math.round(
-          deliveredCount * commissionPerOrder
+          Number(d.driverProfile?.totalCommission ?? 0)
         );
 
-        // Calculate withdrawn commission (from accepted payout requests to driver)
-        const withdrawnRows = await Remittance.aggregate([
-          {
-            $match: {
-              driver: new M.Types.ObjectId(d._id),
-              status: "accepted",
-              paidToId: { $exists: true, $ne: null },
-            },
-          },
-          {
-            $group: {
-              _id: null,
-              total: { $sum: { $ifNull: ["$driverCommission", 0] } },
-            },
-          },
-        ]);
-        const withdrawnCommission =
-          withdrawnRows && withdrawnRows[0]
-            ? Number(withdrawnRows[0].total || 0)
-            : 0;
+        // Use paidCommission from driver profile (updated when remittances are accepted)
+        const withdrawnCommission = Math.round(
+          Number(d.driverProfile?.paidCommission ?? 0)
+        );
 
         // Pending commission: earned commission minus withdrawn
         const pendingCommission = Math.max(

@@ -53,6 +53,8 @@ const UserSchema = new mongoose.Schema({
     commissionPerOrder: { type: Number, default: 0 },
     commissionCurrency: { type: String, enum: ['AED','OMR','SAR','BHD','INR','KWD','QAR'], default: 'SAR' },
     commissionRate: { type: Number, default: 8 },
+    totalCommission: { type: Number, default: 0 }, // Total commission earned from all delivered orders
+    paidCommission: { type: Number, default: 0 }, // Total commission already paid via remittances
   },
   // Workspace/user-level settings
   settings: {

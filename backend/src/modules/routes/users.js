@@ -1042,7 +1042,13 @@ router.post('/drivers', auth, allowRoles('admin','user','manager'), async (req, 
   const cRate = (Number.isFinite(commissionRate) && commissionRate >= 0 && commissionRate <= 100) ? commissionRate : 8
   const driver = new User({ 
     firstName, lastName, email, password, phone, country, city, role: 'driver', createdBy,
-    driverProfile: { commissionPerOrder: cpo, commissionCurrency, commissionRate: cRate }
+    driverProfile: { 
+      commissionPerOrder: cpo, 
+      commissionCurrency, 
+      commissionRate: cRate,
+      totalCommission: 0,
+      paidCommission: 0
+    }
   })
   await driver.save()
   // Broadcast to workspace so managers/owners can see the new driver immediately
@@ -1116,10 +1122,15 @@ router.patch('/drivers/:id', auth, allowRoles('admin','user'), async (req, res) 
       // Commission rate as percentage (e.g., 8 for 8%)
       const cRateRaw = req.body?.commissionRate
       const cRate = (cRateRaw !== undefined) ? (Number.isFinite(Number(cRateRaw)) && Number(cRateRaw) >= 0 && Number(cRateRaw) <= 100 ? Number(cRateRaw) : 8) : (driver.driverProfile?.commissionRate ?? 8)
+      // Preserve existing totalCommission and paidCommission when updating
+      const existingTotal = driver.driverProfile?.totalCommission ?? 0
+      const existingPaid = driver.driverProfile?.paidCommission ?? 0
       driver.driverProfile = {
         commissionPerOrder: cpo,
         commissionCurrency: cur,
         commissionRate: cRate,
+        totalCommission: existingTotal,
+        paidCommission: existingPaid
       }
       driver.markModified('driverProfile')
     }
