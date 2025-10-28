@@ -35,7 +35,7 @@ export default function Drivers(){
   const [loadingList, setLoadingList] = useState(false)
   const [phoneError, setPhoneError] = useState('')
   const [delModal, setDelModal] = useState({ open:false, busy:false, error:'', confirm:'', driver:null })
-  const [editModal, setEditModal] = useState({ open:false, busy:false, error:'', driver:null, firstName:'', lastName:'', email:'', phone:'', country: DEFAULT_COUNTRY.name, city:'', password:'', commissionPerOrder:'' })
+  const [editModal, setEditModal] = useState({ open:false, busy:false, error:'', driver:null, firstName:'', lastName:'', email:'', phone:'', country: DEFAULT_COUNTRY.name, city:'', password:'' })
 
   const currentCountryKey = useMemo(()=>{
     const byName = COUNTRY_OPTS.find(c=>c.name===form.country)
@@ -61,7 +61,6 @@ export default function Drivers(){
 
   function openEdit(driver){
     const d = driver || {}
-    console.log('Opening edit for driver:', d.firstName, d.lastName, 'Commission:', d.commissionPerOrder)
     setEditModal({
       open:true, busy:false, error:'', driver: d,
       firstName: d.firstName||'', lastName: d.lastName||'', email: d.email||'', phone: d.phone||'', country: d.country||DEFAULT_COUNTRY.name, city: d.city||'', password:'',
@@ -75,7 +74,7 @@ export default function Drivers(){
     setEditModal(m=>({ ...m, busy:true, error:'' }))
     try{
       const uid = String(d.id || d._id || '')
-      const payload = {
+      await apiPatch(`/api/users/drivers/${uid}`, {
         firstName: editModal.firstName,
         lastName: editModal.lastName,
         email: editModal.email,
@@ -85,14 +84,10 @@ export default function Drivers(){
         ...(editModal.password ? { password: editModal.password } : {}),
         commissionPerOrder: Number(editModal.commissionPerOrder||0),
         commissionCurrency: COUNTRY_TO_CCY[editModal.country] || 'SAR',
-      }
-      console.log('Saving driver with commission:', payload.commissionPerOrder)
-      const response = await apiPatch(`/api/users/drivers/${uid}`, payload)
-      console.log('Driver saved, response:', response)
-      setEditModal({ open:false, busy:false, error:'', driver:null, firstName:'', lastName:'', email:'', phone:'', country: DEFAULT_COUNTRY.name, city:'', password:'', commissionPerOrder:'' })
+      })
+      setEditModal({ open:false, busy:false, error:'', driver:null, firstName:'', lastName:'', email:'', phone:'', country: DEFAULT_COUNTRY.name, city:'', password:'' })
       await loadDrivers(q)
     }catch(e){
-      console.error('Failed to save driver:', e)
       setEditModal(m=>({ ...m, busy:false, error: e?.message || 'Failed to update driver' }))
     }
   }
@@ -110,30 +105,19 @@ export default function Drivers(){
     setLoadingList(true)
     try{
       const data = await apiGet(`/api/users/drivers?q=${encodeURIComponent(query)}`)
-      console.log('📥 Loaded drivers from API:', data.users?.length, 'drivers')
-      if (data.users && data.users.length > 0) {
-        console.log('🔍 First driver driverProfile:', data.users[0].driverProfile)
-      }
-      setRows((data.users||[]).map(u => {
-        const commission = Number(u?.driverProfile?.commissionPerOrder || 0)
-        console.log(`Driver ${u.firstName} ${u.lastName} - Commission:`, commission, 'Full driverProfile:', u.driverProfile)
-        return {
-          id: u._id || u.id,
-          firstName: u.firstName,
-          lastName: u.lastName,
-          email: u.email,
-          phone: u.phone,
-          country: u.country,
-          city: u.city,
-          createdAt: u.createdAt,
-          commissionPerOrder: commission,
-          commissionCurrency: String(u?.driverProfile?.commissionCurrency || (COUNTRY_TO_CCY[u.country] || 'SAR')),
-        }
-      }))
-    }catch(_e){ 
-      console.error('Failed to load drivers:', _e)
-      setRows([]) 
-    }
+      setRows((data.users||[]).map(u => ({
+        id: u._id || u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        email: u.email,
+        phone: u.phone,
+        country: u.country,
+        city: u.city,
+        createdAt: u.createdAt,
+        commissionPerOrder: Number(u?.driverProfile?.commissionPerOrder || 0),
+        commissionCurrency: String(u?.driverProfile?.commissionCurrency || (COUNTRY_TO_CCY[u.country] || 'SAR')),
+      })))
+    }catch(_e){ setRows([]) }
     finally{ setLoadingList(false) }
   }
 
@@ -144,7 +128,7 @@ export default function Drivers(){
     return ()=> clearTimeout(id)
   },[q])
 
-  // Real-time: refresh drivers list when a driver is created/updated/deleted in this workspace
+  // Real-time: refresh drivers list when a driver is created/deleted in this workspace
   useEffect(()=>{
     let socket
     try{
@@ -152,12 +136,10 @@ export default function Drivers(){
       socket = io(API_BASE || undefined, { path:'/socket.io', transports:['polling'], upgrade:false, auth: { token }, withCredentials: true })
       const refresh = ()=>{ loadDrivers(q) }
       socket.on('driver.created', refresh)
-      socket.on('driver.updated', refresh)
       socket.on('driver.deleted', refresh)
     }catch{}
     return ()=>{
       try{ socket && socket.off('driver.created') }catch{}
-      try{ socket && socket.off('driver.updated') }catch{}
       try{ socket && socket.off('driver.deleted') }catch{}
       try{ socket && socket.disconnect() }catch{}
     }
@@ -340,16 +322,15 @@ export default function Drivers(){
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Phone</th>
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Country</th>
                 <th style={{textAlign:'left', padding:'10px 12px'}}>City</th>
-                <th style={{textAlign:'left', padding:'10px 12px'}}>Commission</th>
                 <th style={{textAlign:'left', padding:'10px 12px'}}>Created</th>
                 <th style={{textAlign:'right', padding:'10px 12px'}}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loadingList ? (
-                <tr><td colSpan={8} style={{padding:12, opacity:0.7}}>Loading...</td></tr>
+                <tr><td colSpan={7} style={{padding:12, opacity:0.7}}>Loading...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={8} style={{padding:12, opacity:0.7}}>No drivers found</td></tr>
+                <tr><td colSpan={7} style={{padding:12, opacity:0.7}}>No drivers found</td></tr>
               ) : (
                 rows.map(u=> (
                   <tr key={u.id} style={{borderTop:'1px solid var(--border)'}}>
@@ -358,9 +339,6 @@ export default function Drivers(){
                     <td style={{padding:'10px 12px'}}>{u.phone||'-'}</td>
                     <td style={{padding:'10px 12px'}}>{u.country||'-'}</td>
                     <td style={{padding:'10px 12px'}}>{u.city||'-'}</td>
-                    <td style={{padding:'10px 12px'}}>
-                      <span style={{fontWeight:600, color:'#10b981'}}>{u.commissionCurrency} {Number(u.commissionPerOrder||0).toFixed(2)}</span>
-                    </td>
                     <td style={{padding:'10px 12px'}}>{fmtDate(u.createdAt)}</td>
                     <td style={{padding:'10px 12px', textAlign:'right'}}>
                       <div style={{display:'inline-flex', gap:8}}>
