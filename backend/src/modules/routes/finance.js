@@ -1636,6 +1636,98 @@ router.post(
   }
 );
 
+// Download commission receipt PDF for agent
+router.get(
+  "/agent-remittances/:id/download-receipt",
+  auth,
+  allowRoles("agent", "admin"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Find the remittance
+      const remit = await AgentRemit.findById(id).populate('agent', 'firstName lastName phone');
+      if (!remit) {
+        return res.status(404).json({ message: "Remittance not found" });
+      }
+
+      // Check permission - agent can only see their own
+      if (req.user.role === 'agent' && String(remit.agent._id) !== String(req.user.id)) {
+        return res.status(403).json({ message: "Not allowed" });
+      }
+
+      // Only allow download for sent commissions
+      if (remit.status !== 'sent') {
+        return res.status(400).json({ message: "Receipt only available for sent commissions" });
+      }
+
+      const agent = remit.agent;
+
+      // Fetch agent's orders for PDF
+      let orders = [];
+      let totalSubmitted = 0;
+      let totalDelivered = 0;
+      try {
+        const agentOrders = await Order.find({ agent: agent._id })
+          .populate('productId', 'price baseCurrency')
+          .lean();
+        
+        orders = agentOrders
+          .filter(o => String(o.shipmentStatus || '').toLowerCase() === 'delivered')
+          .map(o => {
+            const price = o.total || o.productId?.price || 0;
+            const currency = o.items?.[0]?.productId?.baseCurrency || o.productId?.baseCurrency || 'AED';
+            return {
+              orderId: o.invoiceId || o._id.toString().slice(-8),
+              date: o.updatedAt || o.createdAt,
+              amount: price,
+              currency: currency
+            };
+          });
+        
+        totalSubmitted = agentOrders.length;
+        totalDelivered = orders.length;
+      } catch (err) {
+        console.error('Error fetching agent orders:', err);
+      }
+
+      // Currency conversion
+      const pkrToAed = 0.0132;
+      const amountAED = remit.amount * pkrToAed;
+
+      // Generate PDF
+      const pdfPath = await generateAgentCommissionReceiptPDF({
+        agentName: `${agent.firstName || ''} ${agent.lastName || ''}`.trim() || 'Agent',
+        agentPhone: agent.phone || '',
+        totalSubmitted,
+        totalDelivered,
+        amountAED,
+        amountPKR: remit.amount,
+        orders
+      });
+
+      const fullPath = path.join(process.cwd(), pdfPath);
+      
+      // Send PDF file
+      res.download(fullPath, `Commission_Receipt_${new Date(remit.sentAt).toLocaleDateString()}.pdf`, (err) => {
+        if (err) {
+          console.error('Download error:', err);
+        }
+        // Clean up file after sending
+        setTimeout(() => {
+          try {
+            if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+          } catch {}
+        }, 5000);
+      });
+
+    } catch (err) {
+      console.error("Download commission receipt error:", err);
+      return res.status(500).json({ message: "Failed to download receipt" });
+    }
+  }
+);
+
 // Send a manual payout receipt PDF to an agent (owner). Does not alter balances.
 router.post(
   "/agents/:id/send-manual-receipt",

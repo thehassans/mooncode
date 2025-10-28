@@ -691,6 +691,7 @@ export default function AgentMe() {
                   <th style={{textAlign:'left', padding:'8px 10px', minWidth: isDesktop? 120: undefined}}>Role</th>
                   <th style={{textAlign:'left', padding:'8px 10px', minWidth: isDesktop? 160: undefined}}>Amount</th>
                   <th style={{textAlign:'left', padding:'8px 10px', minWidth: isDesktop? 140: undefined}}>Status</th>
+                  <th style={{textAlign:'center', padding:'8px 10px', minWidth: isDesktop? 140: undefined}}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -704,6 +705,41 @@ export default function AgentMe() {
                       {r.status==='pending' && <span className="badge" style={{borderColor:'#f59e0b', color:'#b45309'}}>Pending</span>}
                       {r.status==='approved' && <span className="badge" style={{borderColor:'#3b82f6', color:'#1d4ed8'}}>Approved</span>}
                       {r.status==='sent' && <span className="badge" style={{borderColor:'#10b981', color:'#065f46'}}>Sent</span>}
+                    </td>
+                    <td style={{padding:'8px 10px', textAlign:'center'}}>
+                      {r.status === 'sent' && (
+                        <button 
+                          className="btn secondary" 
+                          style={{padding: '6px 12px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: 4}}
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(`${import.meta.env.VITE_API_BASE || ''}/api/finance/agent-remittances/${r._id}/download-receipt`, {
+                                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                              });
+                              if (!response.ok) throw new Error('Failed to download');
+                              const blob = await response.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `Commission_Receipt_${new Date(r.sentAt || r.updatedAt).toLocaleDateString()}.pdf`;
+                              document.body.appendChild(a);
+                              a.click();
+                              window.URL.revokeObjectURL(url);
+                              document.body.removeChild(a);
+                            } catch (err) {
+                              console.error('Download error:', err);
+                              alert('Failed to download receipt. Please try again.');
+                            }
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                          </svg>
+                          PDF
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
