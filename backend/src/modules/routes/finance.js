@@ -892,10 +892,22 @@ router.post(
         });
       }
       // Validate available pending amount: COLLECTED amounts - accepted remittances
-      // Compute delivered collected amount for this driver (prefer collectedAmount, fallback to totals/prices)
+      // Get all accepted remittances to find already-remitted orders
+      const acceptedRemittances = await Remittance.find({
+        driver: req.user.id,
+        status: 'accepted'
+      }).select('createdAt');
+      
+      // Only get orders that are after the last accepted remittance (pending to company)
+      const lastAcceptedDate = acceptedRemittances.length > 0 
+        ? new Date(Math.max(...acceptedRemittances.map(r => new Date(r.createdAt))))
+        : new Date(0);
+      
+      // Compute delivered orders PENDING to company (not yet remitted)
       const deliveredOrders = await Order.find({
         deliveryBoy: req.user.id,
         shipmentStatus: "delivered",
+        deliveredAt: { $gt: lastAcceptedDate }  // Only orders after last remittance
       })
         .select("invoiceNumber customerName shipmentStatus deliveredAt total collectedAmount productId quantity items grandTotal subTotal driverCommission")
         .populate("productId", "name price")
@@ -1023,9 +1035,11 @@ router.post(
         const commissionPerOrder = Number(driver?.driverProfile?.commissionPerOrder || 0);
         const commissionCurrency = driver?.driverProfile?.commissionCurrency || doc.currency || 'SAR';
         
-        // Total commission = sum of each order's driverCommission
+        // Total commission = sum of each order's driverCommission (use driver's rate as fallback)
         const totalCommission = deliveredOrders.reduce((sum, o) => {
-          return sum + (Number(o.driverCommission) || commissionPerOrder || 0)
+          const orderCommission = Number(o.driverCommission) || 0;
+          // If order has no commission set, use driver's default rate
+          return sum + (orderCommission > 0 ? orderCommission : commissionPerOrder)
         }, 0);
         
         // Get total paid commission from accepted remittances
@@ -1070,7 +1084,7 @@ router.post(
               price: item.productId?.price || 0
             })),
             subTotal: o.subTotal || o.total || o.collectedAmount || 0,
-            commission: Number(o.driverCommission) || commissionPerOrder || 0
+            commission: Number(o.driverCommission) > 0 ? Number(o.driverCommission) : commissionPerOrder
           }))
         });
         
@@ -1159,19 +1173,20 @@ router.post(
           // Calculate commission from delivered orders
           const commissionPerOrder = Number(driver?.driverProfile?.commissionPerOrder || 0);
           
-          // Get financial data from original remittance
+          // Get financial data from original remittance (orders delivered up to this remittance)
           const deliveredOrders = await Order.find({
             deliveryBoy: r.driver,
             shipmentStatus: 'delivered',
-            paymentCollected: true
+            deliveredAt: { $lte: new Date(r.createdAt) }  // Orders delivered up to remittance date
           })
             .select("invoiceNumber customerName shipmentStatus deliveredAt total collectedAmount productId quantity items grandTotal subTotal driverCommission")
             .populate("productId", "name price")
             .populate("items.productId", "name price");
           
-          // Calculate total commission from actual orders
+          // Calculate total commission from actual orders (use driver's rate as fallback)
           const totalCommission = deliveredOrders.reduce((sum, o) => {
-            return sum + (Number(o.driverCommission) || commissionPerOrder || 0)
+            const orderCommission = Number(o.driverCommission) || 0;
+            return sum + (orderCommission > 0 ? orderCommission : commissionPerOrder)
           }, 0);
           
           const paidRemittances = await Remittance.find({
@@ -1218,7 +1233,7 @@ router.post(
                 price: item.productId?.price || 0
               })),
               subTotal: o.subTotal || o.total || o.collectedAmount || 0,
-              commission: Number(o.driverCommission) || commissionPerOrder || 0
+              commission: Number(o.driverCommission) > 0 ? Number(o.driverCommission) : commissionPerOrder
             }))
           });
           
