@@ -892,27 +892,15 @@ router.post(
         });
       }
       // Validate available pending amount: COLLECTED amounts - accepted remittances
-      // Get all accepted remittances to find already-remitted orders
-      const acceptedRemittances = await Remittance.find({
-        driver: req.user.id,
-        status: 'accepted'
-      }).select('createdAt');
-      
-      // Only get orders that are after the last accepted remittance (pending to company)
-      const lastAcceptedDate = acceptedRemittances.length > 0 
-        ? new Date(Math.max(...acceptedRemittances.map(r => new Date(r.createdAt))))
-        : new Date(0);
-      
-      // Compute delivered orders PENDING to company (not yet remitted)
-      const deliveredOrders = await Order.find({
+      // Get ALL delivered orders to calculate total collected (not filtered by date)
+      const allDeliveredOrders = await Order.find({
         deliveryBoy: req.user.id,
-        shipmentStatus: "delivered",
-        deliveredAt: { $gt: lastAcceptedDate }  // Only orders after last remittance
+        shipmentStatus: "delivered"
       })
-        .select("invoiceNumber customerName shipmentStatus deliveredAt total collectedAmount productId quantity items grandTotal subTotal driverCommission")
+        .select("total collectedAmount productId quantity items grandTotal subTotal")
         .populate("productId", "name price")
         .populate("items.productId", "name price");
-      const totalCollectedAmount = deliveredOrders.reduce((sum, o) => {
+      const totalCollectedAmount = allDeliveredOrders.reduce((sum, o) => {
         let val = 0;
         if (o?.collectedAmount != null && Number(o.collectedAmount) > 0) {
           val = Number(o.collectedAmount) || 0;
@@ -1020,8 +1008,27 @@ router.post(
       
       // Generate PDF settlement summary with comprehensive data
       try {
-        const driver = await User.findById(req.user.id).select('firstName lastName phone commission paidCommission');
+        const driver = await User.findById(req.user.id).select('firstName lastName phone commission paidCommission driverProfile');
         const manager = await User.findById(managerRef).select('firstName lastName');
+        
+        // Get orders for PDF - only pending orders (after last remittance)
+        const acceptedRemittances = await Remittance.find({
+          driver: req.user.id,
+          status: 'accepted'
+        }).select('createdAt');
+        
+        const lastAcceptedDate = acceptedRemittances.length > 0 
+          ? new Date(Math.max(...acceptedRemittances.map(r => new Date(r.createdAt))))
+          : new Date(0);
+        
+        const deliveredOrders = await Order.find({
+          deliveryBoy: req.user.id,
+          shipmentStatus: "delivered",
+          deliveredAt: { $gt: lastAcceptedDate }  // Only orders after last remittance
+        })
+          .select("invoiceNumber customerName shipmentStatus deliveredAt total collectedAmount productId quantity items grandTotal subTotal driverCommission")
+          .populate("productId", "name price")
+          .populate("items.productId", "name price");
         
         // Get order statistics for the driver
         // Count ALL orders ever assigned to this driver (not just currently assigned)
