@@ -16,22 +16,9 @@ export default function AgentLayout() {
   const [ordersSubmitted, setOrdersSubmitted] = useState(0)
   const levelThresholds = useMemo(() => [0, 5, 50, 100, 250, 500], [])
   const [showSettings, setShowSettings] = useState(false)
-  const [availability, setAvailability] = useState(() => me?.availability || 'available')
-  const [soundEnabled, setSoundEnabled] = useState(() => {
-    try {
-      const v = localStorage.getItem('wa_sound')
-      return v ? v !== 'false' : true
-    } catch {
-      return true
-    }
-  })
-  const [ringtone, setRingtone] = useState(() => {
-    try {
-      return localStorage.getItem('wa_ringtone') || 'shopify'
-    } catch {
-      return 'shopify'
-    }
-  })
+  const [availability, setAvailability] = useState('available')
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [ringtone, setRingtone] = useState('shopify')
   const [showPassModal, setShowPassModal] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -578,6 +565,20 @@ export default function AgentLayout() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showSettings])
+
+  // Initialize settings from localStorage and user data
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('wa_sound')
+      setSoundEnabled(v ? v !== 'false' : true)
+    } catch {}
+    try {
+      setRingtone(localStorage.getItem('wa_ringtone') || 'shopify')
+    } catch {}
+    if (me?.availability) {
+      setAvailability(me.availability)
+    }
+  }, [me])
 
   return (
     <div>
