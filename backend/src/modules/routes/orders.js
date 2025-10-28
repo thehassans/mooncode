@@ -1831,7 +1831,13 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), async (req, res
     // Basic fields
     const previousDriver = ord.deliveryBoy ? String(ord.deliveryBoy) : null
     const newDriver = deliveryBoy !== undefined ? (deliveryBoy || null) : undefined
-    if (deliveryBoy !== undefined) ord.deliveryBoy = deliveryBoy || null
+    if (deliveryBoy !== undefined) {
+      ord.deliveryBoy = deliveryBoy || null
+      // Auto-set status to 'assigned' when driver is selected (if currently pending)
+      if (deliveryBoy && (!ord.shipmentStatus || ord.shipmentStatus === 'pending')) {
+        ord.shipmentStatus = 'assigned'
+      }
+    }
     if (driverCommission !== undefined) ord.driverCommission = Math.max(0, Number(driverCommission || 0))
     if (customerName !== undefined) ord.customerName = customerName
     if (customerPhone !== undefined) ord.customerPhone = customerPhone
