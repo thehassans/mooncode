@@ -274,7 +274,18 @@ export default function DriverMe() {
               onClick={async () => {
                 setGeneratingPDF(true)
                 try {
-                  const response = await fetch(`${API_BASE}/api/finance/drivers/me/commission-pdf`, {
+                  // Build URL: if API_BASE already contains /api, don't duplicate it
+                  const baseUrl = String(API_BASE || '').trim()
+                  let url
+                  if (baseUrl.endsWith('/api')) {
+                    url = `${baseUrl}/finance/drivers/me/commission-pdf`
+                  } else if (baseUrl) {
+                    url = `${baseUrl}/api/finance/drivers/me/commission-pdf`
+                  } else {
+                    url = '/api/finance/drivers/me/commission-pdf'
+                  }
+                  
+                  const response = await fetch(url, {
                     method: 'GET',
                     headers: {
                       'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -284,13 +295,13 @@ export default function DriverMe() {
                   if (!response.ok) throw new Error('Failed to generate PDF')
                   
                   const blob = await response.blob()
-                  const url = window.URL.createObjectURL(blob)
+                  const blobUrl = window.URL.createObjectURL(blob)
                   const a = document.createElement('a')
-                  a.href = url
+                  a.href = blobUrl
                   a.download = `commission-statement-${new Date().toISOString().split('T')[0]}.pdf`
                   document.body.appendChild(a)
                   a.click()
-                  window.URL.revokeObjectURL(url)
+                  window.URL.revokeObjectURL(blobUrl)
                   document.body.removeChild(a)
                 } catch (err) {
                   console.error('PDF generation failed:', err)
