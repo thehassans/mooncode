@@ -30,6 +30,11 @@ export default function Transactions(){
   const [payModal, setPayModal] = useState(false)
   const [payForm, setPayForm] = useState({ amount:'', method:'hand', note:'', file:null })
   const [submitting, setSubmitting] = useState(false)
+  const [remitPage, setRemitPage] = useState(1)
+  const remitPerPage = 10
+
+  // Reset remit page when modal opens
+  useEffect(()=>{ if(remitModalFor) setRemitPage(1) },[remitModalFor])
 
   useEffect(()=>{ /* initial no-op */ },[])
   
@@ -758,47 +763,57 @@ export default function Transactions(){
               {filteredRemitsForDriver.length === 0 ? (
                 <div className="helper">No remittances in selected date range.</div>
               ) : (
-                <div style={{ overflowX:'auto' }}>
-                  <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:0, border:'1px solid var(--border)', borderRadius:8, overflow:'hidden' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ padding:'8px 10px', textAlign:'left' }}>Amount</th>
-                        <th style={{ padding:'8px 10px', textAlign:'left' }}>Status</th>
-                        <th style={{ padding:'8px 10px', textAlign:'left' }}>Method</th>
-                        <th style={{ padding:'8px 10px', textAlign:'left' }}>Manager</th>
-                        <th style={{ padding:'8px 10px', textAlign:'left' }}>Accepted</th>
-                        <th style={{ padding:'8px 10px', textAlign:'left' }}>Created</th>
-                        <th style={{ padding:'8px 10px', textAlign:'left' }}>Receipt</th>
-                        <th style={{ padding:'8px 10px', textAlign:'left' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredRemitsForDriver.map((r, i)=> (
-                        <tr key={String(r._id||i)} style={{ borderTop:'1px solid var(--border)' }}>
-                          <td style={{ padding:'8px 10px', fontWeight:700, color:'#22c55e' }}>{num(r.amount)} {r.currency||''}</td>
-                          <td style={{ padding:'8px 10px' }}>{String(r.status||'').toUpperCase()}</td>
-                          <td style={{ padding:'8px 10px' }}>{(String(r.method||'hand').toLowerCase()==='transfer') ? 'Transfer' : 'Hand'}</td>
-                          <td style={{ padding:'8px 10px' }}>{r?.manager ? ((r.manager.firstName||'') + ' ' + (r.manager.lastName||'')).trim() || (r.manager.email||'-') : '-'}</td>
-                          <td style={{ padding:'8px 10px' }}>{r.acceptedAt? new Date(r.acceptedAt).toLocaleString(): '—'}</td>
-                          <td style={{ padding:'8px 10px' }}>{r.createdAt? new Date(r.createdAt).toLocaleString(): '—'}</td>
-                          <td style={{ padding:'8px 10px' }}>
-                            {r.receiptPath ? (
-                              <a href={`${API_BASE}${r.receiptPath}`} target="_blank" rel="noopener noreferrer">Download</a>
-                            ) : '—'}
-                          </td>
-                          <td style={{ padding:'8px 10px' }}>
-                            {String(r.status||'').toLowerCase()==='pending' ? (
-                              <div style={{display:'flex', gap:6}}>
-                                <button className="btn small" onClick={()=> acceptRemit(String(r._id||''))}>Accept</button>
-                                <button className="btn small secondary" onClick={()=> rejectRemit(String(r._id||''))}>Reject</button>
-                              </div>
-                            ) : '—'}
-                          </td>
+                <>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div className="helper">Showing {Math.min((remitPage - 1) * remitPerPage + 1, filteredRemitsForDriver.length)} - {Math.min(remitPage * remitPerPage, filteredRemitsForDriver.length)} of {filteredRemitsForDriver.length} remittances</div>
+                    <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                      <button className="btn secondary" onClick={()=> setRemitPage(p => Math.max(1, p - 1))} disabled={remitPage === 1} style={{fontSize:13, padding:'6px 12px'}}>← Prev</button>
+                      <span style={{fontSize:13}}>Page {remitPage} of {Math.ceil(filteredRemitsForDriver.length / remitPerPage)}</span>
+                      <button className="btn secondary" onClick={()=> setRemitPage(p => Math.min(Math.ceil(filteredRemitsForDriver.length / remitPerPage), p + 1))} disabled={remitPage >= Math.ceil(filteredRemitsForDriver.length / remitPerPage)} style={{fontSize:13, padding:'6px 12px'}}>Next →</button>
+                    </div>
+                  </div>
+                  <div style={{ overflowX:'auto' }}>
+                    <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom:'2px solid var(--border)', background:'var(--panel)' }}>
+                          <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Amount</th>
+                          <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Status</th>
+                          <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Method</th>
+                          <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Manager</th>
+                          <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Accepted</th>
+                          <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Created</th>
+                          <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Receipt</th>
+                          <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {filteredRemitsForDriver.slice((remitPage - 1) * remitPerPage, remitPage * remitPerPage).map((r, i)=> (
+                          <tr key={String(r._id||i)} style={{ borderTop:'1px solid var(--border)' }}>
+                            <td style={{ padding:'12px', fontWeight:600, color:'#22c55e' }}>{num(r.amount)} {r.currency||''}</td>
+                            <td style={{ padding:'12px' }}><span className="badge" style={{fontSize:11}}>{String(r.status||'').toUpperCase()}</span></td>
+                            <td style={{ padding:'12px' }}>{(String(r.method||'hand').toLowerCase()==='transfer') ? 'Transfer' : 'Hand'}</td>
+                            <td style={{ padding:'12px' }}>{r?.manager ? ((r.manager.firstName||'') + ' ' + (r.manager.lastName||'')).trim() || (r.manager.email||'-') : '-'}</td>
+                            <td style={{ padding:'12px' }}>{r.acceptedAt? new Date(r.acceptedAt).toLocaleString(): '—'}</td>
+                            <td style={{ padding:'12px' }}>{r.createdAt? new Date(r.createdAt).toLocaleString(): '—'}</td>
+                            <td style={{ padding:'12px' }}>
+                            {r.receiptPath ? (
+                                <a href={`${API_BASE}${r.receiptPath}`} target="_blank" rel="noopener noreferrer" className="btn" style={{fontSize:13, padding:'6px 12px'}}>Download</a>
+                              ) : '—'}
+                            </td>
+                            <td style={{ padding:'12px' }}>
+                              {String(r.status||'').toLowerCase()==='pending' ? (
+                                <div style={{display:'flex', gap:6}}>
+                                  <button className="btn" style={{fontSize:13, padding:'6px 12px'}} onClick={()=> acceptRemit(String(r._id||''))}>Accept</button>
+                                  <button className="btn secondary" style={{fontSize:13, padding:'6px 12px'}} onClick={()=> rejectRemit(String(r._id||''))}>Reject</button>
+                                </div>
+                              ) : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </div>
           </div>
