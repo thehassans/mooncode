@@ -796,6 +796,9 @@ export default function UserOrders(){
                   // Address
                   const fullAddress = [o.customerAddress, o.customerArea, o.city, o.orderCountry].filter(Boolean).join(', ')
                   
+                  // Get drivers from the same country as the order
+                  const countryDrivers = driversByCountry[o.orderCountry] || []
+                  
                   // Driver, status, and commission
                   const currentDriver = editingDriver[id] !== undefined ? editingDriver[id] : (o.deliveryBoy?._id || o.deliveryBoy || '')
                   const currentStatus = editingStatus[id] || o.shipmentStatus || 'pending'
