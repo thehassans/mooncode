@@ -185,6 +185,7 @@ export default function DriverAmounts(){
                 <th style={{ padding: '10px 12px', textAlign:'center', borderRight:'1px solid var(--border)', color:'#10b981' }}>Delivered</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e' }}>Collected</th>
                 <th style={{ padding: '10px 12px', textAlign:'center', borderRight:'1px solid var(--border)', color:'#a855f7' }}>Commission/Order</th>
+                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#ec4899' }}>Extra Commission</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#06b6d4' }}>Commission</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#8b5cf6' }}>Withdrawn</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b' }}>Pending</th>
@@ -197,13 +198,13 @@ export default function DriverAmounts(){
               {loading ? (
                 Array.from({length:5}).map((_,i)=> (
                   <tr key={`sk${i}`}>
-                    <td colSpan={12} style={{ padding:'10px 12px' }}>
+                    <td colSpan={13} style={{ padding:'10px 12px' }}>
                       <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
                     </td>
                   </tr>
                 ))
               ) : filteredDrivers.length === 0 ? (
-                <tr><td colSpan={12} style={{ padding: '10px 12px', opacity: 0.7, textAlign:'center' }}>No drivers found</td></tr>
+                <tr><td colSpan={13} style={{ padding: '10px 12px', opacity: 0.7, textAlign:'center' }}>No drivers found</td></tr>
               ) : (
                 filteredDrivers.map((d, idx) => (
                   <tr key={String(d.id)} style={{ borderTop: '1px solid var(--border)', background: idx % 2 ? 'transparent' : 'var(--panel)' }}>
@@ -229,6 +230,9 @@ export default function DriverAmounts(){
                       ) : (
                         <span style={{color:'#ef4444', fontWeight:600, fontSize:12}}>Not Set</span>
                       )}
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
+                      <span style={{color:'#ec4899', fontWeight:800}}>{d.currency} {num(d.extraCommission||0)}</span>
                     </td>
                     <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
                       <span style={{color:'#06b6d4', fontWeight:800}}>{d.currency} {num(d.driverCommission||0)}</span>
