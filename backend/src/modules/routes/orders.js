@@ -99,11 +99,17 @@ async function updateDriverCommission(driverId){
     driver.markModified('driverProfile')
     await driver.save()
     
-    // Broadcast update to all panels
+    // Broadcast update to all panels (owner workspace + driver's own room)
     try{
       const io = getIO()
       const ownerId = String(driver.createdBy || driverId)
+      // Emit to owner/manager workspace
       io.to(`workspace:${ownerId}`).emit('driver.commission.updated', { 
+        driverId: String(driverId),
+        totalCommission
+      })
+      // Emit to driver's own room
+      io.to(`user:${String(driverId)}`).emit('driver.commission.updated', { 
         driverId: String(driverId),
         totalCommission
       })

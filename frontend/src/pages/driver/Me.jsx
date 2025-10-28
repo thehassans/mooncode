@@ -51,7 +51,8 @@ export default function DriverMe() {
     try{
       const token = localStorage.getItem('token') || ''
       socket = io(API_BASE || undefined, { path:'/socket.io', transports:['polling'], upgrade:false, withCredentials:true, auth:{ token } })
-      const refresh = async()=>{
+      
+      const refreshMetrics = async()=>{
         try{
           const [m, s] = await Promise.all([
             apiGet('/api/orders/driver/metrics').catch(()=>null),
@@ -61,12 +62,39 @@ export default function DriverMe() {
           if (s) setPayout({ currency: s.currency||'', totalCollectedAmount: Number(s?.totalCollectedAmount||0), deliveredToCompany: Number(s?.deliveredToCompany||0), pendingToCompany: Number(s?.pendingToCompany||0) })
         }catch{}
       }
-      socket.on('order.assigned', refresh)
-      socket.on('order.updated', refresh)
-      socket.on('order.shipped', refresh)
-      socket.on('remittance.created', refresh)
-      socket.on('remittance.accepted', refresh)
-      socket.on('remittance.rejected', refresh)
+      
+      const refreshUserProfile = async()=>{
+        try{
+          const u = await apiGet('/api/users/me').catch(()=>({}))
+          if (u?.user) {
+            setMe(u.user)
+            localStorage.setItem('me', JSON.stringify(u.user))
+          }
+        }catch{}
+      }
+      
+      // Listen for order events
+      socket.on('order.assigned', refreshMetrics)
+      socket.on('order.updated', async () => {
+        await refreshMetrics()
+        await refreshUserProfile() // Also refresh profile for commission updates
+      })
+      socket.on('order.shipped', refreshMetrics)
+      
+      // Listen for remittance events
+      socket.on('remittance.created', refreshMetrics)
+      socket.on('remittance.accepted', async () => {
+        await refreshMetrics()
+        await refreshUserProfile() // Refresh for paidCommission updates
+      })
+      socket.on('remittance.rejected', refreshMetrics)
+      
+      // Listen for driver commission updates (broadcast from backend)
+      socket.on('driver.commission.updated', async (data) => {
+        console.log('Commission updated:', data)
+        await refreshUserProfile()
+        await refreshMetrics()
+      })
     }catch{}
     return ()=>{
       try{ socket && socket.off('order.assigned') }catch{}
@@ -75,6 +103,7 @@ export default function DriverMe() {
       try{ socket && socket.off('remittance.created') }catch{}
       try{ socket && socket.off('remittance.accepted') }catch{}
       try{ socket && socket.off('remittance.rejected') }catch{}
+      try{ socket && socket.off('driver.commission.updated') }catch{}
       try{ socket && socket.disconnect() }catch{}
     }
   }, [])

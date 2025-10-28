@@ -67,11 +67,13 @@ export default function DriverDashboard(){
       socket.on('order.assigned', refresh)
       socket.on('order.updated', refresh)
       socket.on('order.shipped', refresh)
+      socket.on('driver.commission.updated', refresh) // Listen for commission updates
     }catch{}
     return ()=>{
       try{ socket && socket.off('order.assigned') }catch{}
       try{ socket && socket.off('order.updated') }catch{}
       try{ socket && socket.off('order.shipped') }catch{}
+      try{ socket && socket.off('driver.commission.updated') }catch{}
       try{ socket && socket.disconnect() }catch{}
     }
   },[])
