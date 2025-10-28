@@ -175,7 +175,7 @@ router.get('/drivers', auth, allowRoles('admin','user','manager'), async (req, r
         cond.country = { $in: aliases }
       }
     }
-    const users = await User.find(cond, 'firstName lastName email phone country city role').sort({ firstName: 1, lastName: 1 }).lean()
+    const users = await User.find(cond, 'firstName lastName email phone country city role driverProfile createdAt').sort({ firstName: 1, lastName: 1 }).lean()
     return res.json({ users })
   }catch(err){
     return res.status(500).json({ message: 'Failed to load drivers' })
@@ -1125,6 +1125,17 @@ router.patch('/drivers/:id', auth, allowRoles('admin','user'), async (req, res) 
     }
     await driver.save()
     const out = await User.findById(driver._id, '-password')
+    
+    // Broadcast driver update to all connected clients in workspace
+    try{
+      const io = getIO()
+      const ownerId = String(driver.createdBy || req.user.id)
+      io.to(`workspace:${ownerId}`).emit('driver.updated', { 
+        id: String(driver._id),
+        driverProfile: driver.driverProfile 
+      })
+    }catch{}
+    
     return res.json({ ok:true, user: out })
   }catch(err){
     return res.status(500).json({ message: err?.message || 'Failed to update driver' })

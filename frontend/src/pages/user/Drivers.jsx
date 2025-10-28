@@ -128,7 +128,7 @@ export default function Drivers(){
     return ()=> clearTimeout(id)
   },[q])
 
-  // Real-time: refresh drivers list when a driver is created/deleted in this workspace
+  // Real-time: refresh drivers list when a driver is created/updated/deleted in this workspace
   useEffect(()=>{
     let socket
     try{
@@ -136,10 +136,12 @@ export default function Drivers(){
       socket = io(API_BASE || undefined, { path:'/socket.io', transports:['polling'], upgrade:false, auth: { token }, withCredentials: true })
       const refresh = ()=>{ loadDrivers(q) }
       socket.on('driver.created', refresh)
+      socket.on('driver.updated', refresh)
       socket.on('driver.deleted', refresh)
     }catch{}
     return ()=>{
       try{ socket && socket.off('driver.created') }catch{}
+      try{ socket && socket.off('driver.updated') }catch{}
       try{ socket && socket.off('driver.deleted') }catch{}
       try{ socket && socket.disconnect() }catch{}
     }

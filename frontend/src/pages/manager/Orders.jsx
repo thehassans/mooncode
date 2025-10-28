@@ -253,7 +253,7 @@ export default function ManagerOrders(){
     if (arr.length === 1) setCountry(arr[0])
   }, [me])
 
-  // live updates
+  // live updates and driver commission changes
   useEffect(()=>{
     let socket
     try{
@@ -276,8 +276,18 @@ export default function ManagerOrders(){
           }
         }catch{}
       })
+      // Clear driver cache when driver is updated so new commission is fetched
+      socket.on('driver.updated', (evt)=>{
+        try{
+          setDriversByCountry({}) // Clear cache to force refresh
+        }catch{}
+      })
     }catch{}
-    return ()=>{ try{ socket && socket.off('orders.changed') }catch{}; try{ socket && socket.disconnect() }catch{} }
+    return ()=>{ 
+      try{ socket && socket.off('orders.changed') }catch{}
+      try{ socket && socket.off('driver.updated') }catch{}
+      try{ socket && socket.disconnect() }catch{} 
+    }
   },[])
   // reload when filters change
   useEffect(()=>{ loadOrders(true); loadSummary() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [buildQuery])

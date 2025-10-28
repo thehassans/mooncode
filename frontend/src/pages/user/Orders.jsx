@@ -492,7 +492,7 @@ export default function UserOrders(){
     countries.forEach(country => fetchDriversByCountry(country))
   }, [renderedOrders])
 
-  // Live updates: patch single order in-place and preserve scroll
+  // Live updates: patch single order in-place and preserve scroll, clear driver cache on driver updates
   useEffect(()=>{
     let socket
     try{
@@ -515,8 +515,18 @@ export default function UserOrders(){
           }
         }catch{}
       })
+      // Clear driver cache when driver is updated so new commission is fetched
+      socket.on('driver.updated', (evt)=>{
+        try{
+          setDriversByCountry({}) // Clear cache to force refresh
+        }catch{}
+      })
     }catch{}
-    return ()=>{ try{ socket && socket.off('orders.changed') }catch{}; try{ socket && socket.disconnect() }catch{} }
+    return ()=>{ 
+      try{ socket && socket.off('orders.changed') }catch{}
+      try{ socket && socket.off('driver.updated') }catch{}
+      try{ socket && socket.disconnect() }catch{} 
+    }
   }, [API_BASE])
 
   async function saveOrder(orderId, driverId, status, commission){
