@@ -55,47 +55,60 @@ export async function generateAgentCommissionReceiptPDF(data) {
       const contentWidth = pageWidth - (2 * margin)
       let y = margin
 
-      // Premium color palette
+      // Premium color palette - matching driver commission
       const colors = {
-        primary: '#1a1f36',
-        secondary: '#0f172a',
-        accent: '#3b82f6',
-        success: '#059669',
-        muted: '#64748b',
-        lightBg: '#f8fafc',
-        border: '#cbd5e1'
+        primary: '#1a1f36',      // Deep navy
+        secondary: '#0f172a',    // Rich black
+        accent: '#3b82f6',       // Professional blue
+        success: '#059669',      // Rich green
+        muted: '#64748b',        // Slate gray
+        lightBg: '#f8fafc',      // Soft white
+        border: '#cbd5e1'        // Light border
       }
 
-      // === HEADER WITH LOGO ===
+      // === ELITE HEADER ===
+      // Top blue accent bar
+      doc.rect(0, 0, pageWidth, 6)
+         .fillAndStroke(colors.accent, colors.accent)
+      
+      // Centered logo with premium spacing
       const logoPath = getLogoPath()
       if (logoPath) {
         try {
-          doc.image(logoPath, margin, y, { width: 120, height: 'auto', fit: [120, 50] })
+          const logoWidth = 100
+          const logoX = (pageWidth - logoWidth) / 2
+          doc.image(logoPath, logoX, y, { width: logoWidth, height: 'auto', fit: [logoWidth, 60] })
         } catch (err) {
           console.error('Logo error:', err)
         }
       }
-      y += 70
+      
+      y += 80
 
-      // === DOCUMENT TITLE ===
-      doc.fontSize(28)
+      // === ELITE TITLE ===
+      doc.fontSize(32)
          .font('Helvetica-Bold')
          .fillColor(colors.primary)
          .text('Commission Payment Receipt', margin, y, {
            width: contentWidth,
            align: 'center'
          })
-      y += 40
+      y += 45
+      
+      // Elite blue underline
+      doc.rect(margin + (contentWidth / 2) - 100, y, 200, 3)
+         .fill(colors.accent)
+      y += 3
 
       // Receipt ID and Date
       doc.fontSize(9)
          .font('Helvetica')
          .fillColor(colors.muted)
-         .text(`Receipt ID: ${timestamp}  •  ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`, margin, y, {
+         .text(`Receipt ID: ${timestamp}  |  Generated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`, margin, y + 15, {
            width: contentWidth,
            align: 'center'
          })
-      y += 40
+      y += 50
 
       // === AGENT INFORMATION SECTION ===
       doc.fontSize(12)
@@ -293,24 +306,37 @@ export async function generateAgentCommissionReceiptPDF(data) {
         }
       }
 
-      // === FOOTER ===
-      const footerY = pageHeight - 100
+      // === ELITE FOOTER ===
+      const footerY = pageHeight - 120
 
       if (y < footerY - 30) {
         y = footerY
       } else {
         doc.addPage()
-        y = margin + 50
+        
+        // Add blue accent bar on new page
+        doc.rect(0, 0, pageWidth, 6)
+           .fill(colors.accent)
+        
+        y = margin + 20
       }
 
-      // Thank you message
-      doc.roundedRect(margin, y, contentWidth, 70, 10)
+      // Elite thank you section
+      doc.roundedRect(margin, y, contentWidth, 90, 12)
+         .lineWidth(2)
+         .strokeOpacity(0.1)
          .fillAndStroke(colors.lightBg, colors.border)
+      
+      // Blue accent at top
+      doc.roundedRect(margin, y, contentWidth, 5, 12)
+         .fill(colors.accent)
+      
+      y += 20
 
-      doc.fontSize(12)
+      doc.fontSize(14)
          .font('Helvetica-Bold')
-         .fillColor(colors.accent)
-         .text('Thank You for Your Hard Work!', margin, y + 15, {
+         .fillColor(colors.primary)
+         .text('Thank You for Your Hard Work!', margin, y, {
            width: contentWidth,
            align: 'center'
          })
@@ -318,33 +344,35 @@ export async function generateAgentCommissionReceiptPDF(data) {
       doc.fontSize(10)
          .font('Helvetica')
          .fillColor(colors.muted)
-         .text('This commission has been successfully processed and paid.', margin, y + 35, {
+         .text('This commission has been successfully processed and paid.', margin, y + 25, {
            width: contentWidth,
            align: 'center'
          })
-
-      y += 80
-
-      // Company footer
+      
       doc.fontSize(8)
          .font('Helvetica')
          .fillColor(colors.muted)
-         .text('BuySial Commerce  •  Premium Logistics Solutions', margin, y, {
+         .text('BuySial Commerce', margin, y + 50, {
            width: contentWidth,
            align: 'center'
          })
 
-      // Page numbers
+      // Premium page numbers with blue accent bars
       const range = doc.bufferedPageRange()
       for (let i = 0; i < range.count; i++) {
         doc.switchToPage(i)
+        
+        // Bottom blue accent bar
+        doc.rect(0, pageHeight - 6, pageWidth, 6)
+           .fill(colors.accent)
+        
         doc.fontSize(8)
            .font('Helvetica')
            .fillColor(colors.muted)
            .text(
-             `Page ${i + 1} of ${range.count}`,
+             `— Page ${i + 1} of ${range.count} —`,
              margin,
-             pageHeight - 30,
+             pageHeight - 22,
              {
                width: contentWidth,
                align: 'center'

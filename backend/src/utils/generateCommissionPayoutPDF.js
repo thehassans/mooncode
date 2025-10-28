@@ -79,38 +79,24 @@ export async function generateCommissionPayoutPDF(data) {
         border: '#cbd5e1'        // Light border
       }
 
-      // === PREMIUM HEADER WITH GRADIENT EFFECT ===
-      // Top accent bar - gold gradient effect
-      doc.rect(0, 0, pageWidth, 8)
+      // === ELITE HEADER ===
+      // Top gold accent bar
+      doc.rect(0, 0, pageWidth, 6)
          .fillAndStroke(colors.accent, colors.accent)
       
-      // Logo and company info
+      // Centered logo with premium spacing
       const logoPath = getLogoPath()
       if (logoPath) {
         try {
-          doc.image(logoPath, margin, y, { width: 60, height: 60, fit: [60, 60] })
+          const logoWidth = 100
+          const logoX = (pageWidth - logoWidth) / 2
+          doc.image(logoPath, logoX, y, { width: logoWidth, height: 'auto', fit: [logoWidth, 60] })
         } catch(err) {
           console.error('Logo error:', err)
         }
       }
       
-      // Company name and tagline (right side)
-      doc.fontSize(18)
-         .font('Helvetica-Bold')
-         .fillColor(colors.primary)
-         .text('BuySial Commerce', pageWidth - margin - 160, y + 5, {
-           width: 160,
-           align: 'right'
-         })
-      doc.fontSize(9)
-         .font('Helvetica')
-         .fillColor(colors.muted)
-         .text('Premium Logistics Solutions', pageWidth - margin - 160, y + 30, {
-           width: 160,
-           align: 'right'
-         })
-      
-      y += 90
+      y += 80
 
       // === ELEGANT TITLE WITH UNDERLINE ===
       doc.fontSize(32)
@@ -338,7 +324,7 @@ export async function generateCommissionPayoutPDF(data) {
         doc.addPage()
         
         // Add gold accent bar on new page
-        doc.rect(0, 0, pageWidth, 8)
+        doc.rect(0, 0, pageWidth, 6)
            .fill(colors.accent)
         
         y = margin + 20
@@ -346,8 +332,8 @@ export async function generateCommissionPayoutPDF(data) {
         y = footerY
       }
 
-      // Elegant signature box with border
-      doc.roundedRect(margin, y, contentWidth, 100, 12)
+      // Elite signature box with border
+      doc.roundedRect(margin, y, contentWidth, 90, 12)
          .lineWidth(2)
          .strokeOpacity(0.1)
          .fillAndStroke(colors.lightBg, colors.border)
@@ -356,10 +342,10 @@ export async function generateCommissionPayoutPDF(data) {
       doc.roundedRect(margin, y, contentWidth, 5, 12)
          .fill(colors.accent)
       
-      y += 25
+      y += 20
       
       // Signature line
-      const sigLineY = y + 30
+      const sigLineY = y + 25
       const sigLineWidth = 200
       const sigLineX = margin + (contentWidth / 2) - (sigLineWidth / 2)
       
@@ -370,45 +356,30 @@ export async function generateCommissionPayoutPDF(data) {
          .stroke()
       
       // Authorized signature text
-      doc.fontSize(11)
+      doc.fontSize(12)
          .font('Helvetica-Bold')
          .fillColor(colors.primary)
-         .text('Authorized Signature', margin, sigLineY + 8, {
+         .text('Authorized Signature', margin, sigLineY + 10, {
            width: contentWidth,
            align: 'center'
          })
       
-      y += 60
-      
-      // Company name and date
-      doc.fontSize(9)
+      // Company name
+      doc.fontSize(8)
          .font('Helvetica')
          .fillColor(colors.muted)
-         .text('BuySial Commerce  |  Premium Logistics Solutions', margin, y, {
-           width: contentWidth,
-           align: 'center'
-         })
-      
-      y += 14
-      
-      doc.fontSize(8)
-         .fillColor(colors.muted)
-         .text('Generated on ' + new Date().toLocaleDateString('en-US', {
-           month: 'long',
-           day: 'numeric',
-           year: 'numeric'
-         }), margin, y, {
+         .text('BuySial Commerce', margin, sigLineY + 35, {
            width: contentWidth,
            align: 'center'
          })
 
-      // Premium page numbers with gold accent
+      // Premium page numbers with gold accent bars
       const range = doc.bufferedPageRange()
       for (let i = 0; i < range.count; i++) {
         doc.switchToPage(i)
         
         // Bottom gold accent bar
-        doc.rect(0, pageHeight - 8, pageWidth, 8)
+        doc.rect(0, pageHeight - 6, pageWidth, 6)
            .fill(colors.accent)
         
         // Page number with elegant styling
@@ -418,7 +389,7 @@ export async function generateCommissionPayoutPDF(data) {
            .text(
              `— Page ${i + 1} of ${range.count} —`,
              margin,
-             pageHeight - 25,
+             pageHeight - 22,
              {
                width: contentWidth,
                align: 'center'
