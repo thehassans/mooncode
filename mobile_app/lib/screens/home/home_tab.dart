@@ -30,101 +30,180 @@ class _HomeTabState extends State<HomeTab> {
     final cartProvider = Provider.of<CartProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppStrings.appName),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // TODO: Navigate to search screen
-            },
-          ),
-        ],
-      ),
-      body: productProvider.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : productProvider.error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: AppColors.error,
-                      ),
-                      const SizedBox(height: AppDimensions.spaceMD),
-                      Text(
-                        productProvider.error!,
-                        style: const TextStyle(color: AppColors.textSecondary),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: AppDimensions.spaceMD),
-                      ElevatedButton(
-                        onPressed: () {
-                          productProvider.loadProducts();
-                        },
-                        child: const Text(AppStrings.tryAgain),
-                      ),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: () => productProvider.loadProducts(refresh: true),
-                  child: CustomScrollView(
-                    slivers: [
-                      // Header
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppDimensions.paddingMD),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Discover',
-                                style: TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              const SizedBox(height: AppDimensions.spaceXS),
-                              Text(
-                                '${productProvider.products.length} products available',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: productProvider.isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : productProvider.error != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: AppColors.error,
                         ),
-                      ),
-
-                      // Category Filters (Horizontal Scroll)
-                      SliverToBoxAdapter(
-                        child: SizedBox(
-                          height: 50,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppDimensions.paddingMD,
+                        const SizedBox(height: AppDimensions.spaceMD),
+                        Text(
+                          productProvider.error!,
+                          style: const TextStyle(color: AppColors.textSecondary),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: AppDimensions.spaceMD),
+                        ElevatedButton(
+                          onPressed: () {
+                            productProvider.loadProducts();
+                          },
+                          child: const Text(AppStrings.tryAgain),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: () => productProvider.loadProducts(refresh: true),
+                    child: CustomScrollView(
+                      slivers: [
+                        // App Bar
+                        SliverToBoxAdapter(
+                          child: Container(
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                            decoration: const BoxDecoration(
+                              color: AppColors.white,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.shadow,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
                             ),
-                            children: [
-                              _buildCategoryChip('All', productProvider.selectedCategory == null),
-                              _buildCategoryChip('Electronics', productProvider.selectedCategory == 'Electronics'),
-                              _buildCategoryChip('Fashion', productProvider.selectedCategory == 'Fashion'),
-                              _buildCategoryChip('Home', productProvider.selectedCategory == 'Home'),
-                              _buildCategoryChip('Beauty', productProvider.selectedCategory == 'Beauty'),
-                            ],
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Logo and Cart
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      AppStrings.appName,
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: AppColors.background,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.notifications_outlined),
+                                        color: AppColors.textPrimary,
+                                        onPressed: () {},
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                // Search Bar
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.background,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: TextField(
+                                    decoration: InputDecoration(
+                                      hintText: 'Search products...',
+                                      prefixIcon: const Icon(
+                                        Icons.search,
+                                        color: AppColors.gray,
+                                      ),
+                                      suffixIcon: IconButton(
+                                        icon: const Icon(
+                                          Icons.tune,
+                                          color: AppColors.gray,
+                                        ),
+                                        onPressed: () {},
+                                      ),
+                                      border: InputBorder.none,
+                                      contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 14,
+                                      ),
+                                    ),
+                                    onChanged: (value) {
+                                      // TODO: Implement search
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
 
-                      const SliverToBoxAdapter(
-                        child: SizedBox(height: AppDimensions.spaceMD),
-                      ),
+                        const SliverToBoxAdapter(
+                          child: SizedBox(height: 16),
+                        ),
+
+                        // Category Filters
+                        SliverToBoxAdapter(
+                          child: Container(
+                            height: 52,
+                            padding: const EdgeInsets.only(left: 20),
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              children: [
+                                _buildCategoryChip('All', productProvider.selectedCategory == null, Icons.apps),
+                                _buildCategoryChip('Electronics', productProvider.selectedCategory == 'Electronics', Icons.devices),
+                                _buildCategoryChip('Fashion', productProvider.selectedCategory == 'Fashion', Icons.checkroom),
+                                _buildCategoryChip('Home', productProvider.selectedCategory == 'Home', Icons.home),
+                                _buildCategoryChip('Beauty', productProvider.selectedCategory == 'Beauty', Icons.spa),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Section Header
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Featured Products',
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${productProvider.products.length} items',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                TextButton(
+                                  onPressed: () {},
+                                  child: const Text('View All'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
 
                       // Products Grid
                       if (productProvider.products.isEmpty)
@@ -161,16 +240,14 @@ class _HomeTabState extends State<HomeTab> {
                         )
                       else
                         SliverPadding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppDimensions.paddingMD,
-                          ),
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                           sliver: SliverGrid(
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: 0.65,
+                              crossAxisSpacing: 14,
+                              mainAxisSpacing: 14,
+                              childAspectRatio: 0.68,
                             ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
@@ -182,34 +259,65 @@ class _HomeTabState extends State<HomeTab> {
                           ),
                         ),
 
-                      const SliverToBoxAdapter(
-                        child: SizedBox(height: AppDimensions.paddingXL),
-                      ),
+                        const SliverToBoxAdapter(
+                          child: SizedBox(height: 80),
+                        ),
                     ],
                   ),
-                ),
+                  ),
+      ),
     );
   }
 
-  Widget _buildCategoryChip(String label, bool isSelected) {
+  Widget _buildCategoryChip(String label, bool isSelected, IconData icon) {
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (selected) {
-          // TODO: Implement category filtering
-        },
-        backgroundColor: AppColors.white,
-        selectedColor: AppColors.primary,
-        labelStyle: TextStyle(
-          color: isSelected ? AppColors.white : AppColors.textPrimary,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        elevation: 0,
-        side: BorderSide(
-          color: isSelected ? AppColors.primary : AppColors.border,
+      padding: const EdgeInsets.only(right: 10),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            // TODO: Implement category filtering
+          },
+          borderRadius: BorderRadius.circular(24),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.primary : AppColors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: isSelected ? AppColors.primary : AppColors.border,
+                width: 1.5,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 18,
+                  color: isSelected ? AppColors.white : AppColors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? AppColors.white : AppColors.textPrimary,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -218,18 +326,20 @@ class _HomeTabState extends State<HomeTab> {
   Widget _buildProductCard(ProductModel product, CartProvider cartProvider) {
     final isInCart = cartProvider.hasProduct(product.id);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Material(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(18),
+      elevation: 2,
+      shadowColor: AppColors.shadow,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () {
+          // TODO: Navigate to product details
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
           ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -424,6 +534,8 @@ class _HomeTabState extends State<HomeTab> {
             ),
           ),
         ],
+      ),
+        ),
       ),
     );
   }
