@@ -236,6 +236,30 @@ export default function DriverMe() {
         </div>
       </div>
 
+      {/* Payment Status */}
+      <div className="card" style={{padding: '20px', borderRadius: '16px'}}>
+        <h2 style={{fontSize: '16px', fontWeight: 700, marginBottom: '16px', color: 'var(--text)'}}>Payment Status</h2>
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px,1fr))', gap:12}}>
+          {/* Pending Payment */}
+          <div style={{padding:16, background:'linear-gradient(135deg, rgba(251, 146, 60, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%)', border:'1px solid rgba(251, 146, 60, 0.3)', borderRadius:12}}>
+            <div style={{fontSize:12, color:'#ea580c', marginBottom:8}}>Pending Payment</div>
+            <div style={{fontSize:28, fontWeight:800, color:'#ea580c'}}>
+              {loading? '…' : `${commissionCurrency} ${Number((me?.driverProfile?.totalCommission || 0) - (me?.driverProfile?.paidCommission || 0)).toFixed(2)}`}
+            </div>
+            <div style={{fontSize:11, color:'#9a3412', marginTop:4}}>Awaiting payment from company</div>
+          </div>
+          
+          {/* Received Payment */}
+          <div style={{padding:16, background:'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%)', border:'1px solid rgba(34, 197, 94, 0.3)', borderRadius:12}}>
+            <div style={{fontSize:12, color:'#16a34a', marginBottom:8}}>Received Payment</div>
+            <div style={{fontSize:28, fontWeight:800, color:'#16a34a'}}>
+              {loading? '…' : `${commissionCurrency} ${Number(me?.driverProfile?.paidCommission || 0).toFixed(2)}`}
+            </div>
+            <div style={{fontSize:11, color:'#166534', marginTop:4}}>Successfully received</div>
+          </div>
+        </div>
+      </div>
+
       {/* Achievements & Progress */}
       <div className="card" style={{padding: '20px', borderRadius: '16px'}}>
         <h2 style={{fontSize: '16px', fontWeight: 700, marginBottom: '8px', color: 'var(--text)'}}>Achievements</h2>

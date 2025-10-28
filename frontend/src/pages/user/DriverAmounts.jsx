@@ -67,17 +67,15 @@ export default function DriverAmounts(){
   }, [drivers, country, searchTerm])
 
   const totals = useMemo(()=>{
-    let totalDelivered = 0, totalCollected = 0, totalSent = 0, totalPending = 0, totalCommission = 0, totalWithdrawnComm = 0, totalPendingComm = 0
+    let totalDelivered = 0, totalCollected = 0, totalCommission = 0, totalSentComm = 0, totalPendingComm = 0
     for (const d of filteredDrivers){
       totalDelivered += Number(d.deliveredCount||0)
       totalCollected += Number(d.collected||0)
-      totalSent += Number(d.deliveredToCompany||0)
-      totalPending += Number(d.pendingToCompany||0)
       totalCommission += Number(d.driverCommission||0)
-      totalWithdrawnComm += Number(d.withdrawnCommission||0)
+      totalSentComm += Number(d.paidCommission||0)
       totalPendingComm += Number(d.pendingCommission||0)
     }
-    return { totalDelivered, totalCollected, totalSent, totalPending, totalCommission, totalWithdrawnComm, totalPendingComm }
+    return { totalDelivered, totalCollected, totalCommission, totalSentComm, totalPendingComm }
   }, [filteredDrivers])
 
   // Get currency for display
@@ -132,39 +130,25 @@ export default function DriverAmounts(){
             <div style={{fontSize:12, opacity:0.8, marginTop:4}}>Cash on delivery</div>
           </div>
         </div>
-        <div className="card" style={{background:'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', color:'#fff'}}>
+        <div className="card" style={{background:'linear-gradient(135deg, #10b981 0%, #059669 100%)', color:'#fff'}}>
           <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Total Driver Commission</div>
+            <div style={{fontSize:14, opacity:0.9}}>Total Commission</div>
             <div style={{fontSize:28, fontWeight:800}}>{displayCurrency} {num(totals.totalCommission)}</div>
-            <div style={{fontSize:12, opacity:0.8, marginTop:4}}>Total earned commission</div>
-          </div>
-        </div>
-        <div className="card" style={{background:'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color:'#fff'}}>
-          <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Commission Withdrawn</div>
-            <div style={{fontSize:28, fontWeight:800}}>{displayCurrency} {num(totals.totalWithdrawnComm)}</div>
-            <div style={{fontSize:12, opacity:0.8, marginTop:4}}>Already paid to drivers</div>
+            <div style={{fontSize:12, opacity:0.8, marginTop:4}}>Earned from delivered orders</div>
           </div>
         </div>
         <div className="card" style={{background:'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color:'#fff'}}>
           <div style={{padding:'16px'}}>
             <div style={{fontSize:14, opacity:0.9}}>Commission Pending</div>
             <div style={{fontSize:28, fontWeight:800}}>{displayCurrency} {num(totals.totalPendingComm)}</div>
-            <div style={{fontSize:12, opacity:0.8, marginTop:4}}>Available to withdraw</div>
+            <div style={{fontSize:12, opacity:0.8, marginTop:4}}>Available to pay</div>
           </div>
         </div>
         <div className="card" style={{background:'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)', color:'#fff'}}>
           <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Sent to Company</div>
-            <div style={{fontSize:28, fontWeight:800}}>{displayCurrency} {num(totals.totalSent)}</div>
-            <div style={{fontSize:12, opacity:0.8, marginTop:4}}>Remitted amounts</div>
-          </div>
-        </div>
-        <div className="card" style={{background:'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color:'#fff'}}>
-          <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Pending to Company</div>
-            <div style={{fontSize:28, fontWeight:800}}>{displayCurrency} {num(totals.totalPending)}</div>
-            <div style={{fontSize:12, opacity:0.8, marginTop:4}}>Yet to remit</div>
+            <div style={{fontSize:14, opacity:0.9}}>Commission Sent</div>
+            <div style={{fontSize:28, fontWeight:800}}>{displayCurrency} {num(totals.totalSentComm)}</div>
+            <div style={{fontSize:12, opacity:0.8, marginTop:4}}>Already paid to drivers</div>
           </div>
         </div>
       </div>
@@ -185,12 +169,10 @@ export default function DriverAmounts(){
                 <th style={{ padding: '10px 12px', textAlign:'center', borderRight:'1px solid var(--border)', color:'#10b981' }}>Delivered</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e' }}>Collected</th>
                 <th style={{ padding: '10px 12px', textAlign:'center', borderRight:'1px solid var(--border)', color:'#a855f7' }}>Commission/Order</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#ec4899' }}>Extra Commission</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#06b6d4' }}>Commission</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#8b5cf6' }}>Withdrawn</th>
+                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#ec4899' }}>Extra</th>
+                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#06b6d4' }}>Total Commission</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b' }}>Pending</th>
                 <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#14b8a6' }}>Sent</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#ef4444' }}>To Remit</th>
                 <th style={{ padding: '10px 12px', textAlign:'center', color:'#8b5cf6' }}>Actions</th>
               </tr>
             </thead>
@@ -198,13 +180,13 @@ export default function DriverAmounts(){
               {loading ? (
                 Array.from({length:5}).map((_,i)=> (
                   <tr key={`sk${i}`}>
-                    <td colSpan={13} style={{ padding:'10px 12px' }}>
+                    <td colSpan={11} style={{ padding:'10px 12px' }}>
                       <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
                     </td>
                   </tr>
                 ))
               ) : filteredDrivers.length === 0 ? (
-                <tr><td colSpan={13} style={{ padding: '10px 12px', opacity: 0.7, textAlign:'center' }}>No drivers found</td></tr>
+                <tr><td colSpan={11} style={{ padding: '10px 12px', opacity: 0.7, textAlign:'center' }}>No drivers found</td></tr>
               ) : (
                 filteredDrivers.map((d, idx) => (
                   <tr key={String(d.id)} style={{ borderTop: '1px solid var(--border)', background: idx % 2 ? 'transparent' : 'var(--panel)' }}>
@@ -238,16 +220,10 @@ export default function DriverAmounts(){
                       <span style={{color:'#06b6d4', fontWeight:800}}>{d.currency} {num(d.driverCommission||0)}</span>
                     </td>
                     <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                      <span style={{color:'#8b5cf6', fontWeight:800}}>{d.currency} {num(d.withdrawnCommission||0)}</span>
-                    </td>
-                    <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
                       <span style={{color:'#f59e0b', fontWeight:800}}>{d.currency} {num(d.pendingCommission||0)}</span>
                     </td>
                     <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                      <span style={{color:'#14b8a6', fontWeight:800}}>{d.currency} {num(d.deliveredToCompany)}</span>
-                    </td>
-                    <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                      <span style={{color:'#ef4444', fontWeight:800}}>{d.currency} {num(d.pendingToCompany)}</span>
+                      <span style={{color:'#14b8a6', fontWeight:800}}>{d.currency} {num(d.paidCommission||0)}</span>
                     </td>
                     <td style={{ padding: '10px 12px', textAlign:'center' }}>
                       {d.pendingCommission && d.pendingCommission > 0 ? (

@@ -1813,7 +1813,7 @@ router.post(
       if (Number.isNaN(amt) || amt <= 0)
         return res.status(400).json({ message: "Invalid amount" });
 
-      const driver = await User.findOne({ _id: id, role: "driver" }).lean();
+      const driver = await User.findOne({ _id: id, role: "driver" });
       if (!driver) return res.status(404).json({ message: "Driver not found" });
       if (
         req.user.role !== "admin" &&
@@ -1837,10 +1837,24 @@ router.post(
       });
       await remit.save();
 
+      // Update driver's paidCommission
+      if (!driver.driverProfile) driver.driverProfile = {};
+      const currentPaid = Number(driver.driverProfile.paidCommission || 0);
+      driver.driverProfile.paidCommission = currentPaid + amt;
+      driver.markModified('driverProfile');
+      await driver.save();
+
       // Notify driver
       try {
         const io = getIO();
         io.to(`user:${id}`).emit("commission.paid", { amount: amt });
+        // Also emit to owner workspace
+        const ownerId = String(driver.createdBy || req.user.id);
+        io.to(`workspace:${ownerId}`).emit("driver.commission.paid", { 
+          driverId: String(id),
+          amount: amt,
+          totalPaid: driver.driverProfile.paidCommission
+        });
       } catch {}
 
       return res.json({ ok: true, message: "Commission paid successfully" });
