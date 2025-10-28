@@ -367,6 +367,35 @@ router.delete('/agents/:id', auth, allowRoles('admin','user','manager'), async (
 router.get('/me', auth, async (req, res) => {
   const u = await User.findById(req.user.id, '-password')
   if (!u) return res.status(404).json({ message: 'User not found' })
+  
+  // For drivers, calculate and update totalCommission from delivered orders
+  if (u.role === 'driver') {
+    try {
+      const Order = (await import('../models/Order.js')).default
+      const deliveredOrders = await Order.find({
+        deliveryBoy: u._id,
+        shipmentStatus: 'delivered'
+      }).select('driverCommission')
+      
+      // Sum all order commissions, using driver's default rate as fallback
+      const defaultCommission = Number(u.driverProfile?.commissionPerOrder || 0)
+      const totalCommission = deliveredOrders.reduce((sum, order) => {
+        const orderCommission = Number(order.driverCommission) || 0
+        return sum + orderCommission
+      }, 0)
+      
+      // Update if changed
+      if (!u.driverProfile) u.driverProfile = {}
+      if (u.driverProfile.totalCommission !== totalCommission) {
+        u.driverProfile.totalCommission = totalCommission
+        u.markModified('driverProfile')
+        await u.save()
+      }
+    } catch (err) {
+      console.error('Failed to calculate driver commission:', err)
+    }
+  }
+  
   res.json({ user: u })
 })
 

@@ -115,21 +115,33 @@ export default function DriverMe() {
   // Commission calculations (integrated with backend)
   // Always use backend totalCommission if available (includes extra commission from order-specific rates)
   const backendTotalCommission = me?.driverProfile?.totalCommission
-  const totalCommission = backendTotalCommission != null && backendTotalCommission >= 0 
+  
+  // Calculate fallback (base commission only)
+  const fallbackCommission = (commissionPerOrder > 0 && deliveredCount > 0) 
+    ? (commissionPerOrder * deliveredCount) 
+    : 0
+  
+  // Use backend value if it exists and is a valid number, otherwise use fallback
+  const totalCommission = (backendTotalCommission !== undefined && backendTotalCommission !== null && !isNaN(backendTotalCommission))
     ? Number(backendTotalCommission) 
-    : ((commissionPerOrder > 0 && deliveredCount > 0) ? (commissionPerOrder * deliveredCount) : 0)
+    : fallbackCommission
   
   const baseCommission = deliveredCount * commissionPerOrder
   const extraCommission = Math.max(0, totalCommission - baseCommission)
   
   // Debug log for commission tracking
   console.log('Driver Commission Debug:', {
+    meObject: me,
+    driverProfile: me?.driverProfile,
     backendTotal: backendTotalCommission,
+    backendType: typeof backendTotalCommission,
+    fallbackCommission,
     calculatedTotal: totalCommission,
     baseCommission,
     extraCommission,
     deliveredCount,
-    commissionPerOrder
+    commissionPerOrder,
+    loading
   })
 
   // Driver achievement level by delivered count
