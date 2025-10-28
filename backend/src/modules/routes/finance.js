@@ -15,7 +15,7 @@ import { getIO } from "../config/socket.js";
 import Setting from "../models/Setting.js";
 import { generatePayoutReceiptPDF } from "../utils/payoutReceipt.js";
 import { generateSettlementPDF, generateAcceptedSettlementPDF } from "../../utils/generateSettlementPDF.js";
-import { generateCommissionReceiptPDF } from "../../utils/generateCommissionReceiptPDF.js";
+import { generateCommissionPayoutPDF } from "../../utils/generateCommissionPayoutPDF.js";
 
 const router = express.Router();
 
@@ -1207,81 +1207,21 @@ router.post(
           const deliveredToCompany = paidCommission;
           const pendingToCompany = Math.max(0, totalCollectedAmount - deliveredToCompany);
           
-          const acceptedPdfPath = await generateAcceptedSettlementPDF({
+          // Generate minimal commission payout PDF
+          const acceptedPdfPath = await generateCommissionPayoutPDF({
             driverName: `${driver?.firstName || ''} ${driver?.lastName || ''}`.trim() || 'N/A',
             driverPhone: driver?.phone || '',
-            driverCommissionRate: commissionPerOrder,
-            managerName: `${manager?.firstName || ''} ${manager?.lastName || ''}`.trim() || 'N/A',
-            totalDeliveredOrders: r.totalDeliveredOrders,
-            assignedOrders: assignedCount,
-            cancelledOrders: cancelledCount,
-            collectedAmount: totalCollectedAmount,
-            deliveredToCompany,
-            pendingDeliveryToCompany: pendingToCompany,
-            amount: r.amount,
-            totalCommission,
-            paidCommission,
-            pendingCommission,
+            totalDeliveredOrders: deliveredOrders.length,
+            totalCommissionPaid: r.amount,
             currency: r.currency,
-            method: r.method,
-            receiptPath: r.receiptPath,
-            fromDate: r.fromDate,
-            toDate: r.toDate,
-            note: r.note,
-            acceptedDate: r.acceptedAt,
-            acceptedBy: `${acceptedByUser?.firstName || ''} ${acceptedByUser?.lastName || ''}`.trim() || 'Company',
             orders: deliveredOrders.map(o => ({
-              invoiceNumber: o.invoiceNumber || String(o._id).slice(-6),
-              customerName: o.customerName || 'N/A',
-              status: o.shipmentStatus || 'delivered',
-              deliveredAt: o.deliveredAt,
-              items: (o.items || []).map(item => ({
-                name: item.productId?.name || 'Unknown Product',
-                quantity: item.quantity || 1,
-                price: item.productId?.price || 0
-              })),
-              subTotal: o.subTotal || o.total || o.collectedAmount || 0,
+              orderId: o.invoiceNumber || String(o._id).slice(-6),
+              deliveryDate: o.deliveredAt,
               commission: Number(o.driverCommission) > 0 ? Number(o.driverCommission) : commissionPerOrder
             }))
           });
           
           r.acceptedPdfPath = acceptedPdfPath;
-          
-          // Generate commission receipt PDF
-          try {
-            const commissionReceiptPdf = await generateCommissionReceiptPDF({
-              driver: {
-                name: `${driver?.firstName || ''} ${driver?.lastName || ''}`.trim() || 'N/A',
-                phone: driver?.phone || '',
-                email: driver?.email || ''
-              },
-              amount: r.amount,
-              currency: r.currency || 'SAR',
-              paymentDate: r.acceptedAt || new Date(),
-              paymentId: String(r._id).toUpperCase(),
-              totalOrders: deliveredOrders.length,
-              orders: deliveredOrders.map(o => ({
-                orderId: o.invoiceNumber || String(o._id).slice(-8).toUpperCase(),
-                customerName: o.customerName || 'N/A',
-                status: o.shipmentStatus || 'delivered',
-                total: o.grandTotal || o.total || o.collectedAmount || 0,
-                currency: r.currency || 'SAR',
-                commission: Number(o.driverCommission) > 0 ? Number(o.driverCommission) : commissionPerOrder
-              }))
-            })
-            
-            // Save commission receipt PDF
-            const receiptDir = path.join(process.cwd(), 'public', 'receipts', 'commission')
-            if (!fs.existsSync(receiptDir)) {
-              fs.mkdirSync(receiptDir, { recursive: true })
-            }
-            const receiptFilename = `commission_receipt_${String(r._id)}_${Date.now()}.pdf`
-            const receiptPath = path.join(receiptDir, receiptFilename)
-            fs.writeFileSync(receiptPath, commissionReceiptPdf)
-            r.commissionReceiptPath = `/receipts/commission/${receiptFilename}`
-          } catch (receiptErr) {
-            console.error('Failed to generate commission receipt PDF:', receiptErr)
-          }
         } catch (pdfErr) {
           console.error('Failed to generate accepted settlement PDF:', pdfErr);
           // Don't fail the entire operation if PDF generation fails
@@ -1307,13 +1247,12 @@ router.post(
           console.error('Failed to update driver paidCommission:', updateErr);
         }
         
-        // Notify driver with accepted PDF and commission receipt
+        // Notify driver with accepted PDF
         try {
           const io = getIO();
           io.to(`user:${String(r.driver)}`).emit("remittance.accepted", {
             id: String(r._id),
-            acceptedPdfPath: r.acceptedPdfPath,
-            commissionReceiptPath: r.commissionReceiptPath
+            acceptedPdfPath: r.acceptedPdfPath
           });
         } catch {}
         
@@ -1324,39 +1263,6 @@ router.post(
     }
   }
 );
-
-// Get commission history (receipts) for driver
-router.get(
-  "/commission-history",
-  auth,
-  allowRoles("driver"),
-  async (req, res) => {
-    try {
-      const remittances = await Remittance.find({
-        driver: req.user.id,
-        status: 'accepted'
-      })
-        .select('amount currency acceptedAt commissionReceiptPath acceptedPdfPath createdAt')
-        .sort({ acceptedAt: -1 })
-        .limit(50)
-      
-      const history = remittances.map(r => ({
-        id: String(r._id),
-        amount: Number(r.amount || 0),
-        currency: r.currency || 'SAR',
-        paidAt: r.acceptedAt,
-        receiptPath: r.commissionReceiptPath,
-        settlementPath: r.acceptedPdfPath,
-        requestedAt: r.createdAt
-      }))
-      
-      return res.json({ history })
-    } catch (err) {
-      console.error('Failed to fetch commission history:', err)
-      return res.status(500).json({ message: 'Failed to fetch commission history' })
-    }
-  }
-)
 
 // Summary for driver: total delivered and collected in period
 router.get(
