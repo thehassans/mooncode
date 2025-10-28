@@ -82,7 +82,11 @@ export default function DriverMe() {
   const deliveredCount = Number(drvMetrics?.status?.delivered || 0)
   const commissionPerOrder = Number((me?.driverProfile?.commissionPerOrder ?? me?.commissionPerOrder) || 0)
   const commissionCurrency = (String((me?.driverProfile?.commissionCurrency ?? me?.commissionCurrency) || '').toUpperCase() || String(payout?.currency||'').toUpperCase() || 'SAR')
-  const walletAmount = Number(me?.driverProfile?.totalCommission ?? 0) || ((commissionPerOrder > 0 && deliveredCount >= 0) ? (commissionPerOrder * deliveredCount) : 0)
+  
+  // Commission calculations (integrated with backend)
+  const totalCommission = Number(me?.driverProfile?.totalCommission ?? 0) || ((commissionPerOrder > 0 && deliveredCount >= 0) ? (commissionPerOrder * deliveredCount) : 0)
+  const baseCommission = deliveredCount * commissionPerOrder
+  const extraCommission = Math.max(0, totalCommission - baseCommission)
 
   // Driver achievement level by delivered count
   const levels = useMemo(()=>[
@@ -146,37 +150,33 @@ export default function DriverMe() {
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Commission Stats Grid */}
       <div className="card" style={{padding: '20px', borderRadius: '16px'}}>
-        <h2 style={{fontSize: '16px', fontWeight: 700, marginBottom: '16px', color: 'var(--text)'}}>Financial Overview</h2>
-        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px,1fr))', gap:12}}>
+        <h2 style={{fontSize: '16px', fontWeight: 700, marginBottom: '16px', color: 'var(--text)'}}>Commission Overview</h2>
+        <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px,1fr))', gap:12}}>
+          {/* Total Orders Delivered */}
           <button className="tile" onClick={()=> navigate('/driver/orders/delivered')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
-            <div style={{fontSize:12, color:'var(--muted)'}}>Wallet (Delivered Commission)</div>
-            <div style={{fontSize:28, fontWeight:800, color:'#22c55e'}}>{loading? '…' : `${commissionCurrency} ${Number(walletAmount||0).toFixed(2)}`}</div>
+            <div style={{fontSize:12, color:'var(--muted)'}}>Total Orders Delivered</div>
+            <div style={{fontSize:32, fontWeight:800, color:'#10b981'}}>{loading? '…' : deliveredCount}</div>
           </button>
+          
+          {/* Commission per Order */}
+          <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div style={{fontSize:12, color:'var(--muted)'}}>Commission per Order</div>
+            <div style={{fontSize:32, fontWeight:800, color:'#a855f7'}}>{loading? '…' : `${commissionCurrency} ${Number(commissionPerOrder||0).toFixed(2)}`}</div>
+          </div>
+          
+          {/* Total Commission Earned */}
           <button className="tile" onClick={()=> navigate('/driver/orders/delivered')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
-            <div style={{fontSize:12, color:'var(--muted)'}}>Total Collected (Delivered)</div>
-            <div style={{fontSize:28, fontWeight:800, color:'#0ea5e9'}}>{loading? '…' : `${payout.currency||''} ${Number(payout.totalCollectedAmount||0).toFixed(2)}`}</div>
+            <div style={{fontSize:12, color:'var(--muted)'}}>Total Commission Earned</div>
+            <div style={{fontSize:32, fontWeight:800, color:'#22c55e'}}>{loading? '…' : `${commissionCurrency} ${Number(totalCommission||0).toFixed(2)}`}</div>
           </button>
-          <button className="tile" onClick={()=> navigate('/driver/payout#remittances')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
-            <div style={{fontSize:12, color:'var(--muted)'}}>Delivered to Company</div>
-            <div style={{fontSize:28, fontWeight:800, color:'#22c55e'}}>{loading? '…' : `${payout.currency||''} ${Number(payout.deliveredToCompany||0).toFixed(2)}`}</div>
-          </button>
-          <button className="tile" onClick={()=> navigate('/driver/payout#pay')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
-            <div style={{fontSize:12, color:'var(--muted)'}}>Pending Delivery to Company</div>
-            <div style={{fontSize:28, fontWeight:800, color:'#f59e0b'}}>{loading? '…' : `${payout.currency||''} ${Number(payout.pendingToCompany||0).toFixed(2)}`}</div>
-          </button>
-          <button className="tile" onClick={()=> navigate('/driver/orders/assigned')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
-            <div style={{fontSize:12, color:'var(--muted)'}}>Currently Assigned</div>
-            <div style={{fontSize:28, fontWeight:800, color:'#3b82f6'}}>{loading? '…' : Number(drvMetrics?.status?.assigned||0)}</div>
-          </button>
-          <button className="tile" onClick={()=> navigate('/driver/orders/delivered')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
-            <div style={{fontSize:12, color:'var(--muted)'}}>Delivered Orders</div>
-            <div style={{fontSize:28, fontWeight:800, color:'#10b981'}}>{loading? '…' : Number(drvMetrics?.status?.delivered||0)}</div>
-          </button>
-        </div>
-        <div className="section" style={{marginTop:8}}>
-          <div className="helper">Commission per order: {commissionCurrency} {Number(commissionPerOrder||0).toFixed(2)} • Delivered orders counted: {deliveredCount}</div>
+          
+          {/* Extra Commission */}
+          <div className="tile" style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
+            <div style={{fontSize:12, color:'var(--muted)'}}>Extra Commission</div>
+            <div style={{fontSize:32, fontWeight:800, color:'#ec4899'}}>{loading? '…' : `${commissionCurrency} ${Number(extraCommission||0).toFixed(2)}`}</div>
+          </div>
         </div>
       </div>
 
