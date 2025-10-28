@@ -174,7 +174,7 @@ export async function generateSettlementPDF(data) {
         let renderedOrders = 0
         const maxOrders = Math.min(7, data.orders.length)
         const pageHeight = doc.page.height
-        const reservedSpace = 250 // Space for settlement, payment, signature
+        const reservedSpace = 350 // Space for settlement, payment, signature (increased)
         
         for (let idx = 0; idx < maxOrders; idx++) {
           const order = data.orders[idx]
@@ -229,21 +229,20 @@ export async function generateSettlementPDF(data) {
             currentY += 14
           })
           
-          // Order Total and Commission Row - properly aligned in box
+          // Order Total and Commission Row - compact layout
           doc.rect(margin, currentY, pageWidth - 2 * margin, 20).fillAndStroke('#fef9c3', '#eab308')
           doc.fontSize(8).font('Helvetica-Bold').fillColor('#713f12')
           
           const boxWidth = pageWidth - 2 * margin
-          const halfWidth = boxWidth / 2
           
-          // Left side: Order Subtotal
-          doc.text('Order Subtotal:', margin + 8, currentY + 6)
-          doc.text(formatCurrency(order.subTotal || orderSubtotal, data.currency), margin + 8, currentY + 6, { width: halfWidth - 16, align: 'right' })
+          // Left side: Order Subtotal (label + value close together)
+          doc.text('Order Subtotal:', margin + 8, currentY + 6, { continued: true })
+          doc.text(' ' + formatCurrency(order.subTotal || orderSubtotal, data.currency))
           
-          // Right side: Commission (using actual order commission)
-          doc.text('Commission:', margin + halfWidth + 8, currentY + 6)
-          doc.fillColor('#047857')
-          doc.text(formatCurrency(Number(order.commission) || 0, data.currency), margin + halfWidth + 8, currentY + 6, { width: halfWidth - 16, align: 'right' })
+          // Right side: Commission (label + value close together)
+          const rightX = margin + boxWidth / 2 + 20
+          doc.fillColor('#713f12').text('Commission:', rightX, currentY + 6, { continued: true })
+          doc.fillColor('#047857').text(' ' + formatCurrency(Number(order.commission) || 0, data.currency))
           currentY += 28
           
           // Add spacing between orders
@@ -440,7 +439,7 @@ export async function generateAcceptedSettlementPDF(data) {
         let renderedOrders = 0
         const maxOrders = Math.min(7, data.orders.length)
         const pageHeight = doc.page.height
-        const reservedSpace = 250 // Space for settlement, payment, signature
+        const reservedSpace = 350 // Space for settlement, payment, signature (increased)
         
         for (let idx = 0; idx < maxOrders; idx++) {
           const order = data.orders[idx]
@@ -495,21 +494,20 @@ export async function generateAcceptedSettlementPDF(data) {
             currentY += 14
           })
           
-          // Order Total and Commission Row - properly aligned in box
+          // Order Total and Commission Row - compact layout
           doc.rect(margin, currentY, pageWidth - 2 * margin, 20).fillAndStroke('#fef9c3', '#eab308')
           doc.fontSize(8).font('Helvetica-Bold').fillColor('#713f12')
           
           const boxWidth = pageWidth - 2 * margin
-          const halfWidth = boxWidth / 2
           
-          // Left side: Order Subtotal
-          doc.text('Order Subtotal:', margin + 8, currentY + 6)
-          doc.text(formatCurrency(order.subTotal || orderSubtotal, data.currency), margin + 8, currentY + 6, { width: halfWidth - 16, align: 'right' })
+          // Left side: Order Subtotal (label + value close together)
+          doc.text('Order Subtotal:', margin + 8, currentY + 6, { continued: true })
+          doc.text(' ' + formatCurrency(order.subTotal || orderSubtotal, data.currency))
           
-          // Right side: Commission (using actual order commission)
-          doc.text('Commission:', margin + halfWidth + 8, currentY + 6)
-          doc.fillColor('#047857')
-          doc.text(formatCurrency(Number(order.commission) || 0, data.currency), margin + halfWidth + 8, currentY + 6, { width: halfWidth - 16, align: 'right' })
+          // Right side: Commission (label + value close together)
+          const rightX = margin + boxWidth / 2 + 20
+          doc.fillColor('#713f12').text('Commission:', rightX, currentY + 6, { continued: true })
+          doc.fillColor('#047857').text(' ' + formatCurrency(Number(order.commission) || 0, data.currency))
           currentY += 28
           
           // Add spacing between orders
