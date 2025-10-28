@@ -1535,7 +1535,7 @@ router.post(
             const price = o.total || o.productId?.price || 0;
             const currency = o.items?.[0]?.productId?.baseCurrency || o.productId?.baseCurrency || 'AED';
             return {
-              orderId: o.invoiceId || o._id.toString().slice(-8),
+              orderId: o.orderNumber || o.invoiceId || `ORD-${o._id.toString().slice(-8)}`,
               date: o.updatedAt || o.createdAt,
               amount: price,
               currency: currency
@@ -1678,7 +1678,7 @@ router.get(
             const price = o.total || o.productId?.price || 0;
             const currency = o.items?.[0]?.productId?.baseCurrency || o.productId?.baseCurrency || 'AED';
             return {
-              orderId: o.invoiceId || o._id.toString().slice(-8),
+              orderId: o.orderNumber || o.invoiceId || `ORD-${o._id.toString().slice(-8)}`,
               date: o.updatedAt || o.createdAt,
               amount: price,
               currency: currency

@@ -234,15 +234,20 @@ export async function generateAgentCommissionReceiptPDF(data) {
 
         y += 35
 
-        // Table rows (limit to first 10 for space)
-        const displayOrders = data.orders.slice(0, 10)
+        // Table rows (show all orders)
+        const displayOrders = data.orders
         const rowHeight = 35
 
         displayOrders.forEach((order, index) => {
           // Check if we need a new page
-          if (y + rowHeight + 100 > pageHeight - margin) {
+          if (y + rowHeight + 120 > pageHeight - margin) {
             doc.addPage()
-            y = margin + 50
+            
+            // Add blue accent bar on new page
+            doc.rect(0, 0, pageWidth, 6)
+               .fill(colors.accent)
+            
+            y = margin + 20
           }
 
           // Alternating row background
@@ -261,7 +266,7 @@ export async function generateAgentCommissionReceiptPDF(data) {
              .stroke()
              .strokeOpacity(1)
 
-          // Order ID
+          // Order Number
           doc.fontSize(10)
              .font('Helvetica-Bold')
              .fillColor(colors.secondary)
@@ -292,18 +297,6 @@ export async function generateAgentCommissionReceiptPDF(data) {
 
           y += rowHeight
         })
-
-        if (data.orders.length > 10) {
-          y += 10
-          doc.fontSize(9)
-             .font('Helvetica-Oblique')
-             .fillColor(colors.muted)
-             .text(`... and ${data.orders.length - 10} more orders (${data.orders.length} orders total)`, margin, y, {
-               width: contentWidth,
-               align: 'center'
-             })
-          y += 20
-        }
       }
 
       // === ELITE FOOTER ===
