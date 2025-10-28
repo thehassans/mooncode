@@ -897,9 +897,9 @@ router.post(
         deliveryBoy: req.user.id,
         shipmentStatus: "delivered",
       })
-        .select("total collectedAmount productId quantity items")
-        .populate("productId", "price")
-        .populate("items.productId", "price");
+        .select("invoiceNumber customerName shipmentStatus deliveredAt total collectedAmount productId quantity items grandTotal subTotal")
+        .populate("productId", "name price")
+        .populate("items.productId", "name price");
       const totalCollectedAmount = deliveredOrders.reduce((sum, o) => {
         let val = 0;
         if (o?.collectedAmount != null && Number(o.collectedAmount) > 0) {
@@ -970,13 +970,6 @@ router.post(
         if (toDate) matchOrders.deliveredAt.$lte = new Date(toDate);
       }
       const totalDeliveredOrders = await Order.countDocuments(matchOrders);
-      
-      // Fetch actual delivered orders for PDF details
-      const deliveredOrders = await Order.find(matchOrders)
-        .select('invoiceNumber customerName customerPhone totalPrice deliveredAt city orderCountry commission')
-        .sort({ deliveredAt: -1 })
-        .limit(100) // Limit to 100 orders for PDF
-        .lean();
       // Extract receipt file (any image)
       const files = Array.isArray(req.files) ? req.files : [];
       const receiptFile =
@@ -1026,16 +1019,12 @@ router.post(
           $or: [{ shipmentStatus: 'cancelled' }, { shipmentStatus: 'returned' }] 
         });
         
-        // Calculate commission based on actual order commissions
+        // Calculate commission based on commission per order
         const commissionPerOrder = Number(driver?.driverProfile?.commissionPerOrder || 0);
         const commissionCurrency = driver?.driverProfile?.commissionCurrency || doc.currency || 'SAR';
         
-        // Calculate total commission from delivered orders
-        // Use order-specific commission if available, otherwise use driver's default rate
-        const totalCommission = deliveredOrders.reduce((sum, order) => {
-          const orderCommission = Number(order.commission || commissionPerOrder || 0);
-          return sum + orderCommission;
-        }, 0);
+        // Total commission = delivered orders * commission per order
+        const totalCommission = totalDeliveredOrders * commissionPerOrder;
         
         // Get total paid commission from accepted remittances
         const paidRemittances = await Remittance.find({
@@ -1050,6 +1039,7 @@ router.post(
         const pdfPath = await generateSettlementPDF({
           driverName: `${driver?.firstName || ''} ${driver?.lastName || ''}`.trim() || 'N/A',
           driverPhone: driver?.phone || '',
+          driverCommissionRate: commissionPerOrder,
           managerName: `${manager?.firstName || ''} ${manager?.lastName || ''}`.trim() || 'N/A',
           totalDeliveredOrders,
           assignedOrders: assignedCount,
@@ -1067,7 +1057,19 @@ router.post(
           fromDate: doc.fromDate,
           toDate: doc.toDate,
           note: doc.note,
-          deliveredOrders: deliveredOrders // Add order details
+          orders: deliveredOrders.map(o => ({
+            invoiceNumber: o.invoiceNumber || String(o._id).slice(-6),
+            customerName: o.customerName || 'N/A',
+            status: o.shipmentStatus || 'delivered',
+            deliveredAt: o.deliveredAt,
+            items: (o.items || []).map(item => ({
+              name: item.productId?.name || 'Unknown Product',
+              quantity: item.quantity || 1,
+              price: item.productId?.price || 0
+            })),
+            subTotal: o.subTotal || o.total || o.collectedAmount || 0,
+            commission: commissionPerOrder
+          }))
         });
         
         doc.pdfPath = pdfPath;
@@ -1152,29 +1154,9 @@ router.post(
             $or: [{ shipmentStatus: 'cancelled' }, { shipmentStatus: 'returned' }] 
           });
           
-          // Fetch delivered orders in the date range for this remittance
-          const matchOrders = {
-            deliveryBoy: r.driver,
-            shipmentStatus: 'delivered'
-          };
-          if (r.fromDate || r.toDate) {
-            matchOrders.deliveredAt = {};
-            if (r.fromDate) matchOrders.deliveredAt.$gte = new Date(r.fromDate);
-            if (r.toDate) matchOrders.deliveredAt.$lte = new Date(r.toDate);
-          }
-          const deliveredOrdersInRange = await Order.find(matchOrders)
-            .select('invoiceNumber customerName customerPhone totalPrice deliveredAt city orderCountry commission grandTotal')
-            .sort({ deliveredAt: -1 })
-            .limit(100)
-            .lean();
-          
-          // Calculate commission from actual delivered orders
+          // Calculate commission
           const commissionPerOrder = Number(driver?.driverProfile?.commissionPerOrder || 0);
-          const totalCommission = deliveredOrdersInRange.reduce((sum, order) => {
-            const orderCommission = Number(order.commission || commissionPerOrder || 0);
-            return sum + orderCommission;
-          }, 0);
-          
+          const totalCommission = r.totalDeliveredOrders * commissionPerOrder;
           const paidRemittances = await Remittance.find({
             driver: r.driver,
             status: 'accepted'
@@ -1182,14 +1164,23 @@ router.post(
           const paidCommission = paidRemittances.reduce((sum, rem) => sum + (Number(rem.amount) || 0), 0);
           const pendingCommission = Math.max(0, totalCommission - paidCommission);
           
-          // Get financial data
-          const totalCollectedAmount = deliveredOrdersInRange.reduce((sum, o) => sum + (Number(o.grandTotal) || 0), 0);
+          // Get financial data from original remittance
+          const deliveredOrders = await Order.find({
+            deliveryBoy: r.driver,
+            shipmentStatus: 'delivered',
+            paymentCollected: true
+          })
+            .select("invoiceNumber customerName shipmentStatus deliveredAt total collectedAmount productId quantity items grandTotal subTotal")
+            .populate("productId", "name price")
+            .populate("items.productId", "name price");
+          const totalCollectedAmount = deliveredOrders.reduce((sum, o) => sum + (Number(o.grandTotal) || 0), 0);
           const deliveredToCompany = paidCommission;
           const pendingToCompany = Math.max(0, totalCollectedAmount - deliveredToCompany);
           
           const acceptedPdfPath = await generateAcceptedSettlementPDF({
             driverName: `${driver?.firstName || ''} ${driver?.lastName || ''}`.trim() || 'N/A',
             driverPhone: driver?.phone || '',
+            driverCommissionRate: commissionPerOrder,
             managerName: `${manager?.firstName || ''} ${manager?.lastName || ''}`.trim() || 'N/A',
             totalDeliveredOrders: r.totalDeliveredOrders,
             assignedOrders: assignedCount,
@@ -1209,7 +1200,19 @@ router.post(
             note: r.note,
             acceptedDate: r.acceptedAt,
             acceptedBy: `${acceptedByUser?.firstName || ''} ${acceptedByUser?.lastName || ''}`.trim() || 'Company',
-            deliveredOrders: deliveredOrdersInRange // Add order details
+            orders: deliveredOrders.map(o => ({
+              invoiceNumber: o.invoiceNumber || String(o._id).slice(-6),
+              customerName: o.customerName || 'N/A',
+              status: o.shipmentStatus || 'delivered',
+              deliveredAt: o.deliveredAt,
+              items: (o.items || []).map(item => ({
+                name: item.productId?.name || 'Unknown Product',
+                quantity: item.quantity || 1,
+                price: item.productId?.price || 0
+              })),
+              subTotal: o.subTotal || o.total || o.collectedAmount || 0,
+              commission: commissionPerOrder
+            }))
           });
           
           r.acceptedPdfPath = acceptedPdfPath;
