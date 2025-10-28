@@ -635,6 +635,26 @@ export default function AgentMe() {
         </div>
       </div>
 
+      {/* Achievements & Level */}
+      <div className="card" style={{padding: '20px', borderRadius: '16px'}}>
+        <h2 style={{fontSize: '16px', fontWeight: 700, marginBottom: '8px', color: 'var(--text)'}}>Achievements</h2>
+        <p style={{fontSize: '14px', color: 'var(--muted)', marginBottom: '16px'}}>
+          Current: <strong>{levelInfo.current.title}</strong> • Next: <strong>{levelInfo.next? levelInfo.next.title : 'Max level'}</strong>
+        </p>
+        <div style={{height: 12, background: 'var(--panel-2)', borderRadius: 8, overflow: 'hidden', position: 'relative'}}>
+          <div style={{
+            width: `${levelInfo.pct}%`, 
+            height: '100%', 
+            background: 'linear-gradient(90deg, #3b82f6 0%, #6366f1 100%)',
+            transition: 'width 0.3s ease',
+            borderRadius: 8
+          }} />
+        </div>
+        <div style={{marginTop: '8px', textAlign: 'right', fontSize: '12px', color: 'var(--muted)'}}>
+          {levelInfo.pct}% to next level
+        </div>
+      </div>
+
       {/* Request Money */}
       <div className="card" style={{ display:'grid', gap:10 }}>
         <div className="card-header">

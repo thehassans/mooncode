@@ -446,50 +446,22 @@ export default function AgentLayout() {
       <div
         className={`main ${hideSidebar ? 'full-mobile' : closed ? 'full' : ''} ${tabsVisible ? 'with-mobile-tabs' : ''}`}
       >
-        {/* Show topbar on all viewports to allow theme toggle and identity on mobile */}
+        {/* Professional topbar matching driver panel */}
         {(
           <div
             className="topbar"
             style={{
               background: 'var(--sidebar-bg)',
               borderBottom: '1px solid var(--sidebar-border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'nowrap',
+              minHeight: '60px',
+              padding: '0 1rem'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 48 }}>
-              {/* Back on inner pages; hamburger on root */}
-              {isMobile && !tabsVisible ? (
-                <button
-                  className="btn secondary"
-                  onClick={() => navigate(-1)}
-                  title="Back"
-                  aria-label="Back"
-                  style={{
-                    width: 36,
-                    height: 36,
-                    padding: 0,
-                    display: 'grid',
-                    placeItems: 'center',
-                  }}
-                >
-                  ←
-                </button>
-              ) : (
-                <button
-                  className="btn secondary"
-                  onClick={() => setClosed((c) => !c)}
-                  title={closed ? 'Open menu' : 'Close menu'}
-                  aria-label={closed ? 'Open menu' : 'Close menu'}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    padding: 0,
-                    display: 'grid',
-                    placeItems: 'center',
-                  }}
-                >
-                  ☰
-                </button>
-              )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
               {(() => {
                 const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
                 const src = branding.headerLogo ? `${API_BASE}${branding.headerLogo}` : fallback
@@ -497,65 +469,98 @@ export default function AgentLayout() {
                   <img
                     src={src}
                     alt="BuySial"
-                    style={{ height: 28, width: 'auto', objectFit: 'contain' }}
+                    style={{ height: 36, width: 'auto', objectFit: 'contain' }}
                   />
                 )
               })()}
-              {/* Agent identity chip */}
+              {/* Professional Agent identity chip */}
               <div
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 12px',
-                  borderRadius: 999,
-                  background: 'var(--panel)',
-                  border: '1px solid var(--border)',
+                  gap: '10px',
+                  padding: '8px 16px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)',
+                  border: '1px solid rgba(59, 130, 246, 0.2)',
+                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  whiteSpace: 'nowrap'
                 }}
               >
-                <span aria-hidden>🧑‍💼</span>
-                <span style={{ fontWeight: 800, letterSpacing: 0.3 }}>
-                  {(String(me.firstName||'').split(' ')[0]||'').trim()} Agent
-                </span>
+                <span aria-hidden style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                  boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
+                  fontSize: '16px'
+                }}>🧑‍💼</span>
+                <div style={{display: 'flex', flexDirection: 'column', gap: '1px'}}>
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}>Agent</span>
+                  <span style={{
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    letterSpacing: '-0.02em',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}>{me.firstName || 'Agent'} {me.lastName || ''}</span>
+                </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {/* Swatches left of theme toggle (desktop only) */}
-              {!isMobile && (
-                <div role="group" aria-label="Theme colors" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {navPresets.map((p) => {
-                    const isActive = p.cfg.__reset ? !navColors : (navColors && JSON.stringify(navColors) === JSON.stringify(p.cfg))
-                    return (
-                      <button
-                        key={p.title}
-                        title={p.title}
-                        className={`swatch ${isActive ? 'active' : ''}`}
-                        onClick={() => applyNavColors(p.cfg)}
-                        style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--border)', background: p.sample }}
-                      />
-                    )
-                  })}
-                </div>
-              )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              {/* Premium Theme Toggle */}
               <button
-                className="icon-btn secondary"
                 onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
-                title={theme === 'light' ? 'Switch to dark' : 'Switch to light'}
-                aria-label={theme === 'light' ? 'Switch to dark' : 'Switch to light'}
-                style={{ width: 36, height: 36, borderRadius: 10, padding: 0 }}
+                title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+                aria-label={theme === 'light' ? 'Dark mode' : 'Light mode'}
+                style={{
+                  position: 'relative',
+                  width: '60px',
+                  height: '30px',
+                  background: theme === 'dark' ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' : 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+                  borderRadius: '15px',
+                  border: theme === 'dark' ? '2px solid #334155' : '2px solid #cbd5e1',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: theme === 'dark' ? 'inset 0 2px 4px rgba(0,0,0,0.3)' : 'inset 0 2px 4px rgba(0,0,0,0.1)',
+                  padding: 0,
+                  overflow: 'hidden'
+                }}
               >
-                {theme === 'light' ? (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                  </svg>
-                ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="4" />
-                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-                  </svg>
-                )}
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: theme === 'dark' ? '32px' : '4px',
+                  transform: 'translateY(-50%)',
+                  width: '22px',
+                  height: '22px',
+                  background: theme === 'dark' ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)' : 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)',
+                  borderRadius: '50%',
+                  transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '10px'
+                }}>
+                  {theme === 'dark' ? '☀️' : '🌙'}
+                </div>
               </button>
-              <button type="button" className="btn danger" onClick={doLogout}>Logout</button>
             </div>
           </div>
         )}
@@ -570,12 +575,8 @@ export default function AgentLayout() {
         <nav className="mobile-tabs" role="navigation" aria-label="Primary">
           {mobileTabs.map((tab) => {
             const isInbox = tab.to.includes('/inbox/whatsapp')
-            const isOrders = tab.to.endsWith('/orders')
-            const isMe = tab.to.endsWith('/me')
-            const count = isInbox ? unreadCount : isOrders ? ordersSubmitted : 0
+            const count = isInbox ? unreadCount : 0
             const showCount = isInbox && count > 0
-            // Show level badge when levelIdx > 0 (from Level 1 and above)
-            const meBadge = isMe && levelIdx > 1 ? `Level ${levelIdx}` : ''
             return (
               <NavLink
                 key={tab.to}
@@ -602,12 +603,6 @@ export default function AgentLayout() {
                   )}
                 </span>
                 <span style={{ fontSize: 11 }}>{tab.label}</span>
-                {/* Removed orders count badge per request; keep inbox unread and level badges only */}
-                {isMe && meBadge && (
-                  <span className="badge" style={{ marginLeft: 6, fontSize: 10 }}>
-                    {meBadge}
-                  </span>
-                )}
               </NavLink>
             )
           })}
