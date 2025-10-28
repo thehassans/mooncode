@@ -179,11 +179,22 @@ export async function generateSettlementPDF(data) {
         for (let idx = 0; idx < maxOrders; idx++) {
           const order = data.orders[idx]
           
-          // Stop if on page 2 and approaching bottom
-          const currentPage = doc.bufferedPageRange().count
-          if (currentPage >= 2 && currentY > pageHeight - reservedSpace) {
-            break
+          // Estimate space needed for this order
+          const itemsCount = (order.items || []).length
+          const orderHeight = 30 + 38 + 16 + (itemsCount * 14) + 20 + 28 + 8 // header + table + items + subtotal + spacing
+          
+          // Check if we need to add a page break
+          if (currentY + orderHeight + reservedSpace > pageHeight) {
+            const currentPage = doc.bufferedPageRange().count
+            if (currentPage >= 2) {
+              // Already on page 2, stop rendering more orders
+              break
+            }
+            // Add page break and reset Y position
+            doc.addPage()
+            currentY = margin
           }
+          
           // Order Header Box
           doc.roundedRect(margin, currentY, pageWidth - 2 * margin, 30, 4)
             .fillAndStroke('#f0f9ff', '#0284c7')
@@ -229,20 +240,21 @@ export async function generateSettlementPDF(data) {
             currentY += 14
           })
           
-          // Order Total and Commission Row - compact layout
+          // Order Total and Commission Row - compact layout WITHOUT continued (prevents blank pages)
           doc.rect(margin, currentY, pageWidth - 2 * margin, 20).fillAndStroke('#fef9c3', '#eab308')
           doc.fontSize(8).font('Helvetica-Bold').fillColor('#713f12')
           
           const boxWidth = pageWidth - 2 * margin
+          const leftText = 'Order Subtotal: ' + formatCurrency(order.subTotal || orderSubtotal, data.currency)
+          const rightText = 'Commission: ' + formatCurrency(Number(order.commission) || 0, data.currency)
           
-          // Left side: Order Subtotal (label + value close together)
-          doc.text('Order Subtotal:', margin + 8, currentY + 6, { continued: true })
-          doc.text(' ' + formatCurrency(order.subTotal || orderSubtotal, data.currency))
+          // Left side: Order Subtotal
+          doc.fillColor('#713f12').text(leftText, margin + 8, currentY + 6, { width: boxWidth / 2 - 16 })
           
-          // Right side: Commission (label + value close together)
+          // Right side: Commission
           const rightX = margin + boxWidth / 2 + 20
-          doc.fillColor('#713f12').text('Commission:', rightX, currentY + 6, { continued: true })
-          doc.fillColor('#047857').text(' ' + formatCurrency(Number(order.commission) || 0, data.currency))
+          doc.fillColor('#713f12').text('Commission: ', rightX, currentY + 6, { width: 70, continued: false })
+          doc.fillColor('#047857').text(formatCurrency(Number(order.commission) || 0, data.currency), rightX + 72, currentY + 6)
           currentY += 28
           
           // Add spacing between orders
@@ -444,11 +456,22 @@ export async function generateAcceptedSettlementPDF(data) {
         for (let idx = 0; idx < maxOrders; idx++) {
           const order = data.orders[idx]
           
-          // Stop if on page 2 and approaching bottom
-          const currentPage = doc.bufferedPageRange().count
-          if (currentPage >= 2 && currentY > pageHeight - reservedSpace) {
-            break
+          // Estimate space needed for this order
+          const itemsCount = (order.items || []).length
+          const orderHeight = 30 + 38 + 16 + (itemsCount * 14) + 20 + 28 + 8 // header + table + items + subtotal + spacing
+          
+          // Check if we need to add a page break
+          if (currentY + orderHeight + reservedSpace > pageHeight) {
+            const currentPage = doc.bufferedPageRange().count
+            if (currentPage >= 2) {
+              // Already on page 2, stop rendering more orders
+              break
+            }
+            // Add page break and reset Y position
+            doc.addPage()
+            currentY = margin
           }
+          
           // Order Header Box
           doc.roundedRect(margin, currentY, pageWidth - 2 * margin, 30, 4)
             .fillAndStroke('#f0f9ff', '#0284c7')
@@ -494,20 +517,21 @@ export async function generateAcceptedSettlementPDF(data) {
             currentY += 14
           })
           
-          // Order Total and Commission Row - compact layout
+          // Order Total and Commission Row - compact layout WITHOUT continued (prevents blank pages)
           doc.rect(margin, currentY, pageWidth - 2 * margin, 20).fillAndStroke('#fef9c3', '#eab308')
           doc.fontSize(8).font('Helvetica-Bold').fillColor('#713f12')
           
           const boxWidth = pageWidth - 2 * margin
+          const leftText = 'Order Subtotal: ' + formatCurrency(order.subTotal || orderSubtotal, data.currency)
+          const rightText = 'Commission: ' + formatCurrency(Number(order.commission) || 0, data.currency)
           
-          // Left side: Order Subtotal (label + value close together)
-          doc.text('Order Subtotal:', margin + 8, currentY + 6, { continued: true })
-          doc.text(' ' + formatCurrency(order.subTotal || orderSubtotal, data.currency))
+          // Left side: Order Subtotal
+          doc.fillColor('#713f12').text(leftText, margin + 8, currentY + 6, { width: boxWidth / 2 - 16 })
           
-          // Right side: Commission (label + value close together)
+          // Right side: Commission
           const rightX = margin + boxWidth / 2 + 20
-          doc.fillColor('#713f12').text('Commission:', rightX, currentY + 6, { continued: true })
-          doc.fillColor('#047857').text(' ' + formatCurrency(Number(order.commission) || 0, data.currency))
+          doc.fillColor('#713f12').text('Commission: ', rightX, currentY + 6, { width: 70, continued: false })
+          doc.fillColor('#047857').text(formatCurrency(Number(order.commission) || 0, data.currency), rightX + 72, currentY + 6)
           currentY += 28
           
           // Add spacing between orders
