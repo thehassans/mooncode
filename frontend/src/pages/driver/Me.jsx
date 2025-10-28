@@ -10,26 +10,7 @@ export default function DriverMe() {
   })
   const [loading, setLoading] = useState(true)
   const [drvMetrics, setDrvMetrics] = useState(null)
-  const [payout, setPayout] = useState({ currency:'', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
-  const [theme, setTheme] = useState(() => {
-    try{
-      const attr = document.documentElement.getAttribute('data-theme')
-      if (attr === 'light') return 'light'
-      return localStorage.getItem('theme') || 'dark'
-    }catch{ return 'dark' }
-  })
-  useEffect(()=>{
-    try{ localStorage.setItem('theme', theme) }catch{}
-    const root = document.documentElement
-    if (theme === 'light') root.setAttribute('data-theme','light')
-    else root.removeAttribute('data-theme')
-  }, [theme])
-  // Change password (modal like Agent Me)
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [changingPass, setChangingPass] = useState(false)
-  const [showPassModal, setShowPassModal] = useState(false)
+  const [payout, setPayout] = useState({ currency:'SAR', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
 
   useEffect(() => {
     let alive = true
@@ -92,23 +73,11 @@ export default function DriverMe() {
     }
   }, [])
 
-  // Minimal page: no sockets/remittances/profile settings here
-
-  function handleLogout(){
-    try{
-      localStorage.removeItem('token')
-      localStorage.removeItem('me')
-      localStorage.removeItem('navColors')
-    }catch{}
-    try{ navigate('/login', { replace:true }) }catch{}
-    setTimeout(()=>{ try{ window.location.assign('/login') }catch{} }, 30)
-  }
-
   const deliveredCount = Number(drvMetrics?.status?.delivered || 0)
   const commissionPerOrder = Number((me?.driverProfile?.commissionPerOrder ?? me?.commissionPerOrder) || 0)
   const commissionCurrency = (String((me?.driverProfile?.commissionCurrency ?? me?.commissionCurrency) || '').toUpperCase() || String(payout?.currency||'').toUpperCase() || 'SAR')
-  // Use totalCommission from profile (includes base + extra), fallback to calculated base commission
   const walletAmount = Number(me?.driverProfile?.totalCommission ?? 0) || ((commissionPerOrder > 0 && deliveredCount >= 0) ? (commissionPerOrder * deliveredCount) : 0)
+
   // Driver achievement level by delivered count
   const levels = useMemo(()=>[
     { count: 0, title: 'New Driver' },
@@ -129,18 +98,51 @@ export default function DriverMe() {
 
   return (
     <div className="content" style={{ display: 'grid', gap: 16, padding: 16, maxWidth: 720, margin: '0 auto' }}>
-      <div className="page-header">
-        <div>
-          <div className="page-title gradient heading-blue">Driver Wallet</div>
-          <div className="page-subtitle">Earnings from delivered orders</div>
-        </div>
-        <div style={{display:'flex', alignItems:'center', gap:8}}>
-          <button className="btn secondary" onClick={()=> setTheme(t=> t==='light' ? 'dark':'light')}>{theme==='light'?'🌙 Dark':'🌞 Light'}</button>
-          <button className="btn danger" onClick={handleLogout}>Logout</button>
+      {/* Professional Header */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%)',
+        border: '1px solid rgba(34, 197, 94, 0.2)',
+        borderRadius: '16px',
+        padding: '24px',
+        marginBottom: '8px',
+        boxShadow: '0 4px 12px rgba(34, 197, 94, 0.1)'
+      }}>
+        <div style={{display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px'}}>
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '14px',
+            background: 'linear-gradient(135deg, #22c55e 0%, #10b981 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '28px',
+            boxShadow: '0 4px 16px rgba(34, 197, 94, 0.3)'
+          }}>
+            💰
+          </div>
+          <div>
+            <h1 style={{
+              fontSize: '28px',
+              fontWeight: 800,
+              margin: 0,
+              background: 'linear-gradient(135deg, #22c55e 0%, #10b981 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
+            }}>
+              Driver Wallet
+            </h1>
+            <p style={{margin: 0, fontSize: '14px', color: 'var(--muted)', marginTop: '4px'}}>
+              Track your earnings and commission
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="card" style={{padding:16}}>
+      {/* Stats Grid */}
+      <div className="card" style={{padding: '20px', borderRadius: '16px'}}>
+        <h2 style={{fontSize: '16px', fontWeight: 700, marginBottom: '16px', color: 'var(--text)'}}>Financial Overview</h2>
         <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px,1fr))', gap:12}}>
           <button className="tile" onClick={()=> navigate('/driver/orders/delivered')} style={{display:'grid', gap:6, padding:16, textAlign:'left', border:'1px solid var(--border)', background:'var(--panel)', borderRadius:12}}>
             <div style={{fontSize:12, color:'var(--muted)'}}>Wallet (Delivered Commission)</div>

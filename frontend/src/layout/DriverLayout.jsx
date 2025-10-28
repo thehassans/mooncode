@@ -288,25 +288,31 @@ export default function DriverLayout() {
                   {theme === 'light' ? '🌙' : '☀️'}
                 </div>
               </button>
-              {/* Settings Button */}
+              {/* Settings Icon Button */}
               <button
                 type="button"
-                className="btn secondary"
+                className="icon-btn secondary"
                 onClick={() => setShowSettings(true)}
+                title="Settings"
+                aria-label="Settings"
                 style={{
-                  padding: '6px 14px',
-                  fontSize: '13px',
-                  fontWeight: 600,
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  padding: 0,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  justifyContent: 'center',
+                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)',
+                  border: '2px solid rgba(99, 102, 241, 0.3)',
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.15)',
+                  transition: 'all 0.2s ease'
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="3"/>
                   <path d="M12 1v6m0 6v6M5.6 5.6l4.2 4.2m4.2 4.2l4.2 4.2M1 12h6m6 0h6M5.6 18.4l4.2-4.2m4.2-4.2l4.2-4.2"/>
                 </svg>
-                Settings
               </button>
             </div>
           </div>
