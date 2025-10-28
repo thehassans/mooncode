@@ -11,6 +11,12 @@ export default function DriverMe() {
   const [loading, setLoading] = useState(true)
   const [drvMetrics, setDrvMetrics] = useState(null)
   const [payout, setPayout] = useState({ currency:'SAR', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
+  // Password change modal
+  const [showPassModal, setShowPassModal] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [changingPass, setChangingPass] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -175,21 +181,45 @@ export default function DriverMe() {
       </div>
 
       {/* Achievements & Progress */}
-      <div className="panel" style={{display:'grid', gap:10}}>
-        <div className="card-title">Achievements</div>
-        <div className="helper">Current: {levelInfo.current.title} • Next: {levelInfo.next? levelInfo.next.title : 'Max level'}</div>
-        <div style={{height:10, background:'var(--panel-2)', borderRadius:6, overflow:'hidden'}}>
-          <div style={{width:`${levelInfo.pct}%`, height:'100%', background:'var(--wa-accent)'}} />
+      <div className="card" style={{padding: '20px', borderRadius: '16px'}}>
+        <h2 style={{fontSize: '16px', fontWeight: 700, marginBottom: '8px', color: 'var(--text)'}}>Achievements</h2>
+        <p style={{fontSize: '14px', color: 'var(--muted)', marginBottom: '16px'}}>
+          Current: <strong>{levelInfo.current.title}</strong> • Next: <strong>{levelInfo.next? levelInfo.next.title : 'Max level'}</strong>
+        </p>
+        <div style={{height: 12, background: 'var(--panel-2)', borderRadius: 8, overflow: 'hidden', position: 'relative'}}>
+          <div style={{
+            width: `${levelInfo.pct}%`, 
+            height: '100%', 
+            background: 'linear-gradient(90deg, #22c55e 0%, #10b981 100%)',
+            transition: 'width 0.3s ease',
+            borderRadius: 8
+          }} />
+        </div>
+        <div style={{marginTop: '8px', textAlign: 'right', fontSize: '12px', color: 'var(--muted)'}}>
+          {levelInfo.pct}% to next level
         </div>
       </div>
 
-      {/* Change Password (modal trigger) */}
-      <div className="panel" style={{display:'grid', gap:10}}>
-        <div className="card-title">Security</div>
-        <div className="helper">Manage your password</div>
-        <div style={{display:'flex', justifyContent:'flex-end'}}>
-          <button className="btn" onClick={()=> setShowPassModal(true)}>Change Password</button>
-        </div>
+      {/* Security Section */}
+      <div className="card" style={{padding: '20px', borderRadius: '16px'}}>
+        <h2 style={{fontSize: '16px', fontWeight: 700, marginBottom: '8px', color: 'var(--text)'}}>Security</h2>
+        <p style={{fontSize: '14px', color: 'var(--muted)', marginBottom: '16px'}}>Manage your account password</p>
+        <button 
+          className="btn primary" 
+          onClick={()=> setShowPassModal(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 20px'
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          Change Password
+        </button>
       </div>
 
       {showPassModal && (
