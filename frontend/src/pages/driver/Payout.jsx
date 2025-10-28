@@ -60,13 +60,13 @@ export default function DriverPayout(){
   return (
     <div className="content" style={{ display:'grid', gap:16, padding:16, maxWidth: 1000, margin: '0 auto' }}>
       <div style={{ display:'grid', gap:6 }}>
-        <div style={{ fontWeight:800, fontSize:20 }}>Payout</div>
-        <div className="helper">Remit collected COD amounts to the company and track settlements.</div>
+        <div style={{ fontWeight:800, fontSize:20 }}>COD Collection Remittance</div>
+        <div className="helper">Remit collected COD amounts to the company. (Driver commission is tracked in "Me" page)</div>
       </div>
 
       {/* Top Totals */}
       <div className="card" id="summary" style={{ display:'grid', gap:10 }}>
-        <div className="card-header"><div className="card-title">My Settlement Summary</div></div>
+        <div className="card-header"><div className="card-title">COD Collection Summary</div></div>
         <div className="section" style={{ display:'grid', gap:8 }}>
           <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
             <span className="badge">Total Delivered Orders: {summary.totalDeliveredOrders}</span>
@@ -77,9 +77,9 @@ export default function DriverPayout(){
         </div>
       </div>
 
-      {/* Pay Amount to Company */}
+      {/* Pay COD Amount to Company */}
       <div className="card" id="pay" style={{ display:'grid', gap:10 }}>
-        <div className="card-header"><div className="card-title">Pay Amount to Company</div></div>
+        <div className="card-header"><div className="card-title">Send COD Collection to Company</div></div>
         <div className="section" style={{ display:'grid', gap:10 }}>
           <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
             <label className="badge" style={{display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer'}}>
@@ -136,14 +136,15 @@ export default function DriverPayout(){
         </div>
       </div>
 
-      {/* My Remittances */}
+      {/* My COD Remittances */}
       <div className="card" id="remittances" style={{ display:'grid', gap:10 }}>
         <div className="card-header">
-          <div className="card-title">My Remittances</div>
+          <div className="card-title">My COD Remittances</div>
+          <div className="card-subtitle">Track your COD collection submissions to company</div>
         </div>
         <div className="section" style={{ overflowX:'auto' }}>
           {remittances.length===0 ? (
-            <div className="empty-state">No remittances yet</div>
+            <div className="empty-state">No COD remittances yet. (Driver commission payments are in the "Me" page)</div>
           ) : (
             <table style={{ width:'100%', borderCollapse:'separate', borderSpacing:0 }}>
               <thead>
