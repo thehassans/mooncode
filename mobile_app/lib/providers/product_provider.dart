@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/services/product_service.dart';
 import '../models/product_model.dart';
-import '../core/utils/mock_products.dart';
 
 class ProductProvider with ChangeNotifier {
   List<ProductModel> _products = [];
@@ -39,11 +38,11 @@ class ProductProvider with ChangeNotifier {
       
       debugPrint('✅ Loaded ${_products.length} products from backend');
     } catch (e) {
-      // Use mock products as fallback for development
-      debugPrint('⚠️ API Error: $e - Using mock products');
-      _products = MockProducts.getSampleProducts();
-      _filteredProducts = List.from(_products);
-      _error = null;
+      // No fallback - only show real products from database
+      debugPrint('❌ API Error: $e');
+      _products = [];
+      _filteredProducts = [];
+      _error = 'Failed to load products: ${e.toString()}';
     } finally {
       _isLoading = false;
       notifyListeners();

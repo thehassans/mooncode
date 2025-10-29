@@ -148,7 +148,7 @@ class CartScreen extends StatelessWidget {
                       // Convert price to selected currency
                       final convertedPrice = countryProvider.convertPrice(
                         product.price,
-                        product.baseCurrency ?? 'SAR',
+                        product.currency ?? 'SAR',
                       );
                       
                       return Card(
@@ -413,7 +413,7 @@ class CartScreen extends StatelessWidget {
     for (final item in cartProvider.items) {
       final convertedPrice = countryProvider.convertPrice(
         item.product.price,
-        item.product.baseCurrency ?? 'SAR',
+        item.product.currency ?? 'SAR',
       );
       total += convertedPrice * item.quantity;
     }

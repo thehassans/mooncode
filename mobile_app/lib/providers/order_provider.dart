@@ -63,16 +63,19 @@ class OrderProvider with ChangeNotifier {
         };
       }).toList();
 
-      final response = await OrderService.createMobileOrder(
-        items: items,
-        shippingAddress: shippingAddress.toJson(),
-        subtotal: subtotal,
-        tax: tax,
-        shipping: shipping,
-        total: total,
-        paymentMethod: paymentMethod,
-        currency: currency,
-      );
+      // Prepare order data
+      final orderData = {
+        'items': items,
+        'shippingAddress': shippingAddress.toJson(),
+        'subtotal': subtotal,
+        'tax': tax,
+        'shipping': shipping,
+        'total': total,
+        'paymentMethod': paymentMethod,
+        'currency': currency,
+      };
+
+      final response = await OrderService.createMobileOrder(orderData);
 
       _currentOrder = OrderModel.fromJson(response['order'] ?? response);
       _error = null;

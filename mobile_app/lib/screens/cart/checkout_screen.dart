@@ -412,7 +412,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     for (final item in cartProvider.items) {
       final convertedPrice = countryProvider.convertPrice(
         item.product.price,
-        item.product.baseCurrency ?? 'SAR',
+        item.product.currency ?? 'SAR',
       );
       total += convertedPrice * item.quantity;
     }
@@ -488,7 +488,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final items = cartProvider.items.map((item) {
         final convertedPrice = countryProvider.convertPrice(
           item.product.price,
-          item.product.baseCurrency ?? 'SAR',
+          item.product.currency ?? 'SAR',
         );
         
         return {
