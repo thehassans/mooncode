@@ -30,17 +30,8 @@ class ProductProvider with ChangeNotifier {
     try {
       final response = await ProductService.getMobileProducts();
       
-      // Handle both array and object responses
-      List<dynamic> productList;
-      if (response is List) {
-        productList = response;
-      } else if (response is Map && response['products'] != null) {
-        productList = response['products'];
-      } else if (response is Map && response['data'] != null) {
-        productList = response['data'];
-      } else {
-        productList = [];
-      }
+      // Handle the response (always a List from the service)
+      final List<dynamic> productList = response;
       
       _products = productList.map((json) => ProductModel.fromJson(json)).toList();
       _filteredProducts = List.from(_products);

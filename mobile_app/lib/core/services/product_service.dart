@@ -3,29 +3,29 @@ import 'api_service.dart';
 import 'auth_service.dart';
 
 class ProductService {
-  // Get all mobile products
+  // Get all mobile products (public endpoint - no auth required)
   static Future<List<dynamic>> getMobileProducts({
     int page = 1,
-    int limit = 20,
+    int limit = 50,
     String? category,
     String? search,
   }) async {
-    final token = await AuthService.getToken();
-    
     final queryParams = {
       'page': page.toString(),
       'limit': limit.toString(),
-      if (category != null) 'category': category,
+      if (category != null && category != 'all') 'category': category,
       if (search != null) 'search': search,
     };
 
     final response = await ApiService.get(
       ApiConfig.mobileProducts,
-      headers: ApiConfig.getHeaders(token: token),
+      headers: ApiConfig.getHeaders(), // No token needed for public endpoint
       queryParams: queryParams,
     );
 
-    return response['products'] ?? response['data'] ?? [];
+    final data = response['products'] ?? response['data'] ?? [];
+    if (data is List) return data;
+    return [];
   }
 
   // Get product details
@@ -59,7 +59,9 @@ class ProductService {
       queryParams: queryParams,
     );
 
-    return response['products'] ?? response['data'] ?? [];
+    final data = response['products'] ?? response['data'] ?? [];
+    if (data is List) return data;
+    return [];
   }
 
   // Get categories
@@ -71,7 +73,9 @@ class ProductService {
       headers: ApiConfig.getHeaders(token: token),
     );
 
-    return response['categories'] ?? response['data'] ?? [];
+    final data = response['categories'] ?? response['data'] ?? [];
+    if (data is List) return data;
+    return [];
   }
 
   // Search products

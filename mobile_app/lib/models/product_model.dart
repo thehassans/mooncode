@@ -69,9 +69,9 @@ class ProductModel {
       images: imageList,
       category: json['category'] ?? json['categoryId'] ?? '',
       brand: json['brand'],
-      stock: json['stock'] ?? json['quantity'] ?? 0,
-      isForMobile: json['isForMobile'] ?? true, // Default to true for mobile app
-      isActive: json['isActive'] ?? json['active'] ?? true,
+      stock: json['stock'] != null ? _parseInt(json['stock']) : (json['quantity'] != null ? _parseInt(json['quantity']) : 0),
+      isForMobile: json['isForMobile'] != null ? _parseBool(json['isForMobile']) : true, // Default to true for mobile app
+      isActive: json['isActive'] != null ? _parseBool(json['isActive']) : (json['active'] != null ? _parseBool(json['active']) : true),
       variants: json['variants'] != null
           ? (json['variants'] as List)
               .map((v) => ProductVariant.fromJson(v))
@@ -94,11 +94,26 @@ class ProductModel {
     return 0;
   }
   
+  static int _parseInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+  
+  static bool _parseBool(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is String) return value.toLowerCase() == 'true';
+    return false;
+  }
+  
   static ProductRating? _parseRating(dynamic reviews) {
     if (reviews is Map) {
       return ProductRating(
         average: _parsePrice(reviews['average'] ?? reviews['rating']),
-        count: reviews['count'] ?? reviews['total'] ?? 0,
+        count: reviews['count'] != null ? (int.tryParse(reviews['count'].toString()) ?? 0) : (reviews['total'] != null ? (int.tryParse(reviews['total'].toString()) ?? 0) : 0),
       );
     }
     return null;
@@ -162,7 +177,7 @@ class ProductRating {
   factory ProductRating.fromJson(Map<String, dynamic> json) {
     return ProductRating(
       average: (json['average'] ?? 0).toDouble(),
-      count: json['count'] ?? 0,
+      count: json['count'] != null ? (int.tryParse(json['count'].toString()) ?? 0) : 0,
     );
   }
 

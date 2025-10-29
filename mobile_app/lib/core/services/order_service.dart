@@ -3,38 +3,13 @@ import 'api_service.dart';
 import 'auth_service.dart';
 
 class OrderService {
-  // Create order from mobile app
-  static Future<Map<String, dynamic>> createMobileOrder({
-    required List<Map<String, dynamic>> items,
-    required Map<String, dynamic> shippingAddress,
-    required double subtotal,
-    required double tax,
-    required double shipping,
-    required double total,
-    required String paymentMethod,
-    String currency = 'AED',
-  }) async {
-    final token = await AuthService.getToken();
-
-    if (token == null) {
-      throw ApiException(
-        message: 'Authentication required',
-        statusCode: 401,
-      );
-    }
-
+  // Create order from mobile app (no authentication required)
+  static Future<Map<String, dynamic>> createMobileOrder(Map<String, dynamic> orderData) async {
     final response = await ApiService.post(
       ApiConfig.createMobileOrder,
-      headers: ApiConfig.getHeaders(token: token),
+      headers: ApiConfig.getHeaders(), // No token required for mobile orders
       body: {
-        'items': items,
-        'shippingAddress': shippingAddress,
-        'subtotal': subtotal,
-        'tax': tax,
-        'shipping': shipping,
-        'total': total,
-        'currency': currency,
-        'paymentMethod': paymentMethod,
+        ...orderData,
         'source': 'mobile',
       },
     );

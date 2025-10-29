@@ -108,6 +108,7 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
     else if (typeof raw === 'string') availableCountries = raw.split(',').map(s=>s.trim()).filter(Boolean)
   }catch{}
   const displayOnWebsite = String(req.body?.displayOnWebsite||'').toLowerCase() === 'true' || req.body?.displayOnWebsite === true
+  const isForMobile = String(req.body?.isForMobile||'').toLowerCase() === 'true' || req.body?.isForMobile === true
 
   let actorName = ''
   try{
@@ -128,6 +129,7 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
     description: description || '',
     availableCountries,
     displayOnWebsite,
+    isForMobile,
     createdBy: ownerId,
     createdByRole: String(req.user.role||''),
     createdByActor: req.user.id,
@@ -304,6 +306,98 @@ router.get('/public', async (req, res) => {
   }
 })
 
+// Mobile products endpoint (no authentication required) - Only products marked for mobile app
+router.get('/mobile', async (req, res) => {
+  try {
+    const { category, search, sort, limit = 50, page = 1 } = req.query
+    
+    let query = { isForMobile: true }
+    
+    // Category filter
+    if (category && category !== 'all') {
+      query.category = category
+    }
+    
+    // Search filter
+    if (search) {
+      const searchRegex = new RegExp(search, 'i')
+      query.$or = [
+        { name: searchRegex },
+        { description: searchRegex },
+        { brand: searchRegex },
+        { category: searchRegex }
+      ]
+    }
+    
+    // Build sort object
+    let sortObj = { createdAt: -1 } // default: newest first
+    if (sort) {
+      switch (sort) {
+        case 'name':
+          sortObj = { name: 1 }
+          break
+        case 'name-desc':
+          sortObj = { name: -1 }
+          break
+        case 'price':
+          sortObj = { price: 1 }
+          break
+        case 'price-desc':
+          sortObj = { price: -1 }
+          break
+        case 'rating':
+          sortObj = { rating: -1 }
+          break
+        case 'featured':
+          sortObj = { featured: -1, createdAt: -1 }
+          break
+        case 'newest':
+        default:
+          sortObj = { createdAt: -1 }
+          break
+      }
+    }
+    
+    const pageNum = Math.max(1, parseInt(page))
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)))
+    const skip = (pageNum - 1) * limitNum
+    
+    const products = await Product.find(query)
+      .sort(sortObj)
+      .skip(skip)
+      .limit(limitNum)
+      .select('-createdBy -updatedAt -__v')
+    
+    // Ensure totalPurchased is set for all products
+    const productsWithTotal = products.map(p => {
+      const prod = p.toObject()
+      if (prod.totalPurchased == null || prod.totalPurchased === 0) {
+        let totalFromHistory = 0
+        if (Array.isArray(prod.stockHistory) && prod.stockHistory.length > 0) {
+          totalFromHistory = prod.stockHistory.reduce((sum, entry) => sum + (Number(entry.quantity) || 0), 0)
+        }
+        prod.totalPurchased = totalFromHistory > 0 ? totalFromHistory : (prod.stockQty || 0)
+      }
+      return prod
+    })
+    
+    const total = await Product.countDocuments(query)
+    
+    res.json({
+      products: productsWithTotal,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum)
+      }
+    })
+  } catch (error) {
+    console.error('Mobile products error:', error)
+    res.status(500).json({ message: 'Failed to fetch products' })
+  }
+})
+
 // List products (admin => all; agent => all; user => own; manager => owner's; customer => all public)
 router.get('/', auth, allowRoles('admin','user','agent','manager','customer'), async (req, res) => {
   let base = {}
@@ -415,6 +509,10 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
   // Update displayOnWebsite if provided
   if (req.body?.displayOnWebsite != null){
     prod.displayOnWebsite = (req.body.displayOnWebsite === true || String(req.body.displayOnWebsite).toLowerCase() === 'true')
+  }
+  // Update isForMobile if provided
+  if (req.body?.isForMobile != null){
+    prod.isForMobile = (req.body.isForMobile === true || String(req.body.isForMobile).toLowerCase() === 'true')
   }
   // per-country stock updates
   const sbc = { ...(prod.stockByCountry || { UAE:0, Oman:0, KSA:0, Bahrain:0, India:0, Kuwait:0, Qatar:0 }) }

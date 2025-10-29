@@ -85,14 +85,23 @@ class _HomeTabState extends State<HomeTab> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Text(
-                                      AppStrings.appName,
-                                      style: TextStyle(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
-                                        letterSpacing: 0.5,
-                                      ),
+                                    // Logo
+                                    Image.asset(
+                                      'assets/images/buysial2.png',
+                                      height: 40,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        // Fallback to text if image not found
+                                        return const Text(
+                                          AppStrings.appName,
+                                          style: TextStyle(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.primary,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        );
+                                      },
                                     ),
                                     Container(
                                       decoration: BoxDecoration(

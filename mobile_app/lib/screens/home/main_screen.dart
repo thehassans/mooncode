@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../providers/cart_provider.dart';
 import 'home_tab.dart';
+import '../cart/cart_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -19,7 +20,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeTab(),
     const Center(child: Text('Categories')),
-    const Center(child: Text('Cart')),
+    const CartScreen(),
     const Center(child: Text('Profile')),
   ];
 

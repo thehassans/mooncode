@@ -11,7 +11,7 @@ class ApiConfig {
   static const String me = '$apiPrefix/users/me';
   
   // Product Endpoints
-  static const String mobileProducts = '$apiPrefix/products'; // Use existing products endpoint
+  static const String mobileProducts = '$apiPrefix/products/mobile'; // Mobile-specific endpoint for products marked for mobile app
   static String productDetails(String id) => '$apiPrefix/products/$id';
   static String productsByCategory(String category) => '$apiPrefix/products/category/$category';
   static const String categories = '$apiPrefix/products/categories';
