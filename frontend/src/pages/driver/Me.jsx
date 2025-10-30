@@ -19,6 +19,12 @@ export default function DriverMe() {
   const [changingPass, setChangingPass] = useState(false)
   // PDF generation
   const [generatingPDF, setGeneratingPDF] = useState(false)
+  // Monthly report
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [generatingMonthlyPDF, setGeneratingMonthlyPDF] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -346,6 +352,86 @@ export default function DriverMe() {
         </div>
         <div style={{marginTop: '8px', textAlign: 'right', fontSize: '12px', color: 'var(--muted)'}}>
           {levelInfo.pct}% to next level
+        </div>
+      </div>
+
+      {/* Monthly Report Section */}
+      <div className="card" style={{padding: '20px', borderRadius: '16px'}}>
+        <h2 style={{fontSize: '16px', fontWeight: 700, marginBottom: '8px', color: 'var(--text)'}}>Monthly Report</h2>
+        <p style={{fontSize: '14px', color: 'var(--muted)', marginBottom: '16px'}}>
+          Download detailed monthly performance report
+        </p>
+        
+        <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+          <label style={{display: 'flex', flexDirection: 'column', gap: '6px'}}>
+            <span style={{fontSize: '13px', fontWeight: 600, color: 'var(--text)'}}>Select Month</span>
+            <input 
+              type="month" 
+              className="input"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`}
+              style={{maxWidth: '200px'}}
+            />
+          </label>
+          
+          <button
+            className="btn primary"
+            disabled={generatingMonthlyPDF || loading || !selectedMonth}
+            onClick={async () => {
+              setGeneratingMonthlyPDF(true)
+              try {
+                const baseUrl = String(API_BASE || '').trim()
+                let url
+                if (baseUrl.endsWith('/api')) {
+                  url = `${baseUrl}/finance/drivers/monthly-report?month=${selectedMonth}`
+                } else if (baseUrl) {
+                  url = `${baseUrl}/api/finance/drivers/monthly-report?month=${selectedMonth}`
+                } else {
+                  url = `/api/finance/drivers/monthly-report?month=${selectedMonth}`
+                }
+                
+                const response = await fetch(url, {
+                  method: 'GET',
+                  headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                  }
+                })
+                
+                if (!response.ok) throw new Error('Failed to generate monthly report')
+                
+                const blob = await response.blob()
+                const blobUrl = window.URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = blobUrl
+                const monthName = new Date(selectedMonth + '-01').toLocaleDateString('en-US', {month: 'long', year: 'numeric'})
+                a.download = `driver-monthly-report-${monthName.replace(' ', '-')}.pdf`
+                document.body.appendChild(a)
+                a.click()
+                window.URL.revokeObjectURL(blobUrl)
+                document.body.removeChild(a)
+              } catch (err) {
+                console.error('Monthly report generation failed:', err)
+                alert('Failed to generate monthly report. Please try again.')
+              } finally {
+                setGeneratingMonthlyPDF(false)
+              }
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 20px',
+              maxWidth: '220px'
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            {generatingMonthlyPDF ? 'Generating...' : 'Download Monthly Report'}
+          </button>
         </div>
       </div>
 

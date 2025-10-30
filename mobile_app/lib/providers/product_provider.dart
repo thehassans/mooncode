@@ -32,7 +32,24 @@ class ProductProvider with ChangeNotifier {
       // Handle the response (always a List from the service)
       final List<dynamic> productList = response;
       
-      _products = productList.map((json) => ProductModel.fromJson(json)).toList();
+      // Filter out invalid entries and parse valid products
+      final validProducts = <ProductModel>[];
+      for (final item in productList) {
+        try {
+          // Only parse if item is a Map (valid product object)
+          if (item is Map<String, dynamic>) {
+            final product = ProductModel.fromJson(item);
+            validProducts.add(product);
+          } else {
+            debugPrint('⚠️ Skipping invalid product data: ${item.runtimeType}');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Failed to parse product: $e');
+          // Continue with other products even if one fails
+        }
+      }
+      
+      _products = validProducts;
       _filteredProducts = List.from(_products);
       _error = null;
       
@@ -42,7 +59,7 @@ class ProductProvider with ChangeNotifier {
       debugPrint('❌ API Error: $e');
       _products = [];
       _filteredProducts = [];
-      _error = 'Failed to load products: ${e.toString()}';
+      _error = 'Unable to load products. Please check your connection or contact support.';
     } finally {
       _isLoading = false;
       notifyListeners();

@@ -50,5 +50,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   
-  assets:
-    - assets/images/
+  # assets:
+  #   - assets/images/
+  # Commented out to prevent Out of Memory errors with large logo file (582KB)
+  # Optimize logo to <50KB before uncommenting

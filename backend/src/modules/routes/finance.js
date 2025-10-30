@@ -17,6 +17,8 @@ import { generatePayoutReceiptPDF } from "../utils/payoutReceipt.js";
 import { generateSettlementPDF, generateAcceptedSettlementPDF } from "../../utils/generateSettlementPDF.js";
 import { generateCommissionPayoutPDF } from "../../utils/generateCommissionPayoutPDF.js";
 import { generateAgentCommissionReceiptPDF } from "../../utils/generateAgentCommissionReceiptPDF.js";
+import { generateAgentMonthlyReportPDF } from "../../utils/generateAgentMonthlyReportPDF.js";
+import { generateDriverMonthlyReportPDF } from "../../utils/generateDriverMonthlyReportPDF.js";
 
 const router = express.Router();
 
@@ -1800,6 +1802,268 @@ router.post(
       return res.json({ ok: true, message: "Manual receipt sent" });
     } catch (err) {
       return res.status(500).json({ message: "Failed to send manual receipt" });
+    }
+  }
+);
+
+// === MONTHLY REPORT ENDPOINTS ===
+
+// Driver Monthly Report PDF
+router.get(
+  "/drivers/monthly-report",
+  auth,
+  allowRoles("driver"),
+  async (req, res) => {
+    try {
+      const { month } = req.query; // Expected format: YYYY-MM
+      
+      if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({ message: "Invalid month format. Use YYYY-MM" });
+      }
+
+      const driver = await User.findById(req.user.id)
+        .select("firstName lastName phone driverProfile")
+        .lean();
+      
+      if (!driver) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      // Parse month range
+      const startDate = new Date(month + '-01T00:00:00.000Z');
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+
+      // Get orders for this month
+      const orders = await Order.find({
+        driver: req.user.id,
+        createdAt: { $gte: startDate, $lt: endDate }
+      }).populate('customerId', 'name').lean();
+
+      // Calculate statistics
+      const ordersAssigned = orders.length;
+      const ordersDelivered = orders.filter(o => o.shipmentStatus === 'delivered').length;
+      const ordersCancelled = orders.filter(o => o.shipmentStatus === 'cancelled').length;
+      const ordersReturned = orders.filter(o => o.shipmentStatus === 'returned').length;
+
+      // Get remittances for cancelled and returned orders
+      const cancelledOrders = orders.filter(o => o.shipmentStatus === 'cancelled');
+      const returnedOrders = orders.filter(o => o.shipmentStatus === 'returned');
+
+      let cancelledSubmittedAmount = 0;
+      let cancelledAcceptedAmount = 0;
+      let returnedSubmittedAmount = 0;
+      let returnedAcceptedAmount = 0;
+
+      // Get remittances for this month
+      const remittances = await Remittance.find({
+        driver: req.user.id,
+        createdAt: { $gte: startDate, $lt: endDate }
+      }).lean();
+
+      for (const remit of remittances) {
+        if (remit.status === 'pending' || remit.status === 'accepted') {
+          // Check if this remittance is for cancelled or returned orders
+          // We'll sum all remittances submitted as "submitted amount"
+          if (remit.orderType === 'cancelled' || cancelledOrders.some(o => String(o._id) === String(remit.order))) {
+            cancelledSubmittedAmount += Number(remit.amount || 0);
+            if (remit.status === 'accepted') {
+              cancelledAcceptedAmount += Number(remit.amount || 0);
+            }
+          }
+          if (remit.orderType === 'returned' || returnedOrders.some(o => String(o._id) === String(remit.order))) {
+            returnedSubmittedAmount += Number(remit.amount || 0);
+            if (remit.status === 'accepted') {
+              returnedAcceptedAmount += Number(remit.amount || 0);
+            }
+          }
+        }
+      }
+
+      // Calculate commission
+      const commissionPerOrder = Number(driver.driverProfile?.commissionPerOrder || driver.commissionPerOrder || 0);
+      const totalCommission = Number(driver.driverProfile?.totalCommission || 0);
+      const currency = String(driver.driverProfile?.commissionCurrency || 'SAR').toUpperCase();
+
+      // Get delivered order details
+      const deliveredOrders = orders
+        .filter(o => o.shipmentStatus === 'delivered')
+        .map(o => ({
+          invoiceNumber: o.invoiceNumber,
+          customerName: o.customerId?.name || 'N/A',
+          deliveredAt: o.updatedAt,
+          commission: commissionPerOrder
+        }));
+
+      // Generate PDF
+      const pdfData = {
+        driverName: `${driver.firstName || ''} ${driver.lastName || ''}`.trim(),
+        driverPhone: driver.phone,
+        month: month,
+        ordersAssigned,
+        ordersDelivered,
+        ordersCancelled,
+        ordersReturned,
+        cancelledSubmittedAmount,
+        cancelledAcceptedAmount,
+        returnedSubmittedAmount,
+        returnedAcceptedAmount,
+        totalCommission,
+        currency,
+        deliveredOrders
+      };
+
+      const pdfPath = await generateDriverMonthlyReportPDF(pdfData);
+      const fullPath = path.join(process.cwd(), pdfPath);
+
+      if (!fs.existsSync(fullPath)) {
+        return res.status(500).json({ message: "PDF generation failed" });
+      }
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="driver-monthly-report-${month}.pdf"`);
+      
+      const fileStream = fs.createReadStream(fullPath);
+      fileStream.pipe(res);
+
+      // Clean up file after sending
+      fileStream.on('end', () => {
+        try {
+          fs.unlinkSync(fullPath);
+        } catch {}
+      });
+
+    } catch (err) {
+      console.error("Driver monthly report error:", err);
+      return res.status(500).json({ message: "Failed to generate monthly report" });
+    }
+  }
+);
+
+// Agent Monthly Report PDF
+router.get(
+  "/agents/monthly-report",
+  auth,
+  allowRoles("agent"),
+  async (req, res) => {
+    try {
+      const { month } = req.query; // Expected format: YYYY-MM
+      
+      if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({ message: "Invalid month format. Use YYYY-MM" });
+      }
+
+      const agent = await User.findById(req.user.id)
+        .select("firstName lastName email phone")
+        .lean();
+      
+      if (!agent) {
+        return res.status(404).json({ message: "Agent not found" });
+      }
+
+      // Parse month range
+      const startDate = new Date(month + '-01T00:00:00.000Z');
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+
+      // Get orders for this month
+      const orders = await Order.find({
+        agent: req.user.id,
+        createdAt: { $gte: startDate, $lt: endDate }
+      }).populate('customerId', 'name').lean();
+
+      // Calculate statistics
+      const ordersSubmitted = orders.length;
+      const ordersDelivered = orders.filter(o => o.shipmentStatus === 'delivered').length;
+      const ordersCancelled = orders.filter(o => o.shipmentStatus === 'cancelled').length;
+      const ordersReturned = orders.filter(o => o.shipmentStatus === 'returned').length;
+
+      // Calculate commission (12% of delivered orders)
+      const commissionPct = 0.12;
+      let totalCommission = 0;
+
+      // Get currency config
+      const currencyCfg = await getCurrencyConfig();
+      
+      // Helper to convert to AED
+      const toAED = (amount, code) => {
+        const c = String(code || 'SAR').toUpperCase();
+        const rate = currencyCfg.sarPerUnit[c];
+        if (!rate) return amount;
+        return (amount / rate) * currencyCfg.sarPerUnit.AED;
+      };
+
+      // Helper to convert AED to PKR
+      const aedToPKR = (aed) => {
+        return aed * (currencyCfg.pkrPerUnit.AED || 76);
+      };
+
+      for (const order of orders) {
+        if (order.shipmentStatus === 'delivered') {
+          const total = Number(order.total || 0);
+          const currency = order.orderCurrency || 'SAR';
+          const aed = toAED(total, currency);
+          const pkr = aedToPKR(aed);
+          totalCommission += pkr * commissionPct;
+        }
+      }
+
+      // Get delivered order details with commission
+      const deliveredOrders = orders
+        .filter(o => o.shipmentStatus === 'delivered')
+        .map(o => {
+          const total = Number(o.total || 0);
+          const currency = o.orderCurrency || 'SAR';
+          const aed = toAED(total, currency);
+          const pkr = aedToPKR(aed);
+          const commission = pkr * commissionPct;
+          
+          return {
+            invoiceNumber: o.invoiceNumber,
+            customerName: o.customerId?.name || 'N/A',
+            deliveredAt: o.updatedAt,
+            commission
+          };
+        });
+
+      // Generate PDF
+      const pdfData = {
+        agentName: `${agent.firstName || ''} ${agent.lastName || ''}`.trim(),
+        agentEmail: agent.email,
+        agentPhone: agent.phone,
+        month: month,
+        ordersSubmitted,
+        ordersDelivered,
+        ordersCancelled,
+        ordersReturned,
+        totalCommission: Math.round(totalCommission),
+        currency: 'PKR',
+        deliveredOrders
+      };
+
+      const pdfPath = await generateAgentMonthlyReportPDF(pdfData);
+      const fullPath = path.join(process.cwd(), pdfPath);
+
+      if (!fs.existsSync(fullPath)) {
+        return res.status(500).json({ message: "PDF generation failed" });
+      }
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="agent-monthly-report-${month}.pdf"`);
+      
+      const fileStream = fs.createReadStream(fullPath);
+      fileStream.pipe(res);
+
+      // Clean up file after sending
+      fileStream.on('end', () => {
+        try {
+          fs.unlinkSync(fullPath);
+        } catch {}
+      });
+
+    } catch (err) {
+      console.error("Agent monthly report error:", err);
+      return res.status(500).json({ message: "Failed to generate monthly report" });
     }
   }
 );

@@ -120,10 +120,10 @@ class _SplashScreenState extends State<SplashScreen> {
                       borderRadius: BorderRadius.circular(32),
                       child: Padding(
                         padding: const EdgeInsets.all(12.0),
-                        child: Image.asset(
-                          'assets/images/buysial2.png',
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
+                        child: FutureBuilder(
+                          future: Future.delayed(Duration.zero),
+                          builder: (context, snapshot) {
+                            // Use icon instead of large image to prevent memory issues
                             return const Icon(
                               Icons.shopping_bag_outlined,
                               size: 72,
