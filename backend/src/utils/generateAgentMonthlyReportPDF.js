@@ -458,26 +458,34 @@ export async function generateAgentMonthlyReportPDF(data) {
            align: 'center'
          })
 
-      // Page numbers
+      // Page numbers - add to existing pages only
       const range = doc.bufferedPageRange()
-      for (let i = 0; i < range.count; i++) {
+      const totalPages = range.count
+      
+      for (let i = 0; i < totalPages; i++) {
         doc.switchToPage(i)
         
+        // Add bottom gold bar
         doc.rect(0, pageHeight - 8, pageWidth, 8)
            .fill(colors.accent)
         
+        // Add page number text
         doc.fontSize(8)
            .font('Helvetica')
            .fillColor(colors.muted)
-           .text(
-             `— Page ${i + 1} of ${range.count} —`,
-             margin,
-             pageHeight - 25,
-             {
-               width: contentWidth,
-               align: 'center'
-             }
-           )
+        
+        // Use absolute positioning to avoid creating new content flow
+        const textY = pageHeight - 25
+        doc.text(
+          `— Page ${i + 1} of ${totalPages} —`,
+          0,
+          textY,
+          {
+            width: pageWidth,
+            align: 'center',
+            lineBreak: false
+          }
+        )
       }
 
       doc.end()
