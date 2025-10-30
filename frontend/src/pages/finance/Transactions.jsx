@@ -796,12 +796,12 @@ export default function Transactions(){
                             <td style={{ padding:'12px' }}>{r.acceptedAt? new Date(r.acceptedAt).toLocaleString(): '—'}</td>
                             <td style={{ padding:'12px' }}>{r.createdAt? new Date(r.createdAt).toLocaleString(): '—'}</td>
                             <td style={{ padding:'12px' }}>
-                            {r.receiptPath ? (
-                                <a href={`${API_BASE}${r.receiptPath}`} target="_blank" rel="noopener noreferrer" className="btn" style={{fontSize:13, padding:'6px 12px'}}>Download</a>
+                              {(r.pdfPath || r.acceptedPdfPath) ? (
+                                <a href={`${API_BASE}/api/finance/remittances/${r._id}/download-settlement`} target="_blank" rel="noopener noreferrer" className="btn" style={{fontSize:13, padding:'6px 12px'}}>Download</a>
                               ) : '—'}
                             </td>
                             <td style={{ padding:'12px' }}>
-                              {String(r.status||'').toLowerCase()==='pending' ? (
+                              {String(r.status||'').toLowerCase()==='pending' || String(r.status||'').toLowerCase()==='manager_accepted' ? (
                                 <div style={{display:'flex', gap:6}}>
                                   <button className="btn" style={{fontSize:13, padding:'6px 12px'}} onClick={()=> acceptRemit(String(r._id||''))}>Accept</button>
                                   <button className="btn secondary" style={{fontSize:13, padding:'6px 12px'}} onClick={()=> rejectRemit(String(r._id||''))}>Reject</button>

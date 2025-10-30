@@ -1267,6 +1267,54 @@ router.post(
   }
 );
 
+// Download settlement PDF for remittance
+router.get(
+  "/remittances/:id/download-settlement",
+  auth,
+  allowRoles("user", "manager", "driver"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const r = await Remittance.findById(id).populate("driver manager");
+      if (!r) return res.status(404).json({ message: "Remittance not found" });
+
+      // Authorization: driver, manager assigned, or owner
+      const isDriver = req.user.role === "driver" && String(r.driver?._id || r.driver) === String(req.user.id);
+      const isManager = req.user.role === "manager" && String(r.manager?._id || r.manager) === String(req.user.id);
+      const isOwner = req.user.role === "user" && String(r.owner) === String(req.user.id);
+      
+      if (!isDriver && !isManager && !isOwner) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Use acceptedPdfPath if accepted, otherwise use pdfPath
+      const pdfPath = r.acceptedPdfPath || r.pdfPath;
+      if (!pdfPath) {
+        return res.status(404).json({ message: "Settlement PDF not available" });
+      }
+
+      const fullPath = path.join(process.cwd(), pdfPath);
+      
+      // Check if file exists
+      if (!fs.existsSync(fullPath)) {
+        return res.status(404).json({ message: "PDF file not found" });
+      }
+
+      // Send PDF file
+      const fileName = `Settlement_${r.driver?.firstName || 'Driver'}_${new Date(r.createdAt).toLocaleDateString().replace(/\//g, '-')}.pdf`;
+      res.download(fullPath, fileName, (err) => {
+        if (err) {
+          console.error('Download error:', err);
+        }
+      });
+
+    } catch (err) {
+      console.error("Download settlement PDF error:", err);
+      return res.status(500).json({ message: "Failed to download settlement" });
+    }
+  }
+);
+
 // Summary for driver: total delivered and collected in period
 router.get(
   "/remittances/summary",
