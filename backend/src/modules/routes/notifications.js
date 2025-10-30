@@ -33,7 +33,11 @@ router.get('/', auth, allowRoles('admin', 'user', 'agent', 'manager'), async (re
       'investor_remittance',
       'expense_approval',
       'driver_remittance',
-      'return_request'
+      'return_request',
+      'driver_commission_approval',
+      'commission_paid',
+      'commission_approved',
+      'commission_rejected'
     ]
     
     let match = { 
@@ -145,7 +149,11 @@ router.get('/stats', auth, allowRoles('admin', 'user', 'agent', 'manager'), asyn
       'investor_remittance',
       'expense_approval',
       'driver_remittance',
-      'return_request'
+      'return_request',
+      'driver_commission_approval',
+      'commission_paid',
+      'commission_approved',
+      'commission_rejected'
     ]
     
     const stats = await Notification.aggregate([

@@ -78,6 +78,8 @@ import UserManagerFinances from './pages/user/ManagerFinances.jsx'
 import AgentAmounts from './pages/user/AgentAmounts.jsx'
 import InvestorAmounts from './pages/user/InvestorAmounts.jsx'
 import DriverAmounts from './pages/user/DriverAmounts.jsx'
+import ManagerDriverAmounts from './pages/manager/DriverAmounts.jsx'
+import DriverCommissionApprovals from './pages/user/DriverCommissionApprovals.jsx'
 import CurrencySettings from './pages/user/CurrencySettings.jsx'
 import UserReturnedOrders from './pages/user/ReturnedOrders.jsx'
 import ManagerReturnedOrders from './pages/manager/ReturnedOrders.jsx'
@@ -321,6 +323,7 @@ export default function App() {
         <Route path="drivers/create" element={<ManagerCreateDriver />} />
         <Route path="finances/history/agents" element={<AgentRemitHistory />} />
         <Route path="transactions/drivers" element={<ManagerDriverFinances />} />
+        <Route path="driver-amounts" element={<ManagerDriverAmounts />} />
         <Route path="warehouses" element={<Warehouse />} />
         <Route path="inhouse-products" element={<InhouseProducts />} />
         <Route path="expenses" element={<ManagerExpenses />} />
@@ -362,6 +365,7 @@ export default function App() {
         <Route path="agent-amounts" element={<AgentAmounts />} />
         <Route path="investor-amounts" element={<InvestorAmounts />} />
         <Route path="driver-amounts" element={<DriverAmounts />} />
+        <Route path="driver-commission-approvals" element={<DriverCommissionApprovals />} />
         <Route path="finances" element={<UserFinances />} />
         <Route path="currency" element={<CurrencySettings />} />
         <Route path="api-setup" element={<UserAPISetup />} />

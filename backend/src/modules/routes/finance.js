@@ -9,6 +9,7 @@ import Remittance from "../models/Remittance.js";
 import ManagerRemittance from "../models/ManagerRemittance.js";
 import AgentRemit from "../models/AgentRemit.js";
 import InvestorRemittance from "../models/InvestorRemittance.js";
+import DriverCommissionPayout from "../models/DriverCommissionPayout.js";
 import User from "../models/User.js";
 import Product from "../models/Product.js";
 import { getIO } from "../config/socket.js";
@@ -3046,3 +3047,365 @@ router.get("/investor/dashboard", auth, allowRoles("investor"), async (req, res)
     return res.status(500).json({ message: "Failed to load dashboard data" });
   }
 });
+
+// ======================
+// DRIVER COMMISSION PAYOUT ROUTES (Manager -> Driver with User Approval)
+// ======================
+
+// Manager pays commission to driver (creates pending payout)
+router.post(
+  "/driver-commission-payouts",
+  auth,
+  allowRoles("manager"),
+  async (req, res) => {
+    try {
+      const { driverId, amount, method = "hand", note = "" } = req.body || {};
+      const amt = Number(amount);
+      if (Number.isNaN(amt) || amt <= 0) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+
+      const driver = await User.findOne({ _id: driverId, role: "driver" });
+      if (!driver) return res.status(404).json({ message: "Driver not found" });
+
+      // Check if manager has authority over this driver
+      if (String(driver.createdBy) !== String(req.user.createdBy || req.user.id)) {
+        return res.status(403).json({ message: "Not authorized for this driver" });
+      }
+
+      const ownerId = driver.createdBy || req.user.createdBy;
+
+      // Get driver's commission data
+      const deliveredOrders = await Order.countDocuments({
+        deliveryBoy: driverId,
+        shipmentStatus: "delivered",
+      });
+
+      const commissionPerOrder = Number(driver.driverProfile?.commissionPerOrder || 0);
+      const totalCommission = Number(driver.driverProfile?.totalCommission || 0);
+      const paidCommission = Number(driver.driverProfile?.paidCommission || 0);
+      const pendingCommission = Math.max(0, totalCommission - paidCommission);
+      const currency = driver.driverProfile?.commissionCurrency || driver.country === "UAE" ? "AED" : "SAR";
+
+      if (amt > pendingCommission) {
+        return res.status(400).json({ message: `Amount exceeds pending commission (${currency} ${pendingCommission})` });
+      }
+
+      // Generate commission PDF
+      let pdfPath = "";
+      try {
+        const orders = await Order.find({
+          deliveryBoy: driverId,
+          shipmentStatus: "delivered",
+        })
+          .select("invoiceNumber deliveredAt driverCommission total")
+          .sort({ deliveredAt: -1 })
+          .limit(500)
+          .lean();
+
+        pdfPath = await generateCommissionPayoutPDF({
+          driverName: `${driver.firstName || ''} ${driver.lastName || ''}`.trim() || 'Driver',
+          driverPhone: driver.phone || '',
+          totalDeliveredOrders: deliveredOrders,
+          commissionPerOrder,
+          totalCommission: amt,
+          paidCommission: 0,
+          pendingCommission: amt,
+          currency,
+          orders,
+        });
+      } catch (pdfErr) {
+        console.error("Failed to generate commission PDF:", pdfErr);
+      }
+
+      // Create pending payout
+      const payout = new DriverCommissionPayout({
+        driver: driverId,
+        manager: req.user.id,
+        owner: ownerId,
+        country: driver.country || "",
+        currency,
+        amount: amt,
+        method,
+        note,
+        status: "pending",
+        pdfPath,
+        totalDeliveredOrders: deliveredOrders,
+        commissionPerOrder,
+      });
+      await payout.save();
+
+      // Create notification for owner
+      try {
+        const Notification = (await import("../models/Notification.js")).default;
+        await Notification.create({
+          user: ownerId,
+          type: "driver_commission_approval",
+          title: "Driver Commission Approval",
+          message: `Manager ${req.user.firstName || ''} ${req.user.lastName || ''} sent ${currency} ${amt} commission for ${driver.firstName || ''} ${driver.lastName || ''}`,
+          relatedId: String(payout._id),
+          relatedModel: "DriverCommissionPayout",
+        });
+      } catch {}
+
+      // Emit socket event
+      try {
+        const io = getIO();
+        io.to(`user:${String(ownerId)}`).emit("driver_commission.pending", {
+          payoutId: String(payout._id),
+          driverId: String(driverId),
+          amount: amt,
+          currency,
+        });
+      } catch {}
+
+      return res.json({ ok: true, message: "Commission payout submitted for approval", payout });
+    } catch (err) {
+      console.error("Create driver commission payout error:", err);
+      return res.status(500).json({ message: "Failed to submit commission payout" });
+    }
+  }
+);
+
+// Get all driver commission payouts (for owner/manager)
+router.get(
+  "/driver-commission-payouts",
+  auth,
+  allowRoles("user", "manager"),
+  async (req, res) => {
+    try {
+      const { status, country } = req.query || {};
+      const query = {};
+
+      if (req.user.role === "manager") {
+        query.manager = req.user.id;
+      } else {
+        query.owner = req.user.id;
+      }
+
+      if (status) query.status = status;
+      if (country) query.country = country;
+
+      const payouts = await DriverCommissionPayout.find(query)
+        .populate("driver", "firstName lastName phone email country")
+        .populate("manager", "firstName lastName email")
+        .populate("approvedBy", "firstName lastName email")
+        .sort({ createdAt: -1 })
+        .limit(200)
+        .lean();
+
+      return res.json({ payouts });
+    } catch (err) {
+      console.error("Get driver commission payouts error:", err);
+      return res.status(500).json({ message: "Failed to load commission payouts" });
+    }
+  }
+);
+
+// Get commission payouts for specific driver
+router.get(
+  "/drivers/:id/commission-payouts",
+  auth,
+  allowRoles("user", "manager", "driver"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Authorization check
+      if (req.user.role === "driver" && String(req.user.id) !== String(id)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const payouts = await DriverCommissionPayout.find({ driver: id })
+        .populate("manager", "firstName lastName email")
+        .populate("approvedBy", "firstName lastName email")
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return res.json({ payouts });
+    } catch (err) {
+      console.error("Get driver commission payouts error:", err);
+      return res.status(500).json({ message: "Failed to load commission payouts" });
+    }
+  }
+);
+
+// Approve commission payout (owner)
+router.post(
+  "/driver-commission-payouts/:id/approve",
+  auth,
+  allowRoles("user"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const payout = await DriverCommissionPayout.findById(id).populate("driver");
+      if (!payout) return res.status(404).json({ message: "Payout not found" });
+
+      if (String(payout.owner) !== String(req.user.id)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      if (payout.status !== "pending") {
+        return res.status(400).json({ message: "Payout already processed" });
+      }
+
+      // Update payout status
+      payout.status = "approved";
+      payout.approvedAt = new Date();
+      payout.approvedBy = req.user.id;
+      await payout.save();
+
+      // Update driver's paidCommission
+      const driver = payout.driver;
+      if (!driver.driverProfile) driver.driverProfile = {};
+      const currentPaid = Number(driver.driverProfile.paidCommission || 0);
+      driver.driverProfile.paidCommission = currentPaid + payout.amount;
+      driver.markModified("driverProfile");
+      await driver.save();
+
+      // Create notification for driver
+      try {
+        const Notification = (await import("../models/Notification.js")).default;
+        await Notification.create({
+          user: driver._id,
+          type: "commission_paid",
+          title: "Commission Paid",
+          message: `Your commission of ${payout.currency} ${payout.amount} has been approved and paid`,
+          relatedId: String(payout._id),
+          relatedModel: "DriverCommissionPayout",
+        });
+      } catch {}
+
+      // Create notification for manager
+      try {
+        const Notification = (await import("../models/Notification.js")).default;
+        await Notification.create({
+          user: payout.manager,
+          type: "commission_approved",
+          title: "Commission Approved",
+          message: `Commission of ${payout.currency} ${payout.amount} for ${driver.firstName || ''} ${driver.lastName || ''} was approved`,
+          relatedId: String(payout._id),
+          relatedModel: "DriverCommissionPayout",
+        });
+      } catch {}
+
+      // Emit socket events
+      try {
+        const io = getIO();
+        io.to(`user:${String(driver._id)}`).emit("commission.paid", { 
+          payoutId: String(payout._id),
+          amount: payout.amount 
+        });
+        io.to(`user:${String(payout.manager)}`).emit("driver_commission.approved", {
+          payoutId: String(payout._id),
+          driverId: String(driver._id),
+        });
+      } catch {}
+
+      return res.json({ ok: true, message: "Commission payout approved", payout });
+    } catch (err) {
+      console.error("Approve commission payout error:", err);
+      return res.status(500).json({ message: "Failed to approve commission payout" });
+    }
+  }
+);
+
+// Reject commission payout (owner)
+router.post(
+  "/driver-commission-payouts/:id/reject",
+  auth,
+  allowRoles("user"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { reason = "" } = req.body || {};
+      
+      const payout = await DriverCommissionPayout.findById(id).populate("driver manager");
+      if (!payout) return res.status(404).json({ message: "Payout not found" });
+
+      if (String(payout.owner) !== String(req.user.id)) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      if (payout.status !== "pending") {
+        return res.status(400).json({ message: "Payout already processed" });
+      }
+
+      payout.status = "rejected";
+      payout.rejectedAt = new Date();
+      payout.rejectedBy = req.user.id;
+      payout.rejectionReason = reason;
+      await payout.save();
+
+      // Create notification for manager
+      try {
+        const Notification = (await import("../models/Notification.js")).default;
+        await Notification.create({
+          user: payout.manager._id,
+          type: "commission_rejected",
+          title: "Commission Rejected",
+          message: `Commission of ${payout.currency} ${payout.amount} for ${payout.driver?.firstName || ''} ${payout.driver?.lastName || ''} was rejected${reason ? ': ' + reason : ''}`,
+          relatedId: String(payout._id),
+          relatedModel: "DriverCommissionPayout",
+        });
+      } catch {}
+
+      // Emit socket event
+      try {
+        const io = getIO();
+        io.to(`user:${String(payout.manager._id)}`).emit("driver_commission.rejected", {
+          payoutId: String(payout._id),
+          reason,
+        });
+      } catch {}
+
+      return res.json({ ok: true, message: "Commission payout rejected", payout });
+    } catch (err) {
+      console.error("Reject commission payout error:", err);
+      return res.status(500).json({ message: "Failed to reject commission payout" });
+    }
+  }
+);
+
+// Download commission PDF
+router.get(
+  "/driver-commission-payouts/:id/download-pdf",
+  auth,
+  allowRoles("user", "manager", "driver"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const payout = await DriverCommissionPayout.findById(id).populate("driver");
+      if (!payout) return res.status(404).json({ message: "Payout not found" });
+
+      // Authorization
+      const isDriver = req.user.role === "driver" && String(payout.driver?._id || payout.driver) === String(req.user.id);
+      const isManager = req.user.role === "manager" && String(payout.manager) === String(req.user.id);
+      const isOwner = req.user.role === "user" && String(payout.owner) === String(req.user.id);
+
+      if (!isDriver && !isManager && !isOwner) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      if (!payout.pdfPath) {
+        return res.status(404).json({ message: "PDF not available" });
+      }
+
+      const fullPath = path.join(process.cwd(), payout.pdfPath);
+      if (!fs.existsSync(fullPath)) {
+        return res.status(404).json({ message: "PDF file not found" });
+      }
+
+      const fileName = `Commission_${payout.driver?.firstName || 'Driver'}_${new Date(payout.createdAt).toLocaleDateString().replace(/\//g, '-')}.pdf`;
+      res.download(fullPath, fileName, (err) => {
+        if (err) console.error('Download error:', err);
+      });
+
+    } catch (err) {
+      console.error("Download commission PDF error:", err);
+      return res.status(500).json({ message: "Failed to download PDF" });
+    }
+  }
+);
+
+export default router;
