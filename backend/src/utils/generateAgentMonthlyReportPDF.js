@@ -338,9 +338,8 @@ export async function generateAgentMonthlyReportPDF(data) {
 
         // Table rows
         const rowHeight = 40
-        const maxOrdersPerPage = 10
 
-        data.deliveredOrders.slice(0, maxOrdersPerPage).forEach((order, index) => {
+        data.deliveredOrders.forEach((order, index) => {
           // Check if we need a new page
           if (y + rowHeight + 100 > pageHeight - margin) {
             doc.addPage()
@@ -401,17 +400,16 @@ export async function generateAgentMonthlyReportPDF(data) {
           y += rowHeight
         })
 
-        if (data.deliveredOrders.length > maxOrdersPerPage) {
-          y += 10
-          doc.fontSize(9)
-             .font('Helvetica-Oblique')
-             .fillColor(colors.muted)
-             .text(`Showing first ${maxOrdersPerPage} of ${data.deliveredOrders.length} total delivered orders`, margin, y, {
-               width: contentWidth,
-               align: 'center'
-             })
-          y += 20
-        }
+        // Show total count
+        y += 10
+        doc.fontSize(9)
+           .font('Helvetica-Oblique')
+           .fillColor(colors.muted)
+           .text(`Showing ${data.deliveredOrders.length}/${data.deliveredOrders.length} total delivered orders`, margin, y, {
+             width: contentWidth,
+             align: 'center'
+           })
+        y += 20
       }
 
       // === PREMIUM FOOTER ===
@@ -447,7 +445,7 @@ export async function generateAgentMonthlyReportPDF(data) {
       doc.fontSize(11)
          .font('Helvetica-Bold')
          .fillColor(colors.primary)
-         .text('Authorized by BuySial Commerce', margin, sigLineY + 12, {
+         .text('Qadeer Hussain', margin, sigLineY + 12, {
            width: contentWidth,
            align: 'center'
          })

@@ -1846,7 +1846,7 @@ router.get(
       const ordersCancelled = orders.filter(o => o.shipmentStatus === 'cancelled').length;
       const ordersReturned = orders.filter(o => o.shipmentStatus === 'returned').length;
 
-      // Get remittances for cancelled and returned orders
+      // Get remittances for cancelled and returned orders - CASH ACCOUNTABILITY
       const cancelledOrders = orders.filter(o => o.shipmentStatus === 'cancelled');
       const returnedOrders = orders.filter(o => o.shipmentStatus === 'returned');
 
@@ -1855,27 +1855,23 @@ router.get(
       let returnedSubmittedAmount = 0;
       let returnedAcceptedAmount = 0;
 
-      // Get remittances for this month
-      const remittances = await Remittance.find({
-        driver: req.user.id,
-        createdAt: { $gte: startDate, $lt: endDate }
-      }).lean();
-
-      for (const remit of remittances) {
-        if (remit.status === 'pending' || remit.status === 'accepted') {
-          // Check if this remittance is for cancelled or returned orders
-          // We'll sum all remittances submitted as "submitted amount"
-          if (remit.orderType === 'cancelled' || cancelledOrders.some(o => String(o._id) === String(remit.order))) {
-            cancelledSubmittedAmount += Number(remit.amount || 0);
-            if (remit.status === 'accepted') {
-              cancelledAcceptedAmount += Number(remit.amount || 0);
-            }
+      // Only count cash from cancelled/returned orders that were submitted to company
+      for (const order of cancelledOrders) {
+        if (order.returnSubmittedToCompany) {
+          const amount = Number(order.collectedAmount || order.codAmount || 0);
+          cancelledSubmittedAmount += amount;
+          if (order.returnVerified) {
+            cancelledAcceptedAmount += amount;
           }
-          if (remit.orderType === 'returned' || returnedOrders.some(o => String(o._id) === String(remit.order))) {
-            returnedSubmittedAmount += Number(remit.amount || 0);
-            if (remit.status === 'accepted') {
-              returnedAcceptedAmount += Number(remit.amount || 0);
-            }
+        }
+      }
+
+      for (const order of returnedOrders) {
+        if (order.returnSubmittedToCompany) {
+          const amount = Number(order.collectedAmount || order.codAmount || 0);
+          returnedSubmittedAmount += amount;
+          if (order.returnVerified) {
+            returnedAcceptedAmount += amount;
           }
         }
       }
