@@ -279,13 +279,13 @@ export async function generateDriverMonthlyReportPDF(data) {
 
       y = metricY + metricHeight + 30
 
-      // === REMITTANCE ACCOUNTABILITY SECTION (NEW) ===
+      // === ORDERS ACCOUNTABILITY SECTION ===
       if (data.ordersCancelled > 0 || data.ordersReturned > 0) {
         
         doc.fontSize(14)
            .font('Helvetica-Bold')
            .fillColor(colors.primary)
-           .text('REMITTANCE ACCOUNTABILITY', margin, y)
+           .text('ORDERS ACCOUNTABILITY', margin, y)
         
         doc.rect(margin, y + 20, 140, 2)
            .fill(colors.accent)
@@ -327,11 +327,7 @@ export async function generateDriverMonthlyReportPDF(data) {
           doc.fontSize(12)
              .font('Helvetica-Bold')
              .fillColor(colors.secondary)
-             .text(String(data.cancelledSubmittedCount || 0), margin + 220, remitY)
-          doc.fontSize(9)
-             .font('Helvetica')
-             .fillColor(colors.muted)
-             .text(`(${formatCurrency(data.cancelledSubmittedAmount || 0, data.currency || 'SAR')})`, margin + 250, remitY)
+             .text(String(data.cancelledSubmittedCount || 0), margin + 305, remitY)
           remitY += 22
 
           // Orders Accepted/Verified
@@ -343,10 +339,6 @@ export async function generateDriverMonthlyReportPDF(data) {
              .font('Helvetica-Bold')
              .fillColor(colors.success)
              .text(String(data.cancelledAcceptedCount || 0), margin + 305, remitY)
-          doc.fontSize(9)
-             .font('Helvetica')
-             .fillColor(colors.muted)
-             .text(`(${formatCurrency(data.cancelledAcceptedAmount || 0, data.currency || 'SAR')})`, margin + 335, remitY)
 
           y += remitBoxHeight + 15
 
@@ -452,11 +444,7 @@ export async function generateDriverMonthlyReportPDF(data) {
           doc.fontSize(12)
              .font('Helvetica-Bold')
              .fillColor(colors.secondary)
-             .text(String(data.returnedSubmittedCount || 0), margin + 220, remitY)
-          doc.fontSize(9)
-             .font('Helvetica')
-             .fillColor(colors.muted)
-             .text(`(${formatCurrency(data.returnedSubmittedAmount || 0, data.currency || 'SAR')})`, margin + 250, remitY)
+             .text(String(data.returnedSubmittedCount || 0), margin + 305, remitY)
           remitY += 22
 
           // Orders Accepted/Verified
@@ -468,21 +456,15 @@ export async function generateDriverMonthlyReportPDF(data) {
              .font('Helvetica-Bold')
              .fillColor(colors.success)
              .text(String(data.returnedAcceptedCount || 0), margin + 305, remitY)
-          doc.fontSize(9)
-             .font('Helvetica')
-             .fillColor(colors.muted)
-             .text(`(${formatCurrency(data.returnedAcceptedAmount || 0, data.currency || 'SAR')})`, margin + 335, remitY)
 
           y += remitBoxHeight + 15
 
           // Add order details table if there are returned orders
           if (data.returnedOrderDetails && data.returnedOrderDetails.length > 0) {
-            // Check if we need a new page for the table
-            if (y + 150 > pageHeight - margin) {
-              doc.addPage()
-              doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
-              y = margin + 20
-            }
+            // Always start returned orders on a new page for better organization
+            doc.addPage()
+            doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
+            y = margin + 20
 
             doc.fontSize(10)
                .font('Helvetica-Bold')
@@ -544,29 +526,51 @@ export async function generateDriverMonthlyReportPDF(data) {
         }
       }
 
-      // === COMMISSION SUMMARY ===
+      // === COMMISSION SUMMARY - PROFESSIONAL DESIGN ===
       // Check if we need a new page
-      if (y + 100 > pageHeight - margin - 120) {
+      if (y + 120 > pageHeight - margin - 120) {
         doc.addPage()
         doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
         y = margin + 20
       }
 
-      doc.roundedRect(margin, y, contentWidth, 85, 12)
-         .lineWidth(2)
+      // Elite commission box with gradient-style design
+      const commissionBoxHeight = 110
+      
+      // Outer border with premium look
+      doc.roundedRect(margin, y, contentWidth, commissionBoxHeight, 16)
+         .lineWidth(3)
+         .strokeOpacity(0.2)
+         .stroke(colors.success)
+      
+      // Main background
+      doc.roundedRect(margin, y, contentWidth, commissionBoxHeight, 16)
          .fillAndStroke(colors.success, colors.success)
       
-      doc.fontSize(12)
-         .font('Helvetica-Bold')
-         .fillColor('white')
-         .text('TOTAL COMMISSION EARNED', margin + 30, y + 20)
+      // Top accent stripe
+      doc.roundedRect(margin, y, contentWidth, 8, 16)
+         .fill('#047857')
       
-      doc.fontSize(38)
+      // Commission label with professional typography
+      doc.fontSize(11)
+         .font('Helvetica')
+         .fillColor('#d1fae5')
+         .text('TOTAL COMMISSION EARNED', margin, y + 25, {
+           width: contentWidth,
+           align: 'center'
+         })
+      
+      // Commission amount with large, bold styling
+      const commissionText = formatCurrency(data.totalCommission || 0, data.currency || 'SAR')
+      doc.fontSize(42)
          .font('Helvetica-Bold')
          .fillColor('white')
-         .text(formatCurrency(data.totalCommission || 0, data.currency || 'SAR'), margin + 30, y + 42)
+         .text(commissionText, margin, y + 48, {
+           width: contentWidth,
+           align: 'center'
+         })
 
-      y += 100
+      y += commissionBoxHeight + 20
 
       // === DELIVERED ORDERS DETAILS ===
       if (data.deliveredOrders && data.deliveredOrders.length > 0) {
