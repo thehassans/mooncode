@@ -1836,9 +1836,9 @@ router.get(
 
       // Get orders for this month
       const orders = await Order.find({
-        driver: req.user.id,
+        deliveryBoy: req.user.id,
         createdAt: { $gte: startDate, $lt: endDate }
-      }).populate('customerId', 'name').lean();
+      }).lean();
 
       // Calculate statistics
       const ordersAssigned = orders.length;
@@ -1889,9 +1889,9 @@ router.get(
       const deliveredOrders = orders
         .filter(o => o.shipmentStatus === 'delivered')
         .map(o => ({
-          invoiceNumber: o.invoiceNumber,
-          customerName: o.customerId?.name || 'N/A',
-          deliveredAt: o.updatedAt,
+          invoiceNumber: o.invoiceNumber || 'N/A',
+          customerName: o.customerName || 'N/A',
+          deliveredAt: o.deliveredAt || o.updatedAt,
           commission: commissionPerOrder
         }));
 
@@ -1966,11 +1966,12 @@ router.get(
       const endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + 1);
 
-      // Get orders for this month
+      // Get orders for this month (agents create orders, so use createdBy)
       const orders = await Order.find({
-        agent: req.user.id,
+        createdBy: req.user.id,
+        createdByRole: 'agent',
         createdAt: { $gte: startDate, $lt: endDate }
-      }).populate('customerId', 'name').lean();
+      }).lean();
 
       // Calculate statistics
       const ordersSubmitted = orders.length;
@@ -2019,9 +2020,9 @@ router.get(
           const commission = pkr * commissionPct;
           
           return {
-            invoiceNumber: o.invoiceNumber,
-            customerName: o.customerId?.name || 'N/A',
-            deliveredAt: o.updatedAt,
+            invoiceNumber: o.invoiceNumber || 'N/A',
+            customerName: o.customerName || 'N/A',
+            deliveredAt: o.deliveredAt || o.updatedAt,
             commission
           };
         });
