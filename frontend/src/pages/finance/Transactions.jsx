@@ -144,7 +144,7 @@ export default function Transactions(){
 
         await Promise.all([loadDrivers, loadRemits, loadDelivered, loadAllOrders])
       } catch (e) {
-        if (alive) setErr(e?.message || 'Failed to load driver settlement')
+        if (alive) setErr(e?.message || 'Failed to load driver finances')
       } finally { if (alive) setLoading(false) }
     })()
     return () => { alive = false }
@@ -455,7 +455,7 @@ export default function Transactions(){
     <div className="section" style={{ display: 'grid', gap: 12 }}>
       <div className="page-header">
         <div>
-          <div className="page-title gradient heading-blue">Driver Settlement</div>
+          <div className="page-title gradient heading-blue">Driver Finances</div>
           <div className="page-subtitle">Monitor drivers' delivered collections and remittances</div>
         </div>
       {acceptModal && (
@@ -586,7 +586,7 @@ export default function Transactions(){
                   </tr>
                 ))
               ) : !country ? (
-                <tr><td colSpan={8} style={{ padding: '12px', opacity: 0.7 }}>Select a country to view driver settlement</td></tr>
+                <tr><td colSpan={8} style={{ padding: '12px', opacity: 0.7 }}>Select a country to view driver finances</td></tr>
               ) : drivers.length === 0 ? (
                 <tr><td colSpan={8} style={{ padding: '12px', opacity: 0.7 }}>No drivers found</td></tr>
               ) : (
@@ -680,7 +680,7 @@ export default function Transactions(){
               {loading ? (
                 <div className="helper">Loading…</div>
               ) : !country ? (
-                <div className="helper">Select a country to view driver settlement</div>
+                <div className="helper">Select a country to view driver finances</div>
               ) : rows.length===0 ? (
                 <div className="helper">No drivers found</div>
               ) : rows.map(r => {
@@ -783,6 +783,7 @@ export default function Transactions(){
                           <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Accepted</th>
                           <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Created</th>
                           <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Receipt</th>
+                          <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -796,7 +797,15 @@ export default function Transactions(){
                             <td style={{ padding:'12px' }}>{r.createdAt? new Date(r.createdAt).toLocaleString(): '—'}</td>
                             <td style={{ padding:'12px' }}>
                               {(r.pdfPath || r.acceptedPdfPath) ? (
-                                <a href={`${API_BASE}/finance/remittances/${r._id}/download-settlement`} target="_blank" rel="noopener noreferrer" className="btn" style={{fontSize:13, padding:'6px 12px'}}>Download</a>
+                                <a href={`${API_BASE}/api/finance/remittances/${r._id}/download-settlement`} target="_blank" rel="noopener noreferrer" className="btn" style={{fontSize:13, padding:'6px 12px'}}>Download</a>
+                              ) : '—'}
+                            </td>
+                            <td style={{ padding:'12px' }}>
+                              {String(r.status||'').toLowerCase()==='pending' || String(r.status||'').toLowerCase()==='manager_accepted' ? (
+                                <div style={{display:'flex', gap:6}}>
+                                  <button className="btn" style={{fontSize:13, padding:'6px 12px'}} onClick={()=> acceptRemit(String(r._id||''))}>Accept</button>
+                                  <button className="btn secondary" style={{fontSize:13, padding:'6px 12px'}} onClick={()=> rejectRemit(String(r._id||''))}>Reject</button>
+                                </div>
                               ) : '—'}
                             </td>
                           </tr>
