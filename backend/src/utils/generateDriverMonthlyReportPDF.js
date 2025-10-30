@@ -363,7 +363,74 @@ export async function generateDriverMonthlyReportPDF(data) {
                .text('✓ All submitted orders verified', margin + 25, remitY)
           }
 
-          y += remitBoxHeight + 20
+          y += remitBoxHeight + 15
+
+          // Add order details table if there are cancelled orders
+          if (data.cancelledOrderDetails && data.cancelledOrderDetails.length > 0) {
+            // Check if we need a new page for the table
+            if (y + 150 > pageHeight - margin) {
+              doc.addPage()
+              doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
+              y = margin + 20
+            }
+
+            doc.fontSize(10)
+               .font('Helvetica-Bold')
+               .fillColor(colors.warning)
+               .text('Cancelled Order Details:', margin, y)
+            y += 20
+
+            // Table header
+            const tCol1 = margin
+            const tCol2 = margin + 90
+            const tCol3 = margin + 280
+            const tCol4 = margin + 410
+
+            doc.rect(margin, y, contentWidth, 30)
+               .fill('#fef3c7')
+            
+            doc.fontSize(8)
+               .font('Helvetica-Bold')
+               .fillColor(colors.secondary)
+               .text('ORDER #', tCol1 + 10, y + 10)
+               .text('PRODUCT', tCol2 + 10, y + 10)
+               .text('SUBMITTED', tCol3 + 10, y + 10)
+               .text('VERIFIED', tCol4 + 10, y + 10)
+            
+            y += 30
+
+            // Table rows
+            data.cancelledOrderDetails.forEach((order, idx) => {
+              if (y + 30 > pageHeight - margin - 100) {
+                doc.addPage()
+                doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
+                y = margin + 20
+              }
+
+              const rowBg = idx % 2 === 0 ? '#ffffff' : '#fffbeb'
+              doc.rect(margin, y, contentWidth, 30).fill(rowBg)
+
+              doc.fontSize(8)
+                 .font('Helvetica')
+                 .fillColor(colors.secondary)
+                 .text(order.invoiceNumber, tCol1 + 10, y + 10, { width: 75, ellipsis: true })
+                 .text(order.productName || 'N/A', tCol2 + 10, y + 10, { width: 180, ellipsis: true })
+              
+              doc.fontSize(8)
+                 .font('Helvetica-Bold')
+                 .fillColor(order.submitted ? colors.success : colors.muted)
+                 .text(order.submitted ? '✓ Yes' : '✗ No', tCol3 + 10, y + 10)
+              
+              doc.fontSize(8)
+                 .font('Helvetica-Bold')
+                 .fillColor(order.verified ? colors.success : colors.muted)
+                 .text(order.verified ? '✓ Yes' : '✗ No', tCol4 + 10, y + 10)
+
+              y += 30
+            })
+
+            y += 10
+          }
         }
 
         // Returned Orders Remittance
@@ -436,11 +503,85 @@ export async function generateDriverMonthlyReportPDF(data) {
                .text('✓ All submitted orders verified', margin + 25, remitY)
           }
 
-          y += remitBoxHeight + 20
+          y += remitBoxHeight + 15
+
+          // Add order details table if there are returned orders
+          if (data.returnedOrderDetails && data.returnedOrderDetails.length > 0) {
+            // Check if we need a new page for the table
+            if (y + 150 > pageHeight - margin) {
+              doc.addPage()
+              doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
+              y = margin + 20
+            }
+
+            doc.fontSize(10)
+               .font('Helvetica-Bold')
+               .fillColor(colors.danger)
+               .text('Returned Order Details:', margin, y)
+            y += 20
+
+            // Table header
+            const tCol1 = margin
+            const tCol2 = margin + 90
+            const tCol3 = margin + 280
+            const tCol4 = margin + 410
+
+            doc.rect(margin, y, contentWidth, 30)
+               .fill('#fee2e2')
+            
+            doc.fontSize(8)
+               .font('Helvetica-Bold')
+               .fillColor(colors.secondary)
+               .text('ORDER #', tCol1 + 10, y + 10)
+               .text('PRODUCT', tCol2 + 10, y + 10)
+               .text('SUBMITTED', tCol3 + 10, y + 10)
+               .text('VERIFIED', tCol4 + 10, y + 10)
+            
+            y += 30
+
+            // Table rows
+            data.returnedOrderDetails.forEach((order, idx) => {
+              if (y + 30 > pageHeight - margin - 100) {
+                doc.addPage()
+                doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
+                y = margin + 20
+              }
+
+              const rowBg = idx % 2 === 0 ? '#ffffff' : '#fef2f2'
+              doc.rect(margin, y, contentWidth, 30).fill(rowBg)
+
+              doc.fontSize(8)
+                 .font('Helvetica')
+                 .fillColor(colors.secondary)
+                 .text(order.invoiceNumber, tCol1 + 10, y + 10, { width: 75, ellipsis: true })
+                 .text(order.productName || 'N/A', tCol2 + 10, y + 10, { width: 180, ellipsis: true })
+              
+              doc.fontSize(8)
+                 .font('Helvetica-Bold')
+                 .fillColor(order.submitted ? colors.success : colors.muted)
+                 .text(order.submitted ? '✓ Yes' : '✗ No', tCol3 + 10, y + 10)
+              
+              doc.fontSize(8)
+                 .font('Helvetica-Bold')
+                 .fillColor(order.verified ? colors.success : colors.muted)
+                 .text(order.verified ? '✓ Yes' : '✗ No', tCol4 + 10, y + 10)
+
+              y += 30
+            })
+
+            y += 10
+          }
         }
       }
 
       // === COMMISSION SUMMARY ===
+      // Check if we need a new page
+      if (y + 100 > pageHeight - margin - 120) {
+        doc.addPage()
+        doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
+        y = margin + 20
+      }
+
       doc.roundedRect(margin, y, contentWidth, 85, 12)
          .lineWidth(2)
          .fillAndStroke(colors.success, colors.success)
@@ -460,7 +601,7 @@ export async function generateDriverMonthlyReportPDF(data) {
       // === DELIVERED ORDERS DETAILS ===
       if (data.deliveredOrders && data.deliveredOrders.length > 0) {
         // Check if we need a new page
-        if (y + 150 > pageHeight - margin) {
+        if (y + 120 > pageHeight - margin - 120) {
           doc.addPage()
           doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
           y = margin + 20
@@ -571,14 +712,17 @@ export async function generateDriverMonthlyReportPDF(data) {
       }
 
       // === PREMIUM FOOTER ===
-      const footerY = pageHeight - 120
-
-      if (y > footerY - 40) {
+      // Only add new page if absolutely necessary
+      const footerHeight = 100
+      const spaceNeeded = footerHeight + margin
+      
+      if (y + spaceNeeded > pageHeight - margin) {
         doc.addPage()
         doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
-        y = margin + 20
+        y = pageHeight - 120
       } else {
-        y = footerY
+        // Use available space
+        y = Math.max(y + 20, pageHeight - 120)
       }
 
       // Signature box

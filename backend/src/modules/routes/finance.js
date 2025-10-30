@@ -1838,7 +1838,7 @@ router.get(
       const orders = await Order.find({
         deliveryBoy: req.user.id,
         createdAt: { $gte: startDate, $lt: endDate }
-      }).lean();
+      }).populate('productId', 'name').lean();
 
       // Calculate statistics
       const ordersAssigned = orders.length;
@@ -1859,26 +1859,45 @@ router.get(
       let returnedSubmittedCount = 0;
       let returnedAcceptedCount = 0;
 
-      // Only count cash from cancelled/returned orders that were submitted to company
+      // Process cancelled and returned orders with details
+      const cancelledOrderDetails = [];
+      const returnedOrderDetails = [];
+
       for (const order of cancelledOrders) {
+        const orderDetail = {
+          invoiceNumber: order.invoiceNumber || 'N/A',
+          productName: order.productId?.name || 'Product',
+          submitted: order.returnSubmittedToCompany || false,
+          verified: order.returnVerified || false,
+          amount: Number(order.collectedAmount || order.codAmount || 0)
+        };
+        cancelledOrderDetails.push(orderDetail);
+        
         if (order.returnSubmittedToCompany) {
-          const amount = Number(order.collectedAmount || order.codAmount || 0);
-          cancelledSubmittedAmount += amount;
+          cancelledSubmittedAmount += orderDetail.amount;
           cancelledSubmittedCount++;
           if (order.returnVerified) {
-            cancelledAcceptedAmount += amount;
+            cancelledAcceptedAmount += orderDetail.amount;
             cancelledAcceptedCount++;
           }
         }
       }
 
       for (const order of returnedOrders) {
+        const orderDetail = {
+          invoiceNumber: order.invoiceNumber || 'N/A',
+          productName: order.productId?.name || 'Product',
+          submitted: order.returnSubmittedToCompany || false,
+          verified: order.returnVerified || false,
+          amount: Number(order.collectedAmount || order.codAmount || 0)
+        };
+        returnedOrderDetails.push(orderDetail);
+        
         if (order.returnSubmittedToCompany) {
-          const amount = Number(order.collectedAmount || order.codAmount || 0);
-          returnedSubmittedAmount += amount;
+          returnedSubmittedAmount += orderDetail.amount;
           returnedSubmittedCount++;
           if (order.returnVerified) {
-            returnedAcceptedAmount += amount;
+            returnedAcceptedAmount += orderDetail.amount;
             returnedAcceptedCount++;
           }
         }
@@ -1912,10 +1931,12 @@ router.get(
         cancelledAcceptedAmount,
         cancelledSubmittedCount,
         cancelledAcceptedCount,
+        cancelledOrderDetails,
         returnedSubmittedAmount,
         returnedAcceptedAmount,
         returnedSubmittedCount,
         returnedAcceptedCount,
+        returnedOrderDetails,
         totalCommission,
         currency,
         deliveredOrders
