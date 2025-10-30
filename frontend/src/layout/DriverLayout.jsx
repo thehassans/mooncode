@@ -520,7 +520,7 @@ export default function DriverLayout() {
                       className="btn small secondary"
                       onClick={() => {
                         setShowSettings(false)
-                        navigate('/driver/me')
+                        navigate('/driver/profile')
                       }}
                       style={{width: '100%', fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}
                     >

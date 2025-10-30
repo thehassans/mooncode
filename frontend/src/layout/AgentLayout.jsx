@@ -792,7 +792,7 @@ export default function AgentLayout() {
                       className="btn small secondary"
                       onClick={() => {
                         setShowSettings(false)
-                        navigate('/agent/me')
+                        navigate('/agent/profile')
                       }}
                       style={{width: '100%', fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}
                     >
@@ -810,7 +810,7 @@ export default function AgentLayout() {
                       className="btn small secondary"
                       onClick={() => {
                         setShowSettings(false)
-                        navigate('/agent/me')
+                        navigate('/agent/payout')
                       }}
                       style={{width: '100%', fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}
                     >

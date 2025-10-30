@@ -28,6 +28,9 @@ import InvestorMe from './pages/investor/Me.jsx'
 import InvestorLayout from './layout/InvestorLayout.jsx'
 import DriverLayout from './layout/DriverLayout.jsx'
 import AgentOrdersHistory from './pages/agent/OrdersHistory.jsx'
+import AgentProfile from './pages/agent/Profile.jsx'
+import AgentPayout from './pages/agent/Payout.jsx'
+import DriverProfile from './pages/driver/Profile.jsx'
 
 import WhatsAppConnect from './pages/inbox/WhatsAppConnect.jsx'
 import WhatsAppInbox from './pages/inbox/WhatsAppInbox.jsx'
@@ -282,6 +285,7 @@ export default function App() {
         <Route path="orders/cancelled" element={<DriverCancelled />} />
         <Route path="orders/history" element={<DriverHistory />} />
         <Route path="me" element={<DriverMe />} />
+        <Route path="profile" element={<DriverProfile />} />
         <Route path="payout" element={<DriverPayout />} />
       </Route>
 
@@ -383,6 +387,8 @@ export default function App() {
         <Route path="orders/history" element={<AgentOrdersHistory />} />
         <Route path="inhouse-products" element={<AgentInhouseProducts />} />
         <Route path="me" element={<AgentMe />} />
+        <Route path="profile" element={<AgentProfile />} />
+        <Route path="payout" element={<AgentPayout />} />
         <Route path="support" element={<Support />} />
       </Route>
 
