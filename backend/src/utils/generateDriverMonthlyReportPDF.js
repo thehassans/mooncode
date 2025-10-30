@@ -347,21 +347,6 @@ export async function generateDriverMonthlyReportPDF(data) {
              .font('Helvetica')
              .fillColor(colors.muted)
              .text(`(${formatCurrency(data.cancelledAcceptedAmount || 0, data.currency || 'SAR')})`, margin + 335, remitY)
-          remitY += 25
-
-          // Status indicator
-          const cancelledPending = (data.cancelledSubmittedCount || 0) - (data.cancelledAcceptedCount || 0)
-          if (cancelledPending > 0) {
-            doc.fontSize(8)
-               .font('Helvetica-Bold')
-               .fillColor('#92400e')
-               .text(`⚠ ${cancelledPending} order(s) pending verification`, margin + 25, remitY)
-          } else if (data.cancelledSubmittedCount > 0) {
-            doc.fontSize(8)
-               .font('Helvetica-Bold')
-               .fillColor(colors.success)
-               .text('✓ All submitted orders verified', margin + 25, remitY)
-          }
 
           y += remitBoxHeight + 15
 
@@ -401,7 +386,7 @@ export async function generateDriverMonthlyReportPDF(data) {
 
             // Table rows
             data.cancelledOrderDetails.forEach((order, idx) => {
-              if (y + 30 > pageHeight - margin - 100) {
+              if (y + 30 > pageHeight - margin - 150) {
                 doc.addPage()
                 doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
                 y = margin + 20
@@ -487,21 +472,6 @@ export async function generateDriverMonthlyReportPDF(data) {
              .font('Helvetica')
              .fillColor(colors.muted)
              .text(`(${formatCurrency(data.returnedAcceptedAmount || 0, data.currency || 'SAR')})`, margin + 335, remitY)
-          remitY += 25
-
-          // Status indicator
-          const returnedPending = (data.returnedSubmittedCount || 0) - (data.returnedAcceptedCount || 0)
-          if (returnedPending > 0) {
-            doc.fontSize(8)
-               .font('Helvetica-Bold')
-               .fillColor('#7f1d1d')
-               .text(`⚠ ${returnedPending} order(s) pending verification`, margin + 25, remitY)
-          } else if (data.returnedSubmittedCount > 0) {
-            doc.fontSize(8)
-               .font('Helvetica-Bold')
-               .fillColor(colors.success)
-               .text('✓ All submitted orders verified', margin + 25, remitY)
-          }
 
           y += remitBoxHeight + 15
 
@@ -541,7 +511,7 @@ export async function generateDriverMonthlyReportPDF(data) {
 
             // Table rows
             data.returnedOrderDetails.forEach((order, idx) => {
-              if (y + 30 > pageHeight - margin - 100) {
+              if (y + 30 > pageHeight - margin - 150) {
                 doc.addPage()
                 doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
                 y = margin + 20
@@ -639,8 +609,8 @@ export async function generateDriverMonthlyReportPDF(data) {
         const rowHeight = 40
 
         data.deliveredOrders.forEach((order, index) => {
-          // Check if we need a new page
-          if (y + rowHeight + 100 > pageHeight - margin) {
+          // Check if we need a new page (with better logic)
+          if (y + rowHeight > pageHeight - margin - 150) {
             doc.addPage()
             doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
             y = margin + 20
@@ -650,7 +620,7 @@ export async function generateDriverMonthlyReportPDF(data) {
           if (index % 2 === 0) {
             doc.rect(margin, y, contentWidth, rowHeight).fill('#ffffff')
           } else {
-            doc.rect(margin, y, contentWidth, rowHeight).fill(colors.lightBg)
+            doc.rect(margin, y, contentWidth, rowHeight).fill('#f0fdf4')
           }
 
           // Bottom border

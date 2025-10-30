@@ -1838,7 +1838,10 @@ router.get(
       const orders = await Order.find({
         deliveryBoy: req.user.id,
         createdAt: { $gte: startDate, $lt: endDate }
-      }).populate('productId', 'name').lean();
+      })
+      .populate('productId', 'name')
+      .populate('items.productId', 'name')
+      .lean();
 
       // Calculate statistics
       const ordersAssigned = orders.length;
@@ -1864,9 +1867,20 @@ router.get(
       const returnedOrderDetails = [];
 
       for (const order of cancelledOrders) {
+        // Get product name from items array or single productId
+        let productName = 'N/A';
+        if (order.items && order.items.length > 0 && order.items[0].productId?.name) {
+          productName = order.items[0].productId.name;
+          if (order.items.length > 1) {
+            productName += ` +${order.items.length - 1} more`;
+          }
+        } else if (order.productId?.name) {
+          productName = order.productId.name;
+        }
+
         const orderDetail = {
           invoiceNumber: order.invoiceNumber || 'N/A',
-          productName: order.productId?.name || 'Product',
+          productName: productName,
           submitted: order.returnSubmittedToCompany || false,
           verified: order.returnVerified || false,
           amount: Number(order.collectedAmount || order.codAmount || 0)
@@ -1884,9 +1898,20 @@ router.get(
       }
 
       for (const order of returnedOrders) {
+        // Get product name from items array or single productId
+        let productName = 'N/A';
+        if (order.items && order.items.length > 0 && order.items[0].productId?.name) {
+          productName = order.items[0].productId.name;
+          if (order.items.length > 1) {
+            productName += ` +${order.items.length - 1} more`;
+          }
+        } else if (order.productId?.name) {
+          productName = order.productId.name;
+        }
+
         const orderDetail = {
           invoiceNumber: order.invoiceNumber || 'N/A',
-          productName: order.productId?.name || 'Product',
+          productName: productName,
           submitted: order.returnSubmittedToCompany || false,
           verified: order.returnVerified || false,
           amount: Number(order.collectedAmount || order.codAmount || 0)
