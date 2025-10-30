@@ -1,4 +1,4 @@
-# Complete Stock & Order Integration Guide
+pdf is generating of 34 pages and white pages except first page fix that if there are many orders it should only exist unitil the orders and also on second page orders is not showing# Complete Stock & Order Integration Guide
 
 ## 📊 Data Flow Overview
 
@@ -40,6 +40,7 @@ Product Schema:
 ## 🔄 Complete Lifecycle
 
 ### **1. Product Creation**
+
 ```javascript
 POST /api/products
 Body: {
@@ -66,6 +67,7 @@ Result:
 ---
 
 ### **2. Adding Stock (Inhouse/Shipment)**
+
 ```javascript
 POST /api/products/:id/stock/add
 Body: {
@@ -95,6 +97,7 @@ Result:
 ---
 
 ### **3. Order Created (Pending)**
+
 ```javascript
 POST /api/orders
 Body: {
@@ -123,6 +126,7 @@ Result:
 ---
 
 ### **4. Order Delivered**
+
 ```javascript
 POST /api/orders/:id/deliver
 
@@ -148,6 +152,7 @@ Result:
 ---
 
 ### **5. Order Cancelled**
+
 ```javascript
 POST /api/orders/:id/cancel
 
@@ -173,6 +178,7 @@ Result:
 ---
 
 ### **6. Order Returned**
+
 ```javascript
 POST /api/orders/:id/return
 
@@ -200,6 +206,7 @@ Result:
 ## 📱 Frontend Integration
 
 ### **Products List Page (`/user/products`)**
+
 ```javascript
 Data Source:
 ✅ Total Stock: product.stockQty (from DB)
@@ -218,6 +225,7 @@ Display:
 ---
 
 ### **Product Detail Page (`/user/products/:id`)**
+
 ```javascript
 Data Source:
 ✅ Total Stock: product.stockQty
@@ -259,6 +267,7 @@ Display:
 ---
 
 ### **Warehouse Page (`/user/warehouses`)**
+
 ```javascript
 Data Source:
 ✅ Stock Oman: product.stockByCountry.Oman
@@ -282,6 +291,7 @@ Display:
 ## ✅ What "Total Bought" Means
 
 ### **Includes:**
+
 ✅ Initial stock when product created  
 ✅ Stock added via "Add Stock" feature  
 ✅ Stock from inhouse products  
@@ -289,6 +299,7 @@ Display:
 ✅ All inventory purchases (cumulative from `product.totalPurchased`)
 
 ### **Does NOT Include:**
+
 ❌ Customer orders  
 ❌ Pending orders  
 ❌ Delivered quantities  
@@ -299,20 +310,21 @@ Display:
 
 ## 🎯 Key Metrics Explained
 
-| Metric | Source | When Changes | Example |
-|--------|--------|--------------|---------|
-| **Total Bought** | `product.totalPurchased` | Only when adding stock | 225 units |
-| **Total Stock** | `product.stockQty` | Order creation, cancellation, return | 215 units |
-| **Stock Oman** | `product.stockByCountry.Oman` | Order creation, cancellation, return | 215 units |
-| **Delivered Oman** | Count delivered orders | Only when order delivered | 8 orders |
-| **Products Sold** | Sum delivered quantities | Only when order delivered | 10 units |
-| **Pending** | Count pending orders | Order creation, delivery, cancel | 0 orders |
+| Metric             | Source                        | When Changes                         | Example   |
+| ------------------ | ----------------------------- | ------------------------------------ | --------- |
+| **Total Bought**   | `product.totalPurchased`      | Only when adding stock               | 225 units |
+| **Total Stock**    | `product.stockQty`            | Order creation, cancellation, return | 215 units |
+| **Stock Oman**     | `product.stockByCountry.Oman` | Order creation, cancellation, return | 215 units |
+| **Delivered Oman** | Count delivered orders        | Only when order delivered            | 8 orders  |
+| **Products Sold**  | Sum delivered quantities      | Only when order delivered            | 10 units  |
+| **Pending**        | Count pending orders          | Order creation, delivery, cancel     | 0 orders  |
 
 ---
 
 ## 🔧 Backend Endpoints
 
 ### **GET /api/products**
+
 ```javascript
 Returns: All products with auto-calculated totalPurchased
 Response: {
@@ -330,6 +342,7 @@ Response: {
 ```
 
 ### **GET /api/products/:id**
+
 ```javascript
 Returns: Single product with auto-calculated totalPurchased
 Response: {
@@ -346,6 +359,7 @@ Response: {
 ```
 
 ### **POST /api/products/:id/stock/add**
+
 ```javascript
 Body: { country: "Oman", quantity: 50 }
 Processing:
@@ -356,6 +370,7 @@ Processing:
 ```
 
 ### **GET /api/warehouse/summary**
+
 ```javascript
 Returns: Warehouse metrics per product
 Response: {
@@ -391,6 +406,7 @@ Response: {
 ## 📊 Example Complete Flow
 
 ### **Day 1: Create Product**
+
 ```
 Action: Create TWG Acne Cream with 175 units in Oman
 Result:
@@ -400,6 +416,7 @@ Result:
 ```
 
 ### **Day 2: Add Shipment**
+
 ```
 Action: Add 50 units to Oman
 Result:
@@ -409,6 +426,7 @@ Result:
 ```
 
 ### **Day 3: 5 Orders Created**
+
 ```
 Action: 5 orders × 2 units = 10 units
 Result:
@@ -419,6 +437,7 @@ Result:
 ```
 
 ### **Day 4: 3 Orders Delivered**
+
 ```
 Action: Deliver 3 orders
 Result:
@@ -430,6 +449,7 @@ Result:
 ```
 
 ### **Day 5: 2 Orders Cancelled**
+
 ```
 Action: Cancel 2 orders (4 units)
 Result:
@@ -442,6 +462,7 @@ Result:
 ```
 
 ### **Final Summary:**
+
 ```
 ✅ Total Bought: 225 (inventory purchased)
 ✅ Total Stock: 219 (available)

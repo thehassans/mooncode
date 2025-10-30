@@ -53,14 +53,7 @@ router.post('/login', rateLimit({ windowMs: 60000, max: 20 }), async (req, res) 
       return res.status(403).json({ message: 'Please use the staff login portal' });
     }
 
-    let ok = false;
-    try {
-      ok = await user.comparePassword(p);
-    } catch (compareErr) {
-      console.error('[auth/login] comparePassword error:', compareErr);
-      return res.status(500).json({ message: 'Login failed - password comparison error' });
-    }
-
+    let ok = await user.comparePassword(p);
     if (!ok){
       // Transitional support: if the stored password appears to be plaintext and matches, rehash it now
       try{
@@ -70,17 +63,15 @@ router.post('/login', rateLimit({ windowMs: 60000, max: 20 }), async (req, res) 
           await user.save();
           ok = true;
         }
-      }catch(transErr){
-        console.error('[auth/login] transitional password error:', transErr);
-      }
+      }catch{}
     }
     if (!ok) return res.status(400).json({ message: 'Invalid credentials' });
 
     const token = jwt.sign({ id: user._id, role: user.role, firstName: user.firstName, lastName: user.lastName }, SECRET, { expiresIn: '7d' });
     return res.json({ token, user: { id: user._id, role: user.role, firstName: user.firstName, lastName: user.lastName, email: user.email } });
   }catch(err){
-    console.error('[auth/login] error:', err?.message || err, err?.stack);
-    return res.status(500).json({ message: 'Login failed', error: process.env.NODE_ENV === 'development' ? err?.message : undefined })
+    try{ console.error('[auth/login] error', err?.message || err) }catch{}
+    return res.status(500).json({ message: 'Login failed' })
   }
 });
 
