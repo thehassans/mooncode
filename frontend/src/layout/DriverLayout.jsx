@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Outlet, useLocation, NavLink, useNavigate } from 'react-router-dom'
-import { API_BASE, apiGet } from '../api.js'
+import { API_BASE, apiGet, apiPatch } from '../api.js'
 
 export default function DriverLayout() {
   const [closed, setClosed] = useState(() =>
@@ -34,9 +34,17 @@ export default function DriverLayout() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  const me = JSON.parse(localStorage.getItem('me') || '{}')
-  // Settings modal
+  const [me, setMe] = useState(() => { try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} } })
+  // Settings
   const [showSettings, setShowSettings] = useState(false)
+  const [availability, setAvailability] = useState('available')
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [ringtone, setRingtone] = useState('shopify')
+  const [showPassModal, setShowPassModal] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [changingPass, setChangingPass] = useState(false)
   // Driver level for badge (based on delivered orders)
   const [deliveredCount, setDeliveredCount] = useState(0)
   const levelThresholds = useMemo(()=>[0,10,50,100,250,500], [])
@@ -171,6 +179,136 @@ export default function DriverLayout() {
     }, 30)
   }
 
+  // Settings functions
+  async function updateAvailability(val) {
+    try {
+      await apiPatch('/api/users/me/availability', { availability: val })
+      setAvailability(val)
+      setMe(n => {
+        const updated = { ...n, availability: val }
+        try {
+          localStorage.setItem('me', JSON.stringify(updated))
+        } catch {}
+        return updated
+      })
+    } catch (err) {
+      alert(err?.message || 'Failed to update availability')
+    }
+  }
+
+  function storeSoundPrefs(enabled, tone) {
+    try {
+      localStorage.setItem('wa_sound', enabled ? 'true' : 'false')
+      localStorage.setItem('wa_ringtone', tone)
+    } catch {}
+  }
+
+  function playPreview() {
+    if (!soundEnabled) {
+      setSoundEnabled(true)
+      storeSoundPrefs(true, ringtone)
+    }
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      const toneAt = (when, freq, dur, type = 'sine', attack = 0.01, release = 0.1) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = type
+        osc.frequency.value = freq
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        const now = ctx.currentTime + when
+        gain.gain.setValueAtTime(0, now)
+        gain.gain.linearRampToValueAtTime(0.3, now + attack)
+        gain.gain.linearRampToValueAtTime(0, now + dur - release)
+        osc.start(now)
+        osc.stop(now + dur)
+      }
+      const n = ringtone || 'shopify'
+      if (n === 'shopify') {
+        toneAt(0.0, 932, 0.12, 'triangle')
+        toneAt(0.1, 1047, 0.12, 'triangle')
+        toneAt(0.2, 1245, 0.16, 'triangle')
+        return
+      }
+      if (n === 'bell') {
+        toneAt(0.0, 880, 0.6, 'sine', 0.0001, 0.4)
+        toneAt(0.0, 1760, 0.4, 'sine', 0.0001, 0.18)
+        return
+      }
+      if (n === 'ping') {
+        toneAt(0, 1200, 0.08)
+        return
+      }
+      if (n === 'knock') {
+        toneAt(0, 100, 0.05, 'square')
+        toneAt(0.08, 100, 0.05, 'square')
+        return
+      }
+      if (n === 'beep') {
+        toneAt(0, 800, 0.15)
+        return
+      }
+    } catch {}
+  }
+
+  async function handlePasswordChange(e) {
+    e?.preventDefault?.()
+    if (!currentPassword || !newPassword) {
+      alert('Please fill all fields')
+      return
+    }
+    if (newPassword.length < 6) {
+      alert('New password must be at least 6 characters')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      alert('New password and confirmation do not match')
+      return
+    }
+    setChangingPass(true)
+    try {
+      await apiPatch('/api/users/me/password', {
+        currentPassword,
+        newPassword,
+      })
+      alert('Password changed successfully!')
+      setShowPassModal(false)
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err) {
+      alert(err?.message || 'Failed to change password')
+    } finally {
+      setChangingPass(false)
+    }
+  }
+
+  // Click outside to close settings
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (showSettings && !e.target.closest('.settings-dropdown') && !e.target.closest('.settings-button')) {
+        setShowSettings(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showSettings])
+
+  // Initialize settings from localStorage and user data
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('wa_sound')
+      setSoundEnabled(v ? v !== 'false' : true)
+    } catch {}
+    try {
+      setRingtone(localStorage.getItem('wa_ringtone') || 'shopify')
+    } catch {}
+    if (me?.availability) {
+      setAvailability(me.availability)
+    }
+  }, [me])
+
   return (
     <div>
       <div
@@ -251,7 +389,7 @@ export default function DriverLayout() {
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, position: 'relative' }}>
               {/* Premium Theme Toggle */}
               <button
                 onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
@@ -273,47 +411,138 @@ export default function DriverLayout() {
               >
                 <div style={{
                   position: 'absolute',
-                  top: '2px',
-                  left: theme === 'dark' ? '2px' : '30px',
+                  top: '50%',
+                  left: theme === 'dark' ? '32px' : '4px',
+                  transform: 'translateY(-50%)',
                   width: '22px',
                   height: '22px',
-                  background: theme === 'dark' ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)' : 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)',
+                  background: theme === 'dark' ? 'linear-gradient(135deg, #818cf8 0%, #6366f1 100%)' : 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
                   borderRadius: '50%',
                   transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  fontSize: '10px'
                 }}>
-                  {theme === 'light' ? '🌙' : '☀️'}
+                  {theme === 'dark' ? '🌙' : '☀️'}
                 </div>
               </button>
-              {/* Settings Icon Button */}
+              
+              {/* Settings Button */}
               <button
-                type="button"
-                className="icon-btn secondary"
-                onClick={() => setShowSettings(true)}
+                className="settings-button"
+                onClick={() => setShowSettings(!showSettings)}
                 title="Settings"
-                aria-label="Settings"
                 style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '12px',
-                  padding: 0,
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--panel)',
+                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)',
-                  border: '2px solid rgba(99, 102, 241, 0.3)',
-                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.15)',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s',
+                  boxShadow: showSettings ? '0 0 0 2px var(--accent)' : 'none'
                 }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="3"/>
-                  <path d="M12 1v6m0 6v6M5.6 5.6l4.2 4.2m4.2 4.2l4.2 4.2M1 12h6m6 0h6M5.6 18.4l4.2-4.2m4.2-4.2l4.2-4.2"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0A1.65 1.65 0 0 0 9 3.09V3a2 2 0 0 1 4 0v.09c0 .67.39 1.28 1 1.57h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0c.3.61.91 1 1.58 1H21a2 2 0 0 1 0 4h-.09c-.67 0-1.28.39-1.57 1z"/>
                 </svg>
               </button>
+
+              {/* Settings Dropdown */}
+              {showSettings && (
+                <div 
+                  className="settings-dropdown"
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '8px',
+                    width: '320px',
+                    maxHeight: '500px',
+                    overflowY: 'auto',
+                    background: 'var(--panel)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+                    zIndex: 1000,
+                    padding: '12px'
+                  }}
+                >
+                  <div style={{fontSize: '14px', fontWeight: 700, marginBottom: '12px', padding: '0 4px'}}>Settings</div>
+                  
+                  {/* Availability */}
+                  <div style={{padding: '12px 8px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: 10}}>
+                      <div style={{width: 20, height: 20, borderRadius: '50%', background: availability === 'available' ? '#10b981' : '#ef4444'}}></div>
+                      <div style={{fontSize: '13px', fontWeight: 600}}>Availability</div>
+                    </div>
+                    <button
+                      className={`btn small ${availability === 'available' ? 'success' : 'secondary'}`}
+                      onClick={() => updateAvailability(availability === 'available' ? 'offline' : 'available')}
+                      style={{fontSize: '11px', padding: '4px 10px'}}
+                    >
+                      {availability === 'available' ? 'Online' : 'Offline'}
+                    </button>
+                  </div>
+
+                  {/* Notifications */}
+                  <div style={{padding: '12px 8px', borderBottom: '1px solid var(--border)'}}>
+                    <div style={{fontSize: '13px', fontWeight: 600, marginBottom: '8px'}}>Notifications</div>
+                    <div style={{display: 'flex', gap: 6, alignItems: 'center'}}>
+                      <select
+                        className="input small"
+                        value={ringtone}
+                        onChange={(e) => {
+                          setRingtone(e.target.value)
+                          storeSoundPrefs(soundEnabled, e.target.value)
+                        }}
+                        style={{flex: 1, fontSize: '12px', padding: '4px 8px'}}
+                      >
+                        <option value="shopify">Shopify</option>
+                        <option value="bell">Bell</option>
+                        <option value="ping">Ping</option>
+                        <option value="knock">Knock</option>
+                        <option value="beep">Beep</option>
+                      </select>
+                      <button className="btn small secondary" onClick={playPreview} style={{fontSize: '11px', padding: '4px 10px'}}>Test</button>
+                    </div>
+                  </div>
+
+                  {/* Change Password */}
+                  <div style={{padding: '12px 8px', borderBottom: '1px solid var(--border)'}}>
+                    <button
+                      className="btn small secondary"
+                      onClick={() => {
+                        setShowPassModal(true)
+                        setShowSettings(false)
+                      }}
+                      style={{width: '100%', fontSize: '12px', padding: '6px 12px'}}
+                    >
+                      Change Password
+                    </button>
+                  </div>
+
+                  {/* Logout */}
+                  <div style={{padding: '12px 8px'}}>
+                    <button
+                      className="btn small danger"
+                      onClick={() => {
+                        setShowSettings(false)
+                        doLogout()
+                      }}
+                      style={{width: '100%', fontSize: '12px', padding: '6px 12px'}}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -348,8 +577,8 @@ export default function DriverLayout() {
           })}
         </nav>
       )}
-      {/* Settings Modal */}
-      {showSettings && (
+      {/* Password Change Modal */}
+      {showPassModal && (
         <div
           style={{
             position: 'fixed',
@@ -357,77 +586,82 @@ export default function DriverLayout() {
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(0,0,0,0.7)',
+            background: 'rgba(0,0,0,0.5)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 9999,
-            padding: '1rem'
+            padding: '20px'
           }}
-          onClick={() => setShowSettings(false)}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowPassModal(false)
+          }}
         >
           <div
             style={{
               background: 'var(--panel)',
-              border: '1px solid var(--border)',
-              borderRadius: '16px',
+              borderRadius: '12px',
               padding: '24px',
               maxWidth: '400px',
               width: '100%',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
             }}
-            onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>Settings</h2>
-              <button
-                onClick={() => setShowSettings(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: 'var(--text)',
-                  padding: 0,
-                  width: '32px',
-                  height: '32px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                ×
-              </button>
-            </div>
-            <div style={{ display: 'grid', gap: '12px' }}>
-              <div style={{ padding: '12px', background: 'var(--panel-2)', borderRadius: '8px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '4px' }}>Name</div>
-                <div style={{ fontSize: '16px', fontWeight: 600 }}>{me.firstName || 'Driver'} {me.lastName || ''}</div>
+            <h3 style={{margin: '0 0 16px 0', fontSize: '18px', fontWeight: 700}}>Change Password</h3>
+            <form onSubmit={handlePasswordChange} style={{display: 'grid', gap: '12px'}}>
+              <div>
+                <label style={{display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 600}}>Current Password</label>
+                <input
+                  type="password"
+                  className="input"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                  autoFocus
+                />
               </div>
-              <div style={{ padding: '12px', background: 'var(--panel-2)', borderRadius: '8px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '4px' }}>Email</div>
-                <div style={{ fontSize: '14px' }}>{me.email || 'N/A'}</div>
+              <div>
+                <label style={{display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 600}}>New Password</label>
+                <input
+                  type="password"
+                  className="input"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
               </div>
-              <div style={{ padding: '12px', background: 'var(--panel-2)', borderRadius: '8px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '4px' }}>Phone</div>
-                <div style={{ fontSize: '14px' }}>{me.phone || 'N/A'}</div>
+              <div>
+                <label style={{display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 600}}>Confirm New Password</label>
+                <input
+                  type="password"
+                  className="input"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
               </div>
-              <div style={{ marginTop: '8px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+              <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
                 <button
                   type="button"
-                  className="btn danger"
-                  onClick={doLogout}
-                  style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  className="btn secondary"
+                  onClick={() => setShowPassModal(false)}
+                  style={{flex: 1}}
+                  disabled={changingPass}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                    <polyline points="16 17 21 12 16 7"/>
-                    <line x1="21" y1="12" x2="9" y2="12"/>
-                  </svg>
-                  Logout
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn primary"
+                  style={{flex: 1}}
+                  disabled={changingPass}
+                >
+                  {changingPass ? 'Changing...' : 'Change Password'}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
