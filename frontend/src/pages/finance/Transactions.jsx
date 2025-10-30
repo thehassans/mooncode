@@ -144,7 +144,7 @@ export default function Transactions(){
 
         await Promise.all([loadDrivers, loadRemits, loadDelivered, loadAllOrders])
       } catch (e) {
-        if (alive) setErr(e?.message || 'Failed to load driver finances')
+        if (alive) setErr(e?.message || 'Failed to load driver settlement')
       } finally { if (alive) setLoading(false) }
     })()
     return () => { alive = false }
@@ -455,7 +455,7 @@ export default function Transactions(){
     <div className="section" style={{ display: 'grid', gap: 12 }}>
       <div className="page-header">
         <div>
-          <div className="page-title gradient heading-blue">Driver Finances</div>
+          <div className="page-title gradient heading-blue">Driver Settlement</div>
           <div className="page-subtitle">Monitor drivers' delivered collections and remittances</div>
         </div>
       {acceptModal && (
@@ -586,7 +586,7 @@ export default function Transactions(){
                   </tr>
                 ))
               ) : !country ? (
-                <tr><td colSpan={8} style={{ padding: '12px', opacity: 0.7 }}>Select a country to view driver finances</td></tr>
+                <tr><td colSpan={8} style={{ padding: '12px', opacity: 0.7 }}>Select a country to view driver settlement</td></tr>
               ) : drivers.length === 0 ? (
                 <tr><td colSpan={8} style={{ padding: '12px', opacity: 0.7 }}>No drivers found</td></tr>
               ) : (
@@ -680,7 +680,7 @@ export default function Transactions(){
               {loading ? (
                 <div className="helper">Loading…</div>
               ) : !country ? (
-                <div className="helper">Select a country to view driver finances</div>
+                <div className="helper">Select a country to view driver settlement</div>
               ) : rows.length===0 ? (
                 <div className="helper">No drivers found</div>
               ) : rows.map(r => {
