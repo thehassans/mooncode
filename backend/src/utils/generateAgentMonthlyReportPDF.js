@@ -289,25 +289,54 @@ export async function generateAgentMonthlyReportPDF(data) {
 
       y = metricY + metricHeight + 30
 
-      // === COMMISSION SUMMARY ===
-      doc.roundedRect(margin, y, contentWidth, 85, 12)
-         .lineWidth(2)
+      // === COMMISSION SUMMARY - PROFESSIONAL DESIGN ===
+      const commissionBoxHeight = 110
+      
+      // Outer border with premium look
+      doc.roundedRect(margin, y, contentWidth, commissionBoxHeight, 16)
+         .lineWidth(3)
+         .strokeOpacity(0.2)
+         .stroke(colors.success)
+      
+      // Main background
+      doc.roundedRect(margin, y, contentWidth, commissionBoxHeight, 16)
          .fillAndStroke(colors.success, colors.success)
       
-      doc.fontSize(12)
-         .font('Helvetica-Bold')
-         .fillColor('white')
-         .text('TOTAL COMMISSION EARNED', margin + 30, y + 20)
+      // Top accent stripe
+      doc.roundedRect(margin, y, contentWidth, 8, 16)
+         .fill('#047857')
       
-      doc.fontSize(38)
+      // Commission label with professional typography
+      doc.fontSize(11)
+         .font('Helvetica')
+         .fillColor('#d1fae5')
+         .text('TOTAL COMMISSION EARNED', margin, y + 25, {
+           width: contentWidth,
+           align: 'center'
+         })
+      
+      // Commission amount with large, bold styling
+      const commissionText = formatCurrency(data.totalCommission || 0, data.currency || 'PKR')
+      doc.fontSize(42)
          .font('Helvetica-Bold')
          .fillColor('white')
-         .text(formatCurrency(data.totalCommission || 0, data.currency || 'PKR'), margin + 30, y + 42)
+         .text(commissionText, margin, y + 48, {
+           width: contentWidth,
+           align: 'center'
+         })
 
-      y += 100
+      y += commissionBoxHeight + 20
 
       // === DELIVERED ORDERS DETAILS ===
       if (data.deliveredOrders && data.deliveredOrders.length > 0) {
+        // Check if we need a new page for the entire section (header + at least one row)
+        const spaceNeeded = 35 + 38 + 40 + 150 // title + header + one row + buffer
+        if (y + spaceNeeded > pageHeight - margin) {
+          doc.addPage()
+          doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
+          y = margin + 20
+        }
+
         doc.fontSize(14)
            .font('Helvetica-Bold')
            .fillColor(colors.primary)
@@ -340,8 +369,8 @@ export async function generateAgentMonthlyReportPDF(data) {
         const rowHeight = 40
 
         data.deliveredOrders.forEach((order, index) => {
-          // Check if we need a new page
-          if (y + rowHeight + 100 > pageHeight - margin) {
+          // Check if we need a new page for this row
+          if (y + rowHeight > pageHeight - margin - 150) {
             doc.addPage()
             doc.rect(0, 0, pageWidth, 8).fill(colors.accent)
             y = margin + 20
