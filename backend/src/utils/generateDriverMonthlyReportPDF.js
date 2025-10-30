@@ -280,8 +280,7 @@ export async function generateDriverMonthlyReportPDF(data) {
       y = metricY + metricHeight + 30
 
       // === REMITTANCE ACCOUNTABILITY SECTION (NEW) ===
-      if ((data.ordersCancelled > 0 || data.ordersReturned > 0) && 
-          (data.cancelledSubmittedAmount != null || data.returnedSubmittedAmount != null)) {
+      if (data.ordersCancelled > 0 || data.ordersReturned > 0) {
         
         doc.fontSize(14)
            .font('Helvetica-Bold')
@@ -292,10 +291,10 @@ export async function generateDriverMonthlyReportPDF(data) {
            .fill(colors.accent)
         y += 35
 
-        const remitBoxHeight = 140
+        const remitBoxHeight = 170
         
         // Cancelled Orders Remittance
-        if (data.ordersCancelled > 0 && data.cancelledSubmittedAmount != null) {
+        if (data.ordersCancelled > 0) {
           doc.roundedRect(margin, y, contentWidth, remitBoxHeight, 12)
              .lineWidth(2)
              .strokeOpacity(0.15)
@@ -306,50 +305,69 @@ export async function generateDriverMonthlyReportPDF(data) {
           doc.fontSize(11)
              .font('Helvetica-Bold')
              .fillColor(colors.warning)
-             .text('CANCELLED ORDERS - CASH ACCOUNTABILITY', margin + 25, remitY)
-          remitY += 30
+             .text('CANCELLED ORDERS - STATUS', margin + 25, remitY)
+          remitY += 28
 
-          // Submitted amount
+          // Orders Cancelled
           doc.fontSize(9)
              .font('Helvetica')
              .fillColor(colors.muted)
-             .text('Amount Submitted to Company:', margin + 25, remitY)
+             .text('Orders Cancelled:', margin + 25, remitY)
           doc.fontSize(12)
              .font('Helvetica-Bold')
              .fillColor(colors.secondary)
-             .text(formatCurrency(data.cancelledSubmittedAmount || 0, data.currency || 'SAR'), margin + 220, remitY)
-          remitY += 25
+             .text(String(data.ordersCancelled || 0), margin + 220, remitY)
+          remitY += 22
 
-          // Accepted amount
+          // Orders Submitted to Company
           doc.fontSize(9)
              .font('Helvetica')
              .fillColor(colors.muted)
-             .text('Amount Accepted & Verified:', margin + 25, remitY)
+             .text('Orders Submitted to Company:', margin + 25, remitY)
+          doc.fontSize(12)
+             .font('Helvetica-Bold')
+             .fillColor(colors.secondary)
+             .text(String(data.cancelledSubmittedCount || 0), margin + 220, remitY)
+          doc.fontSize(9)
+             .font('Helvetica')
+             .fillColor(colors.muted)
+             .text(`(${formatCurrency(data.cancelledSubmittedAmount || 0, data.currency || 'SAR')})`, margin + 250, remitY)
+          remitY += 22
+
+          // Orders Accepted/Verified
+          doc.fontSize(9)
+             .font('Helvetica')
+             .fillColor(colors.muted)
+             .text('Orders Accepted/Verified by User/Manager:', margin + 25, remitY)
           doc.fontSize(12)
              .font('Helvetica-Bold')
              .fillColor(colors.success)
-             .text(formatCurrency(data.cancelledAcceptedAmount || 0, data.currency || 'SAR'), margin + 220, remitY)
+             .text(String(data.cancelledAcceptedCount || 0), margin + 305, remitY)
+          doc.fontSize(9)
+             .font('Helvetica')
+             .fillColor(colors.muted)
+             .text(`(${formatCurrency(data.cancelledAcceptedAmount || 0, data.currency || 'SAR')})`, margin + 335, remitY)
           remitY += 25
 
           // Status indicator
-          const cancelledPending = (data.cancelledSubmittedAmount || 0) - (data.cancelledAcceptedAmount || 0)
+          const cancelledPending = (data.cancelledSubmittedCount || 0) - (data.cancelledAcceptedCount || 0)
           if (cancelledPending > 0) {
             doc.fontSize(8)
-               .font('Helvetica-Oblique')
+               .font('Helvetica-Bold')
                .fillColor('#92400e')
-               .text(`Pending Verification: ${formatCurrency(cancelledPending, data.currency || 'SAR')}`, margin + 25, remitY)
-          } else {
+               .text(`⚠ ${cancelledPending} order(s) pending verification`, margin + 25, remitY)
+          } else if (data.cancelledSubmittedCount > 0) {
             doc.fontSize(8)
                .font('Helvetica-Bold')
                .fillColor(colors.success)
-               .text('✓ All cancelled order amounts verified', margin + 25, remitY)
+               .text('✓ All submitted orders verified', margin + 25, remitY)
           }
 
           y += remitBoxHeight + 20
         }
 
         // Returned Orders Remittance
-        if (data.ordersReturned > 0 && data.returnedSubmittedAmount != null) {
+        if (data.ordersReturned > 0) {
           doc.roundedRect(margin, y, contentWidth, remitBoxHeight, 12)
              .lineWidth(2)
              .strokeOpacity(0.15)
@@ -360,43 +378,62 @@ export async function generateDriverMonthlyReportPDF(data) {
           doc.fontSize(11)
              .font('Helvetica-Bold')
              .fillColor(colors.danger)
-             .text('RETURNED ORDERS - CASH ACCOUNTABILITY', margin + 25, remitY)
-          remitY += 30
+             .text('RETURNED ORDERS - STATUS', margin + 25, remitY)
+          remitY += 28
 
-          // Submitted amount
+          // Orders Returned
           doc.fontSize(9)
              .font('Helvetica')
              .fillColor(colors.muted)
-             .text('Amount Submitted to Company:', margin + 25, remitY)
+             .text('Orders Returned:', margin + 25, remitY)
           doc.fontSize(12)
              .font('Helvetica-Bold')
              .fillColor(colors.secondary)
-             .text(formatCurrency(data.returnedSubmittedAmount || 0, data.currency || 'SAR'), margin + 220, remitY)
-          remitY += 25
+             .text(String(data.ordersReturned || 0), margin + 220, remitY)
+          remitY += 22
 
-          // Accepted amount
+          // Orders Submitted to Company
           doc.fontSize(9)
              .font('Helvetica')
              .fillColor(colors.muted)
-             .text('Amount Accepted & Verified:', margin + 25, remitY)
+             .text('Orders Submitted to Company:', margin + 25, remitY)
+          doc.fontSize(12)
+             .font('Helvetica-Bold')
+             .fillColor(colors.secondary)
+             .text(String(data.returnedSubmittedCount || 0), margin + 220, remitY)
+          doc.fontSize(9)
+             .font('Helvetica')
+             .fillColor(colors.muted)
+             .text(`(${formatCurrency(data.returnedSubmittedAmount || 0, data.currency || 'SAR')})`, margin + 250, remitY)
+          remitY += 22
+
+          // Orders Accepted/Verified
+          doc.fontSize(9)
+             .font('Helvetica')
+             .fillColor(colors.muted)
+             .text('Orders Accepted/Verified by User/Manager:', margin + 25, remitY)
           doc.fontSize(12)
              .font('Helvetica-Bold')
              .fillColor(colors.success)
-             .text(formatCurrency(data.returnedAcceptedAmount || 0, data.currency || 'SAR'), margin + 220, remitY)
+             .text(String(data.returnedAcceptedCount || 0), margin + 305, remitY)
+          doc.fontSize(9)
+             .font('Helvetica')
+             .fillColor(colors.muted)
+             .text(`(${formatCurrency(data.returnedAcceptedAmount || 0, data.currency || 'SAR')})`, margin + 335, remitY)
           remitY += 25
 
           // Status indicator
-          const returnedPending = (data.returnedSubmittedAmount || 0) - (data.returnedAcceptedAmount || 0)
+          const returnedPending = (data.returnedSubmittedCount || 0) - (data.returnedAcceptedCount || 0)
           if (returnedPending > 0) {
             doc.fontSize(8)
-               .font('Helvetica-Oblique')
+               .font('Helvetica-Bold')
                .fillColor('#7f1d1d')
-               .text(`Pending Verification: ${formatCurrency(returnedPending, data.currency || 'SAR')}`, margin + 25, remitY)
-          } else {
+               .text(`⚠ ${returnedPending} order(s) pending verification`, margin + 25, remitY)
+          } else if (data.returnedSubmittedCount > 0) {
             doc.fontSize(8)
                .font('Helvetica-Bold')
                .fillColor(colors.success)
-               .text('✓ All returned order amounts verified', margin + 25, remitY)
+               .text('✓ All submitted orders verified', margin + 25, remitY)
           }
 
           y += remitBoxHeight + 20

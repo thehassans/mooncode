@@ -1852,16 +1852,22 @@ router.get(
 
       let cancelledSubmittedAmount = 0;
       let cancelledAcceptedAmount = 0;
+      let cancelledSubmittedCount = 0;
+      let cancelledAcceptedCount = 0;
       let returnedSubmittedAmount = 0;
       let returnedAcceptedAmount = 0;
+      let returnedSubmittedCount = 0;
+      let returnedAcceptedCount = 0;
 
       // Only count cash from cancelled/returned orders that were submitted to company
       for (const order of cancelledOrders) {
         if (order.returnSubmittedToCompany) {
           const amount = Number(order.collectedAmount || order.codAmount || 0);
           cancelledSubmittedAmount += amount;
+          cancelledSubmittedCount++;
           if (order.returnVerified) {
             cancelledAcceptedAmount += amount;
+            cancelledAcceptedCount++;
           }
         }
       }
@@ -1870,8 +1876,10 @@ router.get(
         if (order.returnSubmittedToCompany) {
           const amount = Number(order.collectedAmount || order.codAmount || 0);
           returnedSubmittedAmount += amount;
+          returnedSubmittedCount++;
           if (order.returnVerified) {
             returnedAcceptedAmount += amount;
+            returnedAcceptedCount++;
           }
         }
       }
@@ -1902,8 +1910,12 @@ router.get(
         ordersReturned,
         cancelledSubmittedAmount,
         cancelledAcceptedAmount,
+        cancelledSubmittedCount,
+        cancelledAcceptedCount,
         returnedSubmittedAmount,
         returnedAcceptedAmount,
+        returnedSubmittedCount,
+        returnedAcceptedCount,
         totalCommission,
         currency,
         deliveredOrders
