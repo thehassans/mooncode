@@ -143,18 +143,29 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
               const isSubmitting = submitting === String(o._id || o.id)
               const status = String(o.shipmentStatus || '').toLowerCase()
               const isCancelledOrReturned = ['cancelled', 'returned'].includes(status)
+              const isDelivered = status === 'delivered'
               const canSubmit = isCancelledOrReturned && !o.returnSubmittedToCompany && !o.returnVerified
               const isVerified = o.returnVerified
               const isSubmitted = o.returnSubmittedToCompany && !isVerified
               
               return (
-                <div key={String(o._id||o.id)} className="panel" style={{display:'grid', gap:8, border:`1px solid ${isCancelledOrReturned ? '#ef4444' : 'var(--border)'}`, borderRadius:10, padding:12, background: isCancelledOrReturned ? 'rgba(239, 68, 68, 0.05)' : 'transparent'}}>
+                <div key={String(o._id||o.id)} className="panel" style={{display:'grid', gap:8, border:`1px solid ${isCancelledOrReturned ? '#ef4444' : isDelivered ? '#10b981' : 'var(--border)'}`, borderRadius:10, padding:12, background: isCancelledOrReturned ? 'rgba(239, 68, 68, 0.05)' : isDelivered ? 'rgba(16, 185, 129, 0.05)' : 'transparent'}}>
                   <div style={{display:'flex', justifyContent:'space-between', gap:8, alignItems:'center'}}>
-                    <div style={{display:'flex', gap:8, alignItems:'center'}}>
+                    <div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
                       <div style={{fontWeight:800}}>#{o.invoiceNumber || String(o._id||'').slice(-6)}</div>
                       {isCancelledOrReturned && (
-                        <span className="badge" style={{background:'#fecaca', color:'#991b1b', textTransform:'capitalize'}}>
+                        <span className="badge" style={{background:'#fecaca', color:'#991b1b', textTransform:'capitalize', fontSize:11}}>
                           {status}
+                        </span>
+                      )}
+                      {isDelivered && (
+                        <span className="badge" style={{background:'#d1fae5', color:'#065f46', textTransform:'capitalize', fontSize:11}}>
+                          ✓ Delivered
+                        </span>
+                      )}
+                      {!isCancelledOrReturned && !isDelivered && (
+                        <span className="badge" style={{background:'var(--panel-2)', color:'var(--text)', textTransform:'capitalize', fontSize:11}}>
+                          {status.replace(/_/g, ' ')}
                         </span>
                       )}
                     </div>
@@ -203,8 +214,14 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
                   
                   <div style={{display:'flex', gap:8, justifyContent:'flex-end', flexWrap:'wrap'}}>
                     {showMap ? <button className="btn secondary" onClick={()=> openMaps(o)}>Map</button> : null}
-                    {showDeliverCancel && !isCancelledOrReturned ? <button className="btn success" onClick={()=> markDelivered(o)}>Mark Delivered</button> : null}
-                    {showDeliverCancel && !isCancelledOrReturned ? <button className="btn danger" onClick={()=> cancel(o)}>Cancel</button> : null}
+                    {showDeliverCancel && !isCancelledOrReturned && !isDelivered ? <button className="btn success" onClick={()=> markDelivered(o)}>Mark Delivered</button> : null}
+                    {showDeliverCancel && !isCancelledOrReturned && !isDelivered ? <button className="btn danger" onClick={()=> cancel(o)}>Cancel</button> : null}
+                    {/* Show info message for delivered orders */}
+                    {isDelivered && (
+                      <div style={{fontSize:12, color:'#059669', fontWeight:600, padding:'8px 12px', background:'#d1fae5', borderRadius:6}}>
+                        🔒 Delivered - Contact owner to modify
+                      </div>
+                    )}
                     {/* Show submit button for all cancelled/returned orders that aren't verified yet */}
                     {canSubmit && (
                       <button 

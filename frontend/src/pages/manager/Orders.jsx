@@ -536,6 +536,7 @@ export default function ManagerOrders(){
     // Check return submission status
     const status = String(o.shipmentStatus || '').toLowerCase()
     const isCancelledOrReturned = ['cancelled', 'returned'].includes(status)
+    const isDelivered = status === 'delivered'
     const isReturnSubmitted = o.returnSubmittedToCompany && !o.returnVerified
     const isReturnVerified = o.returnVerified
     
@@ -554,6 +555,11 @@ export default function ManagerOrders(){
             {isReturnVerified && (
               <span className="badge" style={{background:'#d1fae5', color:'#065f46', border:'1px solid #10b981', fontWeight:700, fontSize:13}}>
                 ✅ Return Verified
+              </span>
+            )}
+            {isDelivered && (
+              <span className="badge" style={{background:'#d1fae5', color:'#065f46', border:'1px solid #10b981', fontWeight:600, fontSize:12}}>
+                🔒 Status Locked
               </span>
             )}
             {driverName && (
@@ -637,8 +643,9 @@ export default function ManagerOrders(){
               className="input" 
               value={editingStatus[id] || (o.shipmentStatus || 'pending')} 
               onChange={(e)=> handleStatusChange(id, e.target.value)} 
-              disabled={updating[`save-${id}`]}
-              style={{fontSize:14}}
+              disabled={updating[`save-${id}`] || isDelivered}
+              style={{fontSize:14, opacity: isDelivered ? 0.6 : 1, cursor: isDelivered ? 'not-allowed' : 'pointer'}}
+              title={isDelivered ? 'Delivered orders cannot be modified. Contact owner.' : ''}
             >
               <option value="pending">Pending</option>
               <option value="assigned">Assigned</option>
