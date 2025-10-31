@@ -22,6 +22,8 @@ import ManagerDriverFinances from './pages/manager/DriverFinances.jsx'
 import ManagerCreateDriver from './pages/manager/CreateDriver.jsx'
 import AgentRemitHistory from './pages/manager/AgentRemitHistory.jsx'
 import ManagerExpenses from './pages/manager/Expenses.jsx'
+import CommissionDashboard from './pages/manager/CommissionDashboard.jsx'
+import CommissionHistory from './pages/manager/CommissionHistory.jsx'
 import AgentInhouseProducts from './pages/agent/AgentInhouseProducts.jsx'
 import InvestorDashboard from './pages/investor/Dashboard.jsx'
 import InvestorMe from './pages/investor/Me.jsx'
@@ -44,6 +46,7 @@ import DriverDashboard from './pages/driver/Dashboard.jsx'
 import DriverPanel from './pages/driver/DriverPanel.jsx'
 import DriverMe from './pages/driver/Me.jsx'
 import DriverPayout from './pages/driver/Payout.jsx'
+import DriverCommission from './pages/driver/Commission.jsx'
 import DriverAssigned from './pages/driver/Assigned.jsx'
 import DriverPicked from './pages/driver/Picked.jsx'
 import DriverDelivered from './pages/driver/Delivered.jsx'
@@ -287,6 +290,7 @@ export default function App() {
         <Route path="me" element={<DriverMe />} />
         <Route path="profile" element={<DriverProfile />} />
         <Route path="payout" element={<DriverPayout />} />
+        <Route path="commission" element={<DriverCommission />} />
       </Route>
 
       <Route
@@ -321,6 +325,8 @@ export default function App() {
         <Route path="drivers/create" element={<ManagerCreateDriver />} />
         <Route path="finances/history/agents" element={<AgentRemitHistory />} />
         <Route path="transactions/drivers" element={<ManagerDriverFinances />} />
+        <Route path="commission/dashboard" element={<CommissionDashboard />} />
+        <Route path="commission/history" element={<CommissionHistory />} />
         <Route path="warehouses" element={<Warehouse />} />
         <Route path="inhouse-products" element={<InhouseProducts />} />
         <Route path="expenses" element={<ManagerExpenses />} />
