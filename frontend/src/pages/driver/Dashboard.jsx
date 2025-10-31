@@ -47,8 +47,12 @@ export default function DriverDashboard(){
           pendingToCompany: Number(s?.pendingToCompany||0),
         })
       }
+      // Show only active assigned orders (exclude picked_up, delivered, cancelled, returned)
       setAssigned((a.orders||[])
-        .filter(o => String(o?.shipmentStatus||'').toLowerCase() !== 'picked_up'))
+        .filter(o => {
+          const status = String(o?.shipmentStatus||'').toLowerCase()
+          return !['picked_up', 'delivered', 'cancelled', 'returned'].includes(status)
+        }))
     }catch{
       setMetrics({ totalAssignedAllTime: 0, status: { assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 } })
       setAssigned([])
