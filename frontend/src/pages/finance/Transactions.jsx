@@ -31,7 +31,7 @@ export default function Transactions(){
   const [payForm, setPayForm] = useState({ amount:'', method:'hand', note:'', file:null })
   const [submitting, setSubmitting] = useState(false)
   const [remitPage, setRemitPage] = useState(1)
-  const remitPerPage = 10
+  const remitPerPage = 6
 
   // Reset remit page when modal opens
   useEffect(()=>{ if(remitModalFor) setRemitPage(1) },[remitModalFor])
@@ -783,7 +783,6 @@ export default function Transactions(){
                           <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Accepted</th>
                           <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Created</th>
                           <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Receipt</th>
-                          <th style={{ padding:'12px', textAlign:'left', fontWeight:600, fontSize:12, textTransform:'uppercase', color:'var(--muted)', letterSpacing:'0.5px' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -798,14 +797,6 @@ export default function Transactions(){
                             <td style={{ padding:'12px' }}>
                               {(r.pdfPath || r.acceptedPdfPath) ? (
                                 <a href={`${API_BASE}/api/finance/remittances/${r._id}/download-settlement`} target="_blank" rel="noopener noreferrer" className="btn" style={{fontSize:13, padding:'6px 12px'}}>Download</a>
-                              ) : '—'}
-                            </td>
-                            <td style={{ padding:'12px' }}>
-                              {String(r.status||'').toLowerCase()==='pending' || String(r.status||'').toLowerCase()==='manager_accepted' ? (
-                                <div style={{display:'flex', gap:6}}>
-                                  <button className="btn" style={{fontSize:13, padding:'6px 12px'}} onClick={()=> acceptRemit(String(r._id||''))}>Accept</button>
-                                  <button className="btn secondary" style={{fontSize:13, padding:'6px 12px'}} onClick={()=> rejectRemit(String(r._id||''))}>Reject</button>
-                                </div>
                               ) : '—'}
                             </td>
                           </tr>
