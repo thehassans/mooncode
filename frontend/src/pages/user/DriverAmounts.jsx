@@ -15,6 +15,9 @@ export default function DriverAmounts(){
   const [searchTerm, setSearchTerm] = useState('')
   const [payingDriver, setPayingDriver] = useState(null)
   const [payModal, setPayModal] = useState(null)
+  const [pendingCommissions, setPendingCommissions] = useState([])
+  const [loadingPending, setLoadingPending] = useState(false)
+  const [approvingCommission, setApprovingCommission] = useState(null)
 
   // Load country options
   useEffect(() => {
@@ -34,20 +37,73 @@ export default function DriverAmounts(){
   }, [])
 
   // Load drivers
+  const loadDrivers = async () => {
+    try {
+      setLoading(true)
+      const r = await apiGet('/api/finance/drivers/summary?limit=100')
+      setDrivers(Array.isArray(r?.drivers) ? r.drivers : [])
+      setErr('')
+    } catch (e) {
+      setErr(e?.message || 'Failed to load driver amounts')
+    } finally { setLoading(false) }
+  }
+
   useEffect(() => {
-    let alive = true
-    ;(async () => {
-      try {
-        setLoading(true)
-        const r = await apiGet('/api/finance/drivers/summary?limit=100')
-        if (alive) setDrivers(Array.isArray(r?.drivers) ? r.drivers : [])
-        setErr('')
-      } catch (e) {
-        if (alive) setErr(e?.message || 'Failed to load driver amounts')
-      } finally { if (alive) setLoading(false) }
-    })()
-    return () => { alive = false }
+    loadDrivers()
   }, [])
+
+  // Load pending commission approvals
+  const loadPendingCommissions = async () => {
+    try {
+      setLoadingPending(true)
+      const r = await apiGet('/api/finance/remittances')
+      const remits = Array.isArray(r?.remittances) ? r.remittances : []
+      // Filter for pending commission payments
+      const pending = remits.filter(rem => 
+        String(rem.note || '').toLowerCase().includes('commission') &&
+        String(rem.status || '').toLowerCase() === 'pending'
+      )
+      setPendingCommissions(pending)
+    } catch (e) {
+      console.error('Failed to load pending commissions:', e)
+      setPendingCommissions([])
+    } finally { setLoadingPending(false) }
+  }
+
+  useEffect(() => {
+    loadPendingCommissions()
+  }, [])
+
+  // Approve commission payment
+  const approveCommission = async (remittanceId) => {
+    try {
+      setApprovingCommission(remittanceId)
+      await apiPost(`/api/finance/remittances/${remittanceId}/accept`, {})
+      toast.success('Commission approved successfully')
+      // Refresh both lists
+      await loadDrivers()
+      await loadPendingCommissions()
+    } catch (e) {
+      toast.error(e?.message || 'Failed to approve commission')
+    } finally {
+      setApprovingCommission(null)
+    }
+  }
+
+  // Reject commission payment
+  const rejectCommission = async (remittanceId) => {
+    try {
+      setApprovingCommission(remittanceId)
+      await apiPost(`/api/finance/remittances/${remittanceId}/reject`, {})
+      toast.warn('Commission rejected')
+      // Refresh pending list
+      await loadPendingCommissions()
+    } catch (e) {
+      toast.error(e?.message || 'Failed to reject commission')
+    } finally {
+      setApprovingCommission(null)
+    }
+  }
 
   function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
 
@@ -93,6 +149,86 @@ export default function DriverAmounts(){
         </div>
       </div>
       {err && <div className="error">{err}</div>}
+
+      {/* Pending Commission Approvals */}
+      {pendingCommissions.length > 0 && (
+        <div className="card" style={{ border: '2px solid #f59e0b', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%)' }}>
+          <div className="card-header" style={{ borderBottom: '1px solid #f59e0b' }}>
+            <div>
+              <div className="card-title" style={{ color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                Pending Commission Approvals
+              </div>
+              <div className="card-subtitle">Manager-initiated commission payments awaiting your approval</div>
+            </div>
+          </div>
+          <div className="section" style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                  <th style={{ padding: '12px', textAlign:'left', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Driver</th>
+                  <th style={{ padding: '12px', textAlign:'left', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Manager</th>
+                  <th style={{ padding: '12px', textAlign:'right', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Amount</th>
+                  <th style={{ padding: '12px', textAlign:'left', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Requested</th>
+                  <th style={{ padding: '12px', textAlign:'center', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingCommissions.map((comm) => (
+                  <tr key={comm._id} style={{ borderTop: '1px solid var(--border)' }}>
+                    <td style={{ padding: '12px' }}>
+                      <div style={{ fontWeight: 600 }}>
+                        {comm.driver?.firstName || ''} {comm.driver?.lastName || ''}
+                      </div>
+                      <div className="helper" style={{ fontSize: 11 }}>
+                        {comm.driver?.phone || comm.driver?.email || ''}
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <div style={{ fontWeight: 600 }}>
+                        {comm.manager?.firstName || ''} {comm.manager?.lastName || ''}
+                      </div>
+                      <div className="helper" style={{ fontSize: 11 }}>
+                        {comm.manager?.email || ''}
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px', textAlign:'right', fontWeight: 700, color: '#10b981', fontSize: 16 }}>
+                      {comm.currency || 'SAR'} {num(comm.amount || comm.driverCommission || 0)}
+                    </td>
+                    <td style={{ padding: '12px', fontSize: 13, color: 'var(--text-muted)' }}>
+                      {comm.createdAt ? new Date(comm.createdAt).toLocaleString() : '—'}
+                    </td>
+                    <td style={{ padding: '12px', textAlign:'center' }}>
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                        <button 
+                          className="btn success" 
+                          style={{ fontSize: 12, padding: '6px 12px' }}
+                          disabled={approvingCommission === comm._id}
+                          onClick={() => approveCommission(comm._id)}
+                        >
+                          {approvingCommission === comm._id ? 'Approving...' : 'Approve'}
+                        </button>
+                        <button 
+                          className="btn danger" 
+                          style={{ fontSize: 12, padding: '6px 12px' }}
+                          disabled={approvingCommission === comm._id}
+                          onClick={() => rejectCommission(comm._id)}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="card" style={{ display: 'grid', gap: 10 }}>
@@ -265,8 +401,7 @@ export default function DriverAmounts(){
                   toast.success('Commission payment sent successfully')
                   setPayModal(null)
                   // Refresh data
-                  const r = await apiGet('/api/finance/drivers/summary?limit=100')
-                  setDrivers(Array.isArray(r?.drivers) ? r.drivers : [])
+                  await loadDrivers()
                 }catch(e){
                   toast.error(e?.message || 'Failed to send payment')
                 }finally{
