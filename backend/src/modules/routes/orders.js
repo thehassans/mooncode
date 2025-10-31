@@ -1793,6 +1793,10 @@ router.post('/:id/shipment/update', auth, allowRoles('admin','user','agent','dri
     if (String(ord.deliveryBoy || '') !== String(req.user.id)) {
       return res.status(403).json({ message: 'Not allowed' })
     }
+    // Once order is delivered, driver cannot change status
+    if (ord.shipmentStatus === 'delivered') {
+      return res.status(403).json({ message: 'Cannot change status of delivered orders. Contact owner for changes.' })
+    }
     const { shipmentStatus, deliveryNotes, note } = req.body || {}
     if (shipmentStatus) {
       const allowed = new Set(['no_response', 'attempted', 'contacted', 'picked_up', 'out_for_delivery'])
@@ -1815,7 +1819,12 @@ router.post('/:id/shipment/update', auth, allowRoles('admin','user','agent','dri
     return res.json({ message: 'Shipment updated', order: ord })
   }
 
-  // Non-driver roles retain full update capabilities
+  // Non-driver roles update capabilities
+  // Manager cannot change status from delivered - only user/admin can
+  if (req.user.role === 'manager' && ord.shipmentStatus === 'delivered') {
+    return res.status(403).json({ message: 'Cannot change status of delivered orders. Contact owner for changes.' })
+  }
+  
   const { shipmentMethod, shipmentStatus, courierName, trackingNumber, deliveryBoy, shippingFee, codAmount, collectedAmount, deliveryNotes, returnReason } = req.body || {}
   if (shipmentMethod) ord.shipmentMethod = shipmentMethod
   if (shipmentStatus) ord.shipmentStatus = shipmentStatus
@@ -1925,6 +1934,10 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), async (req, res
     if (shippingFee !== undefined) ord.shippingFee = Math.max(0, Number(shippingFee || 0))
     
     // Shipment status
+    // Manager cannot change status from delivered - only user/admin can
+    if (shipmentStatus && req.user.role === 'manager' && ord.shipmentStatus === 'delivered') {
+      return res.status(403).json({ message: 'Cannot change status of delivered orders. Contact owner for changes.' })
+    }
     if (shipmentStatus) {
       ord.shipmentStatus = shipmentStatus
       // Auto-set timestamps based on status
@@ -2061,6 +2074,12 @@ router.post('/:id/return', auth, allowRoles('admin','user','agent','driver'), as
     .populate('productId', 'name')
     .populate('items.productId', 'name')
   if (!ord) return res.status(404).json({ message: 'Order not found' })
+  
+  // Once delivered, only user/admin can change status
+  if (ord.shipmentStatus === 'delivered' && req.user.role === 'driver') {
+    return res.status(403).json({ message: 'Cannot change status of delivered orders. Contact owner for changes.' })
+  }
+  
   ord.shipmentStatus = 'returned'
   ord.returnReason = reason || ord.returnReason
   // DO NOT restore stock here - it will be restored after manager/user verification
@@ -2088,6 +2107,12 @@ router.post('/:id/cancel', auth, allowRoles('admin','user','agent','manager','dr
   if (req.user.role === 'agent' && String(ord.createdBy||'') !== String(req.user.id)){
     return res.status(403).json({ message: 'Not allowed' })
   }
+  
+  // Once delivered, only user/admin can change status
+  if (ord.shipmentStatus === 'delivered' && (req.user.role === 'driver' || req.user.role === 'manager')) {
+    return res.status(403).json({ message: 'Cannot change status of delivered orders. Contact owner for changes.' })
+  }
+  
   ord.shipmentStatus = 'cancelled'
   if (reason != null) ord.returnReason = String(reason)
   // DO NOT restore stock here - it will be restored after manager/user verification
