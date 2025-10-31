@@ -1794,13 +1794,13 @@ router.post('/:id/shipment/update', auth, allowRoles('admin','user','agent','dri
     if (String(ord.deliveryBoy || '') !== String(req.user.id)) {
       return res.status(403).json({ message: 'Not allowed' })
     }
-    // Once order is delivered, driver cannot change status
-    if (ord.shipmentStatus === 'delivered') {
-      return res.status(403).json({ message: 'Cannot change status of delivered orders. Contact owner for changes.' })
-    }
     const { shipmentStatus, deliveryNotes, note } = req.body || {}
     if (shipmentStatus) {
-      const allowed = new Set(['no_response', 'attempted', 'contacted', 'picked_up', 'out_for_delivery'])
+      // Driver cannot change status FROM delivered, but can change TO delivered
+      if (ord.shipmentStatus === 'delivered' && shipmentStatus !== 'delivered') {
+        return res.status(403).json({ message: 'Cannot change status of delivered orders. Contact owner for changes.' })
+      }
+      const allowed = new Set(['no_response', 'attempted', 'contacted', 'picked_up', 'out_for_delivery', 'delivered'])
       if (!allowed.has(String(shipmentStatus))) {
         return res.status(400).json({ message: 'Invalid status' })
       }
@@ -2076,7 +2076,7 @@ router.post('/:id/return', auth, allowRoles('admin','user','agent','driver'), as
     .populate('items.productId', 'name')
   if (!ord) return res.status(404).json({ message: 'Order not found' })
   
-  // Once delivered, only user/admin can change status
+  // Driver cannot change status FROM delivered
   if (ord.shipmentStatus === 'delivered' && req.user.role === 'driver') {
     return res.status(403).json({ message: 'Cannot change status of delivered orders. Contact owner for changes.' })
   }
@@ -2109,7 +2109,7 @@ router.post('/:id/cancel', auth, allowRoles('admin','user','agent','manager','dr
     return res.status(403).json({ message: 'Not allowed' })
   }
   
-  // Once delivered, only user/admin can change status
+  // Driver/Manager cannot change status FROM delivered
   if (ord.shipmentStatus === 'delivered' && (req.user.role === 'driver' || req.user.role === 'manager')) {
     return res.status(403).json({ message: 'Cannot change status of delivered orders. Contact owner for changes.' })
   }

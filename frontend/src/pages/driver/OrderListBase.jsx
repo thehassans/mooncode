@@ -214,12 +214,33 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
                   
                   <div style={{display:'flex', gap:8, justifyContent:'flex-end', flexWrap:'wrap'}}>
                     {showMap ? <button className="btn secondary" onClick={()=> openMaps(o)}>Map</button> : null}
-                    {showDeliverCancel && !isCancelledOrReturned && !isDelivered ? <button className="btn success" onClick={()=> markDelivered(o)}>Mark Delivered</button> : null}
-                    {showDeliverCancel && !isCancelledOrReturned && !isDelivered ? <button className="btn danger" onClick={()=> cancel(o)}>Cancel</button> : null}
+                    {/* Show action buttons for non-cancelled/returned orders */}
+                    {showDeliverCancel && !isCancelledOrReturned ? (
+                      <>
+                        <button 
+                          className="btn success" 
+                          onClick={()=> markDelivered(o)} 
+                          disabled={isDelivered}
+                          style={{opacity: isDelivered ? 0.5 : 1, cursor: isDelivered ? 'not-allowed' : 'pointer'}}
+                          title={isDelivered ? 'Already delivered' : 'Mark as delivered'}
+                        >
+                          Mark Delivered
+                        </button>
+                        <button 
+                          className="btn danger" 
+                          onClick={()=> cancel(o)}
+                          disabled={isDelivered}
+                          style={{opacity: isDelivered ? 0.5 : 1, cursor: isDelivered ? 'not-allowed' : 'pointer'}}
+                          title={isDelivered ? 'Cannot cancel delivered orders' : 'Cancel order'}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : null}
                     {/* Show info message for delivered orders */}
-                    {isDelivered && (
-                      <div style={{fontSize:12, color:'#059669', fontWeight:600, padding:'8px 12px', background:'#d1fae5', borderRadius:6}}>
-                        🔒 Delivered - Contact owner to modify
+                    {isDelivered && showDeliverCancel && (
+                      <div style={{fontSize:11, color:'#059669', fontWeight:600, padding:'6px 10px', background:'#d1fae5', borderRadius:6}}>
+                        🔒 Locked - Contact owner
                       </div>
                     )}
                     {/* Show submit button for all cancelled/returned orders that aren't verified yet */}
