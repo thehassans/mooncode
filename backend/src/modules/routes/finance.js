@@ -2171,365 +2171,6 @@ router.get(
   }
 );
 
-// ===== DRIVER COMMISSION PAYOUT ROUTES =====
-
-import DriverCommissionPayout from '../models/DriverCommissionPayout.js'
-import { generateCommissionReceiptPDF } from '../../utils/generateCommissionReceiptPDF.js'
-
-// Get commission dashboard for manager
-router.get('/commission/dashboard', auth, allowRoles('user', 'manager'), async (req, res) => {
-  try {
-    const { country, fromDate, toDate } = req.query
-    
-    // Build query for drivers
-    const driverQuery = { role: 'driver' }
-    if (country) driverQuery.country = country
-    if (req.user.role === 'manager') {
-      driverQuery.createdBy = req.user.id
-    }
-    
-    const drivers = await User.find(driverQuery).select('firstName lastName email phone driverProfile country')
-    
-    // For each driver, calculate commission stats
-    const dashboard = await Promise.all(drivers.map(async (driver) => {
-      // Get delivered orders in period
-      const orderQuery = {
-        deliveryBoy: driver._id,
-        shipmentStatus: 'delivered'
-      }
-      if (fromDate) orderQuery.deliveredAt = { $gte: new Date(fromDate) }
-      if (toDate) {
-        if (orderQuery.deliveredAt) orderQuery.deliveredAt.$lte = new Date(toDate)
-        else orderQuery.deliveredAt = { $lte: new Date(toDate) }
-      }
-      
-      const deliveredOrders = await Order.find(orderQuery).select('total deliveredAt collectedAmount')
-      const totalOrders = deliveredOrders.length
-      const totalEarnings = deliveredOrders.reduce((sum, o) => sum + (Number(o.collectedAmount) || Number(o.total) || 0), 0)
-      
-      // Calculate commission
-      const commissionRate = Number(driver.driverProfile?.commissionPerOrder || 0)
-      const commissionOwed = totalOrders * commissionRate
-      
-      // Get paid commission
-      const paidPayouts = await DriverCommissionPayout.find({
-        driver: driver._id,
-        status: { $in: ['approved', 'paid'] }
-      })
-      const commissionPaid = paidPayouts.reduce((sum, p) => sum + Number(p.commissionAmount || 0), 0)
-      
-      // Get pending approval
-      const pendingPayout = await DriverCommissionPayout.findOne({
-        driver: driver._id,
-        status: 'pending_approval'
-      })
-      
-      return {
-        driver: {
-          _id: driver._id,
-          name: `${driver.firstName || ''} ${driver.lastName || ''}`.trim(),
-          email: driver.email,
-          phone: driver.phone,
-          country: driver.country
-        },
-        totalOrders,
-        totalEarnings,
-        commissionRate,
-        commissionOwed,
-        commissionPaid,
-        commissionPending: commissionOwed - commissionPaid,
-        pendingPayout: pendingPayout ? {
-          _id: pendingPayout._id,
-          amount: pendingPayout.commissionAmount,
-          status: pendingPayout.status,
-          initiatedAt: pendingPayout.initiatedAt
-        } : null
-      }
-    }))
-    
-    res.json({ dashboard })
-  } catch (err) {
-    console.error('Commission dashboard error:', err)
-    res.status(500).json({ message: 'Failed to load commission dashboard' })
-  }
-})
-
-// Initiate commission payout (Manager)
-router.post('/commission/initiate', auth, allowRoles('user', 'manager'), async (req, res) => {
-  try {
-    const { driverId, fromDate, toDate, paymentMethod, managerNote } = req.body
-    
-    if (!driverId || !fromDate || !toDate) {
-      return res.status(400).json({ message: 'Driver, fromDate, and toDate are required' })
-    }
-    
-    const driver = await User.findById(driverId)
-    if (!driver || driver.role !== 'driver') {
-      return res.status(404).json({ message: 'Driver not found' })
-    }
-    
-    // Check if there's already a pending payout for this driver
-    const existingPending = await DriverCommissionPayout.findOne({
-      driver: driverId,
-      status: { $in: ['pending_approval', 'unpaid'] }
-    })
-    if (existingPending) {
-      return res.status(400).json({ message: 'Driver already has a pending payout' })
-    }
-    
-    // Get delivered orders in period
-    const orders = await Order.find({
-      deliveryBoy: driverId,
-      shipmentStatus: 'delivered',
-      deliveredAt: { $gte: new Date(fromDate), $lte: new Date(toDate) }
-    }).select('_id orderId total deliveredAt collectedAmount customer')
-    
-    const totalOrders = orders.length
-    const totalEarnings = orders.reduce((sum, o) => sum + (Number(o.collectedAmount) || Number(o.total) || 0), 0)
-    const commissionRate = Number(driver.driverProfile?.commissionPerOrder || 0)
-    const commissionAmount = totalOrders * commissionRate
-    
-    if (commissionAmount <= 0) {
-      return res.status(400).json({ message: 'No commission to pay' })
-    }
-    
-    // Create payout record
-    const payout = new DriverCommissionPayout({
-      driver: driverId,
-      manager: req.user.id,
-      owner: driver.createdBy,
-      fromDate,
-      toDate,
-      totalOrders,
-      totalEarnings,
-      commissionRate,
-      commissionAmount,
-      currency: driver.driverProfile?.commissionCurrency || 'SAR',
-      status: 'pending_approval',
-      orders: orders.map(o => o._id),
-      paymentMethod: paymentMethod || 'hand',
-      managerNote,
-      initiatedAt: new Date(),
-      initiatedBy: req.user.id
-    })
-    
-    await payout.save()
-    
-    // Notify driver
-    try {
-      const io = getIO()
-      io.to(`user:${String(driverId)}`).emit('commission.pending_approval', {
-        payoutId: String(payout._id),
-        amount: commissionAmount,
-        currency: payout.currency
-      })
-    } catch {}
-    
-    res.json({ message: 'Commission payout initiated', payout })
-  } catch (err) {
-    console.error('Initiate commission error:', err)
-    res.status(500).json({ message: 'Failed to initiate commission payout' })
-  }
-})
-
-// Get driver's commission payouts
-router.get('/commission/my-payouts', auth, allowRoles('driver'), async (req, res) => {
-  try {
-    const payouts = await DriverCommissionPayout.find({
-      driver: req.user.id
-    }).populate('manager', 'firstName lastName email')
-      .sort({ createdAt: -1 })
-    
-    res.json({ payouts })
-  } catch (err) {
-    console.error('Get driver payouts error:', err)
-    res.status(500).json({ message: 'Failed to load payouts' })
-  }
-})
-
-// Approve commission payout (Driver)
-router.post('/commission/:id/approve', auth, allowRoles('driver'), async (req, res) => {
-  try {
-    const { id } = req.params
-    const { driverNote } = req.body
-    
-    const payout = await DriverCommissionPayout.findById(id)
-      .populate('driver', 'firstName lastName email phone')
-      .populate('manager', 'firstName lastName email phone')
-    
-    if (!payout) {
-      return res.status(404).json({ message: 'Payout not found' })
-    }
-    
-    if (String(payout.driver._id) !== String(req.user.id)) {
-      return res.status(403).json({ message: 'Not authorized' })
-    }
-    
-    if (payout.status !== 'pending_approval') {
-      return res.status(400).json({ message: 'Payout is not pending approval' })
-    }
-    
-    // Update status
-    payout.status = 'approved'
-    payout.approvedAt = new Date()
-    payout.approvedBy = req.user.id
-    if (driverNote) payout.driverNote = driverNote
-    
-    // Generate PDF receipt
-    try {
-      const orders = await Order.find({
-        _id: { $in: payout.orders }
-      }).populate('customer', 'name').select('orderId total deliveredAt collectedAmount customer')
-      
-      const receiptPath = await generateCommissionReceiptPDF({
-        driverName: `${payout.driver.firstName || ''} ${payout.driver.lastName || ''}`.trim(),
-        driverPhone: payout.driver.phone,
-        driverEmail: payout.driver.email,
-        managerName: `${payout.manager.firstName || ''} ${payout.manager.lastName || ''}`.trim(),
-        managerPhone: payout.manager.phone,
-        fromDate: payout.fromDate,
-        toDate: payout.toDate,
-        totalOrders: payout.totalOrders,
-        commissionRate: payout.commissionRate,
-        totalCommission: payout.commissionAmount,
-        currency: payout.currency,
-        orders: orders.map(o => ({
-          orderId: o.orderId,
-          _id: o._id,
-          customerName: o.customer?.name,
-          deliveredAt: o.deliveredAt,
-          total: o.total || o.collectedAmount
-        })),
-        paymentMethod: payout.paymentMethod,
-        paymentDate: payout.approvedAt,
-        payoutId: String(payout._id)
-      })
-      
-      payout.receiptPath = receiptPath
-    } catch (pdfErr) {
-      console.error('PDF generation error:', pdfErr)
-    }
-    
-    await payout.save()
-    
-    // Notify manager
-    try {
-      const io = getIO()
-      io.to(`user:${String(payout.manager._id || payout.manager)}`).emit('commission.approved', {
-        payoutId: String(payout._id),
-        driverId: String(payout.driver._id)
-      })
-    } catch {}
-    
-    res.json({ message: 'Commission payout approved', payout })
-  } catch (err) {
-    console.error('Approve commission error:', err)
-    res.status(500).json({ message: 'Failed to approve payout' })
-  }
-})
-
-// Reject commission payout (Driver)
-router.post('/commission/:id/reject', auth, allowRoles('driver'), async (req, res) => {
-  try {
-    const { id } = req.params
-    const { rejectionReason } = req.body
-    
-    const payout = await DriverCommissionPayout.findById(id)
-    if (!payout) {
-      return res.status(404).json({ message: 'Payout not found' })
-    }
-    
-    if (String(payout.driver) !== String(req.user.id)) {
-      return res.status(403).json({ message: 'Not authorized' })
-    }
-    
-    if (payout.status !== 'pending_approval') {
-      return res.status(400).json({ message: 'Payout is not pending approval' })
-    }
-    
-    payout.status = 'rejected'
-    payout.rejectedAt = new Date()
-    payout.rejectedBy = req.user.id
-    payout.rejectionReason = rejectionReason || ''
-    
-    await payout.save()
-    
-    // Notify manager
-    try {
-      const io = getIO()
-      io.to(`user:${String(payout.manager)}`).emit('commission.rejected', {
-        payoutId: String(payout._id),
-        driverId: String(payout.driver)
-      })
-    } catch {}
-    
-    res.json({ message: 'Commission payout rejected', payout })
-  } catch (err) {
-    console.error('Reject commission error:', err)
-    res.status(500).json({ message: 'Failed to reject payout' })
-  }
-})
-
-// Download commission receipt
-router.get('/commission/:id/download-receipt', auth, allowRoles('driver', 'manager', 'user'), async (req, res) => {
-  try {
-    const { id } = req.params
-    const payout = await DriverCommissionPayout.findById(id)
-    
-    if (!payout) {
-      return res.status(404).json({ message: 'Payout not found' })
-    }
-    
-    // Authorization check
-    const isDriver = req.user.role === 'driver' && String(payout.driver) === String(req.user.id)
-    const isManager = req.user.role === 'manager' && String(payout.manager) === String(req.user.id)
-    const isOwner = req.user.role === 'user'
-    
-    if (!isDriver && !isManager && !isOwner) {
-      return res.status(403).json({ message: 'Not authorized' })
-    }
-    
-    if (!payout.receiptPath) {
-      return res.status(404).json({ message: 'Receipt not available' })
-    }
-    
-    const fullPath = path.join(process.cwd(), payout.receiptPath)
-    if (!fs.existsSync(fullPath)) {
-      return res.status(404).json({ message: 'Receipt file not found' })
-    }
-    
-    const filename = `Commission_Receipt_${new Date(payout.createdAt).toLocaleDateString().replace(/\//g, '-')}.pdf`
-    res.download(fullPath, filename)
-  } catch (err) {
-    console.error('Download receipt error:', err)
-    res.status(500).json({ message: 'Failed to download receipt' })
-  }
-})
-
-// Get commission history (Manager and Driver)
-router.get('/commission/history', auth, allowRoles('driver', 'manager', 'user'), async (req, res) => {
-  try {
-    const query = {}
-    
-    if (req.user.role === 'driver') {
-      query.driver = req.user.id
-    } else if (req.user.role === 'manager') {
-      query.manager = req.user.id
-    }
-    // user/owner can see all
-    
-    const payouts = await DriverCommissionPayout.find(query)
-      .populate('driver', 'firstName lastName email')
-      .populate('manager', 'firstName lastName email')
-      .sort({ createdAt: -1 })
-    
-    res.json({ payouts })
-  } catch (err) {
-    console.error('Commission history error:', err)
-    res.status(500).json({ message: 'Failed to load commission history' })
-  }
-})
-
 export default router;
 
 // --- Compatibility alias endpoints expected by frontend ---
@@ -2709,11 +2350,11 @@ router.get(
   }
 );
 
-// Pay commission to driver (admin/user)
+// Pay commission to driver (admin/user/manager)
 router.post(
   "/drivers/:id/pay-commission",
   auth,
-  allowRoles("admin", "user"),
+  allowRoles("admin", "user", "manager"),
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -2731,45 +2372,119 @@ router.post(
         return res.status(403).json({ message: "Not allowed" });
       }
 
+      // Manager payments go to pending, owner payments are accepted directly
+      const isManager = req.user.role === "manager";
+      const status = isManager ? "pending" : "accepted";
+      
       // Create a remittance record marking commission payment to driver
       const remit = new Remittance({
         driver: id,
-        owner: req.user.id,
-        manager: driver.createdBy,
+        owner: req.user.role === "user" ? req.user.id : driver.createdBy,
+        manager: isManager ? req.user.id : driver.createdBy,
         amount: amt,
         driverCommission: amt,
         method: "transfer",
         note: "Commission payment",
-        status: "accepted",
+        status: status,
         paidToId: id,
-        paidAt: new Date(),
+        paidAt: status === "accepted" ? new Date() : null,
       });
       await remit.save();
 
-      // Update driver's paidCommission
-      if (!driver.driverProfile) driver.driverProfile = {};
-      const currentPaid = Number(driver.driverProfile.paidCommission || 0);
-      driver.driverProfile.paidCommission = currentPaid + amt;
-      driver.markModified('driverProfile');
-      await driver.save();
+      // Update driver's paidCommission only if accepted (owner payment)
+      if (status === "accepted") {
+        if (!driver.driverProfile) driver.driverProfile = {};
+        const currentPaid = Number(driver.driverProfile.paidCommission || 0);
+        driver.driverProfile.paidCommission = currentPaid + amt;
+        driver.markModified('driverProfile');
+        await driver.save();
+        
+        // Notify driver
+        try {
+          const io = getIO();
+          io.to(`user:${id}`).emit("commission.paid", { amount: amt });
+          // Also emit to owner workspace
+          const ownerId = String(driver.createdBy || req.user.id);
+          io.to(`workspace:${ownerId}`).emit("driver.commission.paid", { 
+            driverId: String(id),
+            amount: amt,
+            totalPaid: driver.driverProfile.paidCommission
+          });
+        } catch {}
+      } else {
+        // Notify owner about pending manager payment
+        try {
+          const io = getIO();
+          const ownerId = String(driver.createdBy);
+          io.to(`workspace:${ownerId}`).emit("driver.commission.pending", { 
+            driverId: String(id),
+            managerId: String(req.user.id),
+            amount: amt
+          });
+        } catch {}
+      }
 
-      // Notify driver
-      try {
-        const io = getIO();
-        io.to(`user:${id}`).emit("commission.paid", { amount: amt });
-        // Also emit to owner workspace
-        const ownerId = String(driver.createdBy || req.user.id);
-        io.to(`workspace:${ownerId}`).emit("driver.commission.paid", { 
-          driverId: String(id),
-          amount: amt,
-          totalPaid: driver.driverProfile.paidCommission
-        });
-      } catch {}
-
-      return res.json({ ok: true, message: "Commission paid successfully" });
+      return res.json({ 
+        ok: true, 
+        message: isManager ? "Commission payment sent for approval" : "Commission paid successfully" 
+      });
     } catch (err) {
       console.error("Pay commission error:", err);
       return res.status(500).json({ message: "Failed to pay commission" });
+    }
+  }
+);
+
+// Get commission payment history for a driver
+router.get(
+  "/drivers/:id/commission-history",
+  auth,
+  allowRoles("admin", "user", "manager"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const driver = await User.findOne({ _id: id, role: "driver" });
+      if (!driver) return res.status(404).json({ message: "Driver not found" });
+      
+      // Check authorization
+      if (
+        req.user.role !== "admin" &&
+        String(driver.createdBy) !== String(req.user.id)
+      ) {
+        return res.status(403).json({ message: "Not allowed" });
+      }
+
+      // Get all commission payment remittances for this driver
+      const remittances = await Remittance.find({
+        driver: id,
+        note: "Commission payment"
+      })
+      .sort({ createdAt: -1 })
+      .populate("manager", "firstName lastName email")
+      .lean();
+
+      // Get driver's country for currency
+      const country = driver.driverProfile?.country || "Saudi Arabia";
+      const currency = country.toLowerCase().includes("uae") ? "AED" : 
+                      country.toLowerCase().includes("oman") ? "OMR" :
+                      country.toLowerCase().includes("bahrain") ? "BHD" : "SAR";
+
+      const history = remittances.map(r => ({
+        _id: r._id,
+        amount: r.amount || r.driverCommission || 0,
+        currency: r.currency || currency,
+        status: r.status,
+        date: r.paidAt || r.acceptedAt || r.createdAt,
+        createdAt: r.createdAt,
+        manager: r.manager,
+        method: r.method,
+        note: r.note
+      }));
+
+      return res.json({ history });
+    } catch (err) {
+      console.error("Commission history error:", err);
+      return res.status(500).json({ message: "Failed to load commission history" });
     }
   }
 );
