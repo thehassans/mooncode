@@ -236,19 +236,45 @@ export default function UserDashboard(){
   // Month names for display
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
   
-  // Helper to get date range for selected month (using UTC to avoid timezone issues)
+  // Helper to get date range for selected month (UAE timezone UTC+4)
   const getMonthDateRange = () => {
-    // Create dates in UTC to avoid timezone conversion issues
-    const startDate = new Date(Date.UTC(selectedYear, selectedMonth - 1, 1, 0, 0, 0, 0))
-    const endDate = new Date(Date.UTC(selectedYear, selectedMonth, 0, 23, 59, 59, 999))
+    // UAE timezone offset: UTC+4 (4 hours ahead of UTC)
+    const UAE_OFFSET_HOURS = 4
+    
+    // Create start of month in UAE time
+    // October 1, 2025 00:00:00 UAE = Sept 30, 2025 20:00:00 UTC
+    const startDate = new Date(Date.UTC(
+      selectedYear, 
+      selectedMonth - 1, 
+      1, 
+      -UAE_OFFSET_HOURS, // Subtract offset to get UTC time
+      0, 
+      0, 
+      0
+    ))
+    
+    // Create end of month in UAE time
+    // October 31, 2025 23:59:59 UAE = October 31, 2025 19:59:59 UTC
+    const endDate = new Date(Date.UTC(
+      selectedYear, 
+      selectedMonth, 
+      0, // Last day of month
+      23 - UAE_OFFSET_HOURS, // Subtract offset
+      59, 
+      59, 
+      999
+    ))
+    
     const range = {
       from: startDate.toISOString(),
       to: endDate.toISOString()
     }
-    console.log('📅 Date Range:', {
+    
+    console.log('📅 Date Range (UAE Time):', {
       month: selectedMonth,
       year: selectedYear,
       monthName: monthNames[selectedMonth - 1],
+      timezone: 'UAE (UTC+4)',
       from: range.from,
       to: range.to,
       startUTC: startDate.toUTCString(),
