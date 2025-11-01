@@ -233,20 +233,24 @@ export default function UserDashboard(){
   }, [metrics, COUNTRY_LIST])
   async function load(){
     try{ const cfg = await getCurrencyConfig(); setCurrencyCfg(cfg) }catch(_e){ setCurrencyCfg(null) }
-    try{ setAnalytics(await apiGet('/api/orders/analytics/last7days')) }catch(_e){ setAnalytics({ days: [], totals:{} }) }
-    // Pass month and year to metrics endpoints
+    
+    // Pass month and year to ALL endpoints for consistent filtering
     const monthParams = `?month=${selectedMonth}&year=${selectedYear}`;
+    const monthParamsAmp = `&month=${selectedMonth}&year=${selectedYear}`;
+    
+    try{ setAnalytics(await apiGet('/api/orders/analytics/last7days')) }catch(_e){ setAnalytics({ days: [], totals:{} }) }
     try{ setMetrics(await apiGet(`/api/reports/user-metrics${monthParams}`)) }catch(_e){ console.error('Failed to fetch metrics') }
     try{ setSalesByCountry(await apiGet(`/api/reports/user-metrics/sales-by-country${monthParams}`)) }catch(_e){ setSalesByCountry({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 }) }
     try{
-      const res = await apiGet('/api/orders')
+      // Filter orders by selected month
+      const res = await apiGet(`/api/orders${monthParams}`)
       setOrders(Array.isArray(res?.orders) ? res.orders : [])
     }catch(_e){ setOrders([]) }
     try{
-      // Fetch all pages of driver summaries to build accurate aggregates
+      // Fetch driver summaries - filter on frontend by month
       let page = 1, limit = 100, all = []
       for(;;){
-        const ds = await apiGet(`/api/finance/drivers/summary?page=${page}&limit=${limit}`)
+        const ds = await apiGet(`/api/finance/drivers/summary?page=${page}&limit=${limit}${monthParamsAmp}`)
         const arr = Array.isArray(ds?.drivers) ? ds.drivers : []
         all = all.concat(arr)
         if (!ds?.hasMore) break

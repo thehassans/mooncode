@@ -655,6 +655,18 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
     const productParam = String(req.query.product||'').trim()
 
     const match = { ...base }
+
+    // Month/year filtering for dashboard
+    const { month, year } = req.query;
+    if (month && year) {
+      const monthNum = parseInt(month);
+      const yearNum = parseInt(year);
+      if (monthNum >= 1 && monthNum <= 12 && yearNum > 2000) {
+        const startDate = new Date(yearNum, monthNum - 1, 1);
+        const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+        match.createdAt = { $gte: startDate, $lte: endDate };
+      }
+    }
     if (country) {
       const aliases = {
         'KSA': ['KSA','Saudi Arabia'],
