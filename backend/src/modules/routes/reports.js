@@ -792,23 +792,17 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     const managers = await User.find({ role: 'manager', createdBy: ownerId }, { _id: 1 }).lean();
     const creatorIds = [ownerId, ...agents.map(a => a._id), ...managers.map(m => m._id)];
     
-    // Month/year filtering from query params
-    const { month, year } = req.query;
-    let dateFilter = {};
-    if (month && year) {
-      const monthNum = parseInt(month);
-      const yearNum = parseInt(year);
-      if (monthNum >= 1 && monthNum <= 12 && yearNum > 2000) {
-        const startDate = new Date(yearNum, monthNum - 1, 1); // First day of month
-        const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999); // Last day of month
-        dateFilter = { createdAt: { $gte: startDate, $lte: endDate } };
-      }
+    // Date filtering support (from & to query params)
+    const dateMatch = {};
+    if (req.query.from || req.query.to) {
+      dateMatch.createdAt = {};
+      if (req.query.from) dateMatch.createdAt.$gte = new Date(req.query.from);
+      if (req.query.to) dateMatch.createdAt.$lte = new Date(req.query.to);
     }
     
-    // All metrics from orders with optional month filter
-    const orderMatch = { createdBy: { $in: creatorIds }, ...dateFilter };
+    // All metrics from orders
     const orderStats = await Order.aggregate([
-      { $match: orderMatch },
+      { $match: { createdBy: { $in: creatorIds }, ...dateMatch } },
       { $group: {
         _id: null,
         totalOrders: { $sum: 1 },
@@ -872,17 +866,17 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     }
     
     // Aggregate delivered quantities per product and country with actual order amounts
-    // From internal Orders (apply same month filter)
-    const deliveredMatch = { 
-      createdBy: { $in: creatorIds },
-      ...dateFilter,
-      $and: [
-        { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] },
-        { $or: [ { productId: { $in: productIds } }, { 'items.productId': { $in: productIds } } ] }
-      ]
-    };
+    // From internal Orders
     const deliveredPerProdCountry = await Order.aggregate([
-      { $match: deliveredMatch },
+      { $match: { 
+          createdBy: { $in: creatorIds },
+          ...dateMatch,
+          $and: [
+            { $or: [ { shipmentStatus: 'delivered' }, { status: 'done' } ] },
+            { $or: [ { productId: { $in: productIds } }, { 'items.productId': { $in: productIds } } ] }
+          ]
+        } 
+      },
       { $project: {
           orderCountry: 1,
           total: 1,
@@ -1688,21 +1682,16 @@ router.get('/user-metrics/sales-by-country', auth, allowRoles('user'), async (re
     const managers = await User.find({ role: 'manager', createdBy: ownerId }, { _id: 1 }).lean()
     const creatorIds = [ownerId, ...agents.map(a => a._id), ...managers.map(m => m._id)]
     
-    // Month/year filtering from query params
-    const { month, year } = req.query;
-    let dateFilter = {};
-    if (month && year) {
-      const monthNum = parseInt(month);
-      const yearNum = parseInt(year);
-      if (monthNum >= 1 && monthNum <= 12 && yearNum > 2000) {
-        const startDate = new Date(yearNum, monthNum - 1, 1);
-        const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
-        dateFilter = { createdAt: { $gte: startDate, $lte: endDate } };
-      }
+    // Date filtering support
+    const dateMatch = {};
+    if (req.query.from || req.query.to) {
+      dateMatch.createdAt = {};
+      if (req.query.from) dateMatch.createdAt.$gte = new Date(req.query.from);
+      if (req.query.to) dateMatch.createdAt.$lte = new Date(req.query.to);
     }
     
     const rows = await Order.aggregate([
-      { $match: { createdBy: { $in: creatorIds }, shipmentStatus: 'delivered', ...dateFilter } },
+      { $match: { createdBy: { $in: creatorIds }, shipmentStatus: 'delivered', ...dateMatch } },
       { $group: { _id: '$orderCountry', sum: { $sum: { $ifNull: ['$total', 0] } } } }
     ])
     const acc = { KSA: 0, Oman: 0, UAE: 0, Bahrain: 0, Other: 0 }

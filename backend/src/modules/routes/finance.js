@@ -2223,12 +2223,17 @@ router.get(
         .lean();
 
 
-      // Month/year filtering for orders
-      const { month, year } = req.query;
+      // Date filtering support - two formats:
+      // 1. from/to ISO dates (dashboard month filter)
+      // 2. month/year numbers (legacy)
       let dateFilter = {};
-      if (month && year) {
-        const monthNum = parseInt(month);
-        const yearNum = parseInt(year);
+      if (req.query.from || req.query.to) {
+        dateFilter.createdAt = {};
+        if (req.query.from) dateFilter.createdAt.$gte = new Date(req.query.from);
+        if (req.query.to) dateFilter.createdAt.$lte = new Date(req.query.to);
+      } else if (req.query.month && req.query.year) {
+        const monthNum = parseInt(req.query.month);
+        const yearNum = parseInt(req.query.year);
         if (monthNum >= 1 && monthNum <= 12 && yearNum > 2000) {
           const startDate = new Date(yearNum, monthNum - 1, 1);
           const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);

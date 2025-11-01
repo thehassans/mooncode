@@ -656,11 +656,16 @@ router.get('/', auth, allowRoles('admin','user','agent','manager'), async (req, 
 
     const match = { ...base }
 
-    // Month/year filtering for dashboard
-    const { month, year } = req.query;
-    if (month && year) {
-      const monthNum = parseInt(month);
-      const yearNum = parseInt(year);
+    // Date filtering support - two formats:
+    // 1. from/to ISO dates (dashboard month filter)
+    // 2. month/year numbers (legacy)
+    if (req.query.from || req.query.to) {
+      match.createdAt = {};
+      if (req.query.from) match.createdAt.$gte = new Date(req.query.from);
+      if (req.query.to) match.createdAt.$lte = new Date(req.query.to);
+    } else if (req.query.month && req.query.year) {
+      const monthNum = parseInt(req.query.month);
+      const yearNum = parseInt(req.query.year);
       if (monthNum >= 1 && monthNum <= 12 && yearNum > 2000) {
         const startDate = new Date(yearNum, monthNum - 1, 1);
         const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);

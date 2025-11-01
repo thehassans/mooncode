@@ -41,12 +41,13 @@ const OrderStatusPie = ({ statusTotals }) => {
 
 export default function UserDashboard(){
   const toast = useToast()
-  const [currencyCfg, setCurrencyCfg] = useState(null)
-  // Month/Year selector state - initialize to current month
-  const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1); // 1-12
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   
+  // Month/Year filtering - default to current month
+  const now = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1) // 1-12
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
+  
+  const [currencyCfg, setCurrencyCfg] = useState(null)
   const [metrics, setMetrics] = useState({
     totalSales: 0,
     totalCOD: 0,
@@ -231,26 +232,33 @@ export default function UserDashboard(){
       return acc
     }, { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 })
   }, [metrics, COUNTRY_LIST])
+  // Helper to get date range for selected month
+  const getMonthDateRange = () => {
+    const startDate = new Date(selectedYear, selectedMonth - 1, 1)
+    const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999)
+    return {
+      from: startDate.toISOString(),
+      to: endDate.toISOString()
+    }
+  }
+  
   async function load(){
+    const dateRange = getMonthDateRange()
+    const dateParams = `from=${encodeURIComponent(dateRange.from)}&to=${encodeURIComponent(dateRange.to)}`
+    
     try{ const cfg = await getCurrencyConfig(); setCurrencyCfg(cfg) }catch(_e){ setCurrencyCfg(null) }
-    
-    // Pass month and year to ALL endpoints for consistent filtering
-    const monthParams = `?month=${selectedMonth}&year=${selectedYear}`;
-    const monthParamsAmp = `&month=${selectedMonth}&year=${selectedYear}`;
-    
     try{ setAnalytics(await apiGet('/api/orders/analytics/last7days')) }catch(_e){ setAnalytics({ days: [], totals:{} }) }
-    try{ setMetrics(await apiGet(`/api/reports/user-metrics${monthParams}`)) }catch(_e){ console.error('Failed to fetch metrics') }
-    try{ setSalesByCountry(await apiGet(`/api/reports/user-metrics/sales-by-country${monthParams}`)) }catch(_e){ setSalesByCountry({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 }) }
+    try{ setMetrics(await apiGet(`/api/reports/user-metrics?${dateParams}`)) }catch(_e){ console.error('Failed to fetch metrics') }
+    try{ setSalesByCountry(await apiGet(`/api/reports/user-metrics/sales-by-country?${dateParams}`)) }catch(_e){ setSalesByCountry({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 }) }
     try{
-      // Filter orders by selected month
-      const res = await apiGet(`/api/orders${monthParams}`)
+      const res = await apiGet(`/api/orders?${dateParams}`)
       setOrders(Array.isArray(res?.orders) ? res.orders : [])
     }catch(_e){ setOrders([]) }
     try{
-      // Fetch driver summaries - filter on frontend by month
+      // Fetch all pages of driver summaries to build accurate aggregates
       let page = 1, limit = 100, all = []
       for(;;){
-        const ds = await apiGet(`/api/finance/drivers/summary?page=${page}&limit=${limit}${monthParamsAmp}`)
+        const ds = await apiGet(`/api/finance/drivers/summary?page=${page}&limit=${limit}&${dateParams}`)
         const arr = Array.isArray(ds?.drivers) ? ds.drivers : []
         all = all.concat(arr)
         if (!ds?.hasMore) break
@@ -289,50 +297,42 @@ export default function UserDashboard(){
       try{ socket && socket.disconnect() }catch{}
     }
   },[toast])
-  
   // Generate month options
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const yearOptions = [];
-  const currentYear = new Date().getFullYear();
-  for (let i = 0; i <= 5; i++) {
-    yearOptions.push(currentYear - i);
-  }
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  const currentYear = new Date().getFullYear()
+  const yearOptions = Array.from({length: 5}, (_, i) => currentYear - i)
   
   return (
     <div className="container">
-      {/* Month/Year Selector */}
+      {/* Month/Year Filter */}
       <div className="card" style={{marginBottom:12}}>
-        <div className="section" style={{display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', justifyContent:'space-between'}}>
-          <div>
-            <div style={{fontWeight:800, fontSize:18, marginBottom:4}}>📊 Dashboard</div>
-            <div className="helper">Monthly sales and metrics overview</div>
-          </div>
-          <div style={{display:'flex', gap:8, alignItems:'center'}}>
-            <label style={{fontWeight:600, fontSize:14}}>Period:</label>
-            <select 
-              className="input" 
-              value={selectedMonth} 
-              onChange={(e)=> setSelectedMonth(parseInt(e.target.value))}
-              style={{minWidth:140, fontSize:14}}
-            >
-              {monthNames.map((name, idx) => (
-                <option key={idx + 1} value={idx + 1}>{name}</option>
-              ))}
-            </select>
-            <select 
-              className="input" 
-              value={selectedYear} 
-              onChange={(e)=> setSelectedYear(parseInt(e.target.value))}
-              style={{minWidth:100, fontSize:14}}
-            >
-              {yearOptions.map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
+        <div className="section" style={{display:'flex', alignItems:'center', gap:12, flexWrap:'wrap'}}>
+          <div style={{fontWeight:700, fontSize:16}}>📅 Period:</div>
+          <select 
+            className="input" 
+            value={selectedMonth} 
+            onChange={(e)=> setSelectedMonth(Number(e.target.value))}
+            style={{fontSize:14, maxWidth:150}}
+          >
+            {monthNames.map((name, idx) => (
+              <option key={idx} value={idx + 1}>{name}</option>
+            ))}
+          </select>
+          <select 
+            className="input" 
+            value={selectedYear} 
+            onChange={(e)=> setSelectedYear(Number(e.target.value))}
+            style={{fontSize:14, maxWidth:120}}
+          >
+            {yearOptions.map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+          <div className="chip" style={{background:'var(--primary)', color:'white', fontWeight:600}}>
+            {monthNames[selectedMonth - 1]} {selectedYear}
           </div>
         </div>
       </div>
-
       {/* Profit/Loss Section */}
       {metrics?.profitLoss && (
         <div className="card" style={{marginBottom:12}}>
