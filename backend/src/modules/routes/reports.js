@@ -1385,17 +1385,20 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
     }
     
     // Get all delivered orders with full details for profit calculation
-    const deliveredOrders = await Order.find({
+    // Apply date filter if provided
+    const profitQuery = {
       createdBy: { $in: creatorIds },
-      shipmentStatus: 'delivered'
-    })
+      shipmentStatus: 'delivered',
+      ...dateMatch
+    }
+    const deliveredOrders = await Order.find(profitQuery)
     .populate('productId', 'purchasePrice baseCurrency')
     .populate('items.productId', 'purchasePrice baseCurrency')
     .populate('deliveryBoy', 'driverProfile')
     .populate('createdBy', 'role')
     .lean()
     
-    console.log(`[Profit/Loss] Found ${deliveredOrders.length} delivered orders for profit calculation`)
+    console.log(`[Profit/Loss] Found ${deliveredOrders.length} delivered orders for profit calculation`, dateMatch.createdAt ? `(filtered by date: ${JSON.stringify(dateMatch.createdAt)})` : '(all time)')
     
     // Log sample of order countries for debugging
     if (deliveredOrders.length > 0) {
@@ -1439,11 +1442,13 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       return c
     }
     
-    // Get advertisement expenses
+    // Get advertisement expenses (with date filter if provided)
     const adExpenses = await Expense.find({
       createdBy: { $in: creatorIds },
-      type: 'advertisement'
+      type: 'advertisement',
+      ...dateMatch
     }).lean()
+    console.log(`[Profit/Loss] Found ${adExpenses.length} advertisement expenses`, dateMatch.createdAt ? `(filtered by date)` : '(all time)')
     
     // Group ad expenses by country
     const adExpensesByCountry = {}
