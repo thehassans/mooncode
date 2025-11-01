@@ -232,19 +232,34 @@ export default function UserDashboard(){
       return acc
     }, { total:0, pending:0, assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 })
   }, [metrics, COUNTRY_LIST])
+  
+  // Month names for display
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  
   // Helper to get date range for selected month
   const getMonthDateRange = () => {
     const startDate = new Date(selectedYear, selectedMonth - 1, 1)
     const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999)
-    return {
+    const range = {
       from: startDate.toISOString(),
       to: endDate.toISOString()
     }
+    console.log('📅 Date Range:', {
+      month: selectedMonth,
+      year: selectedYear,
+      monthName: monthNames[selectedMonth - 1],
+      from: range.from,
+      to: range.to,
+      startDate: startDate.toLocaleDateString(),
+      endDate: endDate.toLocaleDateString()
+    })
+    return range
   }
   
   async function load(){
     const dateRange = getMonthDateRange()
     const dateParams = `from=${encodeURIComponent(dateRange.from)}&to=${encodeURIComponent(dateRange.to)}`
+    console.log('🔄 Loading dashboard with params:', dateParams)
     
     try{ const cfg = await getCurrencyConfig(); setCurrencyCfg(cfg) }catch(_e){ setCurrencyCfg(null) }
     try{ setAnalytics(await apiGet('/api/orders/analytics/last7days')) }catch(_e){ setAnalytics({ days: [], totals:{} }) }
@@ -297,8 +312,8 @@ export default function UserDashboard(){
       try{ socket && socket.disconnect() }catch{}
     }
   },[toast])
-  // Generate month options
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  
+  // Year options for selector
   const currentYear = new Date().getFullYear()
   const yearOptions = Array.from({length: 5}, (_, i) => currentYear - i)
   
