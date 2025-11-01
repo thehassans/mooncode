@@ -42,6 +42,11 @@ const OrderStatusPie = ({ statusTotals }) => {
 export default function UserDashboard(){
   const toast = useToast()
   const [currencyCfg, setCurrencyCfg] = useState(null)
+  // Month/Year selector state - initialize to current month
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1); // 1-12
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  
   const [metrics, setMetrics] = useState({
     totalSales: 0,
     totalCOD: 0,
@@ -229,8 +234,10 @@ export default function UserDashboard(){
   async function load(){
     try{ const cfg = await getCurrencyConfig(); setCurrencyCfg(cfg) }catch(_e){ setCurrencyCfg(null) }
     try{ setAnalytics(await apiGet('/api/orders/analytics/last7days')) }catch(_e){ setAnalytics({ days: [], totals:{} }) }
-    try{ setMetrics(await apiGet('/api/reports/user-metrics')) }catch(_e){ console.error('Failed to fetch metrics') }
-    try{ setSalesByCountry(await apiGet('/api/reports/user-metrics/sales-by-country')) }catch(_e){ setSalesByCountry({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 }) }
+    // Pass month and year to metrics endpoints
+    const monthParams = `?month=${selectedMonth}&year=${selectedYear}`;
+    try{ setMetrics(await apiGet(`/api/reports/user-metrics${monthParams}`)) }catch(_e){ console.error('Failed to fetch metrics') }
+    try{ setSalesByCountry(await apiGet(`/api/reports/user-metrics/sales-by-country${monthParams}`)) }catch(_e){ setSalesByCountry({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 }) }
     try{
       const res = await apiGet('/api/orders')
       setOrders(Array.isArray(res?.orders) ? res.orders : [])
@@ -249,7 +256,7 @@ export default function UserDashboard(){
       setDrivers(all)
     }catch(_e){ setDrivers([]) }
   }
-  useEffect(()=>{ load() },[])
+  useEffect(()=>{ load() },[selectedMonth, selectedYear])
   // Live updates via socket
   useEffect(()=>{
     let socket
@@ -278,9 +285,49 @@ export default function UserDashboard(){
       try{ socket && socket.disconnect() }catch{}
     }
   },[toast])
+  
+  // Generate month options
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const yearOptions = [];
+  const currentYear = new Date().getFullYear();
+  for (let i = 0; i <= 5; i++) {
+    yearOptions.push(currentYear - i);
+  }
+  
   return (
     <div className="container">
-      
+      {/* Month/Year Selector */}
+      <div className="card" style={{marginBottom:12}}>
+        <div className="section" style={{display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', justifyContent:'space-between'}}>
+          <div>
+            <div style={{fontWeight:800, fontSize:18, marginBottom:4}}>📊 Dashboard</div>
+            <div className="helper">Monthly sales and metrics overview</div>
+          </div>
+          <div style={{display:'flex', gap:8, alignItems:'center'}}>
+            <label style={{fontWeight:600, fontSize:14}}>Period:</label>
+            <select 
+              className="input" 
+              value={selectedMonth} 
+              onChange={(e)=> setSelectedMonth(parseInt(e.target.value))}
+              style={{minWidth:140, fontSize:14}}
+            >
+              {monthNames.map((name, idx) => (
+                <option key={idx + 1} value={idx + 1}>{name}</option>
+              ))}
+            </select>
+            <select 
+              className="input" 
+              value={selectedYear} 
+              onChange={(e)=> setSelectedYear(parseInt(e.target.value))}
+              style={{minWidth:100, fontSize:14}}
+            >
+              {yearOptions.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
 
       {/* Profit/Loss Section */}
       {metrics?.profitLoss && (
