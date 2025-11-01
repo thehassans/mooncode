@@ -236,10 +236,11 @@ export default function UserDashboard(){
   // Month names for display
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
   
-  // Helper to get date range for selected month
+  // Helper to get date range for selected month (using UTC to avoid timezone issues)
   const getMonthDateRange = () => {
-    const startDate = new Date(selectedYear, selectedMonth - 1, 1)
-    const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999)
+    // Create dates in UTC to avoid timezone conversion issues
+    const startDate = new Date(Date.UTC(selectedYear, selectedMonth - 1, 1, 0, 0, 0, 0))
+    const endDate = new Date(Date.UTC(selectedYear, selectedMonth, 0, 23, 59, 59, 999))
     const range = {
       from: startDate.toISOString(),
       to: endDate.toISOString()
@@ -250,8 +251,8 @@ export default function UserDashboard(){
       monthName: monthNames[selectedMonth - 1],
       from: range.from,
       to: range.to,
-      startDate: startDate.toLocaleDateString(),
-      endDate: endDate.toLocaleDateString()
+      startUTC: startDate.toUTCString(),
+      endUTC: endDate.toUTCString()
     })
     return range
   }
