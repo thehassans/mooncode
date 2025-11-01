@@ -2222,12 +2222,25 @@ router.get(
         .limit(limit)
         .lean();
 
+
+      // Month/year filtering for orders
+      const { month, year } = req.query;
+      let dateFilter = {};
+      if (month && year) {
+        const monthNum = parseInt(month);
+        const yearNum = parseInt(year);
+        if (monthNum >= 1 && monthNum <= 12 && yearNum > 2000) {
+          const startDate = new Date(yearNum, monthNum - 1, 1);
+          const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+          dateFilter = { createdAt: { $gte: startDate, $lte: endDate } };
+        }
+      }
       // Aggregate basic stats from orders and remittances per driver in their local currency
       const out = [];
       const M = (await import("mongoose")).default;
       for (const d of drivers) {
         const currency = currencyFromCountry(d?.country || "") || "SAR";
-        const matchBase = { deliveryBoy: d._id };
+        const matchBase = { deliveryBoy: d._id, ...dateFilter };
         const assigned = await Order.countDocuments(matchBase);
         const canceled = await Order.countDocuments({
           ...matchBase,
@@ -2285,10 +2298,7 @@ router.get(
         );
         
         // Get actual commissions from all delivered orders
-        const deliveredOrdersWithCommission = await Order.find({
-          deliveryBoy: d._id,
-          shipmentStatus: 'delivered'
-        }).select('driverCommission').lean();
+        const deliveredOrdersWithCommission = await Order.find({ deliveryBoy: d._id, shipmentStatus: 'delivered', ...dateFilter }).select('driverCommission').lean();
         
         // Calculate total actual commission from orders
         // If order has driverCommission set, use it; otherwise use default rate
