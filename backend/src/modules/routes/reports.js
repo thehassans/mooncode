@@ -798,6 +798,14 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       dateMatch.createdAt = {};
       if (req.query.from) dateMatch.createdAt.$gte = new Date(req.query.from);
       if (req.query.to) dateMatch.createdAt.$lte = new Date(req.query.to);
+      console.log('📅 [USER-METRICS] Date filter applied:', {
+        from: req.query.from,
+        to: req.query.to,
+        fromDate: dateMatch.createdAt.$gte,
+        toDate: dateMatch.createdAt.$lte
+      });
+    } else {
+      console.log('⚠️ [USER-METRICS] No date filter - showing all time data');
     }
     
     // All metrics from orders
@@ -829,6 +837,11 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       cancelledOrders: 0,
       totalProductsOrdered: 0
     };
+    console.log('📊 [USER-METRICS] Order stats result:', {
+      totalOrders: orders.totalOrders,
+      deliveredOrders: orders.deliveredOrders,
+      totalSales: orders.totalSales
+    });
     
     // Products In House - from inventory (remaining stock)
     const productStats = await Product.aggregate([
@@ -1688,6 +1701,10 @@ router.get('/user-metrics/sales-by-country', auth, allowRoles('user'), async (re
       dateMatch.createdAt = {};
       if (req.query.from) dateMatch.createdAt.$gte = new Date(req.query.from);
       if (req.query.to) dateMatch.createdAt.$lte = new Date(req.query.to);
+      console.log('📅 [SALES-BY-COUNTRY] Date filter applied:', {
+        from: req.query.from,
+        to: req.query.to
+      });
     }
     
     const rows = await Order.aggregate([
