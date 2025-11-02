@@ -85,6 +85,10 @@ export default function UserOrders(){
   const [collectedOnly, setCollectedOnly] = useState(false)
   const [agentFilter, setAgentFilter] = useState('')
   const [driverFilter, setDriverFilter] = useState('')
+  // Month/Year filtering
+  const now = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(0) // 0 = All time, 1-12 = specific month
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
   const [selected, setSelected] = useState(null)
   const [pendingReturns, setPendingReturns] = useState([])
   const [verifying, setVerifying] = useState(null)
@@ -186,6 +190,30 @@ export default function UserOrders(){
 
   // Single unified search via backend 'q' covers invoice (with or without '#'), product names, agent/driver names, city, phone, and details
 
+  // Helper to get date range for selected month (UAE timezone UTC+4)
+  const getMonthDateRange = () => {
+    if (selectedMonth === 0) return null // All time
+    const UAE_OFFSET_HOURS = 4
+    const startDate = new Date(Date.UTC(
+      selectedYear, 
+      selectedMonth - 1, 
+      1, 
+      -UAE_OFFSET_HOURS,
+      0, 0, 0
+    ))
+    const endDate = new Date(Date.UTC(
+      selectedYear, 
+      selectedMonth, 
+      0,
+      23 - UAE_OFFSET_HOURS,
+      59, 59, 999
+    ))
+    return {
+      from: startDate.toISOString(),
+      to: endDate.toISOString()
+    }
+  }
+
   // Build query params for backend filters
   const buildQuery = useMemo(()=>{
     const params = new URLSearchParams()
@@ -200,8 +228,14 @@ export default function UserOrders(){
     if (collectedOnly) params.set('collected', 'true')
     if (agentFilter.trim()) params.set('agent', agentFilter.trim())
     if (driverFilter.trim()) params.set('driver', driverFilter.trim())
+    // Add date range if month selected
+    const dateRange = getMonthDateRange()
+    if (dateRange) {
+      params.set('from', dateRange.from)
+      params.set('to', dateRange.to)
+    }
     return params
-  }, [query, country, city, onlyUnassigned, statusFilter, shipFilter, paymentFilter, collectedOnly, agentFilter, driverFilter])
+  }, [query, country, city, onlyUnassigned, onlyAssigned, statusFilter, shipFilter, paymentFilter, collectedOnly, agentFilter, driverFilter, selectedMonth, selectedYear])
 
   async function loadSummary(){
     try{
@@ -628,6 +662,27 @@ export default function UserOrders(){
       <div className="card" style={{display:'grid', gap:10}}>
         <div className="card-header"><div className="card-title">Filters</div></div>
         <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:8}}>
+          {/* Month/Year Filter */}
+          <select className="input" value={selectedMonth} onChange={e=> setSelectedMonth(Number(e.target.value))}>
+            <option value={0}>All Time</option>
+            <option value={1}>January</option>
+            <option value={2}>February</option>
+            <option value={3}>March</option>
+            <option value={4}>April</option>
+            <option value={5}>May</option>
+            <option value={6}>June</option>
+            <option value={7}>July</option>
+            <option value={8}>August</option>
+            <option value={9}>September</option>
+            <option value={10}>October</option>
+            <option value={11}>November</option>
+            <option value={12}>December</option>
+          </select>
+          <select className="input" value={selectedYear} onChange={e=> setSelectedYear(Number(e.target.value))} disabled={selectedMonth === 0}>
+            {Array.from({length: 5}, (_, i) => new Date().getFullYear() - i).map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
           <input className="input" placeholder="Search invoice, product, driver, agent, city, phone, details" value={query} onChange={e=> setQuery(e.target.value)} />
           <select className="input" value={country} onChange={e=> setCountry(e.target.value)}>
             <option value=''>All Countries</option>

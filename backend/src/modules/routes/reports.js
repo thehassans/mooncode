@@ -1097,9 +1097,9 @@ router.get('/user-metrics', auth, allowRoles('user'), async (req, res) => {
       }
     }
 
-    // Country-specific metrics from internal Orders
+    // Country-specific metrics from internal Orders (with date filter)
     const countryMetrics = await Order.aggregate([
-      { $match: { createdBy: { $in: creatorIds } } },
+      { $match: { createdBy: { $in: creatorIds }, ...dateMatch } },
       // Canonicalize orderCountry to unify aliases
       { $addFields: {
         orderCountryCanon: {
