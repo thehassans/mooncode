@@ -902,6 +902,18 @@ router.get('/summary', auth, allowRoles('admin','user','agent','manager'), async
     const productParam = String(req.query.product||'').trim()
 
     const match = { ...base }
+    
+    // Date filtering support (from & to query params)
+    if (req.query.from || req.query.to) {
+      match.createdAt = {};
+      if (req.query.from) match.createdAt.$gte = new Date(req.query.from);
+      if (req.query.to) match.createdAt.$lte = new Date(req.query.to);
+      console.log('📅 [ORDER-SUMMARY] Date filter applied:', {
+        from: req.query.from,
+        to: req.query.to
+      });
+    }
+    
     if (country) {
       const aliases = {
         'KSA': ['KSA','Saudi Arabia'],
