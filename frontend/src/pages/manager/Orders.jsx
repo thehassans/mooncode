@@ -599,14 +599,20 @@ export default function ManagerOrders(){
             </div>
             <div style={{fontWeight:700, fontSize:15}}>
               {(() => {
-                // Try productId
-                if (o.productId?.name) return o.productId.name
-                // Try items array
+                // Try items array first (multi-product support)
                 if (o.items && Array.isArray(o.items) && o.items.length > 0) {
-                  for (const item of o.items) {
-                    if (item?.productId?.name) return item.productId.name
+                  const productNames = o.items.map(item => {
+                    if (item?.productId?.name) {
+                      return `${item.productId.name} (${item.quantity || 1})`
+                    }
+                    return null
+                  }).filter(Boolean)
+                  if (productNames.length > 0) {
+                    return productNames.join(', ')
                   }
                 }
+                // Try single productId
+                if (o.productId?.name) return o.productId.name
                 // Fallback: show ID if product data is missing
                 const pid = o.productId?._id || o.productId
                 if (pid) return `Product ID: ${String(pid).slice(-8)}`
