@@ -71,8 +71,18 @@ export default function DriverFinances(){
       const pendingDriverRemits = allDriverRemits.filter(r => r.status === 'pending')
       setDriverRemits(pendingDriverRemits)
       // Set currency based on country
-      const cur = country === 'KSA' ? 'SAR' : (country === 'UAE' ? 'AED' : (country === 'OMN' ? 'OMR' : (country === 'BHR' ? 'BHD' : (country === 'KWT' ? 'KWD' : (country === 'QAT' ? 'QAR' : 'SAR')))))
-      setCurrency(cur)
+      const countryCurrency = (c) => {
+        const raw = String(c||'').trim().toLowerCase()
+        if (raw === 'ksa' || raw === 'saudi arabia' || raw === 'saudi') return 'SAR'
+        if (raw === 'uae' || raw === 'united arab emirates') return 'AED'
+        if (raw === 'oman' || raw === 'omn' || raw === 'om') return 'OMR'
+        if (raw === 'bahrain' || raw === 'bhr' || raw === 'bh') return 'BHD'
+        if (raw === 'kuwait' || raw === 'kwt' || raw === 'kw') return 'KWD'
+        if (raw === 'qatar' || raw === 'qat' || raw === 'qa') return 'QAR'
+        if (raw === 'india' || raw === 'in') return 'INR'
+        return 'SAR'
+      }
+      setCurrency(countryCurrency(country))
     }catch(e){
       toast.error(e?.message || 'Failed to load data')
     }finally{
