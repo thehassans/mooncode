@@ -464,11 +464,18 @@ export default function DriverPanel() {
                 <div className="info-row">
                   <span className="label">Product:</span>
                   <span className="value">{(() => {
-                    if (order.productId?.name) return order.productId.name
+                    // Multi-item support with quantities
                     if (Array.isArray(order.items) && order.items.length > 0) {
-                      const names = order.items.map(item => item?.productId?.name).filter(Boolean)
-                      if (names.length) return names.join(', ')
+                      const productNames = order.items.map(item => {
+                        if (item?.productId?.name) {
+                          return `${item.productId.name} (${item.quantity || 1})`
+                        }
+                        return null
+                      }).filter(Boolean)
+                      if (productNames.length) return productNames.join(', ')
                     }
+                    // Single product
+                    if (order.productId?.name) return order.productId.name
                     return order.details || 'No product name'
                   })()}</span>
                 </div>
@@ -480,7 +487,13 @@ export default function DriverPanel() {
                 )}
                 <div className="info-row">
                   <span className="label">Quantity:</span>
-                  <span className="value">{order.quantity || 1}</span>
+                  <span className="value">{(() => {
+                    // Calculate total quantity from all items
+                    if (Array.isArray(order.items) && order.items.length > 0) {
+                      return order.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
+                    }
+                    return order.quantity || 1
+                  })()}</span>
                 </div>
                 <div className="info-row">
                   <span className="label">Price:</span>
