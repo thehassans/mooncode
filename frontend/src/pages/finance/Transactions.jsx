@@ -263,7 +263,8 @@ export default function Transactions(){
     for (const r of driverRemits){
       if (String(r?.country||'').trim().toLowerCase() !== String(country||'').trim().toLowerCase()) continue
       const st = String(r?.status||'')
-      if (st==='accepted' || st==='received'){
+      // Include accepted, received, and manager_accepted statuses
+      if (st==='accepted' || st==='received' || st==='manager_accepted'){
         const id = String(r?.driver?._id || r?.driver || '')
         if (!id) continue
         const when = r?.acceptedAt || r?.createdAt
