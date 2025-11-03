@@ -2284,10 +2284,13 @@ router.get(
           }
           return sum + val;
         }, 0);
-        // Delivered to company comes from accepted remittances
+        // Delivered to company comes from accepted and manager_accepted remittances
         const remitRows = await Remittance.aggregate([
           {
-            $match: { driver: new M.Types.ObjectId(d._id), status: "accepted" },
+            $match: { 
+              driver: new M.Types.ObjectId(d._id), 
+              status: { $in: ["accepted", "manager_accepted"] }
+            },
           },
           {
             $group: { _id: null, total: { $sum: { $ifNull: ["$amount", 0] } } },
