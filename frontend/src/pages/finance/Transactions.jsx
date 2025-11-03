@@ -39,13 +39,22 @@ export default function Transactions(){
   useEffect(()=>{ 
     if(remitModalFor){ 
       setRemitPage(1)
-      // Load all remittances for this driver directly from API
+      // Load all remittances for this driver directly from API with pagination
       let alive = true
       ;(async()=>{
         try{
-          const remitsUrl = (role==='manager') ? '/api/finance/remittances?workspace=1' : '/api/finance/remittances'
-          const res = await apiGet(remitsUrl)
-          const allRemits = Array.isArray(res?.remittances) ? res.remittances : []
+          const allRemits = []
+          let page = 1
+          let hasMore = true
+          // Fetch all pages to get complete history
+          while(hasMore && page <= 50) {
+            const remitsUrl = (role==='manager') ? `/api/finance/remittances?workspace=1&page=${page}&limit=100` : `/api/finance/remittances?page=${page}&limit=100`
+            const res = await apiGet(remitsUrl)
+            const items = Array.isArray(res?.remittances) ? res.remittances : []
+            allRemits.push(...items)
+            hasMore = res?.hasMore || false
+            page++
+          }
           // Filter by driver ID only, don't filter by country to get complete history
           const driverRemits = allRemits.filter(r => String(r?.driver?._id || r?.driver || '') === String(remitModalFor))
           if(alive) setDriverRemitsHistory(driverRemits)
