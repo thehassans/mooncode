@@ -97,8 +97,8 @@ export default function Transactions(){
         setLoading(true)
         const lim = 200
 
-        const loadDrivers = apiGet(`/api/users/drivers?country=${encodeURIComponent(country)}`)
-          .then(d => { if (alive) setDrivers(Array.isArray(d?.users) ? d.users : []) })
+        const loadDrivers = apiGet(`/api/finance/drivers/summary?country=${encodeURIComponent(country)}&limit=200`)
+          .then(d => { if (alive) setDrivers(Array.isArray(d?.drivers) ? d.drivers : []) })
           .catch(()=> { if (alive) setDrivers([]) })
 
         const remitsUrl = (role==='manager') ? '/api/finance/remittances?workspace=1' : '/api/finance/remittances'
@@ -357,15 +357,25 @@ export default function Transactions(){
 
   const rows = useMemo(()=>{
     const arr = drivers.map(d => {
-      const id = String(d?._id)
-      const s = driverStats.get(id) || { deliveredCount:0, collectedSum:0 }
-      const rem = driverAcceptedSum.get(id) || 0
-      const variance = (s.collectedSum || 0) - (rem || 0)
-      const openAssigned = openAssignedByDriver.get(id) || 0
-      const totalAssigned = totalAssignedByDriver.get(id) || 0
+      // Use backend-calculated values from /api/finance/drivers/summary
+      const id = String(d?.id || d?._id)
+      const openAssigned = d.assigned || 0
+      const totalAssigned = (d.assigned || 0) + (d.deliveredCount || 0) + (d.canceled || 0)
+      const deliveredCount = d.deliveredCount || 0
+      const collectedSum = d.collected || 0
+      const remittedSum = d.deliveredToCompany || 0
+      const variance = d.pendingToCompany || 0
       const returned = returnedByDriver.get(id) || 0
-      const cancelled = cancelledByDriver.get(id) || 0
-      return { id, driver: d, openAssigned, totalAssigned, deliveredCount: s.deliveredCount||0, collectedSum: s.collectedSum||0, remittedSum: rem||0, variance, returned, cancelled }
+      const cancelled = d.canceled || 0
+      // Create driver object in expected format
+      const driver = {
+        _id: id,
+        firstName: d.name?.split(' ')[0] || '',
+        lastName: d.name?.split(' ').slice(1).join(' ') || '',
+        phone: d.phone || '',
+        country: d.country || ''
+      }
+      return { id, driver, openAssigned, totalAssigned, deliveredCount, collectedSum, remittedSum, variance, returned, cancelled }
     })
     const dir = sortDir === 'asc' ? 1 : -1
     const key = sortBy
@@ -377,7 +387,7 @@ export default function Transactions(){
       return 0
     })
     return arr
-  }, [drivers, driverStats, driverAcceptedSum, openAssignedByDriver, totalAssignedByDriver, returnedByDriver, cancelledByDriver, sortBy, sortDir])
+  }, [drivers, returnedByDriver, sortBy, sortDir])
 
   const totals = useMemo(()=>{
     let delivered=0, collected=0, remitted=0, pending=0, openA=0, totalA=0
