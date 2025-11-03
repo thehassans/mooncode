@@ -2197,18 +2197,69 @@ router.get(
             ? [me.assignedCountry]
             : [];
         if (assigned.length) {
-          const expand = (c) =>
-            c === "KSA" || c === "Saudi Arabia"
-              ? ["KSA", "Saudi Arabia"]
-              : c === "UAE" || c === "United Arab Emirates"
-              ? ["UAE", "United Arab Emirates"]
-              : [c];
+          const expandCountryVariations = (c) => {
+            const normalized = c.toLowerCase();
+            if (normalized === "ksa" || normalized === "saudi arabia" || normalized === "saudi") {
+              return ["KSA", "Saudi Arabia", "ksa", "saudi arabia", "Saudi", "saudi"];
+            }
+            if (normalized === "uae" || normalized === "united arab emirates") {
+              return ["UAE", "United Arab Emirates", "uae", "united arab emirates"];
+            }
+            if (normalized === "oman" || normalized === "om") {
+              return ["Oman", "OMAN", "oman", "OM", "Om"];
+            }
+            if (normalized === "bahrain" || normalized === "bh") {
+              return ["Bahrain", "BAHRAIN", "bahrain", "BH", "Bh"];
+            }
+            if (normalized === "kuwait" || normalized === "kw") {
+              return ["Kuwait", "KUWAIT", "kuwait", "KW", "Kw"];
+            }
+            if (normalized === "qatar" || normalized === "qa") {
+              return ["Qatar", "QATAR", "qatar", "QA", "Qa"];
+            }
+            if (normalized === "india" || normalized === "in") {
+              return ["India", "INDIA", "india", "IN", "In"];
+            }
+            return [c, c.toUpperCase(), c.toLowerCase(), c.charAt(0).toUpperCase() + c.slice(1).toLowerCase()];
+          };
           const set = new Set();
           for (const c of assigned) {
-            for (const x of expand(c)) set.add(x);
+            for (const x of expandCountryVariations(c)) set.add(x);
           }
           driverCond.country = { $in: Array.from(set) };
         }
+      }
+      
+      // Apply country filter from query parameter if provided
+      if (req.query.country) {
+        const queryCountry = String(req.query.country).trim();
+        const expandCountry = (c) => {
+          const normalized = c.toLowerCase();
+          if (normalized === "ksa" || normalized === "saudi arabia" || normalized === "saudi") {
+            return ["KSA", "Saudi Arabia", "ksa", "saudi arabia", "Saudi", "saudi"];
+          }
+          if (normalized === "uae" || normalized === "united arab emirates") {
+            return ["UAE", "United Arab Emirates", "uae", "united arab emirates"];
+          }
+          if (normalized === "oman" || normalized === "om") {
+            return ["Oman", "OMAN", "oman", "OM", "Om"];
+          }
+          if (normalized === "bahrain" || normalized === "bh") {
+            return ["Bahrain", "BAHRAIN", "bahrain", "BH", "Bh"];
+          }
+          if (normalized === "kuwait" || normalized === "kw") {
+            return ["Kuwait", "KUWAIT", "kuwait", "KW", "Kw"];
+          }
+          if (normalized === "qatar" || normalized === "qa") {
+            return ["Qatar", "QATAR", "qatar", "QA", "Qa"];
+          }
+          if (normalized === "india" || normalized === "in") {
+            return ["India", "INDIA", "india", "IN", "In"];
+          }
+          // Default: include original + uppercase + lowercase + title case
+          return [c, c.toUpperCase(), c.toLowerCase(), c.charAt(0).toUpperCase() + c.slice(1).toLowerCase()];
+        };
+        driverCond.country = { $in: expandCountry(queryCountry) };
       }
       const page = Math.max(1, Number(req.query.page || 1));
       const limit = Math.min(100, Math.max(1, Number(req.query.limit || 20)));
