@@ -4,7 +4,7 @@ import { API_BASE, apiGet } from '../api.js'
 import Sidebar from '../components/Sidebar.jsx'
 import Modal from '../components/Modal.jsx'
 import NotificationsDropdown from '../components/NotificationsDropdown.jsx'
- 
+import { io } from 'socket.io-client'
 
 export default function UserLayout(){
   const navigate = useNavigate()
@@ -13,6 +13,41 @@ export default function UserLayout(){
   const [theme, setTheme] = useState('dark')
   const location = useLocation()
   const me = JSON.parse(localStorage.getItem('me') || '{}')
+  const [pendingManagerRemits, setPendingManagerRemits] = useState(0)
+  
+  // Load pending manager remittances count
+  useEffect(()=>{
+    let alive = true
+    const loadPending = async ()=>{
+      try{
+        const r = await apiGet('/api/finance/manager-remittances')
+        if (alive){
+          const pending = Array.isArray(r?.remittances) ? r.remittances.filter(rem => rem.status === 'pending').length : 0
+          setPendingManagerRemits(pending)
+        }
+      }catch{}
+    }
+    loadPending()
+    
+    // Live updates for manager remittances
+    let socket
+    try{
+      const token = localStorage.getItem('token')||''
+      socket = io(API_BASE || undefined, { path:'/socket.io', transports:['polling'], upgrade:false, withCredentials:true, auth:{ token } })
+      socket.on('manager-remittance.created', loadPending)
+      socket.on('manager-remittance.accepted', loadPending)
+      socket.on('manager-remittance.rejected', loadPending)
+    }catch{}
+    
+    return ()=>{
+      alive = false
+      try{ socket && socket.off('manager-remittance.created') }catch{}
+      try{ socket && socket.off('manager-remittance.accepted') }catch{}
+      try{ socket && socket.off('manager-remittance.rejected') }catch{}
+      try{ socket && socket.disconnect() }catch{}
+    }
+  }, [])
+  
   const links = [
     { to: '/user', label: 'Dashboard', icon: '📊' },
     {
@@ -49,7 +84,7 @@ export default function UserLayout(){
       icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
       children: [
         { to: '/user/transactions', label: 'Driver Settlement', icon: '💳' },
-        { to: '/user/manager-finances', label: 'Manager Finances', icon: '📊' },
+        { to: '/user/manager-finances', label: 'Manager Finances', icon: '📊', badge: pendingManagerRemits },
         { to: '/user/agent-amounts', label: 'Agent Amounts', icon: '💰' },
         { to: '/user/investor-amounts', label: 'Investor Amounts', icon: '💼' },
         { to: '/user/driver-amounts', label: 'Driver Amounts', icon: '🚗' },

@@ -216,6 +216,7 @@ export default function Sidebar({ links = [], closed, onToggle }){
     const hasChildren = Array.isArray(item.children) && item.children.length > 0
     const icon = null
     if (!hasChildren){
+      const badge = item.badge && Number(item.badge) > 0 ? Number(item.badge) : null
       return (
         <NavLink
           key={item.to}
@@ -225,6 +226,7 @@ export default function Sidebar({ links = [], closed, onToggle }){
         >
           <span className="nav-icon" aria-hidden><Icon name={item.label} /></span>
           <span className="nav-label">{item.label}</span>
+          {badge && <span className="nav-badge" style={{marginLeft:'auto', background:'#ef4444', color:'#fff', fontSize:11, fontWeight:700, padding:'2px 6px', borderRadius:10, minWidth:18, textAlign:'center'}}>{badge > 99 ? '99+' : badge}</span>}
         </NavLink>
       )
     }
@@ -245,12 +247,16 @@ export default function Sidebar({ links = [], closed, onToggle }){
           <span className="chev" aria-hidden>{isOpen? '▾' : '▸'}</span>
         </button>
         <div id={`submenu-${key}`} className="submenu" aria-hidden={!isOpen}>
-          {item.children.map(ch => (
-            <NavLink key={ch.to} to={ch.to} className={({isActive}) => isActive ? 'active' : ''} title={ch.label}>
-              <span className="nav-icon child" aria-hidden><Icon name={ch.label} /></span>
-              <span className="nav-label">{ch.label}</span>
-            </NavLink>
-          ))}
+          {item.children.map(ch => {
+            const badge = ch.badge && Number(ch.badge) > 0 ? Number(ch.badge) : null
+            return (
+              <NavLink key={ch.to} to={ch.to} className={({isActive}) => isActive ? 'active' : ''} title={ch.label}>
+                <span className="nav-icon child" aria-hidden><Icon name={ch.label} /></span>
+                <span className="nav-label">{ch.label}</span>
+                {badge && <span className="nav-badge" style={{marginLeft:'auto', background:'#ef4444', color:'#fff', fontSize:11, fontWeight:700, padding:'2px 6px', borderRadius:10, minWidth:18, textAlign:'center'}}>{badge > 99 ? '99+' : badge}</span>}
+              </NavLink>
+            )
+          })}
         </div>
       </div>
     )
