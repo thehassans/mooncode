@@ -32,9 +32,32 @@ export default function Transactions(){
   const [submitting, setSubmitting] = useState(false)
   const [remitPage, setRemitPage] = useState(1)
   const remitPerPage = 6
+  const [driverRemitsHistory, setDriverRemitsHistory] = useState([])
+  const [openGroups, setOpenGroups] = useState({})
 
-  // Reset remit page when modal opens
-  useEffect(()=>{ if(remitModalFor) setRemitPage(1) },[remitModalFor])
+  // Reset remit page when modal opens and load driver remittances from API
+  useEffect(()=>{ 
+    if(remitModalFor){ 
+      setRemitPage(1)
+      // Load all remittances for this driver directly from API
+      let alive = true
+      ;(async()=>{
+        try{
+          const remitsUrl = (role==='manager') ? '/api/finance/remittances?workspace=1' : '/api/finance/remittances'
+          const res = await apiGet(remitsUrl)
+          const allRemits = Array.isArray(res?.remittances) ? res.remittances : []
+          // Filter by driver ID only, don't filter by country to get complete history
+          const driverRemits = allRemits.filter(r => String(r?.driver?._id || r?.driver || '') === String(remitModalFor))
+          if(alive) setDriverRemitsHistory(driverRemits)
+        }catch{
+          if(alive) setDriverRemitsHistory([])
+        }
+      })()
+      return ()=>{ alive = false }
+    } else {
+      setDriverRemitsHistory([])
+    }
+  },[remitModalFor, role])
 
   useEffect(()=>{ /* initial no-op */ },[])
   
@@ -434,9 +457,9 @@ export default function Transactions(){
 
   const filteredRemitsForDriver = useMemo(()=>{
     if (!remitModalFor) return []
-    return driverRemits.filter(r => String(r?.driver?._id || r?.driver || '') === String(remitModalFor))
-      .filter(r => (fromDate || toDate) ? dateInRange(r?.acceptedAt || r?.createdAt, fromDate, toDate) : true)
-  }, [driverRemits, remitModalFor, fromDate, toDate])
+    // Use driverRemitsHistory which is loaded directly from API for this specific driver
+    return driverRemitsHistory.filter(r => (fromDate || toDate) ? dateInRange(r?.acceptedAt || r?.createdAt, fromDate, toDate) : true)
+  }, [driverRemitsHistory, remitModalFor, fromDate, toDate])
   
   // Pay to company handler
   async function payToCompany(){
