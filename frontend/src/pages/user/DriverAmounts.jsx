@@ -38,11 +38,15 @@ export default function DriverAmounts(){
     })()
   }, [])
 
-  // Load drivers
-  const loadDrivers = async () => {
+  // Load drivers based on country filter
+  const loadDrivers = async (selectedCountry) => {
+    if (!selectedCountry) {
+      setDrivers([])
+      return
+    }
     try {
       setLoading(true)
-      const r = await apiGet('/api/finance/drivers/summary?limit=100')
+      const r = await apiGet(`/api/finance/drivers/summary?country=${encodeURIComponent(selectedCountry)}&limit=200`)
       setDrivers(Array.isArray(r?.drivers) ? r.drivers : [])
       setErr('')
     } catch (e) {
@@ -51,19 +55,24 @@ export default function DriverAmounts(){
   }
 
   useEffect(() => {
-    loadDrivers()
-  }, [])
+    loadDrivers(country)
+  }, [country])
 
-  // Load pending commission approvals
-  const loadPendingCommissions = async () => {
+  // Load pending commission approvals only for selected country
+  const loadPendingCommissions = async (selectedCountry) => {
+    if (!selectedCountry) {
+      setPendingCommissions([])
+      return
+    }
     try {
       setLoadingPending(true)
-      const r = await apiGet('/api/finance/remittances')
+      // Load only pending remittances with commission in note
+      const r = await apiGet(`/api/finance/remittances?status=pending&limit=100`)
       const remits = Array.isArray(r?.remittances) ? r.remittances : []
-      // Filter for pending commission payments
+      // Filter for pending commission payments in selected country
       const pending = remits.filter(rem => 
         String(rem.note || '').toLowerCase().includes('commission') &&
-        String(rem.status || '').toLowerCase() === 'pending'
+        String(rem.country || '').trim().toLowerCase() === String(selectedCountry).trim().toLowerCase()
       )
       setPendingCommissions(pending)
     } catch (e) {
@@ -73,8 +82,8 @@ export default function DriverAmounts(){
   }
 
   useEffect(() => {
-    loadPendingCommissions()
-  }, [])
+    loadPendingCommissions(country)
+  }, [country])
 
   // Approve commission payment
   const approveCommission = async (remittanceId) => {
@@ -83,8 +92,8 @@ export default function DriverAmounts(){
       await apiPost(`/api/finance/remittances/${remittanceId}/accept`, {})
       toast.success('Commission approved successfully')
       // Refresh both lists
-      await loadDrivers()
-      await loadPendingCommissions()
+      await loadDrivers(country)
+      await loadPendingCommissions(country)
     } catch (e) {
       toast.error(e?.message || 'Failed to approve commission')
     } finally {
@@ -99,7 +108,7 @@ export default function DriverAmounts(){
       await apiPost(`/api/finance/remittances/${remittanceId}/reject`, {})
       toast.warn('Commission rejected')
       // Refresh pending list
-      await loadPendingCommissions()
+      await loadPendingCommissions(country)
     } catch (e) {
       toast.error(e?.message || 'Failed to reject commission')
     } finally {
@@ -237,7 +246,7 @@ export default function DriverAmounts(){
         <div className="card-header"><div className="card-title">Filters</div></div>
         <div className="section" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
           <select className="input" value={country} onChange={(e)=> setCountry(e.target.value)}>
-            <option value="">All Countries</option>
+            <option value="">-- Select Country to Load Drivers --</option>
             {countryOptions.map(c => (
               <option key={c} value={c}>{c}</option>
             ))}
@@ -324,7 +333,9 @@ export default function DriverAmounts(){
                   </tr>
                 ))
               ) : filteredDrivers.length === 0 ? (
-                <tr><td colSpan={11} style={{ padding: '10px 12px', opacity: 0.7, textAlign:'center' }}>No drivers found</td></tr>
+                <tr><td colSpan={11} style={{ padding: '20px 12px', opacity: 0.7, textAlign:'center' }}>
+                  {country ? 'No drivers found for this country' : 'Please select a country from the filter above to load drivers'}
+                </td></tr>
               ) : (
                 filteredDrivers.map((d, idx) => (
                   <tr key={String(d.id)} style={{ borderTop: '1px solid var(--border)', background: idx % 2 ? 'transparent' : 'var(--panel)' }}>
