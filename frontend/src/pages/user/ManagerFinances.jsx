@@ -200,37 +200,6 @@ export default function ManagerFinances(){
       toPayCompany
     }
   }, [filteredDriverRemittances, filteredManagerRemittances, curCfg])
-  
-  // Driver→Manager totals by manager
-  const driverToManagerByManager = useMemo(()=>{
-    const byManager = {}
-    
-    for (const r of filteredDriverRemittances){
-      const managerId = String(r.manager?._id || r.manager || '')
-      if (!managerId) continue
-      
-      if (!byManager[managerId]) {
-        byManager[managerId] = {
-          manager: r.manager,
-          totalAmount: 0,
-          acceptedCount: 0,
-          pendingCount: 0,
-          currency: r.currency || 'SAR'
-        }
-      }
-      
-      const amount = Number(r.amount||0)
-      byManager[managerId].totalAmount += amount
-      
-      if (r.status === 'accepted' || r.status === 'manager_accepted') {
-        byManager[managerId].acceptedCount++
-      } else if (r.status === 'pending') {
-        byManager[managerId].pendingCount++
-      }
-    }
-    
-    return Object.values(byManager)
-  }, [filteredDriverRemittances])
 
   function statusBadge(st){
     const s = String(st||'').toLowerCase()
@@ -300,87 +269,6 @@ export default function ManagerFinances(){
         </div>
       </div>
 
-      {/* Driver→Manager Summary by Manager */}
-      {driverToManagerByManager.length > 0 && (
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">💰 Driver → Manager Remittances Summary</div>
-          </div>
-          <div style={{display:'grid', gap:6}}>
-            {driverToManagerByManager.map(item => (
-              <div key={String(item.manager?._id || '')} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 12px', background:'var(--panel)', borderRadius:6, flexWrap:'wrap', gap:8}}>
-                <div>
-                  <div style={{fontWeight:700, color:'#8b5cf6'}}>{userName(item.manager)}</div>
-                  <div className="helper" style={{fontSize:12}}>
-                    ✓ {item.acceptedCount} accepted • ⏳ {item.pendingCount} pending
-                  </div>
-                </div>
-                <div style={{fontWeight:800, color:'#10b981'}}>{item.currency} {num(item.totalAmount)}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Driver→Manager Remittances Table */}
-      <div className="card">
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-          <div style={{ fontWeight: 700 }}>💵 Driver → Manager Remittances</div>
-          <div className="helper">Amounts drivers sent to managers</div>
-        </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-            <thead>
-              <tr>
-                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#3b82f6' }}>Driver</th>
-                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#8b5cf6' }}>Manager</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e' }}>Amount</th>
-                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#f59e0b' }}>Status</th>
-                <th style={{ padding: '10px 12px', textAlign:'left' }}>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                Array.from({length:3}).map((_,i)=> (
-                  <tr key={`drsk${i}`}>
-                    <td colSpan={5} style={{ padding:'10px 12px' }}>
-                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
-                    </td>
-                  </tr>
-                ))
-              ) : filteredDriverRemittances.length === 0 ? (
-                <tr><td colSpan={5} style={{ padding: '10px 12px', opacity: 0.7, textAlign:'center' }}>No driver remittances found</td></tr>
-              ) : (
-                filteredDriverRemittances.slice(0, 10).map((r, idx) => (
-                  <tr key={String(r._id)} style={{ borderTop: '1px solid var(--border)', background: idx % 2 ? 'transparent' : 'var(--panel)' }}>
-                    <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
-                      <div style={{fontWeight:700, color:'#3b82f6'}}>{userName(r.driver)}</div>
-                      <div className="helper">{r.driver?.phone || ''}</div>
-                    </td>
-                    <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
-                      <div style={{fontWeight:700, color:'#8b5cf6'}}>{userName(r.manager)}</div>
-                    </td>
-                    <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                      <span style={{color:'#22c55e', fontWeight:800}}>{r.currency} {num(r.amount)}</span>
-                    </td>
-                    <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
-                      {r.status === 'manager_accepted' ? (
-                        <span className="chip" style={{border:'1px solid #10b981', color:'#10b981', background:'transparent', fontWeight:700}}>
-                          ✓ MANAGER ACCEPTED
-                        </span>
-                      ) : statusBadge(r.status)}
-                    </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      <div style={{color:'#6366f1', fontSize:13}}>{r.createdAt ? new Date(r.createdAt).toLocaleString() : '-'}</div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       {/* Manager→Company Remittances Table */}
       <div className="card">
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
@@ -443,6 +331,65 @@ export default function ManagerFinances(){
                       ) : (
                         <button className="btn secondary small" onClick={()=> setAcceptModal(r)}>Details</button>
                       )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Driver→Manager Remittances Table */}
+      <div className="card">
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+          <div style={{ fontWeight: 700 }}>💵 Driver → Manager Remittances</div>
+          <div className="helper">Amounts drivers sent to managers</div>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            <thead>
+              <tr>
+                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#3b82f6' }}>Driver</th>
+                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#8b5cf6' }}>Manager</th>
+                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e' }}>Amount</th>
+                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#f59e0b' }}>Status</th>
+                <th style={{ padding: '10px 12px', textAlign:'left' }}>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                Array.from({length:3}).map((_,i)=> (
+                  <tr key={`drsk${i}`}>
+                    <td colSpan={5} style={{ padding:'10px 12px' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                  </tr>
+                ))
+              ) : filteredDriverRemittances.length === 0 ? (
+                <tr><td colSpan={5} style={{ padding: '10px 12px', opacity: 0.7, textAlign:'center' }}>No driver remittances found</td></tr>
+              ) : (
+                filteredDriverRemittances.slice(0, 10).map((r, idx) => (
+                  <tr key={String(r._id)} style={{ borderTop: '1px solid var(--border)', background: idx % 2 ? 'transparent' : 'var(--panel)' }}>
+                    <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{fontWeight:700, color:'#3b82f6'}}>{userName(r.driver)}</div>
+                      <div className="helper">{r.driver?.phone || ''}</div>
+                    </td>
+                    <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{fontWeight:700, color:'#8b5cf6'}}>{userName(r.manager)}</div>
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
+                      <span style={{color:'#22c55e', fontWeight:800}}>{r.currency} {num(r.amount)}</span>
+                    </td>
+                    <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
+                      {r.status === 'manager_accepted' ? (
+                        <span className="chip" style={{border:'1px solid #10b981', color:'#10b981', background:'transparent', fontWeight:700}}>
+                          ✓ MANAGER ACCEPTED
+                        </span>
+                      ) : statusBadge(r.status)}
+                    </td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <div style={{color:'#6366f1', fontSize:13}}>{r.createdAt ? new Date(r.createdAt).toLocaleString() : '-'}</div>
                     </td>
                   </tr>
                 ))
