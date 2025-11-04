@@ -16,19 +16,29 @@ export default function AgentAmounts(){
   const [commissionRate, setCommissionRate] = useState(null)
   const [calculatedAmount, setCalculatedAmount] = useState(0)
 
+  // Load agents asynchronously to prevent blocking page render
   useEffect(() => {
     let alive = true
-    ;(async () => {
+    // Small delay to allow page to render first
+    const timeoutId = setTimeout(async () => {
       try {
         setLoading(true)
-        const r = await apiGet('/api/finance/agents/commission')
-        if (alive) setAgents(Array.isArray(r?.agents) ? r.agents : [])
-        setErr('')
+        const r = await apiGet('/api/finance/agents/commission?limit=100')
+        if (alive) {
+          setAgents(Array.isArray(r?.agents) ? r.agents : [])
+          setErr('')
+        }
       } catch (e) {
         if (alive) setErr(e?.message || 'Failed to load agent amounts')
-      } finally { if (alive) setLoading(false) }
-    })()
-    return () => { alive = false }
+      } finally {
+        if (alive) setLoading(false)
+      }
+    }, 10)
+    
+    return () => { 
+      alive = false
+      clearTimeout(timeoutId)
+    }
   }, [])
 
   function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
@@ -67,13 +77,17 @@ export default function AgentAmounts(){
 
       {/* Search Filter */}
       <div className="card" style={{ display: 'grid', gap: 10 }}>
-        <div className="card-header"><div className="card-title">Search</div></div>
+        <div className="card-header">
+          <div className="card-title">Search & Filter</div>
+          {loading && <div className="helper" style={{fontSize:12}}>Loading agents...</div>}
+        </div>
         <input 
           className="input" 
           type="text" 
           placeholder="Search by agent name or phone..." 
           value={searchTerm} 
           onChange={(e)=> setSearchTerm(e.target.value)} 
+          disabled={loading}
         />
       </div>
 
@@ -140,7 +154,9 @@ export default function AgentAmounts(){
                   </tr>
                 ))
               ) : filteredAgents.length === 0 ? (
-                <tr><td colSpan={9} style={{ padding: '10px 12px', opacity: 0.7, textAlign:'center' }}>No agents found</td></tr>
+                <tr><td colSpan={9} style={{ padding: '20px 12px', opacity: 0.7, textAlign:'center' }}>
+                  {searchTerm ? 'No agents match your search' : 'No agents found. Agents will appear here once they submit orders.'}
+                </td></tr>
               ) : (
                 filteredAgents.map((a, idx) => {
                   const balance = Number(a.deliveredCommissionPKR||0) - Number(a.withdrawnPKR||0) - Number(a.pendingPKR||0)
@@ -236,7 +252,7 @@ export default function AgentAmounts(){
                   setCommissionRate(null)
                   setCalculatedAmount(0)
                   // Refresh data
-                  const r = await apiGet('/api/finance/agents/commission')
+                  const r = await apiGet('/api/finance/agents/commission?limit=100')
                   setAgents(Array.isArray(r?.agents) ? r.agents : [])
                 }catch(e){
                   toast.error(e?.message || 'Failed to send payment')
