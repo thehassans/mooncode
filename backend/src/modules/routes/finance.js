@@ -2438,8 +2438,11 @@ router.post(
   async (req, res) => {
     try {
       const { id } = req.params;
-      const { amount } = req.body || {};
+      const { amount, commissionRate, deliveredCount } = req.body || {};
       const amt = Number(amount);
+      const rate = Number(commissionRate);
+      const delCount = Number(deliveredCount || 0);
+      
       if (Number.isNaN(amt) || amt <= 0)
         return res.status(400).json({ message: "Invalid amount" });
 
@@ -2457,14 +2460,19 @@ router.post(
       const status = isManager ? "pending" : "accepted";
       
       // Create a remittance record marking commission payment to driver
+      const noteText = rate > 0 && delCount > 0 
+        ? `Commission payment (${delCount} orders × ${rate.toFixed(2)} = ${amt.toFixed(2)})`
+        : "Commission payment";
+      
       const remit = new Remittance({
         driver: id,
         owner: req.user.role === "user" ? req.user.id : driver.createdBy,
         manager: isManager ? req.user.id : driver.createdBy,
         amount: amt,
         driverCommission: amt,
+        commissionRate: rate || driver.driverProfile?.commissionPerOrder || 0,
         method: "transfer",
-        note: "Commission payment",
+        note: noteText,
         status: status,
         paidToId: id,
         paidAt: status === "accepted" ? new Date() : null,
@@ -2476,6 +2484,12 @@ router.post(
         if (!driver.driverProfile) driver.driverProfile = {};
         const currentPaid = Number(driver.driverProfile.paidCommission || 0);
         driver.driverProfile.paidCommission = currentPaid + amt;
+        
+        // Update commission rate if a custom rate was provided
+        if (rate > 0 && rate !== driver.driverProfile.commissionPerOrder) {
+          driver.driverProfile.commissionPerOrder = rate;
+        }
+        
         driver.markModified('driverProfile');
         await driver.save();
         

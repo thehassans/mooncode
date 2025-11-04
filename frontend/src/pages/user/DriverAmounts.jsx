@@ -15,6 +15,8 @@ export default function DriverAmounts(){
   const [searchTerm, setSearchTerm] = useState('')
   const [payingDriver, setPayingDriver] = useState(null)
   const [payModal, setPayModal] = useState(null)
+  const [customRate, setCustomRate] = useState(null)
+  const [calculatedAmount, setCalculatedAmount] = useState(0)
   const [pendingCommissions, setPendingCommissions] = useState([])
   const [loadingPending, setLoadingPending] = useState(false)
   const [approvingCommission, setApprovingCommission] = useState(null)
@@ -367,7 +369,11 @@ export default function DriverAmounts(){
                           className="btn success" 
                           style={{fontSize:12, padding:'6px 12px'}}
                           disabled={payingDriver === d.id}
-                          onClick={()=> setPayModal({ driver: d, amount: d.pendingCommission })}
+                          onClick={()=> { 
+                            setPayModal({ driver: d, amount: d.pendingCommission, deliveredCount: d.deliveredCount, defaultRate: d.commissionPerOrder || 0 })
+                            setCustomRate(null)
+                            setCalculatedAmount(d.pendingCommission)
+                          }}
                         >
                           Pay Commission
                         </button>
@@ -387,7 +393,11 @@ export default function DriverAmounts(){
       <Modal
         title="Pay Driver Commission"
         open={!!payModal}
-        onClose={()=> setPayModal(null)}
+        onClose={()=> { 
+          setPayModal(null)
+          setCustomRate(null)
+          setCalculatedAmount(0)
+        }}
         footer={
           <>
             <button className="btn secondary" onClick={()=> setPayModal(null)} disabled={!!payingDriver}>Cancel</button>
@@ -395,11 +405,23 @@ export default function DriverAmounts(){
               className="btn success" 
               disabled={!!payingDriver}
               onClick={async()=>{
+                const finalAmount = customRate ? calculatedAmount : payModal.amount
+                const finalRate = customRate || payModal.defaultRate
+                if (finalAmount <= 0) {
+                  toast.error('Commission amount must be greater than 0')
+                  return
+                }
                 setPayingDriver(payModal.driver.id)
                 try{
-                  await apiPost(`/api/finance/drivers/${payModal.driver.id}/pay-commission`, { amount: payModal.amount })
-                  toast.success('Commission payment sent successfully')
+                  await apiPost(`/api/finance/drivers/${payModal.driver.id}/pay-commission`, { 
+                    amount: finalAmount,
+                    commissionRate: finalRate,
+                    deliveredCount: payModal.deliveredCount
+                  })
+                  toast.success(`Commission payment sent successfully (${num(finalRate)}/order)`)
                   setPayModal(null)
+                  setCustomRate(null)
+                  setCalculatedAmount(0)
                   // Refresh data
                   await loadDrivers()
                 }catch(e){
@@ -417,8 +439,68 @@ export default function DriverAmounts(){
         {payModal && (
           <div style={{ padding: '16px 0' }}>
             <div style={{ fontSize: 16, marginBottom: 24, textAlign: 'center' }}>
-              Send <strong style={{ color: '#10b981', fontSize: 20 }}>{payModal.driver.currency} {num(payModal.amount)}</strong> commission to <strong style={{ color: '#8b5cf6' }}>{payModal.driver.name}</strong>?
+              Send <strong style={{ color: '#10b981', fontSize: 20 }}>{payModal.driver.currency} {num(customRate ? calculatedAmount : payModal.amount)}</strong> commission to <strong style={{ color: '#8b5cf6' }}>{payModal.driver.name}</strong>?
             </div>
+            
+            {/* Custom Commission Rate Selector */}
+            <div style={{ marginBottom: 20, padding: 16, background: 'var(--panel)', borderRadius: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <label style={{ fontWeight: 600, fontSize: 14 }}>Commission Rate per Order:</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    step="0.5"
+                    value={customRate !== null ? customRate : payModal.defaultRate}
+                    onChange={(e)=> {
+                      const val = Number(e.target.value) || 0
+                      setCustomRate(val)
+                      setCalculatedAmount(val * payModal.deliveredCount)
+                    }}
+                    style={{ width: 90, padding: '8px', textAlign: 'right', fontWeight: 700, fontSize: 16 }}
+                    className="input"
+                  />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>{payModal.driver.currency}/order</span>
+                </div>
+              </div>
+              
+              {/* Quick Rate Buttons */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                {[8, 10, 12, 15, 20, 25].map(rate => (
+                  <button
+                    key={rate}
+                    className="btn"
+                    style={{
+                      fontSize: 12,
+                      padding: '6px 12px',
+                      background: (customRate || payModal.defaultRate) === rate ? '#8b5cf6' : 'var(--panel-2)',
+                      color: (customRate || payModal.defaultRate) === rate ? '#fff' : 'inherit'
+                    }}
+                    onClick={() => {
+                      setCustomRate(rate)
+                      setCalculatedAmount(rate * payModal.deliveredCount)
+                    }}
+                  >
+                    {rate} {payModal.driver.currency}
+                  </button>
+                ))}
+                <button
+                  className="btn secondary"
+                  style={{ fontSize: 12, padding: '6px 12px' }}
+                  onClick={() => {
+                    setCustomRate(null)
+                    setCalculatedAmount(payModal.amount)
+                  }}
+                >
+                  Reset
+                </button>
+              </div>
+
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+                {payModal.deliveredCount} delivered orders × {payModal.driver.currency} {num(customRate !== null ? customRate : payModal.defaultRate)} = {payModal.driver.currency} {num(customRate ? calculatedAmount : payModal.amount)}
+              </div>
+            </div>
+
             <div style={{ background: 'var(--panel)', padding: 12, borderRadius: 8, fontSize: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ opacity: 0.7 }}>Driver:</span>
@@ -432,9 +514,17 @@ export default function DriverAmounts(){
                 <span style={{ opacity: 0.7 }}>Country:</span>
                 <strong>{payModal.driver.country}</strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ opacity: 0.7 }}>Amount:</span>
-                <strong style={{ color: '#10b981' }}>{payModal.driver.currency} {num(payModal.amount)}</strong>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ opacity: 0.7 }}>Delivered Orders:</span>
+                <strong>{payModal.deliveredCount}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ opacity: 0.7 }}>Rate per Order:</span>
+                <strong style={{ color: '#8b5cf6' }}>{payModal.driver.currency} {num(customRate !== null ? customRate : payModal.defaultRate)}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                <span style={{ opacity: 0.7, fontWeight: 600 }}>Total Amount:</span>
+                <strong style={{ color: '#10b981', fontSize: 18 }}>{payModal.driver.currency} {num(customRate ? calculatedAmount : payModal.amount)}</strong>
               </div>
             </div>
           </div>
