@@ -732,7 +732,31 @@ export default function Transactions(){
                             <td style={{ padding:'12px' }}>{r.createdAt? new Date(r.createdAt).toLocaleString(): '—'}</td>
                             <td style={{ padding:'12px' }}>
                               {(r.pdfPath || r.acceptedPdfPath) ? (
-                                <a href={`${API_BASE}/finance/remittances/${r._id}/download-settlement`} target="_blank" rel="noopener noreferrer" className="btn" style={{fontSize:13, padding:'6px 12px'}}>Download</a>
+                                <button 
+                                  className="btn" 
+                                  style={{fontSize:13, padding:'6px 12px'}}
+                                  onClick={async ()=> {
+                                    try {
+                                      const response = await fetch(`${API_BASE}/finance/remittances/${r._id}/download-settlement`, {
+                                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                                      })
+                                      if (!response.ok) throw new Error('Download failed')
+                                      const blob = await response.blob()
+                                      const url = window.URL.createObjectURL(blob)
+                                      const a = document.createElement('a')
+                                      a.href = url
+                                      a.download = `Settlement_${r.driver?.firstName || 'Driver'}_${new Date(r.createdAt).toLocaleDateString().replace(/\//g, '-')}.pdf`
+                                      document.body.appendChild(a)
+                                      a.click()
+                                      window.URL.revokeObjectURL(url)
+                                      document.body.removeChild(a)
+                                    } catch (err) {
+                                      alert('Failed to download PDF')
+                                    }
+                                  }}
+                                >
+                                  Download
+                                </button>
                               ) : '—'}
                             </td>
                           </tr>

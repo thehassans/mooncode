@@ -394,15 +394,31 @@ export default function ManagerDriverAmounts(){
                         </td>
                         <td style={{ padding: '12px', textAlign:'center' }}>
                           {payment.status === 'sent' || payment.status === 'paid' ? (
-                            <a 
-                              href={`${API_BASE}/finance/drivers/${historyModal.id}/commission-pdf?paymentId=${payment._id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button 
                               className="btn"
                               style={{ fontSize: 12, padding: '4px 10px' }}
+                              onClick={async ()=> {
+                                try {
+                                  const response = await fetch(`${API_BASE}/finance/drivers/${historyModal.id}/commission-pdf?paymentId=${payment._id}`, {
+                                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                                  })
+                                  if (!response.ok) throw new Error('Download failed')
+                                  const blob = await response.blob()
+                                  const url = window.URL.createObjectURL(blob)
+                                  const a = document.createElement('a')
+                                  a.href = url
+                                  a.download = `Commission_${historyModal.name}_${new Date(payment.paidAt).toLocaleDateString().replace(/\//g, '-')}.pdf`
+                                  document.body.appendChild(a)
+                                  a.click()
+                                  window.URL.revokeObjectURL(url)
+                                  document.body.removeChild(a)
+                                } catch (err) {
+                                  alert('Failed to download PDF')
+                                }
+                              }}
                             >
                               Download
-                            </a>
+                            </button>
                           ) : (
                             <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>
                           )}
