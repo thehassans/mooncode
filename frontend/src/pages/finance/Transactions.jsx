@@ -298,7 +298,7 @@ export default function Transactions(){
       return 0
     })
     return arr
-  }, [drivers, returnedByDriver, sortBy, sortDir])
+  }, [drivers, sortBy, sortDir])
 
   const totals = useMemo(()=>{
     let delivered=0, collected=0, remitted=0, pending=0, openTotal=0, assignedTotal=0
