@@ -178,9 +178,14 @@ export default function AgentAmounts(){
                             style={{fontSize:12, padding:'6px 12px'}}
                             disabled={payingAgent === a.id}
                             onClick={()=> { 
-                              setPayModal({ agent: a, balance, totalOrderValueAED: a.totalOrderValueAED || 0, deliveredCommission: a.deliveredCommissionPKR || 0 })
+                              const totalOrderValueAED = a.totalOrderValueAED || 0
+                              const pkrRate = 76
+                              const totalInPKR = totalOrderValueAED * pkrRate
+                              const defaultCommission = (totalInPKR * 12) / 100
+                              
+                              setPayModal({ agent: a, balance, totalOrderValueAED, deliveredCommission: a.deliveredCommissionPKR || 0 })
                               setCommissionRate(null)
-                              setCalculatedAmount(balance)
+                              setCalculatedAmount(defaultCommission)
                             }}
                           >
                             Pay Commission
@@ -214,16 +219,15 @@ export default function AgentAmounts(){
               className="btn success" 
               disabled={!!payingAgent}
               onClick={async()=>{
-                const finalAmount = commissionRate ? calculatedAmount : payModal.balance
                 const finalRate = commissionRate || 12
-                if (finalAmount <= 0) {
+                if (calculatedAmount <= 0) {
                   toast.error('Payment amount must be greater than 0')
                   return
                 }
                 setPayingAgent(payModal.agent.id)
                 try{
                   await apiPost(`/api/finance/agents/${payModal.agent.id}/pay-commission`, { 
-                    amount: finalAmount,
+                    amount: calculatedAmount,
                     commissionRate: finalRate,
                     totalOrderValueAED: payModal.totalOrderValueAED
                   })
@@ -249,7 +253,7 @@ export default function AgentAmounts(){
         {payModal && (
           <div style={{ padding: '16px 0' }}>
             <div style={{ fontSize: 16, marginBottom: 24, textAlign: 'center' }}>
-              Send <strong style={{ color: '#10b981', fontSize: 20 }}>PKR {num(commissionRate ? calculatedAmount : payModal.balance)}</strong> commission to <strong style={{ color: '#8b5cf6' }}>{payModal.agent.name}</strong>?
+              Send <strong style={{ color: '#10b981', fontSize: 20 }}>PKR {num(calculatedAmount)}</strong> commission to <strong style={{ color: '#8b5cf6' }}>{payModal.agent.name}</strong>?
             </div>
             
             {/* Commission Rate Selector */}
@@ -305,7 +309,9 @@ export default function AgentAmounts(){
                   style={{ fontSize: 12, padding: '6px 12px' }}
                   onClick={() => {
                     setCommissionRate(null)
-                    setCalculatedAmount(payModal.balance)
+                    const pkrRate = 76
+                    const totalInPKR = payModal.totalOrderValueAED * pkrRate
+                    setCalculatedAmount((totalInPKR * 12) / 100)
                   }}
                 >
                   Reset
@@ -313,7 +319,7 @@ export default function AgentAmounts(){
               </div>
 
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-                Total Orders: AED {num(payModal.totalOrderValueAED)} → PKR {num(payModal.totalOrderValueAED * 76)} | Commission: {commissionRate !== null ? commissionRate : 12}% of PKR {num(payModal.totalOrderValueAED * 76)} = PKR {num(commissionRate ? calculatedAmount : payModal.balance)}
+                Total Orders: AED {num(payModal.totalOrderValueAED)} → PKR {num(payModal.totalOrderValueAED * 76)} | Commission: {commissionRate !== null ? commissionRate : 12}% of PKR {num(payModal.totalOrderValueAED * 76)} = PKR {num(calculatedAmount)}
               </div>
             </div>
 
@@ -336,7 +342,7 @@ export default function AgentAmounts(){
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
                 <span style={{ opacity: 0.7, fontWeight: 600 }}>Total Amount:</span>
-                <strong style={{ color: '#10b981', fontSize: 18 }}>PKR {num(commissionRate ? calculatedAmount : payModal.balance)}</strong>
+                <strong style={{ color: '#10b981', fontSize: 18 }}>PKR {num(calculatedAmount)}</strong>
               </div>
             </div>
           </div>
