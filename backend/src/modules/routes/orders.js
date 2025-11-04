@@ -1921,6 +1921,17 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), async (req, res
     // Basic fields
     const previousDriver = ord.deliveryBoy ? String(ord.deliveryBoy) : null
     const newDriver = deliveryBoy !== undefined ? (deliveryBoy || null) : undefined
+    
+    // Prevent managers from changing driver or commission once assigned
+    if (req.user.role === 'manager' && previousDriver) {
+      if (deliveryBoy !== undefined && String(deliveryBoy || '') !== previousDriver) {
+        return res.status(403).json({ message: 'Driver already assigned. Cannot be changed by manager. Contact owner.' })
+      }
+      if (driverCommission !== undefined && Number(driverCommission) !== Number(ord.driverCommission || 0)) {
+        return res.status(403).json({ message: 'Driver commission locked with assignment. Cannot be changed by manager. Contact owner.' })
+      }
+    }
+    
     if (deliveryBoy !== undefined) {
       ord.deliveryBoy = deliveryBoy || null
       // Auto-set status to 'assigned' when driver is selected (if currently pending)

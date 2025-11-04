@@ -550,6 +550,8 @@ export default function ManagerOrders(){
     const isDelivered = status === 'delivered'
     const isReturnSubmitted = o.returnSubmittedToCompany && !o.returnVerified
     const isReturnVerified = o.returnVerified
+    // Lock driver and commission once assigned
+    const isDriverAssigned = driverId !== '' && editingDriver[id] === undefined
     
     return (
       <div className="card" style={{display:'grid', gap:12, border: isReturnSubmitted ? '2px solid #f59e0b' : undefined, background: isReturnSubmitted ? 'rgba(251, 146, 60, 0.05)' : undefined}}>
@@ -571,6 +573,11 @@ export default function ManagerOrders(){
             {isDelivered && (
               <span className="badge" style={{background:'#d1fae5', color:'#065f46', border:'1px solid #10b981', fontWeight:600, fontSize:12}}>
                 🔒 Status Locked
+              </span>
+            )}
+            {isDriverAssigned && (
+              <span className="badge" style={{background:'#e0e7ff', color:'#3730a3', border:'1px solid #6366f1', fontWeight:600, fontSize:12}}>
+                🔒 Driver Locked
               </span>
             )}
             {driverName && (
@@ -647,8 +654,9 @@ export default function ManagerOrders(){
               className="input" 
               value={editingDriver[id] !== undefined ? editingDriver[id] : driverId} 
               onChange={(e)=> handleDriverChange(id, e.target.value)} 
-              disabled={updating[`save-${id}`]}
-              style={{fontSize:14}}
+              disabled={updating[`save-${id}`] || isDriverAssigned}
+              style={{fontSize:14, opacity: isDriverAssigned ? 0.6 : 1, cursor: isDriverAssigned ? 'not-allowed' : 'pointer'}}
+              title={isDriverAssigned ? 'Driver already assigned. Cannot be changed. Contact owner.' : ''}
             >
               <option value="">-- Select Driver --</option>
               {countryDrivers.map(d => (
@@ -689,8 +697,9 @@ export default function ManagerOrders(){
               placeholder="0.00" 
               min="0" 
               step="0.01"
-              disabled={updating[`save-${id}`]}
-              style={{fontSize:16, fontWeight:600, maxWidth:180}}
+              disabled={updating[`save-${id}`] || isDriverAssigned}
+              style={{fontSize:16, fontWeight:600, maxWidth:180, opacity: isDriverAssigned ? 0.6 : 1, cursor: isDriverAssigned ? 'not-allowed' : 'pointer'}}
+              title={isDriverAssigned ? 'Commission locked with driver assignment. Contact owner.' : ''}
             />
             <div className="helper" style={{fontSize:11, marginTop:4}}>{orderCountryCurrency(o.orderCountry)}</div>
           </div>
