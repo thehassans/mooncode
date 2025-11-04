@@ -16,13 +16,11 @@ export default function Transactions(){
   const [country, setCountry] = useState('')
   const [countryOptions, setCountryOptions] = useState([])
   const [drivers, setDrivers] = useState([])
-  const [deliveredOrders, setDeliveredOrders] = useState([])
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [sortBy, setSortBy] = useState('variance')
   const [sortDir, setSortDir] = useState('desc')
   const [remitModalFor, setRemitModalFor] = useState('')
-  const [countryOrders, setCountryOrders] = useState([])
   const [detailModalFor, setDetailModalFor] = useState('')
   const [isMobile, setIsMobile] = useState(false)
   const [acceptModal, setAcceptModal] = useState(null)
@@ -120,19 +118,20 @@ export default function Transactions(){
     })()
   }, [])
 
-  // When country changes, load drivers, remittances, and orders in parallel for responsiveness
+  // When country changes, load drivers and remittances only (backend provides aggregated data)
   useEffect(() => {
-    if (!country) { setDrivers([]); setDeliveredOrders([]); setDriverRemits([]); setCountryOrders([]); return }
+    if (!country) { setDrivers([]); setDriverRemits([]); return }
     let alive = true
     ;(async () => {
       try {
         setLoading(true)
-        const lim = 200
 
+        // Load driver summaries with all aggregated data from backend
         const loadDrivers = apiGet(`/api/finance/drivers/summary?country=${encodeURIComponent(country)}&limit=200`)
           .then(d => { if (alive) setDrivers(Array.isArray(d?.drivers) ? d.drivers : []) })
           .catch(()=> { if (alive) setDrivers([]) })
 
+        // Load remittances
         const remitsUrl = (role==='manager') ? '/api/finance/remittances?workspace=1' : '/api/finance/remittances'
         const loadRemits = apiGet(remitsUrl)
           .then(remitResp => {
@@ -141,40 +140,7 @@ export default function Transactions(){
             if (alive) setDriverRemits(filteredRemits)
           }).catch(()=> { if (alive) setDriverRemits([]) })
 
-        const loadDelivered = (async ()=>{
-          let page = 1, hasMore = true, acc = []
-          while (hasMore && page <= 10) {
-            const q = new URLSearchParams()
-            q.set('country', country)
-            q.set('ship', 'delivered')
-            q.set('page', String(page))
-            q.set('limit', String(lim))
-            const r = await apiGet(`/api/orders?${q.toString()}`)
-            const arr = Array.isArray(r?.orders) ? r.orders : []
-            acc = acc.concat(arr)
-            hasMore = !!r?.hasMore
-            page += 1
-          }
-          if (alive) setDeliveredOrders(acc)
-        })()
-
-        const loadAllOrders = (async ()=>{
-          let p2 = 1, more2 = true, all = []
-          while (more2 && p2 <= 10){
-            const q2 = new URLSearchParams()
-            q2.set('country', country)
-            q2.set('page', String(p2))
-            q2.set('limit', String(lim))
-            const r2 = await apiGet(`/api/orders?${q2.toString()}`)
-            const arr2 = Array.isArray(r2?.orders) ? r2.orders : []
-            all = all.concat(arr2)
-            more2 = !!r2?.hasMore
-            p2 += 1
-          }
-          if (alive) setCountryOrders(all)
-        })()
-
-        await Promise.all([loadDrivers, loadRemits, loadDelivered, loadAllOrders])
+        await Promise.all([loadDrivers, loadRemits])
       } catch (e) {
         if (alive) setErr(e?.message || 'Failed to load driver finances')
       } finally { if (alive) setLoading(false) }
@@ -263,32 +229,6 @@ export default function Transactions(){
     await acceptRemit(String(r._id||''))
   }
 
-  // Build per-driver metrics from deliveredOrders for selected country
-  function orderNumericTotal(o){
-    try{
-      if (o && o.total != null && !Number.isNaN(Number(o.total))) return Number(o.total)
-      if (Array.isArray(o?.items) && o.items.length){
-        let sum = 0; for (const it of o.items){ const price = Number(it?.productId?.price||0); const qty = Math.max(1, Number(it?.quantity||1)); sum += price * qty }
-        return sum
-      }
-      const price = Number(o?.productId?.price||0); const qty = Math.max(1, Number(o?.quantity||1)); return price * qty
-    }catch{ return 0 }
-  }
-  function collectedOf(o){ const c = Number(o?.collectedAmount); if (!Number.isNaN(c) && c>0) return c; const cod = Number(o?.codAmount); if (!Number.isNaN(cod) && cod>0) return cod; return orderNumericTotal(o) }
-  const driverStats = useMemo(()=>{
-    const map = new Map()
-    for (const o of deliveredOrders){
-      const dAt = o?.deliveredAt || o?.updatedAt || o?.createdAt
-      if ((fromDate || toDate) && !dateInRange(dAt, fromDate, toDate)) continue
-      const did = String(o?.deliveryBoy?._id || o?.deliveryBoy || '')
-      if (!did) continue
-      if (!map.has(did)) map.set(did, { deliveredCount:0, collectedSum:0 })
-      const s = map.get(did)
-      s.deliveredCount += 1
-      s.collectedSum += collectedOf(o)
-    }
-    return map
-  }, [deliveredOrders, fromDate, toDate])
   // Sum accepted/received remittances per driver (delivered to company)
   const driverAcceptedSum = useMemo(()=>{
     const by = new Map()
@@ -307,67 +247,6 @@ export default function Transactions(){
     }
     return by
   }, [driverRemits, country, fromDate, toDate])
-
-  function normalizeShip(s){
-    const n = String(s||'').toLowerCase().trim().replace(/\s+/g,'_').replace(/-/g,'_')
-    if (n==='picked' || n==='pickedup' || n==='pick_up' || n==='pick-up' || n==='pickup') return 'picked_up'
-    if (n==='shipped' || n==='contacted' || n==='attempted') return 'in_transit'
-    if (n==='open') return 'open'
-    return n
-  }
-  const openAssignedByDriver = useMemo(()=>{
-    const map = new Map()
-    for (const o of countryOrders){
-      const did = String(o?.deliveryBoy?._id || o?.deliveryBoy || '')
-      if (!did) continue
-      const ship = normalizeShip(o?.shipmentStatus || o?.status)
-      const isOpen = ['pending','assigned','picked_up','in_transit','out_for_delivery','no_response'].includes(ship)
-      if (!isOpen) continue
-      if ((fromDate || toDate) && !dateInRange(o?.updatedAt || o?.createdAt, fromDate, toDate)) continue
-      if (!map.has(did)) map.set(did, 0)
-      map.set(did, map.get(did) + 1)
-    }
-    return map
-  }, [countryOrders, fromDate, toDate])
-  const totalAssignedByDriver = useMemo(()=>{
-    const map = new Map()
-    for (const o of countryOrders){
-      const did = String(o?.deliveryBoy?._id || o?.deliveryBoy || '')
-      if (!did) continue
-      if ((fromDate || toDate) && !dateInRange(o?.updatedAt || o?.createdAt, fromDate, toDate)) continue
-      if (!map.has(did)) map.set(did, 0)
-      map.set(did, map.get(did) + 1)
-    }
-    return map
-  }, [countryOrders, fromDate, toDate])
-
-  const returnedByDriver = useMemo(()=>{
-    const map = new Map()
-    for (const o of countryOrders){
-      const did = String(o?.deliveryBoy?._id || o?.deliveryBoy || '')
-      if (!did) continue
-      const ship = normalizeShip(o?.shipmentStatus || o?.status)
-      if (ship !== 'returned') continue
-      if ((fromDate || toDate) && !dateInRange(o?.updatedAt || o?.createdAt, fromDate, toDate)) continue
-      if (!map.has(did)) map.set(did, 0)
-      map.set(did, map.get(did) + 1)
-    }
-    return map
-  }, [countryOrders, fromDate, toDate])
-
-  const cancelledByDriver = useMemo(()=>{
-    const map = new Map()
-    for (const o of countryOrders){
-      const did = String(o?.deliveryBoy?._id || o?.deliveryBoy || '')
-      if (!did) continue
-      const ship = normalizeShip(o?.shipmentStatus || o?.status)
-      if (ship !== 'cancelled') continue
-      if ((fromDate || toDate) && !dateInRange(o?.updatedAt || o?.createdAt, fromDate, toDate)) continue
-      if (!map.has(did)) map.set(did, 0)
-      map.set(did, map.get(did) + 1)
-    }
-    return map
-  }, [countryOrders, fromDate, toDate])
 
   function countryCurrency(c){
     const raw = String(c||'').trim().toLowerCase()
@@ -397,7 +276,7 @@ export default function Transactions(){
       const collectedSum = d.collected || 0
       const remittedSum = d.deliveredToCompany || 0
       const variance = d.pendingToCompany || 0
-      const returned = returnedByDriver.get(id) || 0
+      const returned = 0  // Not needed for main view, can be loaded on demand
       const cancelled = d.canceled || 0
       // Create driver object in expected format
       const driver = {
