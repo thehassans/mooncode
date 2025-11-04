@@ -326,11 +326,20 @@ export default function ManagerFinances(){
                       <div style={{color:'#6366f1', fontSize:13}}>{r.createdAt ? new Date(r.createdAt).toLocaleString() : '-'}</div>
                     </td>
                     <td style={{ padding: '10px 12px' }}>
-                      {r.status === 'pending' ? (
-                        <button className="btn success small" onClick={()=> setAcceptModal(r)}>Accept</button>
-                      ) : (
-                        <button className="btn secondary small" onClick={()=> setAcceptModal(r)}>Details</button>
-                      )}
+                      <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+                        {r.status === 'pending' ? (
+                          <>
+                            <button className="btn success small" onClick={()=> setAcceptModal(r)}>Accept</button>
+                            <button className="btn danger small" onClick={async()=>{ 
+                              if(window.confirm('Are you sure you want to reject this remittance?')) {
+                                await rejectRemit(String(r._id||''))
+                              }
+                            }}>Reject</button>
+                          </>
+                        ) : (
+                          <button className="btn secondary small" onClick={()=> setAcceptModal(r)}>Details</button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
