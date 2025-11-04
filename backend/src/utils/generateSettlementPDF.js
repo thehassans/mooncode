@@ -73,7 +73,7 @@ export async function generateSettlementPDF(data) {
       const filename = `settlement-${timestamp}.pdf`
       const filepath = path.join(uploadsDir, filename)
 
-      const doc = new PDFDocument({ size: 'A4', margin: 30 })
+      const doc = new PDFDocument({ size: 'A4', margin: 30, bufferPages: true })
       const stream = fs.createWriteStream(filepath)
       doc.pipe(stream)
 
@@ -306,16 +306,35 @@ export async function generateSettlementPDF(data) {
       const pageHeight = doc.page.height
       const signatureY = Math.max(currentY + 20, pageHeight - 110)
       doc.rect(margin, signatureY, pageWidth - 2 * margin, 60).fillAndStroke('#f8fafc', '#cbd5e1')
+      
+      const sigLineY = signatureY + 30
+      const sigLineWidth = 200
+      const sigLineX = margin + ((pageWidth - 2 * margin) / 2) - (sigLineWidth / 2)
+      doc.moveTo(sigLineX, sigLineY).lineTo(sigLineX + sigLineWidth, sigLineY).strokeColor('#cbd5e1').lineWidth(1.5).stroke()
+      
       doc.fontSize(11).font('Helvetica-Bold').fillColor('#1e293b')
-      doc.text('Qadeer Hussain, Owner of Buysial', margin, signatureY + 20, { align: 'center', width: pageWidth - 2 * margin })
-      doc.fontSize(9).font('Helvetica').fillColor('#64748b')
-      doc.text(`Date: ${new Date().toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'})}`, margin, signatureY + 38, { align: 'center', width: pageWidth - 2 * margin })
+      doc.text('Qadeer Hussain', margin, sigLineY + 8, { align: 'center', width: pageWidth - 2 * margin })
+      doc.fontSize(8).font('Helvetica').fillColor('#64748b')
+      doc.text('This is a system-generated report', margin, sigLineY + 28, { align: 'center', width: pageWidth - 2 * margin })
       
       // === FOOTER ===
       doc.fontSize(7).font('Helvetica').fillColor('#94a3b8')
       doc.text('CONFIDENTIAL DOCUMENT | BuySial Commerce', margin, pageHeight - 35, { align: 'center' })
       doc.fontSize(6).fillColor('#cbd5e1')
-      doc.text(`Generated: ${new Date().toLocaleString('en-US', {dateStyle: 'medium', timeStyle: 'short'})}`, margin, pageHeight - 22, { align: 'center' })
+      doc.text(`Generated: ${new Date().toLocaleString('en-US', {dateStyle: 'medium', timeStyle: 'short'})}`, margin, pageHeight - 35, { align: 'center' })
+
+      // Add page numbers (only for first 24 pages)
+      const range = doc.bufferedPageRange()
+      for (let i = 0; i < range.count; i++) {
+        if (i < 24) {
+          doc.switchToPage(i)
+          doc.fontSize(8).font('Helvetica').fillColor('#94a3b8')
+          doc.text(`— Page ${i + 1} of ${range.count} —`, margin, pageHeight - 22, {
+            width: pageWidth - 2 * margin,
+            align: 'center'
+          })
+        }
+      }
 
       doc.end()
 
@@ -343,7 +362,7 @@ export async function generateAcceptedSettlementPDF(data) {
       const filename = `settlement-accepted-${timestamp}.pdf`
       const filepath = path.join(uploadsDir, filename)
 
-      const doc = new PDFDocument({ size: 'A4', margin: 30 })
+      const doc = new PDFDocument({ size: 'A4', margin: 30, bufferPages: true })
       const stream = fs.createWriteStream(filepath)
 
       doc.pipe(stream)
@@ -608,16 +627,35 @@ export async function generateAcceptedSettlementPDF(data) {
       const pageHeight = doc.page.height
       const signatureY = Math.max(currentY + 20, pageHeight - 110)
       doc.rect(margin, signatureY, pageWidth - 2 * margin, 60).fillAndStroke('#d1fae5', '#10b981')
+      
+      const sigLineY = signatureY + 30
+      const sigLineWidth = 200
+      const sigLineX = margin + ((pageWidth - 2 * margin) / 2) - (sigLineWidth / 2)
+      doc.moveTo(sigLineX, sigLineY).lineTo(sigLineX + sigLineWidth, sigLineY).strokeColor('#10b981').lineWidth(1.5).stroke()
+      
       doc.fontSize(11).font('Helvetica-Bold').fillColor('#047857')
-      doc.text('Qadeer Hussain, Owner of Buysial', margin, signatureY + 20, { align: 'center', width: pageWidth - 2 * margin })
-      doc.fontSize(9).font('Helvetica').fillColor('#065f46')
-      doc.text(`Date: ${new Date().toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'})}`, margin, signatureY + 38, { align: 'center', width: pageWidth - 2 * margin })
+      doc.text('Qadeer Hussain', margin, sigLineY + 8, { align: 'center', width: pageWidth - 2 * margin })
+      doc.fontSize(8).font('Helvetica').fillColor('#065f46')
+      doc.text('This is a system-generated report', margin, sigLineY + 28, { align: 'center', width: pageWidth - 2 * margin })
       
       // === FOOTER ===
       doc.fontSize(7).font('Helvetica').fillColor('#10b981')
       doc.text('ACCEPTED & VERIFIED DOCUMENT | BuySial Commerce', margin, pageHeight - 35, { align: 'center' })
       doc.fontSize(6).fillColor('#86efac')
-      doc.text(`Accepted: ${new Date(data.acceptedDate || Date.now()).toLocaleString('en-US', {dateStyle: 'medium', timeStyle: 'short'})}`, margin, pageHeight - 22, { align: 'center' })
+      doc.text(`Accepted: ${new Date(data.acceptedDate || Date.now()).toLocaleString('en-US', {dateStyle: 'medium', timeStyle: 'short'})}`, margin, pageHeight - 35, { align: 'center' })
+
+      // Add page numbers (only for first 24 pages)
+      const range = doc.bufferedPageRange()
+      for (let i = 0; i < range.count; i++) {
+        if (i < 24) {
+          doc.switchToPage(i)
+          doc.fontSize(8).font('Helvetica').fillColor('#10b981')
+          doc.text(`— Page ${i + 1} of ${range.count} —`, margin, pageHeight - 22, {
+            width: pageWidth - 2 * margin,
+            align: 'center'
+          })
+        }
+      }
 
       // Finalize PDF
       doc.end()
