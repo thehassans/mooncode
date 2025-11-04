@@ -1664,8 +1664,9 @@ router.post(
       }
 
       // Create an agent remittance record marking commission payment
+      const pkrRate = 76;
       const noteText = orderValue > 0
-        ? `Commission payment (AED ${orderValue.toFixed(2)} × ${rate}% = PKR ${amt.toFixed(2)})`
+        ? `Commission payment ((AED ${orderValue.toFixed(2)} × PKR ${pkrRate}) × ${rate}% = PKR ${amt.toFixed(2)})`
         : `Commission payment (${rate}% commission rate)`;
       
       const remit = new AgentRemit({

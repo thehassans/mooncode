@@ -210,10 +210,12 @@ export async function generateAgentCommissionReceiptPDF(data) {
 
       // Add commission rate information if provided
       if (data.commissionRate && data.totalOrderValueAED) {
+        const pkrRate = 76;
+        const totalInPKR = data.totalOrderValueAED * pkrRate;
         doc.fontSize(10)
            .font('Helvetica-Bold')
            .fillColor(colors.accent)
-           .text(`Commission Rate: ${data.commissionRate}% of AED ${formatCurrency(data.totalOrderValueAED, '').trim()}`, margin, y, {
+           .text(`Commission: (AED ${formatCurrency(data.totalOrderValueAED, '').trim()} × PKR ${pkrRate}) × ${data.commissionRate}% = PKR ${formatCurrency(data.amountPKR, '').trim()}`, margin, y, {
              width: contentWidth,
              align: 'center'
            })

@@ -266,9 +266,10 @@ export default function AgentAmounts(){
                     onChange={(e)=> {
                       const val = Number(e.target.value) || 0
                       setCommissionRate(val)
-                      // Calculate: (AED value × rate × PKR conversion ~76)
+                      // Calculate: AED to PKR, then apply commission rate
                       const pkrRate = 76
-                      setCalculatedAmount((payModal.totalOrderValueAED * val / 100) * pkrRate)
+                      const totalInPKR = payModal.totalOrderValueAED * pkrRate
+                      setCalculatedAmount((totalInPKR * val) / 100)
                     }}
                     style={{ width: 70, padding: '8px', textAlign: 'right', fontWeight: 700, fontSize: 16 }}
                     className="input"
@@ -292,7 +293,8 @@ export default function AgentAmounts(){
                     onClick={() => {
                       setCommissionRate(rate)
                       const pkrRate = 76
-                      setCalculatedAmount((payModal.totalOrderValueAED * rate / 100) * pkrRate)
+                      const totalInPKR = payModal.totalOrderValueAED * pkrRate
+                      setCalculatedAmount((totalInPKR * rate) / 100)
                     }}
                   >
                     {rate}%
@@ -311,7 +313,7 @@ export default function AgentAmounts(){
               </div>
 
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-                AED {num(payModal.totalOrderValueAED)} × {commissionRate !== null ? commissionRate : 12}% × PKR 76 ≈ PKR {num(commissionRate ? calculatedAmount : payModal.balance)}
+                (AED {num(payModal.totalOrderValueAED)} × PKR 76) × {commissionRate !== null ? commissionRate : 12}% = PKR {num(commissionRate ? calculatedAmount : payModal.balance)}
               </div>
             </div>
 
