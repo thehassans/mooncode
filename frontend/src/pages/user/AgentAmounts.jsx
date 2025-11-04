@@ -13,8 +13,8 @@ export default function AgentAmounts(){
   const [searchTerm, setSearchTerm] = useState('')
   const [payingAgent, setPayingAgent] = useState(null)
   const [payModal, setPayModal] = useState(null)
-  const [paymentPercentage, setPaymentPercentage] = useState(100)
-  const [paymentAmount, setPaymentAmount] = useState(0)
+  const [commissionRate, setCommissionRate] = useState(null)
+  const [calculatedAmount, setCalculatedAmount] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -178,9 +178,9 @@ export default function AgentAmounts(){
                             style={{fontSize:12, padding:'6px 12px'}}
                             disabled={payingAgent === a.id}
                             onClick={()=> { 
-                              setPayModal({ agent: a, balance })
-                              setPaymentPercentage(100)
-                              setPaymentAmount(balance)
+                              setPayModal({ agent: a, balance, totalOrderValueAED: a.totalOrderValueAED || 0, deliveredCommission: a.deliveredCommissionPKR || 0 })
+                              setCommissionRate(null)
+                              setCalculatedAmount(balance)
                             }}
                           >
                             Pay Commission
@@ -204,8 +204,8 @@ export default function AgentAmounts(){
         open={!!payModal}
         onClose={()=> { 
           setPayModal(null)
-          setPaymentPercentage(100)
-          setPaymentAmount(0)
+          setCommissionRate(null)
+          setCalculatedAmount(0)
         }}
         footer={
           <>
@@ -214,25 +214,23 @@ export default function AgentAmounts(){
               className="btn success" 
               disabled={!!payingAgent}
               onClick={async()=>{
-                if (paymentAmount <= 0) {
+                const finalAmount = commissionRate ? calculatedAmount : payModal.balance
+                const finalRate = commissionRate || 12
+                if (finalAmount <= 0) {
                   toast.error('Payment amount must be greater than 0')
-                  return
-                }
-                if (paymentPercentage < 1 || paymentPercentage > 100) {
-                  toast.error('Percentage must be between 1 and 100')
                   return
                 }
                 setPayingAgent(payModal.agent.id)
                 try{
                   await apiPost(`/api/finance/agents/${payModal.agent.id}/pay-commission`, { 
-                    amount: paymentAmount,
-                    percentage: paymentPercentage,
-                    fullBalance: payModal.balance
+                    amount: finalAmount,
+                    commissionRate: finalRate,
+                    totalOrderValueAED: payModal.totalOrderValueAED
                   })
-                  toast.success(`Commission payment sent successfully (${paymentPercentage}%)`)
+                  toast.success(`Commission payment sent successfully (${finalRate}% rate)`)
                   setPayModal(null)
-                  setPaymentPercentage(100)
-                  setPaymentAmount(0)
+                  setCommissionRate(null)
+                  setCalculatedAmount(0)
                   // Refresh data
                   const r = await apiGet('/api/finance/agents/commission')
                   setAgents(Array.isArray(r?.agents) ? r.agents : [])
@@ -251,48 +249,69 @@ export default function AgentAmounts(){
         {payModal && (
           <div style={{ padding: '16px 0' }}>
             <div style={{ fontSize: 16, marginBottom: 24, textAlign: 'center' }}>
-              Send <strong style={{ color: '#10b981', fontSize: 20 }}>PKR {num(paymentAmount)}</strong> ({paymentPercentage}%) commission to <strong style={{ color: '#8b5cf6' }}>{payModal.agent.name}</strong>?
+              Send <strong style={{ color: '#10b981', fontSize: 20 }}>PKR {num(commissionRate ? calculatedAmount : payModal.balance)}</strong> commission to <strong style={{ color: '#8b5cf6' }}>{payModal.agent.name}</strong>?
             </div>
             
-            {/* Percentage Slider */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <label style={{ fontWeight: 600, fontSize: 14 }}>Commission Percentage:</label>
+            {/* Commission Rate Selector */}
+            <div style={{ marginBottom: 20, padding: 16, background: 'var(--panel)', borderRadius: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <label style={{ fontWeight: 600, fontSize: 14 }}>Commission Rate:</label>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input 
                     type="number" 
-                    min="1" 
+                    min="0" 
                     max="100" 
-                    step="1"
-                    value={paymentPercentage}
+                    step="0.5"
+                    value={commissionRate !== null ? commissionRate : 12}
                     onChange={(e)=> {
-                      const val = Math.max(1, Math.min(100, Number(e.target.value) || 100))
-                      setPaymentPercentage(val)
-                      setPaymentAmount((payModal.balance * val) / 100)
+                      const val = Number(e.target.value) || 0
+                      setCommissionRate(val)
+                      // Calculate: (AED value × rate × PKR conversion ~76)
+                      const pkrRate = 76
+                      setCalculatedAmount((payModal.totalOrderValueAED * val / 100) * pkrRate)
                     }}
-                    style={{ width: 70, padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: 16 }}
+                    style={{ width: 70, padding: '8px', textAlign: 'right', fontWeight: 700, fontSize: 16 }}
                     className="input"
                   />
                   <span style={{ fontSize: 18, fontWeight: 700 }}>%</span>
                 </div>
               </div>
-              <input 
-                type="range" 
-                min="1" 
-                max="100" 
-                step="1"
-                value={paymentPercentage}
-                onChange={(e)=> {
-                  const val = Number(e.target.value)
-                  setPaymentPercentage(val)
-                  setPaymentAmount((payModal.balance * val) / 100)
-                }}
-                style={{ width: '100%', cursor: 'pointer' }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                <span>1%</span>
-                <span>50%</span>
-                <span>100%</span>
+              
+              {/* Quick Rate Buttons */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                {[8, 10, 12, 15, 18, 20, 25].map(rate => (
+                  <button
+                    key={rate}
+                    className="btn"
+                    style={{
+                      fontSize: 12,
+                      padding: '6px 12px',
+                      background: (commissionRate || 12) === rate ? '#8b5cf6' : 'var(--panel-2)',
+                      color: (commissionRate || 12) === rate ? '#fff' : 'inherit'
+                    }}
+                    onClick={() => {
+                      setCommissionRate(rate)
+                      const pkrRate = 76
+                      setCalculatedAmount((payModal.totalOrderValueAED * rate / 100) * pkrRate)
+                    }}
+                  >
+                    {rate}%
+                  </button>
+                ))}
+                <button
+                  className="btn secondary"
+                  style={{ fontSize: 12, padding: '6px 12px' }}
+                  onClick={() => {
+                    setCommissionRate(null)
+                    setCalculatedAmount(payModal.balance)
+                  }}
+                >
+                  Reset
+                </button>
+              </div>
+
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+                AED {num(payModal.totalOrderValueAED)} × {commissionRate !== null ? commissionRate : 12}% × PKR 76 ≈ PKR {num(commissionRate ? calculatedAmount : payModal.balance)}
               </div>
             </div>
 
@@ -306,16 +325,16 @@ export default function AgentAmounts(){
                 <strong>{payModal.agent.phone}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ opacity: 0.7 }}>Full Balance:</span>
-                <strong>PKR {num(payModal.balance)}</strong>
+                <span style={{ opacity: 0.7 }}>Total Order Value:</span>
+                <strong>AED {num(payModal.totalOrderValueAED)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ opacity: 0.7 }}>Percentage:</span>
-                <strong style={{ color: '#8b5cf6', fontSize: 16 }}>{paymentPercentage}%</strong>
+                <span style={{ opacity: 0.7 }}>Commission Rate:</span>
+                <strong style={{ color: '#8b5cf6', fontSize: 16 }}>{commissionRate !== null ? commissionRate : 12}%</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-                <span style={{ opacity: 0.7, fontWeight: 600 }}>Amount to Pay:</span>
-                <strong style={{ color: '#10b981', fontSize: 18 }}>PKR {num(paymentAmount)}</strong>
+                <span style={{ opacity: 0.7, fontWeight: 600 }}>Total Amount:</span>
+                <strong style={{ color: '#10b981', fontSize: 18 }}>PKR {num(commissionRate ? calculatedAmount : payModal.balance)}</strong>
               </div>
             </div>
           </div>

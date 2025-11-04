@@ -208,12 +208,12 @@ export async function generateAgentCommissionReceiptPDF(data) {
 
       y += boxHeight + 10
 
-      // Add percentage information if provided and not 100%
-      if (data.percentage && data.percentage < 100 && data.fullBalance) {
+      // Add commission rate information if provided
+      if (data.commissionRate && data.totalOrderValueAED) {
         doc.fontSize(10)
            .font('Helvetica-Bold')
            .fillColor(colors.accent)
-           .text(`Payment Percentage: ${data.percentage}% of PKR ${formatCurrency(data.fullBalance, '').trim()}`, margin, y, {
+           .text(`Commission Rate: ${data.commissionRate}% of AED ${formatCurrency(data.totalOrderValueAED, '').trim()}`, margin, y, {
              width: contentWidth,
              align: 'center'
            })

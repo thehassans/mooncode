@@ -1557,15 +1557,13 @@ router.post(
   async (req, res) => {
     try {
       const { id } = req.params;
-      const { amount, percentage = 100, fullBalance } = req.body || {};
+      const { amount, commissionRate, totalOrderValueAED } = req.body || {};
       const amt = Number(amount);
-      const pct = Number(percentage);
-      const fullBal = Number(fullBalance || amt);
+      const rate = Number(commissionRate || 12);
+      const orderValue = Number(totalOrderValueAED || 0);
       
       if (Number.isNaN(amt) || amt <= 0)
         return res.status(400).json({ message: "Invalid amount" });
-      if (Number.isNaN(pct) || pct < 1 || pct > 100)
-        return res.status(400).json({ message: "Invalid percentage, must be between 1 and 100" });
 
       const agent = await User.findOne({ _id: id, role: "agent" });
       if (!agent) return res.status(404).json({ message: "Agent not found" });
@@ -1618,8 +1616,8 @@ router.post(
           totalDelivered,
           amountAED,
           amountPKR: amt,
-          percentage: pct,
-          fullBalance: fullBal,
+          commissionRate: rate,
+          totalOrderValueAED: orderValue,
           orders
         });
       } catch (err) {
@@ -1666,6 +1664,10 @@ router.post(
       }
 
       // Create an agent remittance record marking commission payment
+      const noteText = orderValue > 0
+        ? `Commission payment (AED ${orderValue.toFixed(2)} × ${rate}% = PKR ${amt.toFixed(2)})`
+        : `Commission payment (${rate}% commission rate)`;
+      
       const remit = new AgentRemit({
         agent: id,
         owner: agent.createdBy || req.user.id,
@@ -1673,9 +1675,9 @@ router.post(
         approverRole: req.user.role === "user" ? "user" : "manager",
         amount: amt,
         currency: "PKR",
-        percentage: pct,
-        fullBalance: fullBal,
-        note: `Commission payment (${pct}% of PKR ${fullBal.toLocaleString()})`,
+        commissionRate: rate,
+        totalOrderValueAED: orderValue,
+        note: noteText,
         status: "sent",
         sentAt: new Date(),
         sentBy: req.user.id,
