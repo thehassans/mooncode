@@ -313,7 +313,7 @@ export default function AgentAmounts(){
               </div>
 
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-                (AED {num(payModal.totalOrderValueAED)} × PKR 76) × {commissionRate !== null ? commissionRate : 12}% = PKR {num(commissionRate ? calculatedAmount : payModal.balance)}
+                Total Orders: AED {num(payModal.totalOrderValueAED)} → PKR {num(payModal.totalOrderValueAED * 76)} | Commission: {commissionRate !== null ? commissionRate : 12}% of PKR {num(payModal.totalOrderValueAED * 76)} = PKR {num(commissionRate ? calculatedAmount : payModal.balance)}
               </div>
             </div>
 

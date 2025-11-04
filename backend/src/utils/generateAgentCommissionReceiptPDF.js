@@ -212,10 +212,18 @@ export async function generateAgentCommissionReceiptPDF(data) {
       if (data.commissionRate && data.totalOrderValueAED) {
         const pkrRate = 76;
         const totalInPKR = data.totalOrderValueAED * pkrRate;
+        doc.fontSize(9)
+           .font('Helvetica')
+           .fillColor(colors.muted)
+           .text(`Total Orders: AED ${formatCurrency(data.totalOrderValueAED, '').trim()} converted to PKR ${formatCurrency(totalInPKR, '').trim()}`, margin, y, {
+             width: contentWidth,
+             align: 'center'
+           })
+        y += 15
         doc.fontSize(10)
            .font('Helvetica-Bold')
            .fillColor(colors.accent)
-           .text(`Commission: (AED ${formatCurrency(data.totalOrderValueAED, '').trim()} × PKR ${pkrRate}) × ${data.commissionRate}% = PKR ${formatCurrency(data.amountPKR, '').trim()}`, margin, y, {
+           .text(`Commission: ${data.commissionRate}% of PKR ${formatCurrency(totalInPKR, '').trim()} = PKR ${formatCurrency(data.amountPKR, '').trim()}`, margin, y, {
              width: contentWidth,
              align: 'center'
            })
