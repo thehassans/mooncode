@@ -2779,6 +2779,17 @@ router.post(
       if (!ownerId)
         return res.status(400).json({ message: "Manager has no owner" });
 
+      // Check if manager already has a pending remittance
+      const existingPending = await ManagerRemittance.findOne({
+        manager: req.user.id,
+        status: "pending"
+      });
+      if (existingPending) {
+        return res.status(400).json({ 
+          message: "You already have a pending remittance awaiting approval. Please wait for it to be processed before submitting a new one." 
+        });
+      }
+
       // Use country from request if provided, otherwise use manager's assigned country
       let country = reqCountry ? String(reqCountry).trim() : "";
       if (!country) {
