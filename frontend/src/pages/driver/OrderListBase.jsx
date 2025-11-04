@@ -7,6 +7,13 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
   const nav = useNavigate()
   const location = useLocation()
   const toast = useToast()
+  
+  // Month/Year filtering - default to current month
+  const now = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -33,9 +40,14 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
   async function load(){
     setLoading(true); setError('')
     try{
+      const startDate = new Date(selectedYear, selectedMonth - 1, 1)
+      const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999)
+      
       const url = (()=>{
         const hasQ = endpoint.includes('?')
         const sp = new URLSearchParams()
+        sp.set('from', startDate.toISOString())
+        sp.set('to', endDate.toISOString())
         if (withFilters){
           if (q.trim()) sp.set('q', q.trim())
           if (ship.trim()) sp.set('ship', ship.trim())
@@ -50,7 +62,7 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
     catch(e){ setRows([]); setError(e?.message||'Failed to load') }
     finally{ setLoading(false) }
   }
-  useEffect(()=>{ load() },[endpoint, q, ship, withFilters])
+  useEffect(()=>{ load() },[endpoint, q, ship, withFilters, selectedMonth, selectedYear])
 
   function mapsUrl(o){
     const lat = o?.locationLat, lng = o?.locationLng
@@ -103,6 +115,36 @@ export default function OrderListBase({ title, subtitle, endpoint, showDeliverCa
         <div>
           <div className="page-title gradient heading-blue">{title}</div>
           {subtitle ? <div className="page-subtitle">{subtitle}</div> : null}
+        </div>
+      </div>
+
+      {/* Month/Year Filter */}
+      <div className="card" style={{padding:16}}>
+        <div className="section" style={{display:'flex', alignItems:'center', gap:12, flexWrap:'wrap'}}>
+          <div style={{fontWeight:700, fontSize:14}}>📅 Period:</div>
+          <select 
+            className="input" 
+            value={selectedMonth} 
+            onChange={(e)=> setSelectedMonth(Number(e.target.value))}
+            style={{fontSize:14, maxWidth:140}}
+          >
+            {monthNames.map((name, idx) => (
+              <option key={idx} value={idx + 1}>{name}</option>
+            ))}
+          </select>
+          <select 
+            className="input" 
+            value={selectedYear} 
+            onChange={(e)=> setSelectedYear(Number(e.target.value))}
+            style={{fontSize:14, maxWidth:100}}
+          >
+            {Array.from({ length: 5 }, (_, i) => now.getFullYear() - i).map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <div className="chip" style={{background:'var(--primary)', color:'white', fontWeight:600, fontSize:13}}>
+            {monthNames[selectedMonth - 1]} {selectedYear}
+          </div>
         </div>
       </div>
 

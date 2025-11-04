@@ -16,6 +16,13 @@ function StatusBadge({ status }){
 export default function AgentOrdersHistory(){
   const location = useLocation()
   const navigate = useNavigate()
+  
+  // Month/Year filtering - default to current month
+  const now = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -48,12 +55,16 @@ export default function AgentOrdersHistory(){
 
   const buildQuery = useMemo(()=>{
     const params = new URLSearchParams()
+    const startDate = new Date(selectedYear, selectedMonth - 1, 1)
+    const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999)
+    params.set('from', startDate.toISOString())
+    params.set('to', endDate.toISOString())
     if (query.trim()) params.set('q', query.trim())
     if (country.trim()) params.set('country', country.trim())
     if (city.trim()) params.set('city', city.trim())
     if (shipFilter.trim()) params.set('ship', shipFilter.trim())
     return params
-  }, [query, country, city, shipFilter])
+  }, [query, country, city, shipFilter, selectedMonth, selectedYear])
 
   async function loadOrders(reset=false){
     if (loadingMoreRef.current) return
@@ -144,6 +155,36 @@ export default function AgentOrdersHistory(){
           <div className="page-subtitle">All orders you submitted</div>
         </div>
         <button className="btn small" onClick={()=> navigate('/agent/orders')} title="Submit Order">Submit Order</button>
+      </div>
+
+      {/* Month/Year Filter */}
+      <div className="card" style={{padding:16}}>
+        <div className="section" style={{display:'flex', alignItems:'center', gap:12, flexWrap:'wrap'}}>
+          <div style={{fontWeight:700, fontSize:14}}>📅 Period:</div>
+          <select 
+            className="input" 
+            value={selectedMonth} 
+            onChange={(e)=> setSelectedMonth(Number(e.target.value))}
+            style={{fontSize:14, maxWidth:140}}
+          >
+            {monthNames.map((name, idx) => (
+              <option key={idx} value={idx + 1}>{name}</option>
+            ))}
+          </select>
+          <select 
+            className="input" 
+            value={selectedYear} 
+            onChange={(e)=> setSelectedYear(Number(e.target.value))}
+            style={{fontSize:14, maxWidth:100}}
+          >
+            {Array.from({ length: 5 }, (_, i) => now.getFullYear() - i).map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <div className="chip" style={{background:'var(--primary)', color:'white', fontWeight:600, fontSize:13}}>
+            {monthNames[selectedMonth - 1]} {selectedYear}
+          </div>
+        </div>
       </div>
 
       <div className="card" style={{display:'grid', gap:10}}>

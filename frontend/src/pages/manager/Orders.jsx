@@ -11,6 +11,13 @@ export default function ManagerOrders(){
   const navigate = useNavigate()
   const toast = useToast()
   const [me, setMe] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} } })
+  
+  // Month/Year filtering - default to current month
+  const now = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  
   const [orders, setOrders] = useState([])
   const [error, setError] = useState('')
   const [drivers, setDrivers] = useState([])
@@ -89,6 +96,10 @@ export default function ManagerOrders(){
   async function fetchMe(){ try{ const { user } = await apiGet('/api/users/me'); setMe(user||{}) }catch{} }
   const buildQuery = useMemo(()=>{
     const params = new URLSearchParams()
+    const startDate = new Date(selectedYear, selectedMonth - 1, 1)
+    const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999)
+    params.set('from', startDate.toISOString())
+    params.set('to', endDate.toISOString())
     if (q.trim()) params.set('q', q.trim())
     if (country.trim()) params.set('country', country.trim())
     if (city.trim()) params.set('city', city.trim())
@@ -98,7 +109,7 @@ export default function ManagerOrders(){
     if (agentFilter.trim()) params.set('agent', agentFilter.trim())
     if (driverFilter.trim()) params.set('driver', driverFilter.trim())
     return params
-  }, [q, country, city, ship, onlyUnassigned, agentFilter, driverFilter])
+  }, [q, country, city, ship, onlyUnassigned, agentFilter, driverFilter, selectedMonth, selectedYear])
 
   function countryToCurrency(c){
     const raw = String(c||'').trim().toLowerCase()
@@ -751,6 +762,37 @@ export default function ManagerOrders(){
           <div className="page-subtitle">Assign drivers and print labels</div>
         </div>
       </div>
+      
+      {/* Month/Year Filter */}
+      <div className="card" style={{padding:16}}>
+        <div className="section" style={{display:'flex', alignItems:'center', gap:12, flexWrap:'wrap'}}>
+          <div style={{fontWeight:700, fontSize:14}}>📅 Period:</div>
+          <select 
+            className="input" 
+            value={selectedMonth} 
+            onChange={(e)=> setSelectedMonth(Number(e.target.value))}
+            style={{fontSize:14, maxWidth:140}}
+          >
+            {monthNames.map((name, idx) => (
+              <option key={idx} value={idx + 1}>{name}</option>
+            ))}
+          </select>
+          <select 
+            className="input" 
+            value={selectedYear} 
+            onChange={(e)=> setSelectedYear(Number(e.target.value))}
+            style={{fontSize:14, maxWidth:100}}
+          >
+            {Array.from({ length: 5 }, (_, i) => now.getFullYear() - i).map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <div className="chip" style={{background:'var(--primary)', color:'white', fontWeight:600, fontSize:13}}>
+            {monthNames[selectedMonth - 1]} {selectedYear}
+          </div>
+        </div>
+      </div>
+      
       <div className="card" style={{display:'grid', gap:10}}>
         <div className="card-header">
           <div className="card-title">Filtered Summary</div>
