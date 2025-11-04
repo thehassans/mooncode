@@ -11,6 +11,7 @@ export default function AgentAmounts(){
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [payingAgent, setPayingAgent] = useState(null)
   const [payModal, setPayModal] = useState(null)
   const [commissionRate, setCommissionRate] = useState(null)
@@ -41,16 +42,24 @@ export default function AgentAmounts(){
     }
   }, [])
 
+  // Debounce search for better performance
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+    }, 300)
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm])
+
   function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
 
   const filteredAgents = useMemo(()=>{
-    if (!searchTerm) return agents
-    const term = searchTerm.toLowerCase()
+    if (!debouncedSearch) return agents
+    const term = debouncedSearch.toLowerCase()
     return agents.filter(a => 
       String(a.name||'').toLowerCase().includes(term) ||
       String(a.phone||'').toLowerCase().includes(term)
     )
-  }, [agents, searchTerm])
+  }, [agents, debouncedSearch])
 
   const totals = useMemo(()=>{
     let deliveredCommission = 0, upcomingCommission = 0, withdrawn = 0, pending = 0, ordersSubmitted = 0, totalOrderValueAED = 0
@@ -88,6 +97,7 @@ export default function AgentAmounts(){
           value={searchTerm} 
           onChange={(e)=> setSearchTerm(e.target.value)} 
           disabled={loading}
+          autoComplete="off"
         />
       </div>
 
@@ -146,9 +156,34 @@ export default function AgentAmounts(){
             </thead>
             <tbody>
               {loading ? (
-                Array.from({length:5}).map((_,i)=> (
+                Array.from({length:3}).map((_,i)=> (
                   <tr key={`sk${i}`}>
-                    <td colSpan={9} style={{ padding:'10px 12px' }}>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite', marginBottom:4 }} />
+                      <div style={{ height:10, width:'60%', background:'var(--panel-2)', borderRadius:4, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px' }}>
                       <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
                     </td>
                   </tr>

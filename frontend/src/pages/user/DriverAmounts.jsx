@@ -13,6 +13,7 @@ export default function DriverAmounts(){
   const [countryOptions, setCountryOptions] = useState([])
   const [country, setCountry] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [payingDriver, setPayingDriver] = useState(null)
   const [payModal, setPayModal] = useState(null)
   const [customRate, setCustomRate] = useState(null)
@@ -116,6 +117,14 @@ export default function DriverAmounts(){
     }
   }
 
+  // Debounce search for better performance
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+    }, 300)
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm])
+
   function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
 
   const filteredDrivers = useMemo(()=>{
@@ -123,15 +132,15 @@ export default function DriverAmounts(){
     if (country) {
       result = result.filter(d => String(d?.country||'').trim().toLowerCase() === String(country).trim().toLowerCase())
     }
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase()
+    if (debouncedSearch) {
+      const term = debouncedSearch.toLowerCase()
       result = result.filter(d => 
-        String(d.name||'').toLowerCase().includes(term) ||
-        String(d.phone||'').toLowerCase().includes(term)
+        String(d?.name||'').toLowerCase().includes(term) ||
+        String(d?.phone||'').toLowerCase().includes(term)
       )
     }
     return result
-  }, [drivers, country, searchTerm])
+  }, [drivers, country, debouncedSearch])
 
   const totals = useMemo(()=>{
     let totalDelivered = 0, totalCollected = 0, totalCommission = 0, totalSentComm = 0, totalPendingComm = 0
@@ -256,7 +265,9 @@ export default function DriverAmounts(){
             type="text" 
             placeholder="Search by driver name or phone..." 
             value={searchTerm} 
-            onChange={(e)=> setSearchTerm(e.target.value)} 
+            onChange={(e)=> setSearchTerm(e.target.value)}
+            disabled={!country || loading}
+            autoComplete="off"
           />
         </div>
       </div>
@@ -325,9 +336,40 @@ export default function DriverAmounts(){
             </thead>
             <tbody>
               {loading ? (
-                Array.from({length:5}).map((_,i)=> (
+                Array.from({length:3}).map((_,i)=> (
                   <tr key={`sk${i}`}>
-                    <td colSpan={11} style={{ padding:'10px 12px' }}>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite', marginBottom:4 }} />
+                      <div style={{ height:10, width:'60%', background:'var(--panel-2)', borderRadius:4, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                    <td style={{ padding:'10px 12px' }}>
                       <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
                     </td>
                   </tr>
