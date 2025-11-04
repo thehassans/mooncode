@@ -35,16 +35,7 @@ export default function DriverPayout(){
     return Math.max(0, total - delivered)
   }, [summary])
 
-  // Prefill amount with pending when available and field is empty or non-positive
-  useEffect(()=>{
-    setForm(f => {
-      const current = Number(f.amount || 0)
-      if (!f.amount || !Number.isFinite(current) || current <= 0){
-        return { ...f, amount: pendingToCompany.toFixed(2) }
-      }
-      return f
-    })
-  }, [pendingToCompany])
+  // Amount is always fixed at pendingToCompany - not editable by driver
 
   // Default approver: first manager if available (applies to both methods)
   useEffect(()=>{
@@ -92,7 +83,15 @@ export default function DriverPayout(){
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:10 }}>
             <div>
               <label className="input-label">Amount ({summary.currency})</label>
-              <input className="input" type="number" min="0" step="0.01" value={form.amount} onChange={e=> setForm(f=>({...f, amount:e.target.value}))} placeholder={`Max ${pendingToCompany.toFixed(2)}`} />
+              <input 
+                className="input" 
+                type="text" 
+                value={`${summary.currency} ${pendingToCompany.toFixed(2)}`} 
+                readOnly 
+                disabled 
+                style={{ background: 'var(--panel)', cursor: 'not-allowed', fontWeight: 700, color: 'var(--text)' }}
+                title="Amount is fixed at pending balance"
+              />
             </div>
             {form.method==='hand' && (
               <div>
@@ -124,11 +123,8 @@ export default function DriverPayout(){
             <textarea className="input" rows={2} value={form.note} onChange={e=> setForm(f=>({...f, note:e.target.value}))} />
           </div>
           <div>
-            <button className="btn" disabled={submitting} onClick={()=>{
-              const amt = Number(form.amount)
-              if (!form.amount){ toast.error('Enter amount'); return }
-              if (Number.isNaN(amt) || amt<=0){ toast.error('Enter a valid amount'); return }
-              if (amt > pendingToCompany){ toast.warn('Amount exceeds pending to company'); return }
+            <button className="btn" disabled={submitting || pendingToCompany <= 0} onClick={()=>{
+              if (pendingToCompany <= 0){ toast.error('No pending amount to send'); return }
               if (form.method==='transfer' && !form.file){ toast.error('Please attach a proof image for transfer to company'); return }
               setConfirmOpen(true)
             }}>Send Request</button>
@@ -252,11 +248,10 @@ export default function DriverPayout(){
           <>
             <button className="btn secondary" onClick={()=> setConfirmOpen(false)} disabled={submitting}>Cancel</button>
             <button className="btn success" disabled={submitting} onClick={async()=>{
-              const amt = Number(form.amount)
               setSubmitting(true)
               try{
                 const fd = new FormData()
-                fd.append('amount', String(amt))
+                fd.append('amount', String(pendingToCompany))
                 fd.append('method', form.method)
                 if (form.paidToName) fd.append('paidToName', form.paidToName)
                 if (form.paidToId) fd.append('managerId', form.paidToId)
@@ -278,7 +273,7 @@ export default function DriverPayout(){
         <div style={{display:'grid', gap:8}}>
           <div className="helper">Please confirm the details before sending:</div>
           <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:8}}>
-            <Info label="Amount" value={`${summary.currency||'SAR'} ${Number(form.amount||0).toFixed(2)}`} />
+            <Info label="Amount" value={`${summary.currency||'SAR'} ${pendingToCompany.toFixed(2)}`} />
             <Info label="Method" value={String(form.method||'hand').toUpperCase()} />
             {form.method==='hand' ? (
               <Info label="Paid To" value={form.paidToName || 'Company'} />
