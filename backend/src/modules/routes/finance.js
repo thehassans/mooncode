@@ -832,7 +832,8 @@ router.get(
         .skip(skip)
         .limit(limit)
         .populate("driver", "firstName lastName email country")
-        .populate("manager", "firstName lastName email country role");
+        .populate("manager", "firstName lastName email country role")
+        .populate("managerAcceptedBy", "firstName lastName email");
       const hasMore = skip + items.length < total;
       return res.json({ remittances: items, page, limit, total, hasMore });
     } catch (err) {
@@ -2652,7 +2653,8 @@ router.get(
         .skip(skip)
         .limit(limit)
         .populate("driver", "firstName lastName phone country payoutProfile")
-        .populate("manager", "firstName lastName email");
+        .populate("manager", "firstName lastName email")
+        .populate("managerAcceptedBy", "firstName lastName email");
       const hasMore = skip + items.length < total;
       return res.json({ remittances: items, page, limit, total, hasMore });
     } catch (err) {

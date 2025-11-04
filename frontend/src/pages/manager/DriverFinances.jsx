@@ -67,8 +67,8 @@ export default function DriverFinances(){
       const normalizedCountry = normalizeCountry(country)
       const filtered = allRemits.filter(r => normalizeCountry(r?.country) === normalizedCountry)
       setManagerRemits(filtered)
-      // Filter pending driver remittances
-      const pendingDriverRemits = allDriverRemits.filter(r => r.status === 'pending')
+      // Filter pending and manager_accepted driver remittances (remittances that need action or are awaiting owner approval)
+      const pendingDriverRemits = allDriverRemits.filter(r => r.status === 'pending' || r.status === 'manager_accepted')
       setDriverRemits(pendingDriverRemits)
       // Set currency based on country
       const countryCurrency = (c) => {
@@ -291,14 +291,28 @@ export default function DriverFinances(){
                         <div style={{display:'flex', gap:6, alignItems:'center', justifyContent:'center', flexWrap:'wrap'}}>
                           {pendingRemit ? (
                             <>
-                              <button 
-                                className="btn success"
-                                onClick={()=> openAcceptModal(pendingRemit._id, d.name, pendingRemit.amount)}
-                                disabled={accepting === pendingRemit._id}
-                                style={{padding:'6px 12px', fontSize:13, whiteSpace:'nowrap'}}
-                              >
-                                {accepting === pendingRemit._id ? '⏳ Accepting...' : `✓ Accept ${currency} ${num(pendingRemit.amount)}`}
-                              </button>
+                              {pendingRemit.status === 'manager_accepted' ? (
+                                <span style={{
+                                  padding:'6px 12px',
+                                  fontSize:13,
+                                  whiteSpace:'nowrap',
+                                  background:'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                  color:'white',
+                                  borderRadius:6,
+                                  fontWeight:600
+                                }} title="Awaiting owner approval">
+                                  ✓ Accepted (Owner Pending)
+                                </span>
+                              ) : (
+                                <button 
+                                  className="btn success"
+                                  onClick={()=> openAcceptModal(pendingRemit._id, d.name, pendingRemit.amount)}
+                                  disabled={accepting === pendingRemit._id}
+                                  style={{padding:'6px 12px', fontSize:13, whiteSpace:'nowrap'}}
+                                >
+                                  {accepting === pendingRemit._id ? '⏳ Accepting...' : `✓ Accept ${currency} ${num(pendingRemit.amount)}`}
+                                </button>
+                              )}
                               {pendingRemit.pdfPath && (
                                 <a 
                                   href={pendingRemit.pdfPath}

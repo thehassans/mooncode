@@ -519,14 +519,20 @@ export default function Transactions(){
           }
         >
           <div style={{display:'grid', gap:8}}>
+            {String(acceptModal?.status||'').toLowerCase() === 'manager_accepted' && (
+              <div style={{padding:'12px', background:'linear-gradient(135deg, #10b981 0%, #059669 100%)', color:'white', borderRadius:8, fontWeight:600, textAlign:'center'}}>
+                ✓ Accepted by Manager: {`${acceptModal?.managerAcceptedBy?.firstName||''} ${acceptModal?.managerAcceptedBy?.lastName||''}`.trim() || 'Manager'}
+              </div>
+            )}
             <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:8}}>
               <Info label="Driver" value={`${acceptModal?.driver?.firstName||''} ${acceptModal?.driver?.lastName||''}`.trim() || (acceptModal?.driver?.email||'-')} />
-              <Info label="Approver" value={`${acceptModal?.manager?.firstName||''} ${acceptModal?.manager?.lastName||''}`.trim() || '—'} />
+              <Info label="Submitted To" value={`${acceptModal?.manager?.firstName||''} ${acceptModal?.manager?.lastName||''}`.trim() || '—'} />
               <Info label="Amount" value={`${acceptModal?.currency||''} ${Number(acceptModal?.amount||0).toFixed(2)}`} />
               <Info label="Method" value={String(acceptModal?.method||'hand').toUpperCase()} />
               {acceptModal?.paidToName ? <Info label="Paid To" value={acceptModal?.paidToName} /> : null}
               {acceptModal?.note ? <Info label="Note" value={acceptModal?.note} /> : null}
               <Info label="Created" value={acceptModal?.createdAt ? new Date(acceptModal.createdAt).toLocaleString() : '-'} />
+              {acceptModal?.managerAcceptedAt ? <Info label="Manager Accepted" value={new Date(acceptModal.managerAcceptedAt).toLocaleString()} /> : null}
             </div>
             {acceptModal?.receiptPath ? (
               <div>
@@ -750,8 +756,8 @@ export default function Transactions(){
                                   fontWeight: 600,
                                   boxShadow: '0 2px 6px rgba(16, 185, 129, 0.25)',
                                   whiteSpace:'nowrap'
-                                }}>
-                                  ✓ Manager OK
+                                }} title={`Accepted by ${pending?.managerAcceptedBy?.firstName || ''} ${pending?.managerAcceptedBy?.lastName || ''}`.trim() || 'Manager'}>
+                                  ✓ By {(pending?.managerAcceptedBy?.firstName || pending?.managerAcceptedBy?.lastName) ? `${pending?.managerAcceptedBy?.firstName || ''} ${pending?.managerAcceptedBy?.lastName || ''}`.trim() : 'Manager'}
                                 </span>
                               )}
                               <button className="btn small" onClick={()=> setAcceptModal(pending)}>
