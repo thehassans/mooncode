@@ -10,7 +10,8 @@ export default function ManagerFinances(){
   const navigate = useNavigate()
   const toast = useToast()
   const [me, setMe] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} } })
-  const [remittances, setRemittances] = useState([])
+  const [driverRemittances, setDriverRemittances] = useState([])
+  const [managerRemittances, setManagerRemittances] = useState([])
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
   const [country, setCountry] = useState('')
@@ -20,6 +21,7 @@ export default function ManagerFinances(){
   const [statusFilter, setStatusFilter] = useState('')
   const [acceptModal, setAcceptModal] = useState(null)
   const [curCfg, setCurCfg] = useState(null)
+  const [managers, setManagers] = useState([])
 
   useEffect(()=>{
     let alive = true
@@ -55,17 +57,25 @@ export default function ManagerFinances(){
     })()
   }, [])
 
-  // Load remittances
+  // Load remittances (both driver→manager and manager→company)
   useEffect(() => {
     let alive = true
     ;(async () => {
       try {
         setLoading(true)
-        const r = await apiGet('/api/finance/manager-remittances')
-        if (alive) setRemittances(Array.isArray(r?.remittances) ? r.remittances : [])
+        const [driverRemitsRes, managerRemitsRes, managersRes] = await Promise.all([
+          apiGet('/api/finance/remittances?limit=500'),
+          apiGet('/api/finance/manager-remittances'),
+          apiGet('/api/users?role=manager')
+        ])
+        if (alive) {
+          setDriverRemittances(Array.isArray(driverRemitsRes?.remittances) ? driverRemitsRes.remittances : [])
+          setManagerRemittances(Array.isArray(managerRemitsRes?.remittances) ? managerRemitsRes.remittances : [])
+          setManagers(Array.isArray(managersRes?.users) ? managersRes.users : [])
+        }
         setErr('')
       } catch (e) {
-        if (alive) setErr(e?.message || 'Failed to load manager remittances')
+        if (alive) setErr(e?.message || 'Failed to load remittances')
       } finally { if (alive) setLoading(false) }
     })()
     return () => { alive = false }
@@ -78,11 +88,15 @@ export default function ManagerFinances(){
       const token = localStorage.getItem('token')||''
       socket = io(API_BASE || undefined, { path:'/socket.io', transports:['polling'], upgrade:false, withCredentials:true, auth:{ token } })
       const onRemit = async ()=>{ try{ await refreshRemittances() }catch{} }
+      socket.on('remittance.created', onRemit)
+      socket.on('remittance.accepted', onRemit)
       socket.on('manager-remittance.created', onRemit)
       socket.on('manager-remittance.accepted', onRemit)
       socket.on('manager-remittance.rejected', onRemit)
     }catch{}
     return ()=>{
+      try{ socket && socket.off('remittance.created') }catch{}
+      try{ socket && socket.off('remittance.accepted') }catch{}
       try{ socket && socket.off('manager-remittance.created') }catch{}
       try{ socket && socket.off('manager-remittance.accepted') }catch{}
       try{ socket && socket.off('manager-remittance.rejected') }catch{}
@@ -92,8 +106,12 @@ export default function ManagerFinances(){
 
   async function refreshRemittances(){
     try{
-      const r = await apiGet('/api/finance/manager-remittances')
-      setRemittances(Array.isArray(r?.remittances) ? r.remittances : [])
+      const [driverRemitsRes, managerRemitsRes] = await Promise.all([
+        apiGet('/api/finance/remittances?limit=500'),
+        apiGet('/api/finance/manager-remittances')
+      ])
+      setDriverRemittances(Array.isArray(driverRemitsRes?.remittances) ? driverRemitsRes.remittances : [])
+      setManagerRemittances(Array.isArray(managerRemitsRes?.remittances) ? managerRemitsRes.remittances : [])
     }catch{}
   }
 
@@ -129,65 +147,97 @@ export default function ManagerFinances(){
     }catch{ return true } 
   }
 
-  const filteredRemittances = useMemo(()=>{
-    return remittances.filter(r => {
+  const filteredManagerRemittances = useMemo(()=>{
+    return managerRemittances.filter(r => {
       if (country && String(r?.country||'').trim().toLowerCase() !== String(country).trim().toLowerCase()) return false
       if (statusFilter && String(r?.status||'').toLowerCase() !== String(statusFilter).toLowerCase()) return false
       if ((fromDate || toDate) && !dateInRange(r?.createdAt, fromDate, toDate)) return false
       return true
     })
-  }, [remittances, country, statusFilter, fromDate, toDate])
+  }, [managerRemittances, country, statusFilter, fromDate, toDate])
 
-  const totals = useMemo(()=>{
-    let totalAmountAED = 0, acceptedAED = 0, pendingAED = 0, rejectedAED = 0
-    const byCountry = {}
-    const byCurrency = {}
+  const filteredDriverRemittances = useMemo(()=>{
+    return driverRemittances.filter(r => {
+      if (country && String(r?.driver?.country||'').trim().toLowerCase() !== String(country).trim().toLowerCase()) return false
+      if (statusFilter && String(r?.status||'').toLowerCase() !== String(statusFilter).toLowerCase()) return false
+      if ((fromDate || toDate) && !dateInRange(r?.createdAt, fromDate, toDate)) return false
+      return true
+    })
+  }, [driverRemittances, country, statusFilter, fromDate, toDate])
+
+  // Manager→Company totals
+  const managerTotals = useMemo(()=>{
+    let totalCollectedFromDrivers = 0 // What managers collected from drivers (accepted driver remittances)
+    let sentToCompany = 0 // Manager remittances accepted by owner
+    let pendingApproval = 0 // Manager remittances pending owner approval
     
-    for (const r of filteredRemittances){
+    // Calculate total collected from drivers (accepted driver remittances)
+    for (const r of filteredDriverRemittances){
+      if (r.status === 'accepted' || r.status === 'manager_accepted') {
+        const amount = Number(r.amount||0)
+        const currency = r.currency || 'SAR'
+        const amountAED = curCfg ? convert(amount, currency, 'AED', curCfg) : amount
+        totalCollectedFromDrivers += amountAED
+      }
+    }
+    
+    // Calculate sent to company and pending
+    for (const r of filteredManagerRemittances){
       const amount = Number(r.amount||0)
       const currency = r.currency || 'SAR'
-      // Get country from remittance or manager, fallback to currency code
-      let countryKey = r.country || r.manager?.country || r.manager?.assignedCountry
-      if (Array.isArray(r.manager?.assignedCountries) && r.manager.assignedCountries.length > 0) {
-        countryKey = countryKey || r.manager.assignedCountries[0]
-      }
-      // If still no country, use currency code as the grouping key
-      countryKey = countryKey || currency
-      
-      // Convert to AED
       const amountAED = curCfg ? convert(amount, currency, 'AED', curCfg) : amount
       
-      totalAmountAED += amountAED
-      if (r.status === 'accepted') acceptedAED += amountAED
-      else if (r.status === 'pending') pendingAED += amountAED
-      else if (r.status === 'rejected') rejectedAED += amountAED
-      
-      // Track by country
-      if (!byCountry[countryKey]) byCountry[countryKey] = { count: 0, amount: 0, currency }
-      byCountry[countryKey].count++
-      byCountry[countryKey].amount += amount
-      
-      // Track by currency
-      if (!byCurrency[currency]) byCurrency[currency] = { count: 0, amount: 0 }
-      byCurrency[currency].count++
-      byCurrency[currency].amount += amount
+      if (r.status === 'accepted') sentToCompany += amountAED
+      else if (r.status === 'pending') pendingApproval += amountAED
     }
     
+    const toPayCompany = totalCollectedFromDrivers - sentToCompany
+    
     return { 
-      totalAmountAED, 
-      acceptedAED, 
-      pendingAED, 
-      rejectedAED,
-      byCountry: Object.entries(byCountry).map(([k,v])=> ({country:k, ...v})),
-      byCurrency: Object.entries(byCurrency).map(([k,v])=> ({currency:k, ...v}))
+      totalCollectedFromDrivers, 
+      sentToCompany, 
+      pendingApproval,
+      toPayCompany
     }
-  }, [filteredRemittances, curCfg])
+  }, [filteredDriverRemittances, filteredManagerRemittances, curCfg])
+  
+  // Driver→Manager totals by manager
+  const driverToManagerByManager = useMemo(()=>{
+    const byManager = {}
+    
+    for (const r of filteredDriverRemittances){
+      const managerId = String(r.manager?._id || r.manager || '')
+      if (!managerId) continue
+      
+      if (!byManager[managerId]) {
+        byManager[managerId] = {
+          manager: r.manager,
+          totalAmount: 0,
+          acceptedCount: 0,
+          pendingCount: 0,
+          currency: r.currency || 'SAR'
+        }
+      }
+      
+      const amount = Number(r.amount||0)
+      byManager[managerId].totalAmount += amount
+      
+      if (r.status === 'accepted' || r.status === 'manager_accepted') {
+        byManager[managerId].acceptedCount++
+      } else if (r.status === 'pending') {
+        byManager[managerId].pendingCount++
+      }
+    }
+    
+    return Object.values(byManager)
+  }, [filteredDriverRemittances])
 
   function statusBadge(st){
     const s = String(st||'').toLowerCase()
-    const map = { pending:'#f59e0b', accepted:'#10b981', rejected:'#ef4444' }
+    const map = { pending:'#f59e0b', manager_accepted:'#0ea5e9', accepted:'#10b981', rejected:'#ef4444' }
     const color = map[s] || 'var(--muted)'
-    return <span className="chip" style={{border:`1px solid ${color}`, color, background:'transparent', fontWeight:700}}>{s.toUpperCase()}</span>
+    const label = s === 'manager_accepted' ? 'MANAGER ACCEPTED' : s.toUpperCase()
+    return <span className="chip" style={{border:`1px solid ${color}`, color, background:'transparent', fontWeight:700}}>{label}</span>
   }
 
   return (
@@ -195,7 +245,7 @@ export default function ManagerFinances(){
       <div className="page-header">
         <div>
           <div className="page-title gradient heading-purple">Manager Finances</div>
-          <div className="page-subtitle">Monitor manager remittances to company</div>
+          <div className="page-subtitle">Monitor driver→manager and manager→company remittances</div>
         </div>
       </div>
       {err && <div className="error">{err}</div>}
@@ -213,6 +263,7 @@ export default function ManagerFinances(){
           <select className="input" value={statusFilter} onChange={(e)=> setStatusFilter(e.target.value)}>
             <option value="">All Status</option>
             <option value="pending">Pending</option>
+            <option value="manager_accepted">Manager Accepted</option>
             <option value="accepted">Accepted</option>
             <option value="rejected">Rejected</option>
           </select>
@@ -221,83 +272,120 @@ export default function ManagerFinances(){
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px,1fr))', gap:12 }}>
-        <div className="card" style={{background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color:'#fff'}}>
+      {/* Manager→Company Summary Cards */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:12 }}>
+        <div className="card" style={{background:'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color:'#fff'}}>
           <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Total Amount (AED)</div>
-            <div style={{fontSize:28, fontWeight:800}}>AED {num(totals.totalAmountAED)}</div>
+            <div style={{fontSize:14, opacity:0.9}}>Total Collected from Drivers</div>
+            <div style={{fontSize:28, fontWeight:800}}>AED {num(managerTotals.totalCollectedFromDrivers)}</div>
           </div>
         </div>
         <div className="card" style={{background:'linear-gradient(135deg, #10b981 0%, #059669 100%)', color:'#fff'}}>
           <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Accepted (AED)</div>
-            <div style={{fontSize:28, fontWeight:800}}>AED {num(totals.acceptedAED)}</div>
+            <div style={{fontSize:14, opacity:0.9}}>Sent to Company</div>
+            <div style={{fontSize:28, fontWeight:800}}>AED {num(managerTotals.sentToCompany)}</div>
           </div>
         </div>
         <div className="card" style={{background:'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color:'#fff'}}>
           <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Pending (AED)</div>
-            <div style={{fontSize:28, fontWeight:800}}>AED {num(totals.pendingAED)}</div>
+            <div style={{fontSize:14, opacity:0.9}}>Pending Approval</div>
+            <div style={{fontSize:28, fontWeight:800}}>AED {num(managerTotals.pendingApproval)}</div>
           </div>
         </div>
         <div className="card" style={{background:'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color:'#fff'}}>
           <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Rejected (AED)</div>
-            <div style={{fontSize:28, fontWeight:800}}>AED {num(totals.rejectedAED)}</div>
+            <div style={{fontSize:14, opacity:0.9}}>To Pay Company</div>
+            <div style={{fontSize:28, fontWeight:800}}>AED {num(managerTotals.toPayCompany)}</div>
           </div>
         </div>
       </div>
 
-      {/* Breakdown by Country and Currency */}
-      {(totals.byCountry.length > 0 || totals.byCurrency.length > 0) && (
-        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(300px, 1fr))', gap:12}}>
-          {/* By Country */}
-          {totals.byCountry.length > 0 && (
-            <div className="card">
-              <div className="card-header">
-                <div className="card-title">📍 By Country</div>
-              </div>
-              <div style={{display:'grid', gap:6}}>
-                {totals.byCountry.map(item => (
-                  <div key={item.country} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 12px', background:'var(--panel)', borderRadius:6}}>
-                    <div>
-                      <div style={{fontWeight:700, color:'#6366f1'}}>{item.country}</div>
-                      <div className="helper" style={{fontSize:12}}>{item.count} remittance{item.count !== 1 ? 's' : ''}</div>
-                    </div>
-                    <div style={{fontWeight:800, color:'#10b981'}}>{item.currency} {num(item.amount)}</div>
+      {/* Driver→Manager Summary by Manager */}
+      {driverToManagerByManager.length > 0 && (
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">💰 Driver → Manager Remittances Summary</div>
+          </div>
+          <div style={{display:'grid', gap:6}}>
+            {driverToManagerByManager.map(item => (
+              <div key={String(item.manager?._id || '')} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 12px', background:'var(--panel)', borderRadius:6, flexWrap:'wrap', gap:8}}>
+                <div>
+                  <div style={{fontWeight:700, color:'#8b5cf6'}}>{userName(item.manager)}</div>
+                  <div className="helper" style={{fontSize:12}}>
+                    ✓ {item.acceptedCount} accepted • ⏳ {item.pendingCount} pending
                   </div>
-                ))}
+                </div>
+                <div style={{fontWeight:800, color:'#10b981'}}>{item.currency} {num(item.totalAmount)}</div>
               </div>
-            </div>
-          )}
-
-          {/* By Currency */}
-          {totals.byCurrency.length > 0 && (
-            <div className="card">
-              <div className="card-header">
-                <div className="card-title">💰 By Currency</div>
-              </div>
-              <div style={{display:'grid', gap:6}}>
-                {totals.byCurrency.map(item => (
-                  <div key={item.currency} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 12px', background:'var(--panel)', borderRadius:6}}>
-                    <div>
-                      <div style={{fontWeight:700, color:'#f59e0b'}}>{item.currency}</div>
-                      <div className="helper" style={{fontSize:12}}>{item.count} remittance{item.count !== 1 ? 's' : ''}</div>
-                    </div>
-                    <div style={{fontWeight:800, color:'#10b981'}}>{item.currency} {num(item.amount)}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Remittances Table */}
+      {/* Driver→Manager Remittances Table */}
       <div className="card">
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-          <div style={{ fontWeight: 700 }}>Manager Remittances</div>
+          <div style={{ fontWeight: 700 }}>💵 Driver → Manager Remittances</div>
+          <div className="helper">Amounts drivers sent to managers</div>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            <thead>
+              <tr>
+                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#3b82f6' }}>Driver</th>
+                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#8b5cf6' }}>Manager</th>
+                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#22c55e' }}>Amount</th>
+                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#f59e0b' }}>Status</th>
+                <th style={{ padding: '10px 12px', textAlign:'left' }}>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                Array.from({length:3}).map((_,i)=> (
+                  <tr key={`drsk${i}`}>
+                    <td colSpan={5} style={{ padding:'10px 12px' }}>
+                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    </td>
+                  </tr>
+                ))
+              ) : filteredDriverRemittances.length === 0 ? (
+                <tr><td colSpan={5} style={{ padding: '10px 12px', opacity: 0.7, textAlign:'center' }}>No driver remittances found</td></tr>
+              ) : (
+                filteredDriverRemittances.slice(0, 10).map((r, idx) => (
+                  <tr key={String(r._id)} style={{ borderTop: '1px solid var(--border)', background: idx % 2 ? 'transparent' : 'var(--panel)' }}>
+                    <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{fontWeight:700, color:'#3b82f6'}}>{userName(r.driver)}</div>
+                      <div className="helper">{r.driver?.phone || ''}</div>
+                    </td>
+                    <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
+                      <div style={{fontWeight:700, color:'#8b5cf6'}}>{userName(r.manager)}</div>
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
+                      <span style={{color:'#22c55e', fontWeight:800}}>{r.currency} {num(r.amount)}</span>
+                    </td>
+                    <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
+                      {r.status === 'manager_accepted' ? (
+                        <span className="chip" style={{border:'1px solid #10b981', color:'#10b981', background:'transparent', fontWeight:700}}>
+                          ✓ MANAGER ACCEPTED
+                        </span>
+                      ) : statusBadge(r.status)}
+                    </td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <div style={{color:'#6366f1', fontSize:13}}>{r.createdAt ? new Date(r.createdAt).toLocaleString() : '-'}</div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Manager→Company Remittances Table */}
+      <div className="card">
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+          <div style={{ fontWeight: 700 }}>🏢 Manager → Company Remittances</div>
+          <div className="helper">Amounts managers sent to company</div>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
@@ -314,17 +402,17 @@ export default function ManagerFinances(){
             </thead>
             <tbody>
               {loading ? (
-                Array.from({length:5}).map((_,i)=> (
-                  <tr key={`sk${i}`}>
+                Array.from({length:3}).map((_,i)=> (
+                  <tr key={`mgsk${i}`}>
                     <td colSpan={7} style={{ padding:'10px 12px' }}>
                       <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
                     </td>
                   </tr>
                 ))
-              ) : filteredRemittances.length === 0 ? (
+              ) : filteredManagerRemittances.length === 0 ? (
                 <tr><td colSpan={7} style={{ padding: '10px 12px', opacity: 0.7, textAlign:'center' }}>No manager remittances found</td></tr>
               ) : (
-                filteredRemittances.map((r, idx) => (
+                filteredManagerRemittances.map((r, idx) => (
                   <tr key={String(r._id)} style={{ borderTop: '1px solid var(--border)', background: idx % 2 ? 'transparent' : 'var(--panel)' }}>
                     <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
                       <div style={{fontWeight:700, color:'#8b5cf6'}}>{userName(r.manager)}</div>
@@ -351,7 +439,7 @@ export default function ManagerFinances(){
                     </td>
                     <td style={{ padding: '10px 12px' }}>
                       {r.status === 'pending' ? (
-                        <button className="btn small" onClick={()=> setAcceptModal(r)}>Accept</button>
+                        <button className="btn success small" onClick={()=> setAcceptModal(r)}>Accept</button>
                       ) : (
                         <button className="btn secondary small" onClick={()=> setAcceptModal(r)}>Details</button>
                       )}
