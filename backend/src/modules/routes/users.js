@@ -29,9 +29,28 @@ function generateTempPassword(len = 10){
   return out
 }
 
-// List users (admin)
-router.get('/', auth, allowRoles('admin'), async (req, res) => {
-  const users = await User.find({}, '-password').sort({ createdAt: -1 });
+// List users (admin => all, user => own + managers)
+router.get('/', auth, allowRoles('admin', 'user'), async (req, res) => {
+  const { role } = req.query;
+  let filter = {};
+  
+  // Apply role filter if provided
+  if (role) {
+    filter.role = role;
+  }
+  
+  // Scope by user role
+  if (req.user.role === 'user') {
+    // Users can only see their own managers or themselves
+    if (role === 'manager') {
+      filter.createdBy = req.user.id;
+    } else {
+      // If not filtering by manager, only return the user themselves
+      filter._id = req.user.id;
+    }
+  }
+  
+  const users = await User.find(filter, '-password').sort({ createdAt: -1 });
   res.json({ users });
 });
 
