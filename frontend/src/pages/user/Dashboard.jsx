@@ -289,7 +289,7 @@ export default function UserDashboard(){
     console.log('🔄 Loading dashboard with params:', dateParams)
     
     try{ const cfg = await getCurrencyConfig(); setCurrencyCfg(cfg) }catch(_e){ setCurrencyCfg(null) }
-    try{ setAnalytics(await apiGet('/api/orders/analytics/last7days')) }catch(_e){ setAnalytics({ days: [], totals:{} }) }
+    try{ setAnalytics(await apiGet(`/api/orders/analytics/last7days?${dateParams}`)) }catch(_e){ setAnalytics({ days: [], totals:{} }) }
     try{ setMetrics(await apiGet(`/api/reports/user-metrics?${dateParams}`)) }catch(_e){ console.error('Failed to fetch metrics') }
     try{ setSalesByCountry(await apiGet(`/api/reports/user-metrics/sales-by-country?${dateParams}`)) }catch(_e){ setSalesByCountry({ KSA:0, Oman:0, UAE:0, Bahrain:0, India:0, Kuwait:0, Qatar:0, Other:0 }) }
     try{

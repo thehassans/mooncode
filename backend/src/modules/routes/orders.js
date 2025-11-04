@@ -2682,13 +2682,25 @@ export default router
 // Analytics: last 7 days sales by country
 router.get('/analytics/last7days', auth, allowRoles('admin','user'), async (req, res) => {
   try{
-    const now = new Date()
-    const sevenDaysAgo = new Date(now)
-    sevenDaysAgo.setDate(now.getDate() - 6) // include today + previous 6 days
-    sevenDaysAgo.setHours(0,0,0,0)
+    // Support optional date range parameters (from/to) or default to last 7 days
+    let startDate, endDate;
+    
+    if (req.query.from && req.query.to) {
+      // Use provided date range
+      startDate = new Date(req.query.from);
+      endDate = new Date(req.query.to);
+    } else {
+      // Default to last 7 days
+      const now = new Date();
+      const sevenDaysAgo = new Date(now);
+      sevenDaysAgo.setDate(now.getDate() - 6); // include today + previous 6 days
+      sevenDaysAgo.setHours(0,0,0,0);
+      startDate = sevenDaysAgo;
+      endDate = now;
+    }
 
     const docs = await Order.aggregate([
-      { $match: { createdAt: { $gte: sevenDaysAgo } } },
+      { $match: { createdAt: { $gte: startDate, $lte: endDate } } },
       { $project: {
           day: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
           orderCountry: { $ifNull: ['$orderCountry', ''] }
@@ -2699,15 +2711,15 @@ router.get('/analytics/last7days', auth, allowRoles('admin','user'), async (req,
       { $sort: { day: 1 } }
     ])
 
-    // Build a response with all 7 days and supported countries
+    // Build a response with all days in range and supported countries
     const countries = ['UAE','Oman','KSA','Bahrain','India','Kuwait','Qatar']
     const days = []
-    for (let i=6;i>=0;i--){
-      const d = new Date(now)
-      d.setDate(now.getDate() - i)
-      d.setHours(0,0,0,0)
-      const key = d.toISOString().slice(0,10)
+    const currentDate = new Date(startDate)
+    
+    while (currentDate <= endDate) {
+      const key = currentDate.toISOString().slice(0,10)
       days.push(key)
+      currentDate.setDate(currentDate.getDate() + 1)
     }
 
     const byDay = days.map(day => {
@@ -2723,7 +2735,7 @@ router.get('/analytics/last7days', auth, allowRoles('admin','user'), async (req,
       }
     }
 
-    // Totals per country across 7 days
+    // Totals per country across date range
     const totals = Object.fromEntries(countries.map(c => [c, byDay.reduce((acc, d) => acc + (d[c]||0), 0)]))
 
     res.json({ days: byDay, totals })
