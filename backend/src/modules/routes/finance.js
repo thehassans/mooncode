@@ -2403,9 +2403,21 @@ router.get(
         // Total commission is the actual commission from orders
         const driverCommission = Math.round(actualTotalCommission);
 
-        // Use paidCommission from driver profile (updated when remittances are accepted)
+        // Calculate paid commission from remittances in the same date period
+        const paidRemitRows = await Remittance.aggregate([
+          {
+            $match: { 
+              driver: new M.Types.ObjectId(d._id), 
+              status: { $in: ["accepted", "manager_accepted"] },
+              ...(dateFilter.createdAt ? { acceptedAt: dateFilter.createdAt } : {})
+            },
+          },
+          {
+            $group: { _id: null, totalPaid: { $sum: { $ifNull: ["$driverCommission", 0] } } },
+          },
+        ]);
         const withdrawnCommission = Math.round(
-          Number(d.driverProfile?.paidCommission ?? 0)
+          paidRemitRows && paidRemitRows[0] ? Number(paidRemitRows[0].totalPaid || 0) : 0
         );
 
         // Pending commission: earned commission minus withdrawn
