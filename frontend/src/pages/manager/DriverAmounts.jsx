@@ -395,7 +395,7 @@ export default function ManagerDriverAmounts(){
                         <td style={{ padding: '12px', textAlign:'center' }}>
                           {payment.status === 'sent' || payment.status === 'paid' ? (
                             <a 
-                              href={`${API_BASE}/api/finance/drivers/${historyModal.id}/commission-pdf?paymentId=${payment._id}`}
+                              href={`${API_BASE}/finance/drivers/${historyModal.id}/commission-pdf?paymentId=${payment._id}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="btn"

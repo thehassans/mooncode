@@ -14,7 +14,7 @@ export default function ErrorLogs(){
     setLoading(true)
     setMsg('')
     try{
-      const r = await fetch(`${API_BASE}/api/error-logs`)
+      const r = await fetch(`${API_BASE}/error-logs`)
       if (r.ok){
         const data = await r.json()
         setErrorLogs(Array.isArray(data) ? data : [])
@@ -30,7 +30,7 @@ export default function ErrorLogs(){
     if (!confirm('Are you sure you want to clear all error logs?')) return
     setMsg('Clearing logs...')
     try{
-      const r = await fetch(`${API_BASE}/api/error-logs`, { method: 'DELETE' })
+      const r = await fetch(`${API_BASE}/error-logs`, { method: 'DELETE' })
       if (r.ok){
         setErrorLogs([])
         setMsg('Error logs cleared successfully')

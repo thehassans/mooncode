@@ -732,7 +732,7 @@ export default function Transactions(){
                             <td style={{ padding:'12px' }}>{r.createdAt? new Date(r.createdAt).toLocaleString(): '—'}</td>
                             <td style={{ padding:'12px' }}>
                               {(r.pdfPath || r.acceptedPdfPath) ? (
-                                <a href={`${API_BASE}/api/finance/remittances/${r._id}/download-settlement`} target="_blank" rel="noopener noreferrer" className="btn" style={{fontSize:13, padding:'6px 12px'}}>Download</a>
+                                <a href={`${API_BASE}/finance/remittances/${r._id}/download-settlement`} target="_blank" rel="noopener noreferrer" className="btn" style={{fontSize:13, padding:'6px 12px'}}>Download</a>
                               ) : '—'}
                             </td>
                           </tr>
