@@ -206,7 +206,21 @@ export async function generateAgentCommissionReceiptPDF(data) {
          .fillColor(colors.success)
          .text(formatCurrency(data.amountPKR || 0, 'PKR'), rightCol + boxPadding, boxY + 15)
 
-      y += boxHeight + 30
+      y += boxHeight + 10
+
+      // Add percentage information if provided and not 100%
+      if (data.percentage && data.percentage < 100 && data.fullBalance) {
+        doc.fontSize(10)
+           .font('Helvetica-Bold')
+           .fillColor(colors.accent)
+           .text(`Payment Percentage: ${data.percentage}% of PKR ${formatCurrency(data.fullBalance, '').trim()}`, margin, y, {
+             width: contentWidth,
+             align: 'center'
+           })
+        y += 25
+      } else {
+        y += 20
+      }
 
       // === ORDER DETAILS TABLE (if provided) ===
       if (data.orders && Array.isArray(data.orders) && data.orders.length > 0) {

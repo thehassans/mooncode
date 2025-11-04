@@ -13,6 +13,8 @@ export default function AgentAmounts(){
   const [searchTerm, setSearchTerm] = useState('')
   const [payingAgent, setPayingAgent] = useState(null)
   const [payModal, setPayModal] = useState(null)
+  const [paymentPercentage, setPaymentPercentage] = useState(100)
+  const [paymentAmount, setPaymentAmount] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -175,7 +177,11 @@ export default function AgentAmounts(){
                             className="btn success" 
                             style={{fontSize:12, padding:'6px 12px'}}
                             disabled={payingAgent === a.id}
-                            onClick={()=> setPayModal({ agent: a, balance })}
+                            onClick={()=> { 
+                              setPayModal({ agent: a, balance })
+                              setPaymentPercentage(100)
+                              setPaymentAmount(balance)
+                            }}
                           >
                             Pay Commission
                           </button>
@@ -196,7 +202,11 @@ export default function AgentAmounts(){
       <Modal
         title="Pay Agent Commission"
         open={!!payModal}
-        onClose={()=> setPayModal(null)}
+        onClose={()=> { 
+          setPayModal(null)
+          setPaymentPercentage(100)
+          setPaymentAmount(0)
+        }}
         footer={
           <>
             <button className="btn secondary" onClick={()=> setPayModal(null)} disabled={!!payingAgent}>Cancel</button>
@@ -204,11 +214,25 @@ export default function AgentAmounts(){
               className="btn success" 
               disabled={!!payingAgent}
               onClick={async()=>{
+                if (paymentAmount <= 0) {
+                  toast.error('Payment amount must be greater than 0')
+                  return
+                }
+                if (paymentPercentage < 1 || paymentPercentage > 100) {
+                  toast.error('Percentage must be between 1 and 100')
+                  return
+                }
                 setPayingAgent(payModal.agent.id)
                 try{
-                  await apiPost(`/api/finance/agents/${payModal.agent.id}/pay-commission`, { amount: payModal.balance })
-                  toast.success('Commission payment sent successfully')
+                  await apiPost(`/api/finance/agents/${payModal.agent.id}/pay-commission`, { 
+                    amount: paymentAmount,
+                    percentage: paymentPercentage,
+                    fullBalance: payModal.balance
+                  })
+                  toast.success(`Commission payment sent successfully (${paymentPercentage}%)`)
                   setPayModal(null)
+                  setPaymentPercentage(100)
+                  setPaymentAmount(0)
                   // Refresh data
                   const r = await apiGet('/api/finance/agents/commission')
                   setAgents(Array.isArray(r?.agents) ? r.agents : [])
@@ -227,8 +251,51 @@ export default function AgentAmounts(){
         {payModal && (
           <div style={{ padding: '16px 0' }}>
             <div style={{ fontSize: 16, marginBottom: 24, textAlign: 'center' }}>
-              Send <strong style={{ color: '#10b981', fontSize: 20 }}>PKR {num(payModal.balance)}</strong> commission to <strong style={{ color: '#8b5cf6' }}>{payModal.agent.name}</strong>?
+              Send <strong style={{ color: '#10b981', fontSize: 20 }}>PKR {num(paymentAmount)}</strong> ({paymentPercentage}%) commission to <strong style={{ color: '#8b5cf6' }}>{payModal.agent.name}</strong>?
             </div>
+            
+            {/* Percentage Slider */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <label style={{ fontWeight: 600, fontSize: 14 }}>Commission Percentage:</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    max="100" 
+                    step="1"
+                    value={paymentPercentage}
+                    onChange={(e)=> {
+                      const val = Math.max(1, Math.min(100, Number(e.target.value) || 100))
+                      setPaymentPercentage(val)
+                      setPaymentAmount((payModal.balance * val) / 100)
+                    }}
+                    style={{ width: 70, padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: 16 }}
+                    className="input"
+                  />
+                  <span style={{ fontSize: 18, fontWeight: 700 }}>%</span>
+                </div>
+              </div>
+              <input 
+                type="range" 
+                min="1" 
+                max="100" 
+                step="1"
+                value={paymentPercentage}
+                onChange={(e)=> {
+                  const val = Number(e.target.value)
+                  setPaymentPercentage(val)
+                  setPaymentAmount((payModal.balance * val) / 100)
+                }}
+                style={{ width: '100%', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                <span>1%</span>
+                <span>50%</span>
+                <span>100%</span>
+              </div>
+            </div>
+
             <div style={{ background: 'var(--panel)', padding: 12, borderRadius: 8, fontSize: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ opacity: 0.7 }}>Agent:</span>
@@ -238,9 +305,17 @@ export default function AgentAmounts(){
                 <span style={{ opacity: 0.7 }}>Phone:</span>
                 <strong>{payModal.agent.phone}</strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ opacity: 0.7 }}>Amount:</span>
-                <strong style={{ color: '#10b981' }}>PKR {num(payModal.balance)}</strong>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ opacity: 0.7 }}>Full Balance:</span>
+                <strong>PKR {num(payModal.balance)}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ opacity: 0.7 }}>Percentage:</span>
+                <strong style={{ color: '#8b5cf6', fontSize: 16 }}>{paymentPercentage}%</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                <span style={{ opacity: 0.7, fontWeight: 600 }}>Amount to Pay:</span>
+                <strong style={{ color: '#10b981', fontSize: 18 }}>PKR {num(paymentAmount)}</strong>
               </div>
             </div>
           </div>

@@ -7,6 +7,8 @@ const AgentRemitSchema = new mongoose.Schema({
   approverRole: { type: String, enum: ['user','manager'], required: true },
   amount: { type: Number, required: true, min: 0 },
   currency: { type: String, default: 'PKR' },
+  percentage: { type: Number, min: 0, max: 100, default: 100 },
+  fullBalance: { type: Number, min: 0 },
   note: { type: String, default: '' },
   status: { type: String, enum: ['pending','approved','sent'], default: 'pending', index: true },
   approvedAt: { type: Date },
