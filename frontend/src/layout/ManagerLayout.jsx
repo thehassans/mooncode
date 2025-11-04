@@ -11,6 +11,8 @@ export default function ManagerLayout(){
   const [theme, setTheme] = useState(()=>{
     try{ return localStorage.getItem('theme') || 'dark' }catch{ return 'dark' }
   })
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false)
+  
   useEffect(()=>{
     try{ localStorage.setItem('theme', theme) }catch{}
     const root = document.documentElement
@@ -27,6 +29,21 @@ export default function ManagerLayout(){
     try{ return JSON.parse(localStorage.getItem('me') || '{}') }catch{ return {} }
   })
   useEffect(()=>{ (async()=>{ try{ const { user } = await apiGet('/api/users/me'); setMe(user||{}) }catch{} })() },[])
+  
+  // Close dropdown when clicking outside
+  useEffect(()=>{
+    function handleClickOutside(e){
+      if (showSettingsDropdown){
+        const dropdown = document.getElementById('settings-dropdown')
+        const button = document.getElementById('settings-button')
+        if (dropdown && !dropdown.contains(e.target) && button && !button.contains(e.target)){
+          setShowSettingsDropdown(false)
+        }
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return ()=> document.removeEventListener('mousedown', handleClickOutside)
+  }, [showSettingsDropdown])
 
   // Desktop sidebar links (full access; manager panel)
   const links = [
@@ -56,6 +73,13 @@ export default function ManagerLayout(){
   const tabsVisible = isMobile
   const hideSidebar = isMobile
 
+  function toggleTheme(){
+    const next = theme === 'light' ? 'dark' : 'light'
+    setTheme(next)
+    localStorage.setItem('theme', next)
+    document.documentElement.setAttribute('data-theme', next === 'light' ? 'light' : 'dark')
+  }
+  
   function doLogout(){
     try{
       localStorage.removeItem('token')
@@ -120,39 +144,245 @@ export default function ManagerLayout(){
         
         {/* Desktop Topbar */}
         {!isMobile && (
-          <div className="topbar" style={{background:'var(--sidebar-bg)', borderBottom:'1px solid var(--sidebar-border)'}}>
-            <div style={{display:'flex', alignItems:'center', gap:12, minHeight:48}}>
-              <button
-                className="btn secondary"
-                onClick={()=> setClosed(c=>!c)}
-                title={closed ? 'Open menu' : 'Close menu'}
-                aria-label={closed ? 'Open menu' : 'Close menu'}
-                style={{ width:36, height:36, padding:0, display:'grid', placeItems:'center' }}
-              >
-                ☰
-              </button>
-              {(()=>{
-                const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
-                const src = me.headerLogo ? `${API_BASE}${me.headerLogo}` : fallback
-                return <img src={src} alt="BuySial" style={{height:28, width:'auto', objectFit:'contain'}} />
-              })()}
-              <div
-                style={{
-                  display:'inline-flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:999,
-                  background:'var(--panel)', border:'1px solid var(--border)', boxShadow:'0 1px 0 rgba(0,0,0,0.15) inset',
-                }}
-              >
-                <span aria-hidden style={{display:'inline-flex', alignItems:'center', color:'var(--muted)'}}>🧑‍💼</span>
-                <span style={{fontWeight:800, letterSpacing:0.3}}>
-                  {`Manager ${me.firstName||''} ${me.lastName||''}`.trim()}
-                </span>
+          <div className="topbar" style={{background:'var(--sidebar-bg)', borderBottom:'1px solid var(--sidebar-border)', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'nowrap', minHeight:'60px', padding:'0 1rem'}}>
+            <div className="flex items-center gap-3" style={{flexShrink:0}}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '8px 20px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                boxShadow: '0 4px 12px rgba(139, 92, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                <span aria-hidden style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                  boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)',
+                  flexShrink: 0,
+                  fontSize: '18px'
+                }}>🧑‍💼</span>
+                <div style={{display: 'flex', flexDirection: 'column', gap: '2px'}}>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}>Manager</span>
+                  <span style={{
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    letterSpacing: '-0.02em',
+                    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>{`${me.firstName||''} ${me.lastName||''}`.trim() || 'Manager'}</span>
+                </div>
               </div>
             </div>
-            <div style={{display:'flex', alignItems:'center', gap:8}}>
-              <button className="btn secondary" onClick={()=> setTheme(t=> t==='light' ? 'dark' : 'light')} title="Toggle theme">
-                {theme==='light' ? '🌙 Dark' : '🌞 Light'}
+            <div className="flex items-center gap-2" style={{flexShrink:0}}>
+              {/* Premium Theme Toggle Switch */}
+              <button
+                onClick={toggleTheme}
+                title={theme==='light' ? 'Switch to dark mode' : 'Switch to light mode'}
+                aria-label={theme==='light' ? 'Dark mode' : 'Light mode'}
+                style={{
+                  position: 'relative',
+                  width: '70px',
+                  height: '34px',
+                  background: theme === 'dark' ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' : 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+                  borderRadius: '17px',
+                  border: theme === 'dark' ? '2px solid #334155' : '2px solid #cbd5e1',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: theme === 'dark' 
+                    ? 'inset 0 2px 4px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.2)' 
+                    : 'inset 0 2px 4px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.1)',
+                  padding: 0,
+                  overflow: 'hidden',
+                  flexShrink: 0
+                }}
+              >
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0 8px'
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme === 'light' ? '#0f172a' : '#64748b'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transition: 'all 0.3s ease', opacity: theme === 'light' ? 0.3 : 0.5}}>
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                  </svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme === 'dark' ? '#f1f5f9' : '#94a3b8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{transition: 'all 0.3s ease', opacity: theme === 'dark' ? 0.3 : 0.5}}>
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                  </svg>
+                </div>
+                <div style={{
+                  position: 'absolute',
+                  top: '3px',
+                  left: theme === 'dark' ? '37px' : '3px',
+                  width: '26px',
+                  height: '26px',
+                  borderRadius: '50%',
+                  background: theme === 'dark' ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' : 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                  boxShadow: theme === 'dark' ? '0 2px 8px rgba(99, 102, 241, 0.4)' : '0 2px 8px rgba(251, 191, 36, 0.4)',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {theme === 'dark' ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="5"/>
+                      <line x1="12" y1="1" x2="12" y2="3"/>
+                      <line x1="12" y1="21" x2="12" y2="23"/>
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                      <line x1="1" y1="12" x2="3" y2="12"/>
+                      <line x1="21" y1="12" x2="23" y2="12"/>
+                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                  )}
+                </div>
               </button>
-              <button type="button" className="btn danger" onClick={doLogout}>Logout</button>
+              {/* Settings dropdown */}
+              <div style={{ position: 'relative' }}>
+                <button 
+                  id="settings-button"
+                  className="btn w-9 h-9 p-0 grid place-items-center" 
+                  title="Settings" 
+                  aria-label="Settings" 
+                  onClick={()=> setShowSettingsDropdown(prev => !prev)}
+                  style={{width:'36px', height:'36px', padding:0, display:'grid', placeItems:'center'}}
+                >
+                  ⚙️
+                </button>
+                {showSettingsDropdown && (
+                  <div 
+                    id="settings-dropdown"
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      right: 0,
+                      width: '280px',
+                      background: 'var(--panel)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '16px',
+                      boxShadow: '0 20px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)',
+                      zIndex: 1000,
+                      overflow: 'hidden',
+                      backdropFilter: 'blur(20px)'
+                    }}
+                  >
+                    {/* User info header */}
+                    <div style={{
+                      padding: '20px',
+                      borderBottom: '1px solid var(--border)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '14px',
+                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05))'
+                    }}>
+                      <div style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '20px',
+                        fontWeight: 600,
+                        color: '#fff',
+                        boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                      }}>
+                        {((me.firstName||'')[0]||(me.lastName||'')[0]||'M').toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: '16px', marginBottom: '2px' }}>
+                          {`${me.firstName||''} ${me.lastName||''}`.trim() || 'Manager'}
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                          {me.email || ''}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Menu items */}
+                    <div style={{ padding: '8px' }}>
+                      <button
+                        onClick={()=> {
+                          setShowSettingsDropdown(false)
+                          doLogout()
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '14px 16px',
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#ef4444',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '14px',
+                          fontSize: '14px',
+                          fontWeight: 500,
+                          borderRadius: '10px',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e)=> {
+                          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
+                          e.currentTarget.style.transform = 'translateX(4px)'
+                        }}
+                        onMouseLeave={(e)=> {
+                          e.currentTarget.style.background = 'transparent'
+                          e.currentTarget.style.transform = 'translateX(0)'
+                        }}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                          <polyline points="16 17 21 12 16 7"/>
+                          <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
