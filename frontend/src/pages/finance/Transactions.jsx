@@ -391,8 +391,8 @@ export default function Transactions(){
     const arr = drivers.map(d => {
       // Use backend-calculated values from /api/finance/drivers/summary
       const id = String(d?.id || d?._id)
-      const openAssigned = d.assigned || 0
-      const totalAssigned = (d.assigned || 0) + (d.deliveredCount || 0) + (d.canceled || 0)
+      const openCount = d.open || 0  // Orders with non-final statuses
+      const assignedCount = d.assigned || 0  // Orders with 'assigned' status only
       const deliveredCount = d.deliveredCount || 0
       const collectedSum = d.collected || 0
       const remittedSum = d.deliveredToCompany || 0
@@ -407,7 +407,7 @@ export default function Transactions(){
         phone: d.phone || '',
         country: d.country || ''
       }
-      return { id, driver, openAssigned, totalAssigned, deliveredCount, collectedSum, remittedSum, variance, returned, cancelled }
+      return { id, driver, openCount, assignedCount, deliveredCount, collectedSum, remittedSum, variance, returned, cancelled }
     })
     const dir = sortDir === 'asc' ? 1 : -1
     const key = sortBy
@@ -422,28 +422,28 @@ export default function Transactions(){
   }, [drivers, returnedByDriver, sortBy, sortDir])
 
   const totals = useMemo(()=>{
-    let delivered=0, collected=0, remitted=0, pending=0, openA=0, totalA=0
+    let delivered=0, collected=0, remitted=0, pending=0, openTotal=0, assignedTotal=0
     for (const r of rows){
       delivered += Number(r.deliveredCount||0)
       collected += Number(r.collectedSum||0)
       remitted += Number(r.remittedSum||0)
       pending += Number(r.variance||0)
-      openA += Number(r.openAssigned||0)
-      totalA += Number(r.totalAssigned||0)
+      openTotal += Number(r.openCount||0)
+      assignedTotal += Number(r.assignedCount||0)
     }
-    return { delivered, collected, remitted, pending, openA, totalA }
+    return { delivered, collected, remitted, pending, openTotal, assignedTotal }
   }, [rows])
 
   function exportCsv(){
     try{
-      const header = ['Driver','Email','OpenAssigned','TotalAssigned','Delivered','Returned','Cancelled','Collected','Remitted','Pending']
+      const header = ['Driver','Email','Open','Assigned','Delivered','Returned','Cancelled','Collected','Remitted','Pending']
       const lines = [header.join(',')]
       for (const r of rows){
         lines.push([
           `${r.driver.firstName||''} ${r.driver.lastName||''}`.trim(),
           r.driver.email||'',
-          r.openAssigned,
-          r.totalAssigned,
+          r.openCount,
+          r.assignedCount,
           r.deliveredCount,
           r.returned,
           r.cancelled,
@@ -657,10 +657,10 @@ export default function Transactions(){
                         <div className="helper" style={{fontSize:11}}>{r.driver.email || ''}</div>
                       </td>
                       <td style={{ padding: '12px', textAlign:'right' }}>
-                        <span onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} title="View open assigned" style={{ cursor:'pointer', color:'#f59e0b', fontWeight:600 }}>{num(r.openAssigned)}</span>
+                        <span onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }} title="View open orders (non-final statuses)" style={{ cursor:'pointer', color:'#f59e0b', fontWeight:600 }}>{num(r.openCount)}</span>
                       </td>
                       <td style={{ padding: '12px', textAlign:'right' }}>
-                        <span onClick={()=> goAllOrders(r.id)} title="View all assigned" style={{ cursor:'pointer', color:'#6366f1', fontWeight:600 }}>{num(r.totalAssigned)}</span>
+                        <span onClick={()=> { const p = new URLSearchParams(); if (country) p.set('country', country); p.set('driver', r.id); p.set('ship','assigned'); navigate(`/user/orders?${p.toString()}`) }} title="View assigned orders" style={{ cursor:'pointer', color:'#6366f1', fontWeight:600 }}>{num(r.assignedCount)}</span>
                       </td>
                       <td style={{ padding: '12px', textAlign:'right' }}>
                         <span onClick={()=> goDelivered(r.id)} title="View delivered orders" style={{ cursor:'pointer', color:'#3b82f6', fontWeight:600 }}>{num(r.deliveredCount)}</span>
@@ -714,10 +714,10 @@ export default function Transactions(){
               <tr style={{ borderTop:'2px solid var(--border)', background:'var(--panel)' }}>
                 <td style={{ padding:'12px', fontWeight:700 }}>Totals</td>
                 <td style={{ padding:'12px', textAlign:'right', fontWeight:700, color:'#f59e0b' }}>
-                  <span style={{ cursor:'pointer' }} onClick={()=>{ const p=new URLSearchParams(); if(country) p.set('country', country); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }}>{num(totals.openA)}</span>
+                  <span style={{ cursor:'pointer' }} onClick={()=>{ const p=new URLSearchParams(); if(country) p.set('country', country); p.set('ship','open'); navigate(`/user/orders?${p.toString()}`) }}>{num(totals.openTotal)}</span>
                 </td>
                 <td style={{ padding:'12px', textAlign:'right', fontWeight:700, color:'#6366f1' }}>
-                  <span style={{ cursor:'pointer' }} onClick={()=>{ const p=new URLSearchParams(); if(country) p.set('country', country); navigate(`/user/orders?${p.toString()}`) }}>{num(totals.totalA)}</span>
+                  <span style={{ cursor:'pointer' }} onClick={()=>{ const p=new URLSearchParams(); if(country) p.set('country', country); p.set('ship','assigned'); navigate(`/user/orders?${p.toString()}`) }}>{num(totals.assignedTotal)}</span>
                 </td>
                 <td style={{ padding:'12px', textAlign:'right', fontWeight:700, color:'#3b82f6' }}>
                   <span style={{ cursor:'pointer' }} onClick={()=>{ const p=new URLSearchParams(); if(country) p.set('country', country); p.set('ship','delivered'); navigate(`/user/orders?${p.toString()}`) }}>{num(totals.delivered)}</span>

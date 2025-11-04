@@ -2311,7 +2311,20 @@ router.get(
       for (const d of drivers) {
         const currency = currencyFromCountry(d?.country || "") || "SAR";
         const matchBase = { deliveryBoy: d._id, ...dateFilter };
-        const assigned = await Order.countDocuments(matchBase);
+        
+        // Open orders: all non-final statuses
+        const openStatuses = ['pending', 'assigned', 'picked_up', 'in_transit', 'out_for_delivery', 'no_response', 'attempted', 'contacted'];
+        const open = await Order.countDocuments({
+          ...matchBase,
+          shipmentStatus: { $in: openStatuses }
+        });
+        
+        // Assigned: specifically orders with 'assigned' status
+        const assigned = await Order.countDocuments({
+          ...matchBase,
+          shipmentStatus: "assigned"
+        });
+        
         const canceled = await Order.countDocuments({
           ...matchBase,
           shipmentStatus: "cancelled",
@@ -2410,6 +2423,7 @@ router.get(
           commissionRate: Number(d.driverProfile?.commissionRate ?? 8),
           commissionPerOrder: Number(d.driverProfile?.commissionPerOrder ?? 0),
           commissionCurrency: d.driverProfile?.commissionCurrency || currency,
+          open,
           assigned,
           canceled,
           deliveredCount,
