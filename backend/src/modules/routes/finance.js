@@ -2407,6 +2407,7 @@ router.get(
           extraCommission: Math.round(extraCommission),
           driverCommission: Math.round(driverCommission),
           withdrawnCommission: Math.round(withdrawnCommission),
+          paidCommission: Math.round(withdrawnCommission), // Alias for frontend compatibility
           pendingCommission: Math.round(pendingCommission),
         });
       }
