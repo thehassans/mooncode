@@ -6,20 +6,42 @@ import { qsRangeBare } from '../../utils/queryString.js'
 
 export default function DriverDashboard(){
   const nav = useNavigate()
+  
+  // Month/Year filtering - default to current month
+  const now = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1) // 1-12
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
+  
   const [metrics, setMetrics] = useState({ totalAssignedAllTime: 0, status: { assigned:0, picked_up:0, in_transit:0, out_for_delivery:0, delivered:0, no_response:0, returned:0, cancelled:0 } })
   const [assigned, setAssigned] = useState([])
   const [payout, setPayout] = useState({ currency:'', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
   const [loading, setLoading] = useState(false)
   const [user, setUser] = useState(null)
+  
+  // Month names for display
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  
+  // Helper to get date range for selected month
+  const getMonthDateRange = () => {
+    const startDate = new Date(selectedYear, selectedMonth - 1, 1)
+    const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999)
+    return {
+      from: startDate.toISOString(),
+      to: endDate.toISOString()
+    }
+  }
 
   async function loadData(){
     setLoading(true)
     try{
+      const dateRange = getMonthDateRange()
+      const dateParams = `from=${encodeURIComponent(dateRange.from)}&to=${encodeURIComponent(dateRange.to)}`
+      
       const [meRes, a, m, s] = await Promise.all([
         apiGet('/api/users/me').catch(()=>({})),
         apiGet('/api/orders/driver/assigned'),
-        apiGet('/api/orders/driver/metrics'),
-        apiGet('/api/finance/remittances/summary').catch(()=>({}))
+        apiGet(`/api/orders/driver/metrics?${dateParams}`),
+        apiGet(`/api/finance/remittances/summary?${dateParams}`).catch(()=>({}))
       ])
       if (meRes && meRes.user) setUser(meRes.user)
       if (m && typeof m.totalAssignedAllTime === 'number' && m.status){
@@ -59,7 +81,7 @@ export default function DriverDashboard(){
       setPayout({ currency:'', totalCollectedAmount:0, deliveredToCompany:0, pendingToCompany:0 })
     }finally{ setLoading(false) }
   }
-  useEffect(()=>{ loadData() },[qsRangeBare])
+  useEffect(()=>{ loadData() },[selectedMonth, selectedYear])
 
   // Real-time: refresh counts on order events
   useEffect(()=>{
@@ -142,6 +164,36 @@ export default function DriverDashboard(){
         <div>
           <div className="page-title gradient heading-blue">Driver Dashboard</div>
           <div className="page-subtitle">Overview of your delivery workload</div>
+        </div>
+      </div>
+
+      {/* Month/Year Filter */}
+      <div className="card" style={{padding:16}}>
+        <div className="section" style={{display:'flex', alignItems:'center', gap:12, flexWrap:'wrap'}}>
+          <div style={{fontWeight:700, fontSize:16}}>📅 Period:</div>
+          <select 
+            className="input" 
+            value={selectedMonth} 
+            onChange={(e)=> setSelectedMonth(Number(e.target.value))}
+            style={{fontSize:14, maxWidth:150}}
+          >
+            {monthNames.map((name, idx) => (
+              <option key={idx} value={idx + 1}>{name}</option>
+            ))}
+          </select>
+          <select 
+            className="input" 
+            value={selectedYear} 
+            onChange={(e)=> setSelectedYear(Number(e.target.value))}
+            style={{fontSize:14, maxWidth:120}}
+          >
+            {Array.from({ length: 5 }, (_, i) => now.getFullYear() - i).map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <div className="chip" style={{background:'var(--primary)', color:'white', fontWeight:600}}>
+            {monthNames[selectedMonth - 1]} {selectedYear}
+          </div>
         </div>
       </div>
 

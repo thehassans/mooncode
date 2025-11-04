@@ -12,6 +12,24 @@ export default function AgentDashboard(){
   const me = useMemo(()=>{
     try{ return JSON.parse(localStorage.getItem('me')||'{}') }catch{ return {} }
   },[])
+  
+  // Month/Year filtering - default to current month
+  const now = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1) // 1-12
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
+  
+  // Month names for display
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  
+  // Helper to get date range for selected month
+  const getMonthDateRange = () => {
+    const startDate = new Date(selectedYear, selectedMonth - 1, 1)
+    const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59, 999)
+    return {
+      from: startDate.toISOString(),
+      to: endDate.toISOString()
+    }
+  }
   const [isMobile, setIsMobile] = useState(()=> (typeof window!=='undefined' ? window.innerWidth <= 768 : false))
   useEffect(()=>{
     function onResize(){ try{ setIsMobile(window.innerWidth <= 768) }catch{} }
@@ -66,10 +84,13 @@ export default function AgentDashboard(){
       const chatList = Array.isArray(chats) ? chats : []
       setAssignedCount(chatList.length)
       // Fetch ALL orders (paged) so status totals match the submitted total
+      const dateRange = getMonthDateRange()
+      const dateParams = `from=${encodeURIComponent(dateRange.from)}&to=${encodeURIComponent(dateRange.to)}`
+      
       async function fetchAllOrders(){
         let page = 1, limit = 200, out = []
         for(;;){
-          const r = await apiGet(`/api/orders?page=${page}&limit=${limit}`).catch(()=>({ orders: [], hasMore:false }))
+          const r = await apiGet(`/api/orders?${dateParams}&page=${page}&limit=${limit}`).catch(()=>({ orders: [], hasMore:false }))
           const list = Array.isArray(r?.orders) ? r.orders : []
           out = out.concat(list)
           if (!r?.hasMore) break
@@ -149,7 +170,7 @@ export default function AgentDashboard(){
     }finally{ setLoading(false) }
   }
 
-  useEffect(()=>{ load() },[qsRangeBare])
+  useEffect(()=>{ load() },[selectedMonth, selectedYear])
   // Removed recent orders infinite scroll and related fetches from dashboard
 
   // Fallback: periodic polling to keep data fresh even if socket misses an event
@@ -218,6 +239,36 @@ export default function AgentDashboard(){
 
   return (
     <div className="section" style={{display:'grid', gap:12}}>
+      {/* Month/Year Filter */}
+      <div className="card" style={{padding:16}}>
+        <div className="section" style={{display:'flex', alignItems:'center', gap:12, flexWrap:'wrap'}}>
+          <div style={{fontWeight:700, fontSize:16}}>📅 Period:</div>
+          <select 
+            className="input" 
+            value={selectedMonth} 
+            onChange={(e)=> setSelectedMonth(Number(e.target.value))}
+            style={{fontSize:14, maxWidth:150}}
+          >
+            {monthNames.map((name, idx) => (
+              <option key={idx} value={idx + 1}>{name}</option>
+            ))}
+          </select>
+          <select 
+            className="input" 
+            value={selectedYear} 
+            onChange={(e)=> setSelectedYear(Number(e.target.value))}
+            style={{fontSize:14, maxWidth:120}}
+          >
+            {Array.from({ length: 5 }, (_, i) => now.getFullYear() - i).map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <div className="chip" style={{background:'var(--primary)', color:'white', fontWeight:600}}>
+            {monthNames[selectedMonth - 1]} {selectedYear}
+          </div>
+        </div>
+      </div>
+      
       {/* Top metrics (like driver tiles) */}
       <div className="card" style={{padding:16}}>
         <div className="section" style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px,1fr))', gap:12}}>
