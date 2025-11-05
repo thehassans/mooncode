@@ -19,6 +19,9 @@ export default function ProfileSettings() {
   const [openaiKey, setOpenaiKey] = useState('')
   const [mapsKey, setMapsKey] = useState('')
   
+  // Custom Domain
+  const [customDomain, setCustomDomain] = useState('')
+  
   // Load current user data
   useEffect(() => {
     const me = JSON.parse(localStorage.getItem('me') || '{}')
@@ -27,8 +30,9 @@ export default function ProfileSettings() {
     setEmail(me.email || '')
     setPhone(me.phone || '')
     
-    // Load API keys
+    // Load API keys and custom domain
     loadAPIKeys()
+    loadCustomDomain()
   }, [])
   
   async function loadAPIKeys() {
@@ -39,6 +43,15 @@ export default function ProfileSettings() {
       setMapsKey(data.mapsKey || '')
     } catch (err) {
       console.error('Failed to load API keys:', err)
+    }
+  }
+  
+  async function loadCustomDomain() {
+    try {
+      const data = await apiGet('/api/user/custom-domain')
+      setCustomDomain(data.customDomain || '')
+    } catch (err) {
+      console.error('Failed to load custom domain:', err)
     }
   }
   
@@ -88,6 +101,26 @@ export default function ProfileSettings() {
       setTimeout(() => setMessage(''), 3000)
     } catch (err) {
       setError(err.message || 'Failed to update API keys')
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  async function handleSaveCustomDomain(e) {
+    e.preventDefault()
+    setLoading(true)
+    setMessage('')
+    setError('')
+    
+    try {
+      await apiPost('/api/user/custom-domain', {
+        customDomain: customDomain.trim()
+      })
+      
+      setMessage('Custom domain updated successfully!')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (err) {
+      setError(err.message || 'Failed to update custom domain')
     } finally {
       setLoading(false)
     }
@@ -325,6 +358,89 @@ export default function ProfileSettings() {
               
               <button type="submit" className="btn" disabled={loading}>
                 {loading ? 'Saving...' : 'Save API Keys'}
+              </button>
+            </div>
+          </form>
+        </div>
+        
+        {/* Custom Domain Card */}
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{
+            padding: '24px',
+            borderBottom: '1px solid var(--border)',
+            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.05), rgba(236, 72, 153, 0.05))'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              <div>
+                <h2 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '4px' }}>
+                  Custom Domain
+                </h2>
+                <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
+                  Connect your own domain to your e-commerce store
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <form onSubmit={handleSaveCustomDomain} style={{ padding: '24px' }}>
+            <div style={{ display: 'grid', gap: '20px' }}>
+              <div className="field">
+                <label className="label">
+                  Domain Name
+                  <span style={{ color: 'var(--muted)', fontWeight: 400, marginLeft: '8px' }}>
+                    (e.g., buysial.com)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  value={customDomain}
+                  onChange={(e) => setCustomDomain(e.target.value)}
+                  placeholder="yourdomain.com"
+                />
+              </div>
+              
+              <div style={{
+                padding: '16px',
+                background: 'rgba(168, 85, 247, 0.05)',
+                border: '1px solid rgba(168, 85, 247, 0.2)',
+                borderRadius: '10px',
+                fontSize: '13px',
+                lineHeight: '1.6'
+              }}>
+                <div style={{ fontWeight: 600, marginBottom: '8px', color: 'var(--text)' }}>
+                  🌐 Domain Setup Instructions
+                </div>
+                <ol style={{ color: 'var(--muted)', paddingLeft: '20px', margin: 0 }}>
+                  <li>Enter your domain name in the field above (e.g., buysial.com)</li>
+                  <li>Point your domain's DNS to web.buysial.com using a CNAME record</li>
+                  <li>Wait for DNS propagation (usually 5-10 minutes)</li>
+                  <li>Your e-commerce store will be accessible on your custom domain</li>
+                </ol>
+                {customDomain && (
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(168, 85, 247, 0.2)' }}>
+                    <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--text)' }}>
+                      Current Domain:
+                    </div>
+                    <a 
+                      href={`https://${customDomain}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      style={{ color: '#a855f7', textDecoration: 'none', fontWeight: 500 }}
+                    >
+                      {customDomain} →
+                    </a>
+                  </div>
+                )}
+              </div>
+              
+              <button type="submit" className="btn" disabled={loading}>
+                {loading ? 'Saving...' : 'Save Custom Domain'}
               </button>
             </div>
           </form>

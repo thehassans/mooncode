@@ -60,6 +60,8 @@ const UserSchema = new mongoose.Schema({
   settings: {
     autoSendInvoice: { type: Boolean, default: true }, // controls auto WhatsApp invoice PDF on order create
   },
+  // Custom domain for e-commerce site (e.g., buysial.com)
+  customDomain: { type: String, default: '', trim: true },
 }, { timestamps: true })
 
 UserSchema.pre('save', async function(next){

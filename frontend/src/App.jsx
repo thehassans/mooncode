@@ -214,12 +214,78 @@ function RequireManagerPerm({ perm, children }){
   const allowed = !!(me?.managerPermissions && me.managerPermissions[perm])
   return allowed ? children : <Navigate to="/manager" replace />
 }
+
+// Custom Domain Router - redirects to catalog if accessing from custom domain
+function CustomDomainRouter({ children }) {
+  const [isCustomDomain, setIsCustomDomain] = useState(null)
+  const [checking, setChecking] = useState(true)
+  
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const hostname = window.location.hostname.toLowerCase()
+        
+        // Skip check for web.buysial.com and localhost
+        if (hostname === 'web.buysial.com' || hostname === 'localhost' || hostname === '127.0.0.1') {
+          if (alive) {
+            setIsCustomDomain(false)
+            setChecking(false)
+          }
+          return
+        }
+        
+        // Check if this hostname is registered as a custom domain
+        try {
+          const response = await apiGet(`/api/user/by-domain/${hostname}`)
+          if (alive && response?.userId) {
+            setIsCustomDomain(true)
+            // Store the store info for later use
+            sessionStorage.setItem('customDomainStore', JSON.stringify(response))
+          } else {
+            setIsCustomDomain(false)
+          }
+        } catch (err) {
+          // Domain not found in database, proceed normally
+          setIsCustomDomain(false)
+        }
+      } catch (err) {
+        console.error('Custom domain check failed:', err)
+        setIsCustomDomain(false)
+      } finally {
+        if (alive) setChecking(false)
+      }
+    })()
+    
+    return () => { alive = false }
+  }, [])
+  
+  if (checking) {
+    return (
+      <div style={{ display: 'grid', placeItems: 'center', height: '100vh', color: '#9aa4b2' }}>
+        <div style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
+          <div className="spinner" />
+          <div>Loading store...</div>
+        </div>
+      </div>
+    )
+  }
+  
+  // If custom domain, show catalog by default
+  if (isCustomDomain) {
+    return <ProductCatalog />
+  }
+  
+  return children
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
-      <Routes>
-      {/* Public site pages */}
-      <Route path="/" element={<SiteHome />} />
+      <CustomDomainRouter>
+        <Routes>
+        {/* Public site pages */}
+        <Route path="/" element={<SiteHome />} />
       <Route path="/about" element={<SiteAbout />} />
       <Route path="/contact" element={<SiteContact />} />
       <Route path="/categories" element={<SiteCategories />} />
@@ -396,6 +462,7 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
+    </CustomDomainRouter>
     </ErrorBoundary>
   )
 }

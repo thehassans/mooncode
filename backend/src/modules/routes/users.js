@@ -555,6 +555,72 @@ router.post('/update-profile', auth, async (req, res) => {
   }
 })
 
+// Get custom domain setting
+router.get('/custom-domain', auth, allowRoles('user', 'admin'), async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('customDomain')
+    if (!user) return res.status(404).json({ message: 'User not found' })
+    
+    return res.json({ customDomain: user.customDomain || '' })
+  } catch (err) {
+    return res.status(500).json({ message: err?.message || 'Failed to get custom domain' })
+  }
+})
+
+// Update custom domain setting
+router.post('/custom-domain', auth, allowRoles('user', 'admin'), async (req, res) => {
+  try {
+    const { customDomain } = req.body || {}
+    
+    // Validate domain format (basic validation)
+    const domain = String(customDomain || '').trim().toLowerCase()
+    
+    // Allow empty string to remove domain
+    if (domain && !/^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/i.test(domain)) {
+      return res.status(400).json({ message: 'Invalid domain format. Please enter a valid domain (e.g., buysial.com)' })
+    }
+    
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: { customDomain: domain } },
+      { new: true, projection: '-password' }
+    )
+    
+    if (!user) return res.status(404).json({ message: 'User not found' })
+    
+    return res.json({ ok: true, customDomain: user.customDomain })
+  } catch (err) {
+    return res.status(500).json({ message: err?.message || 'Failed to update custom domain' })
+  }
+})
+
+// Public endpoint: Get user info by custom domain (no auth required)
+router.get('/by-domain/:domain', async (req, res) => {
+  try {
+    const { domain } = req.params
+    const normalizedDomain = String(domain || '').trim().toLowerCase()
+    
+    if (!normalizedDomain) {
+      return res.status(400).json({ message: 'Domain is required' })
+    }
+    
+    const user = await User.findOne({ customDomain: normalizedDomain, role: 'user' })
+      .select('_id firstName lastName email customDomain')
+    
+    if (!user) {
+      return res.status(404).json({ message: 'No store found for this domain' })
+    }
+    
+    return res.json({ 
+      userId: user._id,
+      storeName: `${user.firstName} ${user.lastName}`.trim() || 'Store',
+      customDomain: user.customDomain 
+    })
+  } catch (err) {
+    return res.status(500).json({ message: err?.message || 'Failed to lookup domain' })
+  }
+})
+
 // Agent self performance: avg response time and quick counts
 router.get('/agents/me/performance', auth, async (req, res) => {
   const userId = req.user.id
