@@ -608,6 +608,88 @@ export default function UserLayout(){
                       Change Password
                     </button>
                     
+                    <button
+                      onClick={()=> {
+                        setShowSettingsDropdown(false)
+                        navigate('/user/api-setup')
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '14px 16px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text)',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '14px',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        borderRadius: '10px',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e)=> {
+                        e.currentTarget.style.background = 'var(--panel-2)'
+                        e.currentTarget.style.transform = 'translateX(4px)'
+                      }}
+                      onMouseLeave={(e)=> {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.transform = 'translateX(0)'
+                      }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="2" x2="12" y2="6"/>
+                        <line x1="12" y1="18" x2="12" y2="22"/>
+                        <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/>
+                        <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
+                        <line x1="2" y1="12" x2="6" y2="12"/>
+                        <line x1="18" y1="12" x2="22" y2="12"/>
+                        <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/>
+                        <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
+                      </svg>
+                      API Setup
+                    </button>
+                    
+                    <button
+                      onClick={()=> {
+                        setShowSettingsDropdown(false)
+                        navigate('/user/shopify')
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '14px 16px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text)',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '14px',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        borderRadius: '10px',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e)=> {
+                        e.currentTarget.style.background = 'var(--panel-2)'
+                        e.currentTarget.style.transform = 'translateX(4px)'
+                      }}
+                      onMouseLeave={(e)=> {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.transform = 'translateX(0)'
+                      }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                        <line x1="12" y1="22.08" x2="12" y2="12"/>
+                      </svg>
+                      Shopify Integration
+                    </button>
+                    
                     <div style={{ 
                       padding: '16px', 
                       margin: '8px 0',
