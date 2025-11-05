@@ -237,7 +237,7 @@ function CustomDomainRouter({ children }) {
         
         // Check if this hostname is registered as a custom domain
         try {
-          const response = await apiGet(`/api/user/by-domain/${hostname}`)
+          const response = await apiGet(`/api/users/by-domain/${hostname}`)
           if (alive && response?.userId) {
             setIsCustomDomain(true)
             // Store the store info for later use

@@ -48,7 +48,7 @@ export default function ProfileSettings() {
   
   async function loadCustomDomain() {
     try {
-      const data = await apiGet('/api/user/custom-domain')
+      const data = await apiGet('/api/users/custom-domain')
       setCustomDomain(data.customDomain || '')
     } catch (err) {
       console.error('Failed to load custom domain:', err)
@@ -113,7 +113,7 @@ export default function ProfileSettings() {
     setError('')
     
     try {
-      await apiPost('/api/user/custom-domain', {
+      await apiPost('/api/users/custom-domain', {
         customDomain: customDomain.trim()
       })
       
