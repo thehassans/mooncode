@@ -109,6 +109,7 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
   }catch{}
   const displayOnWebsite = String(req.body?.displayOnWebsite||'').toLowerCase() === 'true' || req.body?.displayOnWebsite === true
   const isForMobile = String(req.body?.isForMobile||'').toLowerCase() === 'true' || req.body?.isForMobile === true
+  const displayOnShopify = String(req.body?.displayOnShopify||'').toLowerCase() === 'true' || req.body?.displayOnShopify === true
 
   let actorName = ''
   try{
@@ -130,6 +131,7 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
     availableCountries,
     displayOnWebsite,
     isForMobile,
+    displayOnShopify,
     createdBy: ownerId,
     createdByRole: String(req.user.role||''),
     createdByActor: req.user.id,
@@ -513,6 +515,10 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
   // Update isForMobile if provided
   if (req.body?.isForMobile != null){
     prod.isForMobile = (req.body.isForMobile === true || String(req.body.isForMobile).toLowerCase() === 'true')
+  }
+  // Update displayOnShopify if provided
+  if (req.body?.displayOnShopify != null){
+    prod.displayOnShopify = (req.body.displayOnShopify === true || String(req.body.displayOnShopify).toLowerCase() === 'true')
   }
   // per-country stock updates
   const sbc = { ...(prod.stockByCountry || { UAE:0, Oman:0, KSA:0, Bahrain:0, India:0, Kuwait:0, Qatar:0 }) }

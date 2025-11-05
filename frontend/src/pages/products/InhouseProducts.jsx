@@ -48,7 +48,7 @@ export default function InhouseProducts(){
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
-  const [form, setForm] = useState({ name:'', price:'', purchasePrice:'', baseCurrency:'SAR', category:'Other', madeInCountry:'', description:'', availableCountries: [], inStock: true, displayOnWebsite: false, isForMobile: false, stockUAE: 0, stockOman: 0, stockKSA: 0, stockBahrain: 0, stockIndia: 0, stockKuwait: 0, stockQatar: 0, images: [] })
+  const [form, setForm] = useState({ name:'', price:'', purchasePrice:'', baseCurrency:'SAR', category:'Other', madeInCountry:'', description:'', availableCountries: [], inStock: true, displayOnWebsite: false, isForMobile: false, displayOnShopify: false, stockUAE: 0, stockOman: 0, stockKSA: 0, stockBahrain: 0, stockIndia: 0, stockKuwait: 0, stockQatar: 0, images: [] })
   const [imagePreviews, setImagePreviews] = useState([])
   const [editing, setEditing] = useState(null) // holds product doc when editing
   const [editForm, setEditForm] = useState(null)
@@ -371,6 +371,7 @@ export default function InhouseProducts(){
       fd.append('inStock', String(form.inStock))
       fd.append('displayOnWebsite', String(!!form.displayOnWebsite))
       fd.append('isForMobile', String(!!form.isForMobile))
+      fd.append('displayOnShopify', String(!!form.displayOnShopify))
       fd.append('stockUAE', String(form.stockUAE))
       fd.append('stockOman', String(form.stockOman))
       fd.append('stockKSA', String(form.stockKSA))
@@ -384,7 +385,7 @@ export default function InhouseProducts(){
       
       const createdId = response?.product?._id
       if (response.success || createdId) {
-        setForm({ name:'', price:'', purchasePrice:'', baseCurrency:'SAR', category:'Other', madeInCountry:'', description:'', availableCountries:[], inStock: true, displayOnWebsite:false, isForMobile:false, stockUAE: 0, stockOman: 0, stockKSA: 0, stockBahrain: 0, stockIndia: 0, stockKuwait: 0, stockQatar: 0, images: [] })
+        setForm({ name:'', price:'', purchasePrice:'', baseCurrency:'SAR', category:'Other', madeInCountry:'', description:'', availableCountries:[], inStock: true, displayOnWebsite:false, isForMobile:false, displayOnShopify:false, stockUAE: 0, stockOman: 0, stockKSA: 0, stockBahrain: 0, stockIndia: 0, stockKuwait: 0, stockQatar: 0, images: [] })
         setImagePreviews([])
         setAiDescription('')
         setMsg('Product created successfully!')
@@ -431,6 +432,7 @@ export default function InhouseProducts(){
       inStock: !!p.inStock,
       displayOnWebsite: !!p.displayOnWebsite,
       isForMobile: !!p.isForMobile,
+      displayOnShopify: !!p.displayOnShopify,
       stockUAE: p.stockByCountry?.UAE || 0,
       stockOman: p.stockByCountry?.Oman || 0,
       stockKSA: p.stockByCountry?.KSA || 0,
@@ -470,6 +472,7 @@ export default function InhouseProducts(){
       fd.append('inStock', String(editForm.inStock))
       fd.append('displayOnWebsite', String(!!editForm.displayOnWebsite))
       fd.append('isForMobile', String(!!editForm.isForMobile))
+      fd.append('displayOnShopify', String(!!editForm.displayOnShopify))
       fd.append('stockUAE', String(editForm.stockUAE))
       fd.append('stockOman', String(editForm.stockOman))
       fd.append('stockKSA', String(editForm.stockKSA))
@@ -576,6 +579,12 @@ export default function InhouseProducts(){
               <div className="label">Mobile Application</div>
               <label style={{display:'inline-flex', alignItems:'center', gap:8}}>
                 <input type="checkbox" name="isForMobile" checked={!!form.isForMobile} onChange={onChange} /> Show on Mobile Application
+              </label>
+            </div>
+            <div>
+              <div className="label">Shopify Store</div>
+              <label style={{display:'inline-flex', alignItems:'center', gap:8}}>
+                <input type="checkbox" name="displayOnShopify" checked={!!form.displayOnShopify} onChange={onChange} /> Sync to Shopify
               </label>
             </div>
           </div>
@@ -1047,6 +1056,12 @@ export default function InhouseProducts(){
                   <div className="label">Mobile Application</div>
                   <label style={{display:'inline-flex', alignItems:'center', gap:8}}>
                     <input type="checkbox" name="isForMobile" checked={!!editForm.isForMobile} onChange={onEditChange} /> Show on Mobile Application
+                  </label>
+                </div>
+                <div>
+                  <div className="label">Shopify Store</div>
+                  <label style={{display:'inline-flex', alignItems:'center', gap:8}}>
+                    <input type="checkbox" name="displayOnShopify" checked={!!editForm.displayOnShopify} onChange={onEditChange} /> Sync to Shopify
                   </label>
                 </div>
               </div>

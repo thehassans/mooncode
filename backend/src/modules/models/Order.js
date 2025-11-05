@@ -78,6 +78,13 @@ const OrderSchema = new mongoose.Schema({
   invoiceNumber: { type: String, unique: true, sparse: true, index: true },
   total: { type: Number },
   discount: { type: Number, default: 0 },
+  
+  // Shopify integration fields
+  orderSource: { type: String, enum: ['manual','shopify','website','mobile'], default: 'manual' },
+  shopifyOrderId: { type: String, default: '', index: true }, // Shopify order ID
+  shopifyOrderNumber: { type: String, default: '' }, // Shopify order number (e.g., #1001)
+  shopifyOrderName: { type: String, default: '' }, // Shopify order name (e.g., #MS1001)
+  shopifyFulfillmentId: { type: String, default: '' }, // Shopify fulfillment ID after shipping
 }, { timestamps: true })
 
 export default mongoose.model('Order', OrderSchema)

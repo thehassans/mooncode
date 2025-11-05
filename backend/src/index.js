@@ -21,6 +21,7 @@ import notificationsRoutes from './modules/routes/notifications.js';
 import ecommerceRoutes from './modules/routes/ecommerce.js';
 import reportsRoutes from './modules/routes/reports.js';
 import geocodeRoutes from './modules/routes/geocode.js';
+import shopifyRoutes from './modules/routes/shopify.js';
 
 dotenv.config();
 
@@ -129,6 +130,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/geocode', geocodeRoutes);
 app.use('/api/ecommerce', ecommerceRoutes);
+app.use('/api/shopify', shopifyRoutes);
 
 // Serve uploaded product images from a robustly resolved directory
 function resolveUploadsDir(){

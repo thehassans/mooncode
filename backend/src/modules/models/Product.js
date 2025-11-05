@@ -47,6 +47,11 @@ const ProductSchema = new mongoose.Schema({
   featured: { type: Boolean, default: false },
   displayOnWebsite: { type: Boolean, default: false },
   isForMobile: { type: Boolean, default: false }, // Show on mobile application
+  displayOnShopify: { type: Boolean, default: false }, // Sync to Shopify store
+  shopifyProductId: { type: String, default: '' }, // Shopify product ID after sync
+  shopifyVariantId: { type: String, default: '' }, // Shopify variant ID
+  shopifyInventoryItemId: { type: String, default: '' }, // Shopify inventory item ID
+  lastShopifySync: { type: Date }, // Last time synced to Shopify
   onSale: { type: Boolean, default: false },
   salePrice: { type: Number, default: 0 },
   sku: { type: String, unique: true, sparse: true },
