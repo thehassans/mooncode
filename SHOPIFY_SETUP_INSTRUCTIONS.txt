@@ -1,0 +1,113 @@
+=====================================================
+   SHOPIFY DROPSHIPPING APP - QUICK SETUP GUIDE
+=====================================================
+
+📦 STEP 1: INSTALL DEPENDENCIES
+---------------------------------
+Before starting the server, install axios:
+
+  cd backend
+  npm install axios
+
+Or if using yarn:
+
+  cd backend
+  yarn add axios
+
+
+🔧 STEP 2: CONFIGURE SHOPIFY APP
+---------------------------------
+1. Go to Shopify Admin → Settings → Apps and sales channels → Develop apps
+2. Create new app: "Buysial Dropshipping"
+3. Configure Admin API scopes:
+   ✓ read_products
+   ✓ write_products
+   ✓ read_orders
+   ✓ write_orders
+   ✓ write_fulfillments
+   ✓ read_inventory
+   ✓ write_inventory
+4. Install app and copy Admin API access token (shpat_...)
+
+
+⚙️ STEP 3: CONFIGURE BUYSIAL
+---------------------------------
+1. Start your BuySial server
+2. Login to web.buysial.com
+3. Navigate to: User → Shopify Integration
+4. Enter:
+   - Shopify Store URL: your-store.myshopify.com
+   - Admin API Access Token: shpat_...
+   - API Version: 2024-01
+   - Webhook Secret: (optional)
+5. Click "Save Shopify Settings"
+
+
+🪝 STEP 4: SET UP WEBHOOKS
+---------------------------------
+In Shopify Admin → Settings → Notifications → Webhooks:
+
+Create 3 webhooks:
+
+1. Order creation
+   URL: https://web.buysial.com/api/shopify/webhooks/orders/create
+   Format: JSON
+
+2. Order fulfillment
+   URL: https://web.buysial.com/api/shopify/webhooks/orders/fulfilled
+   Format: JSON
+
+3. Order cancellation
+   URL: https://web.buysial.com/api/shopify/webhooks/orders/cancelled
+   Format: JSON
+
+
+📦 STEP 5: SYNC PRODUCTS
+---------------------------------
+1. Go to: Products → In-house Products
+2. Create or edit products
+3. Check ☑ "Sync to Shopify" checkbox
+4. Save product
+5. Go to: User → Shopify Integration
+6. Click "Sync All Products"
+7. Products will appear on your Shopify store!
+
+
+✅ STEP 6: TEST THE INTEGRATION
+---------------------------------
+1. Place a test order on your Shopify store
+2. Check BuySial → Orders → Orders List
+3. You should see the order with "Shopify" source
+4. Process the order normally
+5. Mark as shipped → Shopify will be updated automatically!
+
+
+📚 FULL DOCUMENTATION
+---------------------------------
+See SHOPIFY_INTEGRATION_GUIDE.md for complete documentation including:
+- Detailed setup instructions
+- API endpoints reference
+- Troubleshooting guide
+- Best practices
+- Advanced features
+
+
+🆘 TROUBLESHOOTING
+---------------------------------
+Products not syncing?
+→ Check Shopify credentials are correct
+→ Verify "Sync to Shopify" is checked on products
+→ Check API scopes include write_products
+
+Orders not appearing?
+→ Verify webhooks are configured correctly
+→ Check webhook URLs are exactly as shown above
+→ Test webhook delivery in Shopify admin
+
+Need help?
+→ See SHOPIFY_INTEGRATION_GUIDE.md for detailed troubleshooting
+
+
+=====================================================
+         READY TO START DROPSHIPPING! 🚀
+=====================================================
