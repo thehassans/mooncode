@@ -172,7 +172,7 @@ export async function generateSettlementPDF(data) {
         
         // Track rendered orders and enforce 2-page limit
         let renderedOrders = 0
-        const maxOrders = Math.min(7, data.orders.length)
+        const maxOrders = data.orders.length // Show all orders
         const pageHeight = doc.page.height
         const reservedSpace = 350 // Space for settlement, payment, signature (increased)
         
@@ -185,11 +185,6 @@ export async function generateSettlementPDF(data) {
           
           // Check if we need to add a page break
           if (currentY + orderHeight + reservedSpace > pageHeight) {
-            const currentPage = doc.bufferedPageRange().count
-            if (currentPage >= 2) {
-              // Already on page 2, stop rendering more orders
-              break
-            }
             // Add page break and reset Y position
             doc.addPage()
             currentY = margin
@@ -468,7 +463,7 @@ export async function generateAcceptedSettlementPDF(data) {
         
         // Track rendered orders and enforce 2-page limit
         let renderedOrders = 0
-        const maxOrders = Math.min(7, data.orders.length)
+        const maxOrders = data.orders.length // Show all orders
         const pageHeight = doc.page.height
         const reservedSpace = 350 // Space for settlement, payment, signature (increased)
         
@@ -481,11 +476,6 @@ export async function generateAcceptedSettlementPDF(data) {
           
           // Check if we need to add a page break
           if (currentY + orderHeight + reservedSpace > pageHeight) {
-            const currentPage = doc.bufferedPageRange().count
-            if (currentPage >= 2) {
-              // Already on page 2, stop rendering more orders
-              break
-            }
             // Add page break and reset Y position
             doc.addPage()
             currentY = margin
