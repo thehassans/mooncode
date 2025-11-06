@@ -429,7 +429,12 @@ export default function ShoppingCart({ isOpen, onClose }) {
             </div>
             <div className="space-y-2">
               <button 
-                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full text-white py-3 px-4 transition-all duration-200 font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
+                style={{
+                  background: isLoading ? '#9ca3af' : 'var(--theme-primary)',
+                  borderRadius: 'var(--theme-button-radius)',
+                  opacity: isLoading ? 0.7 : 1
+                }}
                 onClick={handleCheckout}
                 disabled={isLoading}
               >
@@ -437,7 +442,11 @@ export default function ShoppingCart({ isOpen, onClose }) {
               </button>
               <div className="flex gap-2">
                 <button 
-                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2.5 px-4 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2"
+                  className="flex-1 text-white py-2.5 px-4 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2"
+                  style={{
+                    background: 'var(--theme-accent)',
+                    borderRadius: 'var(--theme-button-radius)'
+                  }}
                   onClick={() => {
                     onClose()
                     navigate('/catalog')

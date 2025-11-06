@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { ThemeProvider } from './contexts/ThemeContext.jsx'
+import './styles/theme.css'
 
 import AdminLayout from './layout/AdminLayout.jsx'
 import UserLayout from './layout/UserLayout.jsx'
@@ -289,8 +291,9 @@ function CustomDomainRouter({ children }) {
 export default function App() {
   return (
     <ErrorBoundary>
-      <CustomDomainRouter>
-        <Routes>
+      <ThemeProvider>
+        <CustomDomainRouter>
+          <Routes>
         {/* Public site pages */}
         <Route path="/" element={<ProductCatalog />} />
         <Route path="/home" element={<SiteHome />} />
@@ -478,6 +481,7 @@ export default function App() {
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
     </CustomDomainRouter>
+    </ThemeProvider>
     </ErrorBoundary>
   )
 }

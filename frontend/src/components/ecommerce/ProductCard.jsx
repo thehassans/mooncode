@@ -172,7 +172,14 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
   const hoverImagePath = images[1] || images[0] || ''
 
   return (
-    <div className={`${selected ? 'ring-2 ring-orange-200 border-orange-500' : 'border-gray-200'} bg-white rounded-xl shadow-sm border overflow-hidden group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer`}
+    <div className={`${selected ? 'ring-2 ring-orange-200' : ''} overflow-hidden group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer`}
+         style={{
+           background: 'var(--theme-card-bg)',
+           border: 'var(--theme-border)',
+           borderRadius: 'var(--theme-card-radius)',
+           boxShadow: 'var(--theme-shadow)',
+           borderColor: selected ? 'var(--theme-accent)' : undefined
+         }}
          onClick={handleProductClick}>
       {/* Product Image */}
       <div className="relative aspect-square overflow-hidden bg-gray-100">
@@ -270,7 +277,11 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
         <button
           onClick={handleAddToCart}
           disabled={!product.inStock || product.stockQty === 0}
-          className="w-full h-11 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+          className="w-full h-11 text-white px-4 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+          style={{
+            background: (!product.inStock || product.stockQty === 0) ? '#9ca3af' : 'var(--theme-accent)',
+            borderRadius: 'var(--theme-button-radius)',
+          }}
         >
           {!product.inStock || product.stockQty === 0 ? (
             'Out of Stock'

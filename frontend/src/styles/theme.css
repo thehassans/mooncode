@@ -1,0 +1,150 @@
+/* E-commerce Theme Variables */
+:root {
+  /* Default Theme Colors */
+  --theme-primary: #000000;
+  --theme-secondary: #ffffff;
+  --theme-accent: #f59e0b;
+  --theme-success: #10b981;
+  --theme-danger: #ef4444;
+  --theme-header-bg: #ffffff;
+  --theme-header-text: #000000;
+  --theme-card-bg: #ffffff;
+  
+  /* Typography */
+  --theme-header-font: 'Inter', system-ui, sans-serif;
+  --theme-body-font: 'Inter', system-ui, sans-serif;
+  
+  /* Border Radius */
+  --theme-button-radius: 8px;
+  --theme-card-radius: 12px;
+  
+  /* Borders & Shadows */
+  --theme-border: 1px solid #e5e7eb;
+  --theme-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  
+  /* Button Style */
+  --theme-button-style: solid;
+}
+
+/* Apply theme font to body */
+body {
+  font-family: var(--theme-body-font);
+}
+
+/* Theme-aware button styles */
+.theme-btn-primary {
+  background: var(--theme-primary);
+  color: white;
+  border: none;
+  border-radius: var(--theme-button-radius);
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.theme-btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.theme-btn-secondary {
+  background: var(--theme-secondary);
+  color: var(--theme-primary);
+  border: 2px solid var(--theme-primary);
+  border-radius: var(--theme-button-radius);
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.theme-btn-accent {
+  background: var(--theme-accent);
+  color: white;
+  border: none;
+  border-radius: var(--theme-button-radius);
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* Theme-aware card styles */
+.theme-card {
+  background: var(--theme-card-bg);
+  border: var(--theme-border);
+  border-radius: var(--theme-card-radius);
+  box-shadow: var(--theme-shadow);
+  transition: all 0.3s ease;
+}
+
+.theme-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+}
+
+/* Theme-aware header */
+.theme-header {
+  background: var(--theme-header-bg);
+  color: var(--theme-header-text);
+  border-bottom: var(--theme-border);
+}
+
+/* Theme-aware text colors */
+.theme-text-primary {
+  color: var(--theme-primary);
+}
+
+.theme-text-accent {
+  color: var(--theme-accent);
+}
+
+.theme-text-success {
+  color: var(--theme-success);
+}
+
+.theme-text-danger {
+  color: var(--theme-danger);
+}
+
+/* Gradient button style (for gradient theme) */
+.theme-btn-gradient {
+  background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 100%);
+  color: white;
+  border: none;
+  border-radius: var(--theme-button-radius);
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* Outlined button style (for luxury theme) */
+.theme-btn-outlined {
+  background: transparent;
+  color: var(--theme-primary);
+  border: 2px solid var(--theme-primary);
+  border-radius: var(--theme-button-radius);
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.theme-btn-outlined:hover {
+  background: var(--theme-primary);
+  color: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .theme-btn-primary,
+  .theme-btn-secondary,
+  .theme-btn-accent,
+  .theme-btn-gradient,
+  .theme-btn-outlined {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+}
