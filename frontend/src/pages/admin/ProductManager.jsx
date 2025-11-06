@@ -157,7 +157,13 @@ export default function ProductManager() {
             <div>No products found</div>
           </div>
         ) : (
-          products.map((product) => (
+          products.map((product) => {
+            // Calculate total stock across all countries
+            const totalStock = product.countryStock 
+              ? Object.values(product.countryStock).reduce((sum, stock) => sum + stock, 0)
+              : (product.stock || 0)
+            
+            return (
             <div key={product._id} style={{ 
               background: 'white', 
               border: product.isVisible !== false ? '2px solid #10b981' : '2px solid #e5e7eb', 
@@ -212,6 +218,29 @@ export default function ProductManager() {
                       <span>Price: {product.price || 'N/A'}</span>
                     )}
                   </div>
+                  
+                  {/* Total Stock Display */}
+                  <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>
+                    {product.countryStock && Object.keys(product.countryStock).length > 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontWeight: 600 }}>📦 Total Stock:</span>
+                        {Object.entries(product.countryStock).map(([country, stock]) => (
+                          <span key={country} style={{ 
+                            padding: '3px 8px', 
+                            background: stock > 0 ? '#ecfdf5' : '#fee2e2', 
+                            color: stock > 0 ? '#059669' : '#dc2626',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: 700
+                          }}>
+                            {country}: {stock}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ fontWeight: 600 }}>📦 Stock: {product.stock || 0}</span>
+                    )}
+                  </div>
 
                   {/* Category & Description */}
                   {product.category && (
@@ -221,31 +250,43 @@ export default function ProductManager() {
                   )}
                 </div>
                 
-                {/* Visibility Toggle */}
-                <button
-                  onClick={() => handleProductVisibilityToggle(product._id)}
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    padding: 0,
-                    background: product.isVisible !== false ? '#10b981' : '#e5e7eb',
-                    color: product.isVisible !== false ? 'white' : '#9ca3af',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '20px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    transition: 'all 0.2s'
-                  }}
-                  title={product.isVisible !== false ? 'Visible on website' : 'Hidden from website'}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                >
-                  {product.isVisible !== false ? '✓' : '○'}
-                </button>
+                {/* Visibility Toggle Switch */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    onClick={() => handleProductVisibilityToggle(product._id)}
+                    style={{
+                      position: 'relative',
+                      width: '56px',
+                      height: '28px',
+                      borderRadius: '14px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s',
+                      background: product.isVisible !== false ? '#10b981' : '#d1d5db',
+                      padding: 0
+                    }}
+                    title={product.isVisible !== false ? 'Click to hide from website' : 'Click to show on website'}
+                  >
+                    <div style={{
+                      position: 'absolute',
+                      top: '2px',
+                      left: product.isVisible !== false ? '30px' : '2px',
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: 'white',
+                      transition: 'all 0.3s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }} />
+                  </button>
+                  <span style={{ 
+                    fontSize: '10px', 
+                    fontWeight: 600,
+                    color: product.isVisible !== false ? '#10b981' : '#9ca3af'
+                  }}>
+                    {product.isVisible !== false ? 'ON' : 'OFF'}
+                  </span>
+                </div>
               </div>
               
               {/* Stock & Visibility by Country */}
@@ -410,7 +451,8 @@ export default function ProductManager() {
                 </div>
               )}
             </div>
-          ))
+            )
+          })
         )}
       </div>
     </div>
