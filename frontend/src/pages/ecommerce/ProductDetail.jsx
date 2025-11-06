@@ -422,30 +422,30 @@ const ProductDetail = () => {
                     </svg>
                     Key Features
                   </h3>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center text-gray-700">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                       Free Shipping
                     </div>
                     <div className="flex items-center text-gray-700">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      30-Day Returns
-                    </div>
-                    <div className="flex items-center text-gray-700">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                       Secure Payment
                     </div>
                     <div className="flex items-center text-gray-700">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                       24/7 Support
+                    </div>
+                    <div className="flex items-center text-gray-700">
+                      <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      Quality Assured
                     </div>
                   </div>
                 </div>
@@ -590,49 +590,6 @@ const ProductDetail = () => {
                 </div>
               )}
 
-              {/* Product Meta */}
-              <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Product Details</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Category</span>
-                    <span className="font-medium text-gray-900">{product.category}</span>
-                  </div>
-                  {product.subcategory && (
-                    <div className="flex justify-between py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Subcategory</span>
-                      <span className="font-medium text-gray-900">{product.subcategory}</span>
-                    </div>
-                  )}
-                  {product.weight && product.weight > 0 && (
-                    <div className="flex justify-between py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Weight</span>
-                      <span className="font-medium text-gray-900">{product.weight}</span>
-                    </div>
-                  )}
-                  {product.dimensions && (
-                    typeof product.dimensions === 'object'
-                      ? (product.dimensions.length > 0 || product.dimensions.width > 0 || product.dimensions.height > 0) && (
-                        <div className="flex justify-between py-2 border-b border-gray-100">
-                          <span className="text-gray-600">Dimensions</span>
-                          <span className="font-medium text-gray-900">
-                            {`${product.dimensions.length || 0} × ${product.dimensions.width || 0} × ${product.dimensions.height || 0} cm`}
-                          </span>
-                        </div>
-                      )
-                      : <div className="flex justify-between py-2 border-b border-gray-100">
-                          <span className="text-gray-600">Dimensions</span>
-                          <span className="font-medium text-gray-900">{product.dimensions}</span>
-                        </div>
-                  )}
-                  {product.madeInCountry && (
-                    <div className="flex justify-between py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Made in</span>
-                      <span className="font-medium text-gray-900">{product.madeInCountry}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
 
@@ -640,9 +597,9 @@ const ProductDetail = () => {
           <div className="border-t border-gray-200">
             <div className="flex border-b border-gray-200 overflow-x-auto">
               <button
-                className={`py-3 px-4 sm:px-6 border-b-2 font-semibold text-sm whitespace-nowrap transition-colors ${
+                className={`py-4 px-6 sm:px-8 border-b-2 font-bold text-base whitespace-nowrap transition-all ${
                   activeTab === 'description'
-                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                    ? 'border-orange-500 text-orange-600 bg-gradient-to-t from-orange-50 to-transparent'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
                 onClick={() => setActiveTab('description')}
@@ -650,42 +607,88 @@ const ProductDetail = () => {
                 Description
               </button>
               <button
-                className={`py-3 px-4 sm:px-6 border-b-2 font-semibold text-sm whitespace-nowrap transition-colors ${
-                  activeTab === 'specifications'
-                    ? 'border-blue-500 text-blue-600 bg-blue-50'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-                onClick={() => setActiveTab('specifications')}
-              >
-                Specifications
-              </button>
-              <button
-                className={`py-3 px-4 sm:px-6 border-b-2 font-semibold text-sm whitespace-nowrap transition-colors ${
+                className={`py-4 px-6 sm:px-8 border-b-2 font-bold text-base whitespace-nowrap transition-all ${
                   activeTab === 'reviews'
-                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                    ? 'border-orange-500 text-orange-600 bg-gradient-to-t from-orange-50 to-transparent'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
                 onClick={() => setActiveTab('reviews')}
               >
-                Reviews
+                Reviews ({reviews.length})
               </button>
             </div>
 
             <div className="p-4 sm:p-6 lg:p-8">
               {activeTab === 'description' && (
-                <div className="prose max-w-none">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 mb-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Product Description</h3>
-                    <p className="text-gray-700 leading-relaxed text-base">{product.description}</p>
+                <div className="space-y-8">
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                      <svg className="w-7 h-7 text-orange-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Product Description
+                    </h3>
+                    <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 rounded-2xl p-8 border border-orange-100 shadow-sm">
+                      <p className="text-gray-800 leading-relaxed text-lg mb-6">{product.description}</p>
+                      
+                      {/* Additional premium description content */}
+                      <div className="grid md:grid-cols-2 gap-6 mt-8 pt-6 border-t border-orange-200">
+                        <div>
+                          <h4 className="font-bold text-gray-900 mb-3 flex items-center">
+                            <svg className="w-5 h-5 text-orange-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            Key Benefits
+                          </h4>
+                          <ul className="space-y-2 text-gray-700">
+                            <li className="flex items-start">
+                              <span className="text-orange-500 mr-2">•</span>
+                              <span>Premium quality product</span>
+                            </li>
+                            <li className="flex items-start">
+                              <span className="text-orange-500 mr-2">•</span>
+                              <span>Authentic and verified</span>
+                            </li>
+                            <li className="flex items-start">
+                              <span className="text-orange-500 mr-2">•</span>
+                              <span>Fast and secure delivery</span>
+                            </li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900 mb-3 flex items-center">
+                            <svg className="w-5 h-5 text-orange-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                            </svg>
+                            Why Choose Us
+                          </h4>
+                          <ul className="space-y-2 text-gray-700">
+                            <li className="flex items-start">
+                              <span className="text-orange-500 mr-2">•</span>
+                              <span>Trusted by thousands</span>
+                            </li>
+                            <li className="flex items-start">
+                              <span className="text-orange-500 mr-2">•</span>
+                              <span>100% customer satisfaction</span>
+                            </li>
+                            <li className="flex items-start">
+                              <span className="text-orange-500 mr-2">•</span>
+                              <span>Best price guarantee</span>
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                  
                   {product.tags && product.tags.length > 0 && (
-                    <div className="bg-gray-50 rounded-2xl p-6">
-                      <h4 className="text-base font-semibold text-gray-900 mb-3">Tags</h4>
-                      <div className="flex flex-wrap gap-2">
+                    <div>
+                      <h4 className="text-xl font-bold text-gray-900 mb-4">Product Tags</h4>
+                      <div className="flex flex-wrap gap-3">
                         {product.tags.map((tag, index) => (
                           <span
                             key={index}
-                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 hover:from-blue-200 hover:to-indigo-200 transition-colors"
+                            className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-orange-100 to-amber-100 text-orange-800 hover:from-orange-200 hover:to-amber-200 transition-all shadow-sm hover:shadow-md"
                           >
                             #{tag}
                           </span>
@@ -696,58 +699,20 @@ const ProductDetail = () => {
                 </div>
               )}
 
-              {activeTab === 'specifications' && (
-                <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6">Technical Specifications</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center py-3 px-4 bg-white rounded-xl shadow-sm">
-                        <span className="text-gray-600 font-medium">Brand</span>
-                        <span className="font-semibold text-gray-900">{product.brand || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between items-center py-3 px-4 bg-white rounded-xl shadow-sm">
-                        <span className="text-gray-600 font-medium">Weight</span>
-                        <span className="font-semibold text-gray-900">{product.weight && product.weight > 0 ? product.weight : 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between items-center py-3 px-4 bg-white rounded-xl shadow-sm">
-                        <span className="text-gray-600 font-medium">Dimensions</span>
-                        <span className="font-semibold text-gray-900">
-                          {product.dimensions && typeof product.dimensions === 'object'
-                            ? (product.dimensions.length > 0 || product.dimensions.width > 0 || product.dimensions.height > 0)
-                              ? `${product.dimensions.length || 0} × ${product.dimensions.width || 0} × ${product.dimensions.height || 0} cm`
-                              : 'N/A'
-                            : product.dimensions || 'N/A'
-                          }
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center py-3 px-4 bg-white rounded-xl shadow-sm">
-                        <span className="text-gray-600 font-medium">SKU</span>
-                        <span className="font-semibold text-gray-900 font-mono text-sm">{product.sku || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between items-center py-3 px-4 bg-white rounded-xl shadow-sm">
-                        <span className="text-gray-600 font-medium">Made in</span>
-                        <span className="font-semibold text-gray-900">{product.madeInCountry || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between items-center py-3 px-4 bg-white rounded-xl shadow-sm">
-                        <span className="text-gray-600 font-medium">Stock</span>
-                        <span className="font-semibold text-gray-900">{product.stockQty} units</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {activeTab === 'reviews' && (
-                <div className="space-y-6">
+                <div className="space-y-8">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-semibold text-gray-900">Customer Reviews</h3>
+                    <h3 className="text-2xl font-bold text-gray-900 flex items-center">
+                      <svg className="w-7 h-7 text-orange-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                      </svg>
+                      Customer Reviews
+                    </h3>
                     <button
                       onClick={() => setShowReviewForm(!showReviewForm)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                      className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-6 py-3 rounded-xl hover:from-orange-600 hover:to-amber-600 transition-all flex items-center space-x-2 shadow-lg hover:shadow-xl font-semibold"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
                       <span>Write Review</span>
@@ -755,7 +720,7 @@ const ProductDetail = () => {
                   </div>
 
                   {/* Review Summary */}
-                  <div className="bg-gray-50 rounded-xl p-6">
+                  <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 rounded-2xl p-8 border border-orange-100 shadow-sm">
                     <div className="flex items-center space-x-6">
                       <div className="text-center">
                         <div className="text-4xl font-bold text-gray-900">{calculateAverageRating()}</div>
@@ -798,8 +763,8 @@ const ProductDetail = () => {
 
                   {/* Review Form */}
                   {showReviewForm && (
-                    <form onSubmit={handleReviewSubmit} className="bg-blue-50 rounded-xl p-6 space-y-4">
-                      <h4 className="text-lg font-semibold text-gray-900">Write a Review</h4>
+                    <form onSubmit={handleReviewSubmit} className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-8 space-y-6 border border-orange-100 shadow-sm">
+                      <h4 className="text-xl font-bold text-gray-900">Write a Review</h4>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
                         <input
@@ -844,14 +809,14 @@ const ProductDetail = () => {
                       <div className="flex space-x-3">
                         <button
                           type="submit"
-                          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                          className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-8 py-3 rounded-xl hover:from-orange-600 hover:to-amber-600 transition-all font-semibold shadow-lg hover:shadow-xl"
                         >
                           Submit Review
                         </button>
                         <button
                           type="button"
                           onClick={() => setShowReviewForm(false)}
-                          className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                          className="bg-gray-200 text-gray-700 px-8 py-3 rounded-xl hover:bg-gray-300 transition-colors font-semibold"
                         >
                           Cancel
                         </button>
@@ -860,10 +825,10 @@ const ProductDetail = () => {
                   )}
 
                   {/* Reviews List */}
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     {reviews.length > 0 ? (
                       reviews.map((review) => (
-                        <div key={review.id} className="bg-white border border-gray-200 rounded-xl p-6">
+                        <div key={review.id} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
                           <div className="flex items-start justify-between mb-3">
                             <div>
                               <div className="flex items-center space-x-2">
@@ -895,11 +860,21 @@ const ProductDetail = () => {
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-8">
-                        <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-orange-50 rounded-2xl border border-gray-200">
+                        <svg className="w-20 h-20 text-orange-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
-                        <p className="text-gray-500">No reviews yet. Be the first to review this product!</p>
+                        <h4 className="text-xl font-bold text-gray-900 mb-2">No Reviews Yet</h4>
+                        <p className="text-gray-600 mb-6">Be the first to review this product!</p>
+                        <button
+                          onClick={() => setShowReviewForm(true)}
+                          className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-8 py-3 rounded-xl hover:from-orange-600 hover:to-amber-600 transition-all font-semibold shadow-lg hover:shadow-xl inline-flex items-center space-x-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          <span>Write First Review</span>
+                        </button>
                       </div>
                     )}
                   </div>
