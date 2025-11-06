@@ -685,8 +685,8 @@ export default function ProductCatalog() {
       <div className="bg-gray-50 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose Us</h2>
-            <p className="text-lg text-gray-600">Experience the best shopping with our premium services</p>
+            <h2 data-editable-id="why-choose-title" className="text-3xl font-bold text-gray-900 mb-4">Why Choose Us</h2>
+            <p data-editable-id="why-choose-subtitle" className="text-lg text-gray-600">Experience the best shopping with our premium services</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -697,8 +697,8 @@ export default function ProductCatalog() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Free Shipping</h3>
-              <p className="text-gray-600">Free delivery on orders over 100 SAR across all GCC countries</p>
+              <h3 data-editable-id="feature-shipping-title" className="text-xl font-semibold text-gray-900 mb-2">Free Shipping</h3>
+              <p data-editable-id="feature-shipping-desc" className="text-gray-600">Free delivery on orders over 100 SAR across all GCC countries</p>
             </div>
 
             {/* Quality Product */}
@@ -708,8 +708,8 @@ export default function ProductCatalog() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Quality Product</h3>
-              <p className="text-gray-600">Premium quality products sourced from trusted manufacturers</p>
+              <h3 data-editable-id="feature-quality-title" className="text-xl font-semibold text-gray-900 mb-2">Quality Product</h3>
+              <p data-editable-id="feature-quality-desc" className="text-gray-600">Premium quality products sourced from trusted manufacturers</p>
             </div>
 
             {/* Secure Payment */}
@@ -719,8 +719,8 @@ export default function ProductCatalog() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Secure Payment</h3>
-              <p className="text-gray-600">Your payment information is protected with bank-level security</p>
+              <h3 data-editable-id="feature-payment-title" className="text-xl font-semibold text-gray-900 mb-2">Secure Payment</h3>
+              <p data-editable-id="feature-payment-desc" className="text-gray-600">Your payment information is protected with bank-level security</p>
             </div>
 
             {/* 24/7 Support */}
@@ -730,8 +730,8 @@ export default function ProductCatalog() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M12 2.25a9.75 9.75 0 109.75 9.75A9.75 9.75 0 0012 2.25z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">24/7 Support</h3>
-              <p className="text-gray-600">Round-the-clock customer support to help you anytime</p>
+              <h3 data-editable-id="feature-support-title" className="text-xl font-semibold text-gray-900 mb-2">24/7 Support</h3>
+              <p data-editable-id="feature-support-desc" className="text-gray-600">Round-the-clock customer support to help you anytime</p>
             </div>
           </div>
         </div>
