@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { apiGet, apiPost, apiUpload } from '../../api'
+import { apiGet, apiPost, apiUpload, apiPatch } from '../../api'
 import BannerManager from '../../pages/admin/BannerManager'
 import ThemeSettings from '../../pages/admin/ThemeSettings'
 import SEOManager from '../../pages/admin/SEOManager'
 import PageManager from '../../pages/admin/PageManager'
 import NavigationMenu from '../../pages/admin/NavigationMenu'
+import ProductManager from '../../pages/admin/ProductManager'
 
 const GOOGLE_FONTS = [
   'Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana', 'Courier New',
@@ -30,7 +31,6 @@ const EDITOR_TABS = [
   { id: 'style', label: 'Style', icon: '🎨' },
   { id: 'layout', label: 'Layout', icon: '📐' },
   { id: 'media', label: 'Media', icon: '🖼️' },
-  { id: 'products', label: 'Products', icon: '📦' },
   { id: 'advanced', label: 'Advanced', icon: '⚙️' }
 ]
 
@@ -364,7 +364,7 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
 
     try {
       const newStatus = !product.isVisible
-      await apiPost(`/api/products/${productId}`, { isVisible: newStatus })
+      await apiPatch(`/api/products/${productId}`, { isVisible: newStatus })
       setProducts(prev => prev.map(p => p._id === productId ? { ...p, isVisible: newStatus } : p))
       showToast(`✓ Product ${newStatus ? 'shown' : 'hidden'} on website`)
     } catch (err) {
@@ -378,18 +378,20 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
     try {
       if (country) {
         // Update country-specific stock
-        await apiPost(`/api/products/${productId}`, { 
-          countryStock: { [country]: newQuantity } 
+        const product = products.find(p => p._id === productId)
+        const updatedCountryStock = { ...product.countryStock, [country]: newQuantity }
+        await apiPatch(`/api/products/${productId}`, { 
+          countryStock: updatedCountryStock
         })
         setProducts(prev => prev.map(p => 
           p._id === productId 
-            ? { ...p, countryStock: { ...p.countryStock, [country]: newQuantity } } 
+            ? { ...p, countryStock: updatedCountryStock } 
             : p
         ))
         showToast(`✓ ${country} stock updated`)
       } else {
         // Update general stock
-        await apiPost(`/api/products/${productId}`, { stock: newQuantity })
+        await apiPatch(`/api/products/${productId}`, { stock: newQuantity })
         setProducts(prev => prev.map(p => p._id === productId ? { ...p, stock: newQuantity } : p))
         showToast('✓ Quantity updated')
       }
@@ -493,6 +495,14 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
                 <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '2px' }}>SEO Manager</div>
                   <div style={{ fontSize: '10px', color: '#6b7280' }}>Meta tags & optimization</div>
+                </div>
+              </button>
+              
+              <button onClick={() => setActiveToolModal('products')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', background: 'transparent', border: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', borderRadius: '8px', fontSize: '16px', flexShrink: 0 }}>📦</div>
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '2px' }}>Product Manager</div>
+                  <div style={{ fontSize: '10px', color: '#6b7280' }}>Manage products & inventory</div>
                 </div>
               </button>
               
@@ -657,191 +667,6 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
             </div>
           </div>)}
 
-          {/* PRODUCTS TAB */}
-          {activeTab === 'products' && (<div style={{ display: 'grid', gap: '16px' }}>
-            <div style={{ padding: '12px', background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>📦 Product Management</div>
-              <div style={{ fontSize: '11px', color: '#6b7280' }}>Control product visibility and stock</div>
-            </div>
-
-            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
-              <Label>All Products ({products.length})</Label>
-              <div style={{ display: 'grid', gap: '12px', maxHeight: '500px', overflowY: 'auto', marginTop: '8px' }}>
-                {loadingProducts ? (
-                  <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af', fontSize: '12px' }}>
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>⏳</div>
-                    <div>Loading products...</div>
-                  </div>
-                ) : products.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af', fontSize: '12px' }}>
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>📦</div>
-                    <div>No products found</div>
-                  </div>
-                ) : (
-                  products.map((product) => (
-                    <div key={product._id} style={{ 
-                      background: 'white', 
-                      border: product.isVisible !== false ? '2px solid #10b981' : '2px solid #e5e7eb', 
-                      borderRadius: '8px', 
-                      padding: '10px',
-                      transition: 'all 0.2s'
-                    }}>
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginBottom: '8px' }}>
-                        {/* Product Image */}
-                        <img 
-                          src={product.images?.[0] || product.image || product.imageUrl || '/placeholder.png'} 
-                          alt={product.name}
-                          style={{ 
-                            width: '60px', 
-                            height: '60px', 
-                            objectFit: 'cover', 
-                            borderRadius: '6px',
-                            border: '1px solid #e5e7eb',
-                            flexShrink: 0
-                          }}
-                        />
-                        
-                        {/* Product Details */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ 
-                            fontSize: '12px', 
-                            fontWeight: 600, 
-                            color: '#111827',
-                            marginBottom: '4px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {product.name}
-                          </div>
-                          
-                          {/* Prices by Country */}
-                          <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '4px' }}>
-                            {product.countryPrices && Object.keys(product.countryPrices).length > 0 ? (
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                {Object.entries(product.countryPrices).map(([country, price]) => (
-                                  <span key={country} style={{ 
-                                    padding: '2px 6px', 
-                                    background: '#f3f4f6', 
-                                    borderRadius: '4px',
-                                    fontSize: '9px',
-                                    fontWeight: 600
-                                  }}>
-                                    {country}: {price} {COUNTRY_CURRENCIES[country] || ''}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span>Price: {product.price || 'N/A'}</span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Visibility Toggle */}
-                        <button
-                          onClick={() => handleProductVisibilityToggle(product._id)}
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            padding: 0,
-                            background: product.isVisible !== false ? '#10b981' : '#e5e7eb',
-                            color: product.isVisible !== false ? 'white' : '#9ca3af',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '16px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                            transition: 'all 0.2s'
-                          }}
-                          title={product.isVisible !== false ? 'Visible on website' : 'Hidden from website'}
-                        >
-                          {product.isVisible !== false ? '✓' : '○'}
-                        </button>
-                      </div>
-                      
-                      {/* Stock by Country */}
-                      {product.countryStock && Object.keys(product.countryStock).length > 0 && (
-                        <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '8px' }}>
-                          <label style={{ fontSize: '9px', color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
-                            Stock by Country:
-                          </label>
-                          <div style={{ display: 'grid', gap: '6px' }}>
-                            {Object.entries(product.countryStock).filter(([_, stock]) => stock > 0 || stock === 0).map(([country, stock]) => (
-                              <div key={country} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ 
-                                  fontSize: '10px', 
-                                  fontWeight: 600, 
-                                  color: '#374151',
-                                  minWidth: '35px'
-                                }}>
-                                  {country}:
-                                </span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1 }}>
-                                  <button
-                                    onClick={() => handleProductQuantityUpdate(product._id, Math.max(0, stock - 1), country)}
-                                    style={{
-                                      width: '20px',
-                                      height: '20px',
-                                      padding: 0,
-                                      background: '#f3f4f6',
-                                      border: '1px solid #e5e7eb',
-                                      borderRadius: '4px',
-                                      fontSize: '12px',
-                                      cursor: 'pointer',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center'
-                                    }}
-                                  >
-                                    −
-                                  </button>
-                                  <input
-                                    type="number"
-                                    value={stock || 0}
-                                    onChange={(e) => handleProductQuantityUpdate(product._id, parseInt(e.target.value) || 0, country)}
-                                    style={{
-                                      width: '45px',
-                                      padding: '4px',
-                                      border: '1px solid #e5e7eb',
-                                      borderRadius: '4px',
-                                      fontSize: '10px',
-                                      textAlign: 'center'
-                                    }}
-                                  />
-                                  <button
-                                    onClick={() => handleProductQuantityUpdate(product._id, stock + 1, country)}
-                                    style={{
-                                      width: '20px',
-                                      height: '20px',
-                                      padding: 0,
-                                      background: '#f3f4f6',
-                                      border: '1px solid #e5e7eb',
-                                      borderRadius: '4px',
-                                      fontSize: '12px',
-                                      cursor: 'pointer',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center'
-                                    }}
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>)}
-
           {/* ADVANCED TAB */}
           {activeTab === 'advanced' && (<div style={{ display: 'grid', gap: '16px' }}>
             <div><Label>Opacity: {parseFloat(selectedElement.styles.opacity || 1).toFixed(2)}</Label><input type="range" min="0" max="1" step="0.1" value={parseFloat(selectedElement.styles.opacity || 1)} onChange={(e) => handleStyleChange('opacity', e.target.value)} style={{ width: '100%', cursor: 'pointer' }} /></div>
@@ -904,6 +729,7 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
               {activeToolModal === 'banners' && '🖼️ Banner Manager'}
               {activeToolModal === 'theme' && '🎭 Theme Settings'}
               {activeToolModal === 'seo' && '🔍 SEO Manager'}
+              {activeToolModal === 'products' && '📦 Product Manager'}
               {activeToolModal === 'pages' && '📄 Page Manager'}
               {activeToolModal === 'navigation' && '🧭 Navigation Menu'}
             </h3>
@@ -922,6 +748,7 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
             {activeToolModal === 'banners' && <BannerManager />}
             {activeToolModal === 'theme' && <ThemeSettings />}
             {activeToolModal === 'seo' && <SEOManager />}
+            {activeToolModal === 'products' && <ProductManager />}
             {activeToolModal === 'pages' && <PageManager />}
             {activeToolModal === 'navigation' && <NavigationMenu />}
           </div>
