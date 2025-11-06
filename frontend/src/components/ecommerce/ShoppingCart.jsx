@@ -239,16 +239,16 @@ export default function ShoppingCart({ isOpen, onClose }) {
         className="w-full max-w-md sm:max-w-lg bg-white h-full shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col border-l-4 border-orange-500" 
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-orange-600 text-white">
-          <h2 className="text-lg sm:text-xl font-bold">
-            Shopping Cart ({getTotalItems()} items)
+        {/* Header - Minimal Premium */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-white">
+          <h2 className="text-xl font-bold text-gray-900">
+            Cart <span className="text-orange-500">({getTotalItems()})</span>
           </h2>
           <button 
-            className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             onClick={onClose}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -270,11 +270,11 @@ export default function ShoppingCart({ isOpen, onClose }) {
             </div>
           ) : (
             <>
-              {/* Cart Items */}
-              <div className="p-4 sm:p-6 space-y-4">
+              {/* Cart Items - Minimal */}
+              <div className="px-6 py-4 space-y-3">
                 {cartItems.map((item) => (
-                  <div key={item.id} className="flex gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-white rounded-lg overflow-hidden border border-gray-200">
+                  <div key={item.id} className="flex gap-4 p-3 bg-white rounded-lg border border-gray-100 hover:border-orange-200 transition-colors">
+                    <div className="w-16 h-16 flex-shrink-0 bg-gray-50 rounded-lg overflow-hidden">
                       <img 
                         src={getImageUrl(item.image || item.imagePath)} 
                         alt={item.name}
@@ -286,32 +286,29 @@ export default function ShoppingCart({ isOpen, onClose }) {
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-gray-900 text-sm sm:text-base line-clamp-2 mb-1">
+                      <h4 className="font-medium text-gray-900 text-sm line-clamp-2 mb-2">
                         {item.name}
                       </h4>
-                      <p className="text-orange-600 font-bold text-sm sm:text-base">
+                      <p className="text-orange-500 font-semibold text-sm mb-3">
                         {formatPrice(convertPrice(item.price, item.currency || 'SAR', displayCurrency), displayCurrency)}
-                      </p>
-                      <p className="text-xs text-gray-500 mb-3">
-                        {formatPrice(convertPrice(item.price, item.currency || 'SAR', displayCurrency), displayCurrency)} × {item.quantity} = {formatPrice(convertPrice(item.price, item.currency || 'SAR', displayCurrency) * item.quantity, displayCurrency)}
                       </p>
                       
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center bg-white border border-gray-300 rounded-lg">
+                        <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
                           <button 
-                            className={`p-2 transition-colors rounded-l-lg ${item.quantity <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+                            className={`p-1.5 transition-colors ${item.quantity <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
                             onClick={() => item.quantity > 1 && updateQuantity(item.id, item.quantity - 1)}
                             disabled={item.quantity <= 1}
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                             </svg>
                           </button>
-                          <span className="px-3 py-2 text-sm font-medium min-w-[3rem] text-center">
+                          <span className="px-3 py-1 text-sm font-medium min-w-[2.5rem] text-center bg-white">
                             {item.quantity}
                           </span>
                           <button 
-                            className={`p-2 transition-colors rounded-r-lg ${Number(item.maxStock) > 0 && item.quantity >= Number(item.maxStock) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+                            className={`p-1.5 transition-colors ${Number(item.maxStock) > 0 && item.quantity >= Number(item.maxStock) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
                             onClick={() => {
                               const max = Number(item.maxStock)
                               if (max > 0 && item.quantity >= max) return
@@ -319,23 +316,26 @@ export default function ShoppingCart({ isOpen, onClose }) {
                             }}
                             disabled={Number(item.maxStock) > 0 && item.quantity >= Number(item.maxStock)}
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                             </svg>
                           </button>
                         </div>
                         
                         <button 
-                          className="text-red-600 hover:text-red-800 text-sm font-medium transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
                           onClick={() => removeFromCart(item.id)}
+                          title="Remove"
                         >
-                          Remove
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
                         </button>
                       </div>
                     </div>
                     
-                    <div className="text-right">
-                      <div className="font-bold text-gray-900 text-sm sm:text-base">
+                    <div className="text-right flex-shrink-0">
+                      <div className="font-semibold text-gray-900 text-sm">
                         {formatPrice(convertPrice(item.price, item.currency || 'SAR', displayCurrency) * item.quantity, displayCurrency)}
                       </div>
                     </div>
@@ -343,46 +343,53 @@ export default function ShoppingCart({ isOpen, onClose }) {
                 ))}
               </div>
 
-              {/* Summary (top of form) */}
-              <div className="px-4 sm:px-6 space-y-3">
-                {/* Items count */}
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Items:</span>
-                  <span>{getTotalItems()}</span>
-                </div>
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Subtotal:</span>
-                  <span>{formatPrice(getTotalPrice(), displayCurrency)}</span>
-                </div>
-                <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-200">
-                  <span>Total:</span>
-                  <span>{formatPrice(getTotalPrice(), displayCurrency)}</span>
+              {/* Summary - Minimal */}
+              <div className="px-6 py-4 bg-gray-50 border-y border-gray-100">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Total ({getTotalItems()} items)</span>
+                  <span className="text-xl font-bold text-gray-900">{formatPrice(getTotalPrice(), displayCurrency)}</span>
                 </div>
               </div>
 
-              {/* Order Form (scrolls with content) */}
-              <div className="p-4 sm:p-6 space-y-3">
+              {/* Add More Items Button - Above Form */}
+              <div className="px-6 pt-4 pb-2">
+                <button 
+                  className="w-full bg-white border-2 border-orange-500 text-orange-500 py-2.5 px-4 rounded-lg hover:bg-orange-50 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2"
+                  onClick={() => {
+                    onClose()
+                    navigate('/catalog')
+                  }}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add More Items
+                </button>
+              </div>
+
+              {/* Order Form - Minimal */}
+              <div className="px-6 pb-4 space-y-3">
                 <div>
-                  <label className="text-sm text-gray-700">Full Name</label>
-                  <input name="name" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.name} onChange={onChange} placeholder="Your full name" />
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Full Name</label>
+                  <input name="name" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors" value={form.name} onChange={onChange} placeholder="Your full name" />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-700">Phone</label>
-                  <div className="grid grid-cols-[auto_1fr] gap-2 items-center">
-                    <select name="country" value={form.country} onChange={onChange} className="border border-gray-300 rounded-lg px-2 py-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Phone Number</label>
+                  <div className="grid grid-cols-[auto_1fr] gap-2">
+                    <select name="country" value={form.country} onChange={onChange} className="border border-gray-200 rounded-lg px-2 py-2.5 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors">
                       {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.dial}</option>)}
                     </select>
-                    <input name="phone" className="border border-gray-300 rounded-lg px-3 py-2" value={form.phone} onChange={onChange} placeholder="5xxxxxxx" />
+                    <input name="phone" className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors" value={form.phone} onChange={onChange} placeholder="5xxxxxxx" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-sm text-gray-700">Country</label>
-                    <input className="w-full border border-gray-300 rounded-lg px-3 py-2" value={selectedCountry.name} readOnly />
+                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Country</label>
+                    <input className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-gray-50" value={selectedCountry.name} readOnly />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-700">City</label>
-                    <select name="city" value={form.city} onChange={onChange} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1.5">City</label>
+                    <select name="city" value={form.city} onChange={onChange} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors">
                       <option value="">Select city</option>
                       {(CITY_OPTIONS[form.country] || []).map(c => (
                         <option key={c} value={c}>{c}</option>
@@ -390,83 +397,49 @@ export default function ShoppingCart({ isOpen, onClose }) {
                       <option value="Other">Other</option>
                     </select>
                   </div>
-                  {form.city === 'Other' && (
-                    <div>
-                      <label className="text-sm text-gray-700">Other City</label>
-                      <input name="cityOther" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.cityOther} onChange={onChange} placeholder="Enter your city" />
-                    </div>
-                  )}
+                </div>
+                {form.city === 'Other' && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Other City</label>
+                    <input name="cityOther" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors" value={form.cityOther} onChange={onChange} placeholder="Enter your city" />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Area</label>
+                  <input name="area" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors" value={form.area} onChange={onChange} placeholder="Area / district" />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-700">Area</label>
-                  <input name="area" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.area} onChange={onChange} placeholder="Area / district" />
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Full Address</label>
+                  <input name="address" className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors" value={form.address} onChange={onChange} placeholder="Street, building" />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-700">Full Address</label>
-                  <input name="address" className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.address} onChange={onChange} placeholder="Street, building" />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-700">Notes (optional)</label>
-                  <textarea name="details" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2" value={form.details} onChange={onChange} placeholder="Any notes for delivery" />
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Delivery Notes <span className="text-gray-400">(optional)</span></label>
+                  <textarea name="details" rows={2} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors resize-none" value={form.details} onChange={onChange} placeholder="Any notes for delivery" />
                 </div>
               </div>
             </>
           )}
         </div>
 
-        {/* Sticky bottom checkout bar */}
+        {/* Sticky bottom checkout bar - Minimal */}
         {cartItems.length > 0 && (
-          <div className="border-t border-gray-200 p-4 sm:p-5 bg-white">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <div className="text-xs text-gray-500">Items</div>
-                <div className="text-sm font-medium text-gray-900">{getTotalItems()}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-500">Total</div>
-                <div className="text-lg font-bold text-gray-900">{formatPrice(getTotalPrice(), displayCurrency)}</div>
-              </div>
-            </div>
-            
-            {/* Add More Items Button - Below Total */}
-            <button 
-              className="w-full text-white py-2.5 px-4 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2 shadow-sm hover:shadow-md mb-3"
-              style={{
-                background: 'var(--theme-accent)',
-                borderRadius: 'var(--theme-button-radius)'
-              }}
-              onClick={() => {
-                onClose()
-                navigate('/catalog')
-              }}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add More Items
-            </button>
-
+          <div className="border-t border-gray-100 px-6 py-4 bg-white">
             <div className="flex gap-2">
               <button 
-                className="flex-1 text-white py-3 px-4 transition-all duration-200 font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
-                style={{
-                  background: isLoading ? '#9ca3af' : 'var(--theme-primary)',
-                  borderRadius: 'var(--theme-button-radius)',
-                  opacity: isLoading ? 0.7 : 1
-                }}
+                className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-semibold text-sm shadow-sm hover:shadow-md"
                 onClick={handleCheckout}
                 disabled={isLoading}
               >
-                {isLoading ? 'Submitting…' : 'Place Order'}
+                {isLoading ? 'Processing...' : 'Place Order'}
               </button>
               <button 
-                className="px-4 py-3 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors text-sm font-semibold"
-                style={{
-                  borderRadius: 'var(--theme-button-radius)'
-                }}
+                className="px-4 py-3 bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors text-sm font-medium rounded-lg"
                 onClick={clearCart}
+                title="Clear Cart"
               >
-                Clear
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
               </button>
             </div>
           </div>
