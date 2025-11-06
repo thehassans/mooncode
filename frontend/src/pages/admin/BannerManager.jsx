@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { apiGet, apiPost } from '../../api'
+import { apiGet, apiPost, apiUpload } from '../../api'
 
 export default function BannerManager() {
   const [banners, setBanners] = useState([])
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
   const [selectedPage, setSelectedPage] = useState('catalog')
   const [toast, setToast] = useState(null)
 
@@ -30,6 +31,36 @@ export default function BannerManager() {
     }
   }
 
+  async function handleUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select an image file', 'error')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('banner', file)
+      formData.append('title', `Banner ${banners.length + 1}`)
+      formData.append('page', selectedPage)
+      formData.append('active', 'true')
+
+      const result = await apiUpload('/api/settings/website/banners', formData)
+      if (result.banner) {
+        setBanners(prev => [...prev, result.banner])
+        showToast('✓ Banner uploaded successfully!')
+      }
+    } catch (err) {
+      showToast('Upload failed', 'error')
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+
   async function handleToggle(bannerId, currentStatus) {
     try {
       await apiPost(`/api/settings/website/banners/${bannerId}/toggle`, { active: !currentStatus })
@@ -37,6 +68,17 @@ export default function BannerManager() {
       showToast(`✓ Banner ${!currentStatus ? 'activated' : 'deactivated'}`)
     } catch (err) {
       showToast('Toggle failed', 'error')
+    }
+  }
+
+  async function handleDelete(bannerId) {
+    if (!confirm('Delete this banner?')) return
+    try {
+      await apiPost(`/api/settings/website/banners/${bannerId}/delete`, {})
+      setBanners(prev => prev.filter(b => b._id !== bannerId))
+      showToast('✓ Banner deleted')
+    } catch (err) {
+      showToast('Delete failed', 'error')
     }
   }
 
@@ -50,7 +92,7 @@ export default function BannerManager() {
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '8px' }}>🖼️ Banner Manager</h1>
-        <p style={{ color: '#6b7280', fontSize: '14px' }}>Manage and enable banners for different pages</p>
+        <p style={{ color: '#6b7280', fontSize: '14px' }}>Upload and manage banners for different pages</p>
       </div>
 
       {/* Page Selector */}
@@ -80,6 +122,38 @@ export default function BannerManager() {
         </div>
       </div>
 
+      {/* Upload Section */}
+      <div style={{ background: 'white', border: '2px solid #e5e7eb', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Upload New Banner</h3>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleUpload}
+          disabled={uploading}
+          style={{ display: 'none' }}
+          id="banner-upload"
+        />
+        <label
+          htmlFor="banner-upload"
+          style={{
+            display: 'inline-block',
+            padding: '12px 24px',
+            background: uploading ? '#e5e7eb' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: 600,
+            cursor: uploading ? 'not-allowed' : 'pointer',
+            border: 'none'
+          }}
+        >
+          {uploading ? '⏳ Uploading...' : '📸 Upload Banner'}
+        </label>
+        <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+          Recommended size: 1920x600px • Max file size: 5MB
+        </p>
+      </div>
+
       {/* Banners List */}
       <div>
         <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>
@@ -94,7 +168,8 @@ export default function BannerManager() {
         ) : banners.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px', color: '#9ca3af', background: 'white', border: '2px dashed #e5e7eb', borderRadius: '12px' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>📁</div>
-            <p>No banners available for this page</p>
+            <p>No banners uploaded yet</p>
+            <p style={{ fontSize: '12px', marginTop: '8px' }}>Upload your first banner to get started</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '16px' }}>
@@ -108,49 +183,60 @@ export default function BannerManager() {
                 gap: '16px',
                 alignItems: 'center'
               }}>
-                {/* Banner Live Preview */}
-                <div style={{ flex: 1, marginRight: '16px' }}>
-                  <img
-                    src={banner.imageUrl}
-                    alt={banner.title}
-                    style={{
-                      width: '100%',
-                      height: '120px',
-                      objectFit: 'cover',
-                      borderRadius: '8px',
-                      border: '2px solid #e5e7eb'
-                    }}
-                  />
+                {/* Banner Image */}
+                <img
+                  src={banner.imageUrl}
+                  alt={banner.title}
+                  style={{
+                    width: '200px',
+                    height: '100px',
+                    objectFit: 'cover',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb'
+                  }}
+                />
+
+                {/* Banner Info */}
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px' }}>
+                    {banner.title || `Banner ${idx + 1}`}
+                  </h4>
+                  <p style={{ fontSize: '12px', color: '#6b7280' }}>
+                    Uploaded: {new Date(banner.createdAt || Date.now()).toLocaleDateString()}
+                  </p>
                 </div>
 
-                {/* Banner Info & Actions */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: '200px' }}>
-                  <div>
-                    <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px' }}>
-                      {banner.title || `Banner ${idx + 1}`}
-                    </h4>
-                    <p style={{ fontSize: '12px', color: '#6b7280' }}>
-                      {new Date(banner.createdAt || Date.now()).toLocaleDateString()}
-                    </p>
-                  </div>
-                  
-                  {/* Enable/Disable Toggle */}
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     onClick={() => handleToggle(banner._id, banner.active)}
                     style={{
-                      padding: '10px 20px',
+                      padding: '8px 16px',
                       background: banner.active ? '#10b981' : '#f3f4f6',
                       color: banner.active ? 'white' : '#374151',
-                      border: banner.active ? '2px solid #10b981' : '2px solid #e5e7eb',
-                      borderRadius: '8px',
+                      border: 'none',
+                      borderRadius: '6px',
                       fontSize: '14px',
                       fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      width: '100%'
+                      cursor: 'pointer'
                     }}
                   >
-                    {banner.active ? '✓ Enabled' : '○ Enable'}
+                    {banner.active ? '✓ Active' : 'Inactive'}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(banner._id)}
+                    style={{
+                      padding: '8px 16px',
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      color: '#ef4444',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🗑️ Delete
                   </button>
                 </div>
               </div>
