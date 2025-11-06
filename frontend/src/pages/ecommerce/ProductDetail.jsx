@@ -225,7 +225,7 @@ const ProductDetail = () => {
 
   const handleBuyNow = () => {
     handleAddToCart()
-    navigate('/checkout')
+    setIsCartOpen(true)
   }
 
   const renderStars = (rating) => {
