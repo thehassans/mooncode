@@ -8,7 +8,6 @@ import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
 export default function ProductCard({ product, onAddToCart, selectedCountry = 'SA', selectionEnabled = false, selected = false, onToggleSelect }) {
   const navigate = useNavigate()
   const toast = useToast()
-  const [qty, setQty] = useState(1)
 
   const [ccyCfg, setCcyCfg] = useState(null)
   useEffect(()=>{ let alive=true; getCurrencyConfig().then(cfg=>{ if(alive) setCcyCfg(cfg) }).catch(()=>{}); return ()=>{alive=false} },[])
@@ -23,28 +22,6 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
     'KW': 'KWD', // Kuwait
     'QA': 'QAR', // Qatar
   }
-
-  // Country code to name mapping for stockByCountry
-  const COUNTRY_CODE_TO_NAME = {
-    'AE': 'UAE',
-    'OM': 'Oman',
-    'SA': 'KSA',
-    'BH': 'Bahrain',
-    'IN': 'India',
-    'KW': 'Kuwait',
-    'QA': 'Qatar'
-  }
-
-  // Get stock for selected country
-  const getCountryStock = () => {
-    if (product.stockByCountry) {
-      const countryName = COUNTRY_CODE_TO_NAME[selectedCountry] || 'KSA'
-      return product.stockByCountry[countryName] || 0
-    }
-    return product.stockQty || 0
-  }
-
-  const availableStock = getCountryStock()
 
   const convertPrice = (value, fromCurrency, toCurrency) => fxConvert(value, fromCurrency||'SAR', toCurrency||getDisplayCurrency(), ccyCfg)
 
@@ -129,7 +106,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
           ? product.salePrice
           : discounted
       ) || 0
-      const addQty = Math.max(1, Math.floor(Number(qty) || 1))
+      const addQty = 1  // Always add 1 item at a time
       const savedCart = localStorage.getItem('shopping_cart')
       let cartItems = []
       
@@ -138,7 +115,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
       }
 
       const existingItemIndex = cartItems.findIndex(item => item.id === product._id)
-      const max = Number(availableStock || 0)
+      const max = Number(product.stockQty || 0)
       
       if (existingItemIndex > -1) {
         // Item already exists, increase quantity within stock limits
@@ -240,7 +217,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
             ))}
           </div>
         )}
-        {availableStock === 0 && (
+        {(!product.inStock || product.stockQty === 0) && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
             <span className="bg-white text-gray-900 px-3 py-1 rounded-full text-sm font-semibold">
               Out of Stock
@@ -262,9 +239,6 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
             <div className="flex items-center">
               {renderStars(product.rating)}
             </div>
-            <span className="ml-1.5 text-xs sm:text-sm text-gray-600">
-              ({product.reviewCount || 0})
-            </span>
           </div>
         )}
 
@@ -288,10 +262,10 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
 
         {/* Stock Status */}
         <div className="mb-3">
-          {availableStock > 0 ? (
+          {product.inStock && product.stockQty > 0 ? (
             <span className="text-xs sm:text-sm text-green-600 font-medium flex items-center gap-1">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              In Stock ({availableStock} available)
+              In Stock ({product.stockQty} available)
             </span>
           ) : (
             <span className="text-xs sm:text-sm text-red-600 font-medium flex items-center gap-1">
@@ -302,42 +276,22 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
         </div>
 
         {/* Add to Cart Button */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center bg-white border border-gray-300 rounded-lg h-9 overflow-hidden">
-            <button
-              className={`h-full w-9 flex items-center justify-center transition-colors ${qty <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
-              onClick={(e) => { e.stopPropagation(); if (qty > 1) setQty(qty - 1) }}
-              disabled={qty <= 1}
-              aria-label="Decrease quantity"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+        <button
+          onClick={handleAddToCart}
+          disabled={!product.inStock || product.stockQty === 0}
+          className="w-full h-11 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+        >
+          {!product.inStock || product.stockQty === 0 ? (
+            'Out of Stock'
+          ) : (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-            </button>
-            <span className="px-3 text-sm font-medium min-w-[2.5rem] text-center select-none">{qty}</span>
-            <button
-              className={`h-full w-9 flex items-center justify-center transition-colors ${availableStock > 0 && qty >= availableStock ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
-              onClick={(e) => {
-                e.stopPropagation()
-                if (availableStock > 0 && qty >= availableStock) return
-                setQty(qty + 1)
-              }}
-              disabled={availableStock > 0 && qty >= availableStock}
-              aria-label="Increase quantity"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </button>
-          </div>
-          <button
-            onClick={handleAddToCart}
-            disabled={availableStock === 0}
-            className="flex-1 min-w-[120px] sm:min-w-[140px] h-9 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm shadow-sm hover:shadow-md"
-          >
-            {availableStock === 0 ? 'Out of Stock' : 'Add to Cart'}
-          </button>
-        </div>
+              Add to Cart
+            </>
+          )}
+        </button>
       </div>
     </div>
   )

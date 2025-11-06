@@ -221,7 +221,10 @@ router.get('/public', async (req, res) => {
   try {
     const { category, search, sort, limit = 50, page = 1 } = req.query
     
-    let query = { displayOnWebsite: true }
+    let query = { 
+      displayOnWebsite: true,
+      stockQty: { $gt: 0 }  // Only show products with stock > 0
+    }
     
     // Category filter
     if (category && category !== 'all') {
