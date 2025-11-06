@@ -13,23 +13,90 @@ import SearchBar from '../../components/ecommerce/SearchBar'
 import CountrySelector, { countries } from '../../components/ecommerce/CountrySelector'
 
 // Professional Stats and Categories Section
-function StatsAndCategories({ categoryCount = 0 }) {
-  const categories = [
-    { icon: '🌿', name: 'Environment', color: '#10b981' },
-    { icon: '👕', name: 'Apparel & Accessories', color: '#8b5cf6' },
-    { icon: '🏠', name: 'Home & Garden', color: '#f59e0b' },
-    { icon: '🏢', name: 'Commercial Equipment', color: '#3b82f6' },
-    { icon: '💄', name: 'Beauty', color: '#ec4899' },
-    { icon: '💎', name: 'Jewelry & Eyewear', color: '#6366f1' },
-    { icon: '🏭', name: 'Industrial Machinery', color: '#64748b' },
-    { icon: '💼', name: 'Business Services', color: '#0ea5e9' },
-    { icon: '🎧', name: 'Consumer Electronics', color: '#f97316' },
-    { icon: '🏋️', name: 'Sports & Entertainment', color: '#14b8a6' },
-    { icon: '🚗', name: 'Vehicle Parts', color: '#ef4444' },
-    { icon: '📦', name: 'Packaging & Printing', color: '#a855f7' },
-    { icon: '🔧', name: 'Tools & Hardware', color: '#78716c' },
-    { icon: '🪑', name: 'Furniture', color: '#84cc16' }
-  ]
+function StatsAndCategories({ categoryCount = 0, categoryCounts = {} }) {
+  // Category icon components with professional SVG
+  const getCategoryIcon = (name) => {
+    const iconProps = { className: "w-7 h-7 sm:w-8 sm:h-8" }
+    
+    switch(name.toLowerCase()) {
+      case 'electronics':
+        return <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+      case 'fashion':
+      case 'clothing':
+      case 'apparel':
+        return <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+      case 'home':
+      case 'furniture':
+        return <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+      case 'beauty':
+      case 'cosmetics':
+        return <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+      case 'sports':
+      case 'fitness':
+        return <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      case 'books':
+      case 'education':
+        return <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+      case 'toys':
+      case 'kids':
+        return <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      case 'automotive':
+      case 'vehicles':
+        return <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+      case 'food':
+      case 'grocery':
+        return <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+      case 'jewelry':
+      case 'accessories':
+        return <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+      case 'health':
+      case 'medical':
+        return <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+      case 'office':
+      case 'stationery':
+        return <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+      case 'garden':
+      case 'outdoor':
+        return <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+      default:
+        return <svg {...iconProps} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+    }
+  }
+
+  const getCategoryColor = (name) => {
+    const colors = {
+      electronics: '#3b82f6',
+      fashion: '#8b5cf6',
+      clothing: '#8b5cf6',
+      apparel: '#8b5cf6',
+      home: '#f59e0b',
+      furniture: '#84cc16',
+      beauty: '#ec4899',
+      cosmetics: '#ec4899',
+      sports: '#14b8a6',
+      fitness: '#14b8a6',
+      books: '#6366f1',
+      education: '#6366f1',
+      toys: '#f97316',
+      kids: '#f97316',
+      automotive: '#ef4444',
+      vehicles: '#ef4444',
+      food: '#10b981',
+      grocery: '#10b981',
+      jewelry: '#a855f7',
+      accessories: '#a855f7',
+      health: '#ec4899',
+      medical: '#ec4899',
+      office: '#64748b',
+      stationery: '#64748b',
+      garden: '#10b981',
+      outdoor: '#10b981'
+    }
+    return colors[name.toLowerCase()] || '#6b7280'
+  }
+
+  // Filter to only show categories that have products
+  const availableCategories = Object.keys(categoryCounts).filter(cat => categoryCounts[cat] > 0)
 
   return (
     <div className="bg-gradient-to-br from-orange-50 via-white to-blue-50 rounded-2xl shadow-lg overflow-hidden mb-8">
@@ -75,29 +142,42 @@ function StatsAndCategories({ categoryCount = 0 }) {
           </div>
         </div>
 
-        {/* Categories Section */}
-        <div className="mt-10">
-          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-6 text-center">Shop by Category</h3>
-          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-10 gap-3 sm:gap-4">
-            {categories.map((category, index) => (
-              <button
-                key={index}
-                className="flex flex-col items-center gap-2 p-3 rounded-xl bg-white hover:bg-gray-50 transition-all duration-200 hover:shadow-md hover:scale-105 group"
-                style={{ borderRadius: 'var(--theme-card-radius)' }}
-              >
-                <div 
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-2xl sm:text-3xl shadow-sm group-hover:shadow-md transition-shadow"
-                  style={{ backgroundColor: category.color + '15' }}
-                >
-                  {category.icon}
-                </div>
-                <span className="text-xs sm:text-sm text-gray-700 font-medium text-center leading-tight">
-                  {category.name}
-                </span>
-              </button>
-            ))}
+        {/* Categories Section - Only show categories with products */}
+        {availableCategories.length > 0 && (
+          <div className="mt-10">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-6 text-center">Shop by Category</h3>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4">
+              {availableCategories.map((categoryName, index) => {
+                const color = getCategoryColor(categoryName)
+                return (
+                  <button
+                    key={index}
+                    className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white hover:bg-gray-50 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 group border border-gray-100"
+                    style={{ borderRadius: 'var(--theme-card-radius)' }}
+                  >
+                    <div 
+                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all"
+                      style={{ 
+                        backgroundColor: color + '15',
+                        color: color
+                      }}
+                    >
+                      {getCategoryIcon(categoryName)}
+                    </div>
+                    <div className="text-center">
+                      <span className="text-xs sm:text-sm text-gray-700 font-semibold block leading-tight">
+                        {categoryName}
+                      </span>
+                      <span className="text-xs text-gray-500 mt-1">
+                        {categoryCounts[categoryName]} items
+                      </span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
@@ -494,7 +574,10 @@ export default function ProductCatalog() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 editable-area">
         {/* Stats and Categories Section */}
         <div className="mb-6">
-          <StatsAndCategories categoryCount={Object.keys(categoryCounts).length} />
+          <StatsAndCategories 
+            categoryCount={Object.keys(categoryCounts).length} 
+            categoryCounts={categoryCounts}
+          />
           <div className="mt-3 flex items-center justify-end">
             <CountrySelector
               selectedCountry={selectedCountry}
