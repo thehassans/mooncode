@@ -247,4 +247,88 @@ router.post('/banners/reorder', auth, allowRoles('admin', 'user'), async (req, r
   }
 })
 
+/**
+ * Get page content (public endpoint)
+ * Query params: page (required) - page identifier (e.g., 'catalog', 'product-detail')
+ */
+router.get('/content', async (req, res) => {
+  try {
+    const { page } = req.query
+    
+    if (!page) {
+      return res.status(400).json({ message: 'Page parameter is required' })
+    }
+    
+    const contentSetting = await Setting.findOne({ key: `pageContent_${page}` })
+    const content = contentSetting?.value || {}
+    
+    return res.json({ content })
+  } catch (err) {
+    return res.status(500).json({ message: err?.message || 'Failed to get page content' })
+  }
+})
+
+/**
+ * Save page content (authenticated)
+ * Body: { page, elements: [{ id, text, styles }] }
+ */
+router.post('/content', auth, allowRoles('admin', 'user'), async (req, res) => {
+  try {
+    const { page, elements } = req.body
+    
+    if (!page) {
+      return res.status(400).json({ message: 'Page parameter is required' })
+    }
+    
+    if (!Array.isArray(elements)) {
+      return res.status(400).json({ message: 'Elements must be an array' })
+    }
+    
+    // Get or create content setting
+    let contentSetting = await Setting.findOne({ key: `pageContent_${page}` })
+    
+    const contentData = {
+      page,
+      elements,
+      lastUpdated: new Date(),
+      updatedBy: req.user.id
+    }
+    
+    if (contentSetting) {
+      contentSetting.value = contentData
+      await contentSetting.save()
+    } else {
+      await Setting.create({
+        key: `pageContent_${page}`,
+        value: contentData
+      })
+    }
+    
+    return res.json({ 
+      ok: true, 
+      message: 'Page content saved successfully',
+      content: contentData
+    })
+  } catch (err) {
+    console.error('Content save error:', err)
+    return res.status(500).json({ message: err?.message || 'Failed to save page content' })
+  }
+})
+
+/**
+ * Delete page content (authenticated)
+ */
+router.delete('/content/:page', auth, allowRoles('admin', 'user'), async (req, res) => {
+  try {
+    const { page } = req.params
+    
+    await Setting.deleteOne({ key: `pageContent_${page}` })
+    
+    return res.json({ ok: true, message: 'Page content deleted successfully' })
+  } catch (err) {
+    console.error('Content delete error:', err)
+    return res.status(500).json({ message: err?.message || 'Failed to delete page content' })
+  }
+})
+
 export default router

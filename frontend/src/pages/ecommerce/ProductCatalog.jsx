@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import ProductCard from '../../components/ecommerce/ProductCard'
 import Header from '../../components/layout/Header'
 import ShoppingCart from '../../components/ecommerce/ShoppingCart'
+import EditMode from '../../components/ecommerce/EditMode'
 import { useToast } from '../../ui/Toast'
 import { trackPageView, trackSearch, trackFilterUsage, trackSortUsage } from '../../utils/analytics'
 import { apiGet } from '../../api'
@@ -71,6 +72,10 @@ export default function ProductCatalog() {
   const [categoryCounts, setCategoryCounts] = useState({})
   const [bannerImages, setBannerImages] = useState([])
   
+  // Edit mode
+  const [editMode, setEditMode] = useState(false)
+  const [pageContent, setPageContent] = useState({})
+  
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -132,6 +137,46 @@ export default function ProductCatalog() {
     })()
     return ()=>{ alive = false }
   }, [])
+  
+  // Load page content for edit mode
+  useEffect(() => {
+    let alive = true
+    ;(async()=>{
+      try{
+        const res = await apiGet('/api/settings/website/content?page=catalog')
+        if (alive && res.content && res.content.elements) {
+          setPageContent(res.content)
+          applyPageContent(res.content.elements)
+        }
+      }catch(err){
+        console.error('Failed to load page content:', err)
+      }
+    })()
+    return ()=>{ alive = false }
+  }, [])
+  
+  // Check URL for edit mode parameter
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('edit') === 'true') {
+      setEditMode(true)
+    }
+  }, [location.search])
+  
+  function applyPageContent(elements) {
+    elements.forEach(el => {
+      const domElement = document.getElementById(el.id) || 
+                        document.querySelector(`[data-editable-id="${el.id}"]`)
+      if (domElement) {
+        if (el.text) domElement.innerText = el.text
+        if (el.styles) {
+          Object.keys(el.styles).forEach(style => {
+            domElement.style[style] = el.styles[style]
+          })
+        }
+      }
+    })
+  }
   const toggleSelectFor = (id) => {
     setSelectedIds(prev => {
       const s = new Set(prev)
@@ -388,9 +433,15 @@ export default function ProductCatalog() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <EditMode 
+        page="catalog" 
+        isActive={editMode} 
+        onExit={() => setEditMode(false)} 
+      />
+      
       <Header onCartClick={() => setIsCartOpen(true)} />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 editable-area">
         {/* Top Banner */}
         <div className="mb-6">
           <BannerCarousel images={bannerImages} />

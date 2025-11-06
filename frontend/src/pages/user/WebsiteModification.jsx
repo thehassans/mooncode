@@ -353,14 +353,38 @@ export default function WebsiteModification() {
             justifyContent: 'space-between'
           }}>
             <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Live Website Preview</h2>
-            <a
-              href={getPreviewUrl()}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ fontSize: '13px', color: 'var(--primary)' }}
-            >
-              Open in new tab ↗
-            </a>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <a
+                href={`${getPreviewUrl()}?edit=true`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn"
+                style={{ 
+                  fontSize: '13px', 
+                  padding: '6px 14px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                🎨 Enable Edit Mode
+              </a>
+              <a
+                href={getPreviewUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: '13px', color: 'var(--primary)' }}
+              >
+                Open ↗
+              </a>
+            </div>
           </div>
           
           <div style={{ width: '100%', height: 'calc(100% - 60px)', background: '#f5f5f5' }}>
