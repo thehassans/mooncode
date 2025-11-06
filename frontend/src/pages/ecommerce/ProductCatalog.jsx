@@ -119,12 +119,10 @@ function StatsAndCategories({ categoryCount = 0, categoryCounts = {}, selectedCa
     return colors[name.toLowerCase()] || '#6b7280'
   }
 
-  // Define all available categories (show all, regardless of product count)
+  // Define available categories (removed: Beauty, Sports, Books, Automotive, Food, Garden, Pets, Music)
   const allCategories = [
-    'Electronics', 'Fashion', 'Home', 'Beauty', 'Sports', 
-    'Books', 'Toys', 'Automotive', 'Food', 'Jewelry',
-    'Health', 'Office', 'Garden', 'Pets', 'Tools', 
-    'Music', 'Skincare', 'Other'
+    'Electronics', 'Fashion', 'Home', 'Toys', 'Jewelry',
+    'Health', 'Office', 'Tools', 'Skincare', 'Other'
   ]
   
   // Show all categories (not filtering by product count)

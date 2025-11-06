@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { apiPost, apiGet, API_BASE } from '../../api'
 import { useToast } from '../../ui/Toast'
 import PasswordInput from '../../components/PasswordInput'
+import CountrySelector from '../../components/ecommerce/CountrySelector'
 
 export default function CustomerLogin() {
   const toast = useToast()
@@ -10,6 +11,9 @@ export default function CustomerLogin() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [branding, setBranding] = useState({ headerLogo: null, loginLogo: null })
+  const [selectedCountry, setSelectedCountry] = useState(() => {
+    try { return localStorage.getItem('selected_country') || 'SA' } catch { return 'SA' }
+  })
 
   // Load branding
   useEffect(() => {
@@ -22,6 +26,15 @@ export default function CustomerLogin() {
     })()
     return () => { cancelled = true }
   }, [])
+
+  // Persist selected country
+  useEffect(() => {
+    try { localStorage.setItem('selected_country', selectedCountry) } catch {}
+  }, [selectedCountry])
+
+  const handleCountryChange = (country) => {
+    setSelectedCountry(country.code)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -70,12 +83,21 @@ export default function CustomerLogin() {
     <div className="min-h-[100dvh] grid grid-rows-[auto_1fr] animated-gradient">
       {/* Header */}
       <div className="header flex items-center justify-between py-4 px-6" style={{ background: 'rgba(255,255,255,0.1)', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
-        <Link to="/catalog" className="flex items-center gap-2 text-white hover:text-orange-200 transition-colors">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back to Catalog
-        </Link>
+        <div className="flex items-center gap-4">
+          {/* Country Selector - Top Left */}
+          <div className="country-selector-wrapper">
+            <CountrySelector 
+              selectedCountry={selectedCountry}
+              onCountryChange={handleCountryChange}
+            />
+          </div>
+          <Link to="/catalog" className="flex items-center gap-2 text-white hover:text-orange-200 transition-colors">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Catalog
+          </Link>
+        </div>
         <Link to="/register" className="text-white hover:text-orange-200 transition-colors font-medium">
           New customer? Create Account
         </Link>
