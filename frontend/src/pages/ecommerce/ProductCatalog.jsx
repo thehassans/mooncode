@@ -12,49 +12,92 @@ import CategoryFilter from '../../components/ecommerce/CategoryFilter'
 import SearchBar from '../../components/ecommerce/SearchBar'
 import CountrySelector, { countries } from '../../components/ecommerce/CountrySelector'
 
-function BannerCarousel({ images=[] }){
-  const [index, setIndex] = useState(0)
-  const touchStartX = useRef(0)
-  const slides = (Array.isArray(images) && images.length) ? images : ['/banners/banner1.jpg.png','/banners/banner2.jpg.png','/banners/banner3.jpg.png']
-  const N = slides.length
-  useEffect(()=>{
-    const id = setInterval(()=> setIndex(i => (i+1)%N), 5000)
-    return ()=> clearInterval(id)
-  }, [N])
-  const prev = ()=> setIndex(i => (i-1+N)%N)
-  const next = ()=> setIndex(i => (i+1)%N)
-  const onTouchStart = (e)=>{ try{ touchStartX.current = e.touches[0].clientX }catch{} }
-  const onTouchEnd = (e)=>{ try{ const dx = e.changedTouches[0].clientX - touchStartX.current; if (Math.abs(dx) > 40){ if (dx < 0) next(); else prev(); } }catch{} }
-  const fallback = '/BuySial2.png'
+// Professional Stats and Categories Section
+function StatsAndCategories({ categoryCount = 0 }) {
+  const categories = [
+    { icon: '🌿', name: 'Environment', color: '#10b981' },
+    { icon: '👕', name: 'Apparel & Accessories', color: '#8b5cf6' },
+    { icon: '🏠', name: 'Home & Garden', color: '#f59e0b' },
+    { icon: '🏢', name: 'Commercial Equipment', color: '#3b82f6' },
+    { icon: '💄', name: 'Beauty', color: '#ec4899' },
+    { icon: '💎', name: 'Jewelry & Eyewear', color: '#6366f1' },
+    { icon: '🏭', name: 'Industrial Machinery', color: '#64748b' },
+    { icon: '💼', name: 'Business Services', color: '#0ea5e9' },
+    { icon: '🎧', name: 'Consumer Electronics', color: '#f97316' },
+    { icon: '🏋️', name: 'Sports & Entertainment', color: '#14b8a6' },
+    { icon: '🚗', name: 'Vehicle Parts', color: '#ef4444' },
+    { icon: '📦', name: 'Packaging & Printing', color: '#a855f7' },
+    { icon: '🔧', name: 'Tools & Hardware', color: '#78716c' },
+    { icon: '🪑', name: 'Furniture', color: '#84cc16' }
+  ]
+
   return (
-    <div className="relative rounded-xl overflow-hidden shadow-sm group select-none" role="region" aria-label="Promotions">
-      {/* Fixed aspect ratio to keep uniform size across images */}
-      <div className="relative w-full aspect-[16/7] bg-gray-200">
-        {slides.map((src, i)=> (
-          <img
-            key={i}
-            src={src}
-            alt={`Banner ${i+1}`}
-            onError={(e)=>{ if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback }}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${i===index? 'opacity-100':'opacity-0'}`}
-            draggable={false}
-            onTouchStart={onTouchStart}
-            onTouchEnd={onTouchEnd}
-          />
-        ))}
-      </div>
-      {/* Arrows */}
-      <button onClick={prev} aria-label="Previous banner" className="hidden sm:inline-flex absolute left-3 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-700 w-9 h-9 rounded-full items-center justify-center shadow">
-        ‹
-      </button>
-      <button onClick={next} aria-label="Next banner" className="hidden sm:inline-flex absolute right-3 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-700 w-9 h-9 rounded-full items-center justify-center shadow">
-        ›
-      </button>
-      {/* Dots */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
-        {slides.map((_, i)=> (
-          <button key={i} onClick={()=> setIndex(i)} aria-label={`Go to banner ${i+1}`} className={`w-2.5 h-2.5 rounded-full ${i===index? 'bg-white':'bg-white/60'}`}></button>
-        ))}
+    <div className="bg-gradient-to-br from-orange-50 via-white to-blue-50 rounded-2xl shadow-lg overflow-hidden mb-8">
+      {/* Stats Section */}
+      <div className="p-6 sm:p-8 lg:p-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+          {/* Left: Headline */}
+          <div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+              Discover quality products at unbeatable prices
+            </h2>
+            <p className="text-base sm:text-lg text-gray-600">
+              Your trusted marketplace for wholesale and retail shopping across the Gulf region
+            </p>
+          </div>
+
+          {/* Right: Stats Grid */}
+          <div className="grid grid-cols-2 gap-4 sm:gap-6">
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent mb-1">
+                10,000+
+              </div>
+              <div className="text-sm sm:text-base text-gray-600 font-medium">products</div>
+            </div>
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent mb-1">
+                50,000+
+              </div>
+              <div className="text-sm sm:text-base text-gray-600 font-medium">orders monthly</div>
+            </div>
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-purple-500 to-purple-600 bg-clip-text text-transparent mb-1">
+                {categoryCount > 0 ? `${categoryCount}+` : '100+'}
+              </div>
+              <div className="text-sm sm:text-base text-gray-600 font-medium">product categories</div>
+            </div>
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-green-500 to-green-600 bg-clip-text text-transparent mb-1">
+                10+
+              </div>
+              <div className="text-sm sm:text-base text-gray-600 font-medium">countries and regions</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Categories Section */}
+        <div className="mt-10">
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-6 text-center">Shop by Category</h3>
+          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-10 gap-3 sm:gap-4">
+            {categories.map((category, index) => (
+              <button
+                key={index}
+                className="flex flex-col items-center gap-2 p-3 rounded-xl bg-white hover:bg-gray-50 transition-all duration-200 hover:shadow-md hover:scale-105 group"
+                style={{ borderRadius: 'var(--theme-card-radius)' }}
+              >
+                <div 
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-2xl sm:text-3xl shadow-sm group-hover:shadow-md transition-shadow"
+                  style={{ backgroundColor: category.color + '15' }}
+                >
+                  {category.icon}
+                </div>
+                <span className="text-xs sm:text-sm text-gray-700 font-medium text-center leading-tight">
+                  {category.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -449,9 +492,9 @@ export default function ProductCatalog() {
       />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 editable-area">
-        {/* Top Banner */}
+        {/* Stats and Categories Section */}
         <div className="mb-6">
-          <BannerCarousel images={bannerImages} />
+          <StatsAndCategories categoryCount={Object.keys(categoryCounts).length} />
           <div className="mt-3 flex items-center justify-end">
             <CountrySelector
               selectedCountry={selectedCountry}
