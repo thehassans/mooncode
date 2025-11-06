@@ -11,6 +11,30 @@ const COUNTRY_CURRENCIES = {
   'India': 'INR'
 }
 
+// Currency conversion rates (base: SAR = 1)
+const CURRENCY_RATES = {
+  'SAR': 1.0,      // Saudi Riyal (base)
+  'AED': 0.98,     // UAE Dirham (1 SAR = 0.98 AED)
+  'OMR': 0.10,     // Omani Rial (1 SAR = 0.10 OMR)
+  'BHD': 0.10,     // Bahraini Dinar (1 SAR = 0.10 BHD)
+  'KWD': 0.082,    // Kuwaiti Dinar (1 SAR = 0.082 KWD)
+  'QAR': 0.97,     // Qatari Riyal (1 SAR = 0.97 QAR)
+  'INR': 22.5      // Indian Rupee (1 SAR = 22.5 INR)
+}
+
+// Convert price from base currency to target currency
+function convertPrice(price, fromCurrency, toCurrency) {
+  if (fromCurrency === toCurrency) return price
+  
+  // Convert to SAR first (base currency)
+  const priceInSAR = price / (CURRENCY_RATES[fromCurrency] || 1)
+  
+  // Then convert to target currency
+  const convertedPrice = priceInSAR * (CURRENCY_RATES[toCurrency] || 1)
+  
+  return Math.round(convertedPrice * 100) / 100 // Round to 2 decimals
+}
+
 export default function ProductManager() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
@@ -57,34 +81,6 @@ export default function ProductManager() {
   }
 
 
-  async function handleProductQuantityUpdate(productId, newQuantity, country = null) {
-    if (newQuantity < 0) return
-
-    try {
-      if (country) {
-        // Update country-specific stock
-        const product = products.find(p => p._id === productId)
-        const updatedStockByCountry = { ...product.stockByCountry, [country]: newQuantity }
-        
-        await apiPatch(`/api/products/${productId}`, { 
-          stockByCountry: updatedStockByCountry
-        })
-        setProducts(prev => prev.map(p => 
-          p._id === productId 
-            ? { ...p, stockByCountry: updatedStockByCountry } 
-            : p
-        ))
-        showToast(`✓ ${country} stock updated`)
-      } else {
-        // Update general stock
-        await apiPatch(`/api/products/${productId}`, { stockQty: newQuantity })
-        setProducts(prev => prev.map(p => p._id === productId ? { ...p, stockQty: newQuantity } : p))
-        showToast('✓ Quantity updated')
-      }
-    } catch (err) {
-      showToast('Update failed', 'error')
-    }
-  }
 
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
@@ -118,7 +114,7 @@ export default function ProductManager() {
           📦 Product Management
         </h1>
         <p style={{ fontSize: '14px', color: '#6b7280' }}>
-          Control product visibility, prices, and stock levels for each country. Toggle country-specific visibility to show products only where they're in stock.
+          View product stock levels by country with prices automatically converted to local currencies. Toggle product visibility on the website.
         </p>
       </div>
 
@@ -257,14 +253,20 @@ export default function ProductManager() {
               {product.stockByCountry && Object.keys(product.stockByCountry).length > 0 && (
                 <div style={{ borderTop: '2px solid #f3f4f6', paddingTop: '16px' }}>
                   <label style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: '12px' }}>
-                    📊 Stock Management by Country:
+                    📊 Stock & Price by Country:
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
                     {Object.entries(product.stockByCountry)
                       .filter(([_, stock]) => stock > 0)
                       .map(([country, stock]) => {
-                      const price = product.price || 0
-                      const currency = product.baseCurrency || COUNTRY_CURRENCIES[country] || 'SAR'
+                      // Get country's currency
+                      const countryCurrency = COUNTRY_CURRENCIES[country] || 'SAR'
+                      const baseCurrency = product.baseCurrency || 'SAR'
+                      const basePrice = product.price || 0
+                      
+                      // Convert price to country's currency
+                      const convertedPrice = convertPrice(basePrice, baseCurrency, countryCurrency)
+                      
                       const isVisible = product.displayOnWebsite === true
                       
                       return (
@@ -285,81 +287,28 @@ export default function ProductManager() {
                             {country}
                           </div>
                           
-                          {/* Price */}
+                          {/* Price in Local Currency */}
                           <div style={{ 
-                            fontSize: '11px', 
+                            fontSize: '12px', 
                             color: '#6b7280', 
-                            marginBottom: '6px',
+                            marginBottom: '8px',
                             fontWeight: 500
                           }}>
-                            💰 Price: <span style={{ fontWeight: 700, color: '#059669' }}>{price} {currency}</span>
+                            💰 Price: <span style={{ fontWeight: 700, color: '#059669', fontSize: '13px' }}>{convertedPrice} {countryCurrency}</span>
                           </div>
                           
-                          {/* Stock Controls */}
+                          {/* Stock Display (Read-Only) */}
                           <div style={{ 
-                            fontSize: '11px', 
+                            fontSize: '12px', 
                             color: '#6b7280', 
-                            marginBottom: '6px',
-                            fontWeight: 500
+                            fontWeight: 500,
+                            padding: '10px',
+                            background: 'white',
+                            borderRadius: '8px',
+                            border: '2px solid #e5e7eb',
+                            textAlign: 'center'
                           }}>
-                            📦 Stock: {stock > 0 ? stock : <span style={{ color: '#ef4444' }}>Out of Stock</span>}
-                          </div>
-                          
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
-                            <button
-                              onClick={() => handleProductQuantityUpdate(product._id, Math.max(0, stock - 1), country)}
-                              style={{
-                                width: '28px',
-                                height: '28px',
-                                padding: 0,
-                                background: 'white',
-                                border: '2px solid #e5e7eb',
-                                borderRadius: '6px',
-                                fontSize: '14px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: 700,
-                                color: '#6b7280'
-                              }}
-                            >
-                              −
-                            </button>
-                            <input
-                              type="number"
-                              value={stock || 0}
-                              onChange={(e) => handleProductQuantityUpdate(product._id, parseInt(e.target.value) || 0, country)}
-                              style={{
-                                flex: 1,
-                                padding: '6px',
-                                border: '2px solid #e5e7eb',
-                                borderRadius: '6px',
-                                fontSize: '13px',
-                                textAlign: 'center',
-                                fontWeight: 600
-                              }}
-                            />
-                            <button
-                              onClick={() => handleProductQuantityUpdate(product._id, stock + 1, country)}
-                              style={{
-                                width: '28px',
-                                height: '28px',
-                                padding: 0,
-                                background: 'white',
-                                border: '2px solid #e5e7eb',
-                                borderRadius: '6px',
-                                fontSize: '14px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: 700,
-                                color: '#6b7280'
-                              }}
-                            >
-                              +
-                            </button>
+                            📦 <span style={{ fontWeight: 700, color: '#111827', fontSize: '15px' }}>{stock}</span> <span style={{ fontSize: '11px' }}>units in stock</span>
                           </div>
                         </div>
                       )
