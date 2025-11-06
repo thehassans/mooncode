@@ -529,9 +529,22 @@ export default function ProductCatalog() {
         onExitEdit={() => setEditMode(false)}
       />
       
+      {/* Premium Country Selector Bar - Top of Page */}
+      <div className="bg-gradient-to-r from-orange-50 via-white to-blue-50 border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-600 font-medium">Select your region for localized pricing</p>
+            <CountrySelector
+              selectedCountry={selectedCountry}
+              onCountryChange={(country) => setSelectedCountry(country.code)}
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 editable-area">
-        {/* Stats and Categories Section */}
-        <div className="mb-6">
+        {/* Premium Stats and Categories Section */}
+        <div className="mb-8">
           <StatsAndCategories 
             categoryCount={Object.keys(categoryCounts).length} 
             categoryCounts={categoryCounts}
@@ -548,29 +561,28 @@ export default function ProductCatalog() {
               }, 100)
             }}
           />
-          <div className="mt-3 flex items-center justify-end">
-            <CountrySelector
-              selectedCountry={selectedCountry}
-              onCountryChange={(country) => setSelectedCountry(country.code)}
-            />
-          </div>
         </div>
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+        {/* Premium Filters Bar */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-200 p-5 sm:p-6 mb-8">
+          <div className="flex flex-col sm:flex-row gap-4">
             {/* Search */}
             <div className="flex-1 relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
               <input
                 type="text"
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-12 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-100 text-gray-500"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
                   aria-label="Clear search"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -581,11 +593,11 @@ export default function ProductCatalog() {
             </div>
             
             {/* Category Filter */}
-            <div className="w-full sm:w-48">
+            <div className="w-full sm:w-56">
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white font-medium text-gray-700 transition-all"
               >
                 <option value="all">All Categories</option>
                 {Object.keys(getProductCounts()).map((category) => (
@@ -597,15 +609,14 @@ export default function ProductCatalog() {
             </div>
             
             {/* Sort */}
-            <div className="w-full sm:w-48">
+            <div className="w-full sm:w-56">
               <select
                 value={sortBy}
                 onChange={(e) => {
                   setSortBy(e.target.value)
-                  // Track sort usage
                   trackSortUsage(e.target.value)
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white font-medium text-gray-700 transition-all"
               >
                 <option value="name">Name (A → Z)</option>
                 <option value="name-desc">Name (Z → A)</option>
@@ -668,13 +679,16 @@ export default function ProductCatalog() {
               </div>
             )}
 
-            {/* Results Summary */}
-            <div className="flex items-center justify-between mb-6">
-              <p className="text-gray-600">
-                Showing {products.length} of {totalProducts} products
-                {selectedCategory !== 'all' && ` in ${selectedCategory}`}
-                {searchQuery && ` matching "${searchQuery}"`}
-              </p>
+            {/* Premium Results Summary */}
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Results</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {products.length} of {totalProducts} products
+                  {selectedCategory !== 'all' && <span className="text-orange-600 ml-1">in {selectedCategory}</span>}
+                  {searchQuery && <span className="text-gray-500 ml-1">matching "{searchQuery}"</span>}
+                </p>
+              </div>
             </div>
 
             {/* Products Grid */}
@@ -769,28 +783,29 @@ export default function ProductCatalog() {
 
       {/* Key Features Section */}
       <div className="bg-gray-50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Premium Why Choose Us Section */}
+        <div className="mt-16 mb-12">
           <div className="text-center mb-12">
-            <h2 data-editable-id="why-choose-title" className="text-3xl font-bold text-gray-900 mb-4">Why Choose Us</h2>
-            <p data-editable-id="why-choose-subtitle" className="text-lg text-gray-600">Experience the best shopping with our premium services</p>
+            <h2 data-editable-id="why-choose-title" className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent mb-4">Why Choose Us</h2>
+            <p data-editable-id="why-choose-subtitle" className="text-lg text-gray-600 max-w-2xl mx-auto">Experience the best shopping with our premium services</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Free Shipping */}
-            <div className="text-center">
-              <div className="bg-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="text-center group hover:scale-105 transition-transform duration-300">
+              <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-xl transition-shadow">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
               </div>
               <h3 data-editable-id="feature-shipping-title" className="text-xl font-semibold text-gray-900 mb-2">Free Shipping</h3>
-              <p data-editable-id="feature-shipping-desc" className="text-gray-600">Free delivery on orders over 100 SAR across all GCC countries</p>
+              <p data-editable-id="feature-shipping-desc" className="text-gray-600">Free delivery across all GCC countries</p>
             </div>
 
             {/* Quality Product */}
-            <div className="text-center">
-              <div className="bg-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="text-center group hover:scale-105 transition-transform duration-300">
+              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-xl transition-shadow">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
@@ -799,9 +814,9 @@ export default function ProductCatalog() {
             </div>
 
             {/* Secure Payment */}
-            <div className="text-center">
-              <div className="bg-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="text-center group hover:scale-105 transition-transform duration-300">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-xl transition-shadow">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
@@ -810,9 +825,9 @@ export default function ProductCatalog() {
             </div>
 
             {/* 24/7 Support */}
-            <div className="text-center">
-              <div className="bg-white rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="text-center group hover:scale-105 transition-transform duration-300">
+              <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-xl transition-shadow">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M12 2.25a9.75 9.75 0 109.75 9.75A9.75 9.75 0 0012 2.25z" />
                 </svg>
               </div>
