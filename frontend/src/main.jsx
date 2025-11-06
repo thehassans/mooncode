@@ -41,7 +41,7 @@ class RootErrorBoundary extends React.Component {
               {this.state.error?.message || 'An unexpected error occurred'}
             </p>
             <button
-              onClick={() => window.location.href = '/login'}
+              onClick={() => window.location.href = '/'}
               style={{
                 padding: '10px 20px',
                 background: '#3b82f6',
@@ -52,7 +52,7 @@ class RootErrorBoundary extends React.Component {
                 fontSize: '16px'
               }}
             >
-              Go to Login
+              Go to Home
             </button>
           </div>
         </div>
