@@ -12,6 +12,19 @@ const GOOGLE_FONTS = [
   'Montserrat', 'Poppins', 'Playfair Display', 'Raleway', 'Ubuntu', 'Merriweather'
 ]
 
+const COUNTRY_CURRENCIES = {
+  'KSA': 'SAR',
+  'UAE': 'AED',
+  'EGY': 'EGP',
+  'BHR': 'BHD',
+  'OMN': 'OMR',
+  'KWT': 'KWD',
+  'QAT': 'QAR',
+  'JOR': 'JOD',
+  'LBN': 'LBP',
+  'IRQ': 'IQD'
+}
+
 const EDITOR_TABS = [
   { id: 'content', label: 'Content', icon: '📝' },
   { id: 'style', label: 'Style', icon: '🎨' },
@@ -714,12 +727,12 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
                                     fontSize: '9px',
                                     fontWeight: 600
                                   }}>
-                                    {country}: {price}
+                                    {country}: {price} {COUNTRY_CURRENCIES[country] || ''}
                                   </span>
                                 ))}
                               </div>
                             ) : (
-                              <span>Price: {product.price || 'N/A'} SAR</span>
+                              <span>Price: {product.price || 'N/A'}</span>
                             )}
                           </div>
                         </div>
@@ -750,13 +763,13 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
                       </div>
                       
                       {/* Stock by Country */}
-                      <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '8px' }}>
-                        <label style={{ fontSize: '9px', color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
-                          Stock by Country:
-                        </label>
-                        {product.countryStock && Object.keys(product.countryStock).length > 0 ? (
+                      {product.countryStock && Object.keys(product.countryStock).length > 0 && (
+                        <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '8px' }}>
+                          <label style={{ fontSize: '9px', color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                            Stock by Country:
+                          </label>
                           <div style={{ display: 'grid', gap: '6px' }}>
-                            {Object.entries(product.countryStock).map(([country, stock]) => (
+                            {Object.entries(product.countryStock).filter(([_, stock]) => stock > 0 || stock === 0).map(([country, stock]) => (
                               <div key={country} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span style={{ 
                                   fontSize: '10px', 
@@ -820,61 +833,8 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
                               </div>
                             ))}
                           </div>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span style={{ fontSize: '10px', color: '#6b7280' }}>Total:</span>
-                            <button
-                              onClick={() => handleProductQuantityUpdate(product._id, Math.max(0, (product.stock || 0) - 1))}
-                              style={{
-                                width: '20px',
-                                height: '20px',
-                                padding: 0,
-                                background: '#f3f4f6',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '4px',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                              }}
-                            >
-                              −
-                            </button>
-                            <input
-                              type="number"
-                              value={product.stock || 0}
-                              onChange={(e) => handleProductQuantityUpdate(product._id, parseInt(e.target.value) || 0)}
-                              style={{
-                                width: '45px',
-                                padding: '4px',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '4px',
-                                fontSize: '10px',
-                                textAlign: 'center'
-                              }}
-                            />
-                            <button
-                              onClick={() => handleProductQuantityUpdate(product._id, (product.stock || 0) + 1)}
-                              style={{
-                                width: '20px',
-                                height: '20px',
-                                padding: 0,
-                                background: '#f3f4f6',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '4px',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                              }}
-                            >
-                              +
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
