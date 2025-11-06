@@ -172,7 +172,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
   const hoverImagePath = images[1] || images[0] || ''
 
   return (
-    <div className={`${selected ? 'ring-2 ring-orange-200' : ''} overflow-hidden group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer`}
+    <div className={`${selected ? 'ring-2 ring-orange-200' : ''} overflow-hidden group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer flex flex-col`}
          style={{
            background: 'var(--theme-card-bg)',
            border: 'var(--theme-border)',
@@ -233,64 +233,66 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
         )}
       </div>
 
-      {/* Product Info */}
-      <div className="p-3 sm:p-4">
+      {/* Product Info - Premium Mobile Layout */}
+      <div className="p-2 sm:p-4 flex flex-col flex-1">
         {/* Product Name */}
-        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-orange-600 transition-colors text-sm sm:text-base leading-tight">
+        <h3 className="font-semibold text-gray-900 mb-1.5 sm:mb-2 line-clamp-2 group-hover:text-orange-600 transition-colors text-xs sm:text-base leading-tight min-h-[2.5rem] sm:min-h-[3rem]">
           {product.name}
         </h3>
 
         {/* Price */}
-        <div className="mb-3">
+        <div className="mb-1.5 sm:mb-3">
           {product.discount && product.discount > 0 ? (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1">
-              <span className="text-lg sm:text-xl font-bold text-red-600">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm sm:text-xl font-bold text-red-600">
                 {formatPrice(getConvertedPrice(product.price * (1 - product.discount / 100)), getDisplayCurrency())}
               </span>
-              <span className="text-xs sm:text-sm text-gray-500 line-through">
+              <span className="text-[10px] sm:text-sm text-gray-500 line-through">
                 {formatPrice(getConvertedPrice(product.price), getDisplayCurrency())}
               </span>
             </div>
           ) : (
-            <span className="text-lg sm:text-xl font-bold text-gray-900">
+            <span className="text-sm sm:text-xl font-bold text-gray-900">
               {formatPrice(getConvertedPrice(product.price), getDisplayCurrency())}
             </span>
           )}
         </div>
 
         {/* Stock Status */}
-        <div className="mb-3">
+        <div className="mb-2 sm:mb-3">
           {product.inStock && product.stockQty > 0 ? (
-            <span className="text-xs sm:text-sm text-green-600 font-medium flex items-center gap-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              In Stock ({product.stockQty} available)
+            <span className="text-[10px] sm:text-sm text-green-600 font-medium flex items-center gap-1">
+              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full"></div>
+              <span className="hidden sm:inline">In Stock ({product.stockQty} available)</span>
+              <span className="sm:hidden">In Stock ({product.stockQty})</span>
             </span>
           ) : (
-            <span className="text-xs sm:text-sm text-red-600 font-medium flex items-center gap-1">
-              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+            <span className="text-[10px] sm:text-sm text-red-600 font-medium flex items-center gap-1">
+              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full"></div>
               Out of Stock
             </span>
           )}
         </div>
 
-        {/* Add to Cart Button */}
+        {/* Add to Cart Button - Perfect Alignment */}
         <button
           onClick={handleAddToCart}
           disabled={!product.inStock || product.stockQty === 0}
-          className="w-full h-11 text-white px-4 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+          className="w-full h-9 sm:h-11 text-white px-2 sm:px-4 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium text-xs sm:text-sm shadow-sm hover:shadow-md flex items-center justify-center gap-1 sm:gap-2 mt-auto"
           style={{
             background: (!product.inStock || product.stockQty === 0) ? '#9ca3af' : 'var(--theme-accent)',
             borderRadius: 'var(--theme-button-radius)',
           }}
         >
           {!product.inStock || product.stockQty === 0 ? (
-            'Out of Stock'
+            <span className="text-xs sm:text-sm">Out of Stock</span>
           ) : (
             <>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              Add to Cart
+              <span className="hidden xs:inline">Add to Cart</span>
+              <span className="xs:hidden">Add</span>
             </>
           )}
         </button>
