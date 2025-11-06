@@ -1,19 +1,19 @@
 // Minimal service worker for BuySial Commerce
-const CACHE_NAME = 'buysial-shell-v5'
+const CACHE_NAME = 'buysial-shell-v6'
 const SHELL = [
   '/manifest.webmanifest',
   '/placeholder-product.svg',
 ]
 
 self.addEventListener('install', (e) => {
-  console.log('[SW] Installing service worker v5')
+  console.log('[SW] Installing service worker v6')
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL).catch(() => {})).then(() => self.skipWaiting())
   )
 })
 
 self.addEventListener('activate', (e) => {
-  console.log('[SW] Activating service worker v5')
+  console.log('[SW] Activating service worker v6')
   e.waitUntil(
     caches.keys().then((keys) => {
       // Delete all old caches
