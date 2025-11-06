@@ -4,9 +4,9 @@ import { apiGet, apiPost, apiUpload } from '../../api'
 export default function BannerManager() {
   const [banners, setBanners] = useState([])
   const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
   const [selectedPage, setSelectedPage] = useState('catalog')
   const [toast, setToast] = useState(null)
+  const [previewBanner, setPreviewBanner] = useState(null)
 
   const pages = [
     { id: 'catalog', label: 'Product Catalog' },
@@ -28,36 +28,6 @@ export default function BannerManager() {
       showToast('Failed to load banners', 'error')
     } finally {
       setLoading(false)
-    }
-  }
-
-  async function handleUpload(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    
-    if (!file.type.startsWith('image/')) {
-      showToast('Please select an image file', 'error')
-      return
-    }
-
-    setUploading(true)
-    try {
-      const formData = new FormData()
-      formData.append('banner', file)
-      formData.append('title', `Banner ${banners.length + 1}`)
-      formData.append('page', selectedPage)
-      formData.append('active', 'true')
-
-      const result = await apiUpload('/api/settings/website/banners', formData)
-      if (result.banner) {
-        setBanners(prev => [...prev, result.banner])
-        showToast('✓ Banner uploaded successfully!')
-      }
-    } catch (err) {
-      showToast('Upload failed', 'error')
-    } finally {
-      setUploading(false)
-      e.target.value = ''
     }
   }
 
@@ -92,7 +62,7 @@ export default function BannerManager() {
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '8px' }}>🖼️ Banner Manager</h1>
-        <p style={{ color: '#6b7280', fontSize: '14px' }}>Upload and manage banners for different pages</p>
+        <p style={{ color: '#6b7280', fontSize: '14px' }}>Manage banners with live preview and enable/disable options</p>
       </div>
 
       {/* Page Selector */}
@@ -122,38 +92,6 @@ export default function BannerManager() {
         </div>
       </div>
 
-      {/* Upload Section */}
-      <div style={{ background: 'white', border: '2px solid #e5e7eb', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Upload New Banner</h3>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleUpload}
-          disabled={uploading}
-          style={{ display: 'none' }}
-          id="banner-upload"
-        />
-        <label
-          htmlFor="banner-upload"
-          style={{
-            display: 'inline-block',
-            padding: '12px 24px',
-            background: uploading ? '#e5e7eb' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: uploading ? 'not-allowed' : 'pointer',
-            border: 'none'
-          }}
-        >
-          {uploading ? '⏳ Uploading...' : '📸 Upload Banner'}
-        </label>
-        <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
-          Recommended size: 1920x600px • Max file size: 5MB
-        </p>
-      </div>
-
       {/* Banners List */}
       <div>
         <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>
@@ -168,8 +106,8 @@ export default function BannerManager() {
         ) : banners.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px', color: '#9ca3af', background: 'white', border: '2px dashed #e5e7eb', borderRadius: '12px' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>📁</div>
-            <p>No banners uploaded yet</p>
-            <p style={{ fontSize: '12px', marginTop: '8px' }}>Upload your first banner to get started</p>
+            <p>No banners found for this page</p>
+            <p style={{ fontSize: '12px', marginTop: '8px' }}>Select a different page or add banners through the admin panel</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '16px' }}>
@@ -207,36 +145,41 @@ export default function BannerManager() {
                 </div>
 
                 {/* Actions */}
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setPreviewBanner(banner)}
+                    style={{
+                      padding: '8px 16px',
+                      background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))',
+                      color: '#667eea',
+                      border: '2px solid #667eea',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#667eea'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))'}
+                  >
+                    👁️ Preview
+                  </button>
                   <button
                     onClick={() => handleToggle(banner._id, banner.active)}
                     style={{
                       padding: '8px 16px',
                       background: banner.active ? '#10b981' : '#f3f4f6',
                       color: banner.active ? 'white' : '#374151',
-                      border: 'none',
+                      border: '2px solid',
+                      borderColor: banner.active ? '#10b981' : '#e5e7eb',
                       borderRadius: '6px',
                       fontSize: '14px',
                       fontWeight: 600,
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
                     }}
                   >
-                    {banner.active ? '✓ Active' : 'Inactive'}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(banner._id)}
-                    style={{
-                      padding: '8px 16px',
-                      background: 'rgba(239, 68, 68, 0.1)',
-                      color: '#ef4444',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    🗑️ Delete
+                    {banner.active ? '✓ Enabled' : '○ Enable'}
                   </button>
                 </div>
               </div>
@@ -261,6 +204,108 @@ export default function BannerManager() {
           zIndex: 1000
         }}>
           {toast.message}
+        </div>
+      )}
+
+      {/* Live Preview Modal */}
+      {previewBanner && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(0,0,0,0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={() => setPreviewBanner(null)}
+        >
+          <div style={{ maxWidth: '1400px', width: '100%', position: 'relative' }}>
+            {/* Close Button */}
+            <button
+              onClick={() => setPreviewBanner(null)}
+              style={{
+                position: 'absolute',
+                top: '-50px',
+                right: '0',
+                background: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 20px',
+                fontSize: '16px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                color: '#374151',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+              }}
+            >
+              ✕ Close Preview
+            </button>
+
+            {/* Banner Preview */}
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
+            }}>
+              <img
+                src={previewBanner.imageUrl}
+                alt={previewBanner.title}
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  maxHeight: '80vh',
+                  objectFit: 'contain',
+                  display: 'block'
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+              
+              {/* Banner Info Overlay */}
+              <div style={{
+                padding: '20px',
+                background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.95), rgba(118, 75, 162, 0.95))',
+                color: 'white'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>
+                      {previewBanner.title || 'Banner'}
+                    </h3>
+                    <p style={{ fontSize: '14px', opacity: 0.9 }}>
+                      {previewBanner.page} • {new Date(previewBanner.createdAt || Date.now()).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleToggle(previewBanner._id, previewBanner.active)
+                      setPreviewBanner(prev => ({ ...prev, active: !prev.active }))
+                    }}
+                    style={{
+                      padding: '10px 20px',
+                      background: previewBanner.active ? 'white' : 'rgba(255,255,255,0.2)',
+                      color: previewBanner.active ? '#10b981' : 'white',
+                      border: '2px solid white',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {previewBanner.active ? '✓ Enabled' : '○ Enable'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
