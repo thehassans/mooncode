@@ -12,6 +12,7 @@ const EDITOR_TABS = [
   { id: 'style', label: 'Style', icon: '🎨' },
   { id: 'layout', label: 'Layout', icon: '📐' },
   { id: 'media', label: 'Media', icon: '🖼️' },
+  { id: 'products', label: 'Products', icon: '📦' },
   { id: 'advanced', label: 'Advanced', icon: '⚙️' }
 ]
 
@@ -28,6 +29,8 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
   const [cropData, setCropData] = useState({ x: 0, y: 0, width: 100, height: 100, zoom: 1 })
   const [banners, setBanners] = useState([])
   const [uploadingBanner, setUploadingBanner] = useState(false)
+  const [products, setProducts] = useState([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
   const fileInputRef = useRef(null)
   const cropImageRef = useRef(null)
   const bannerInputRef = useRef(null)
@@ -59,8 +62,24 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
       if (bannersData.banners) {
         setBanners(bannersData.banners)
       }
+      // Load products
+      loadProducts()
     } catch (err) {
       console.error('Failed to load page content:', err)
+    }
+  }
+
+  async function loadProducts() {
+    setLoadingProducts(true)
+    try {
+      const data = await apiGet('/api/products?limit=100')
+      if (data.products) {
+        setProducts(data.products)
+      }
+    } catch (err) {
+      console.error('Failed to load products:', err)
+    } finally {
+      setLoadingProducts(false)
     }
   }
 
@@ -319,6 +338,32 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
     }
   }
 
+  async function handleProductVisibilityToggle(productId) {
+    const product = products.find(p => p._id === productId)
+    if (!product) return
+
+    try {
+      const newStatus = !product.isVisible
+      await apiPost(`/api/products/${productId}`, { isVisible: newStatus })
+      setProducts(prev => prev.map(p => p._id === productId ? { ...p, isVisible: newStatus } : p))
+      showToast(`✓ Product ${newStatus ? 'shown' : 'hidden'} on website`)
+    } catch (err) {
+      showToast('Update failed', 'error')
+    }
+  }
+
+  async function handleProductQuantityUpdate(productId, newQuantity) {
+    if (newQuantity < 0) return
+
+    try {
+      await apiPost(`/api/products/${productId}`, { stock: newQuantity })
+      setProducts(prev => prev.map(p => p._id === productId ? { ...p, stock: newQuantity } : p))
+      showToast('✓ Quantity updated')
+    } catch (err) {
+      showToast('Update failed', 'error')
+    }
+  }
+
   useEffect(() => {
     if (isActive) {
       const handleClick = (e) => {
@@ -488,6 +533,154 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
                           🗑️
                         </button>
                       </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>)}
+
+          {/* PRODUCTS TAB */}
+          {activeTab === 'products' && (<div style={{ display: 'grid', gap: '16px' }}>
+            <div style={{ padding: '12px', background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>📦 Product Management</div>
+              <div style={{ fontSize: '11px', color: '#6b7280' }}>Control product visibility and stock</div>
+            </div>
+
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
+              <Label>All Products ({products.length})</Label>
+              <div style={{ display: 'grid', gap: '12px', maxHeight: '500px', overflowY: 'auto', marginTop: '8px' }}>
+                {loadingProducts ? (
+                  <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af', fontSize: '12px' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>⏳</div>
+                    <div>Loading products...</div>
+                  </div>
+                ) : products.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af', fontSize: '12px' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>📦</div>
+                    <div>No products found</div>
+                  </div>
+                ) : (
+                  products.map((product) => (
+                    <div key={product._id} style={{ 
+                      background: 'white', 
+                      border: product.isVisible !== false ? '2px solid #10b981' : '2px solid #e5e7eb', 
+                      borderRadius: '8px', 
+                      padding: '10px',
+                      display: 'flex',
+                      gap: '10px',
+                      alignItems: 'center',
+                      transition: 'all 0.2s'
+                    }}>
+                      {/* Product Image */}
+                      <img 
+                        src={product.image || '/placeholder.png'} 
+                        alt={product.name}
+                        style={{ 
+                          width: '50px', 
+                          height: '50px', 
+                          objectFit: 'cover', 
+                          borderRadius: '6px',
+                          border: '1px solid #e5e7eb',
+                          flexShrink: 0
+                        }}
+                      />
+                      
+                      {/* Product Details */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ 
+                          fontSize: '12px', 
+                          fontWeight: 600, 
+                          color: '#111827',
+                          marginBottom: '4px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {product.name}
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '6px' }}>
+                          {product.price} SAR
+                        </div>
+                        
+                        {/* Quantity Controls */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <label style={{ fontSize: '9px', color: '#6b7280', fontWeight: 600 }}>Stock:</label>
+                          <button
+                            onClick={() => handleProductQuantityUpdate(product._id, (product.stock || 0) - 1)}
+                            style={{
+                              width: '20px',
+                              height: '20px',
+                              padding: 0,
+                              background: '#f3f4f6',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            value={product.stock || 0}
+                            onChange={(e) => handleProductQuantityUpdate(product._id, parseInt(e.target.value) || 0)}
+                            style={{
+                              width: '40px',
+                              padding: '4px',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '4px',
+                              fontSize: '10px',
+                              textAlign: 'center'
+                            }}
+                          />
+                          <button
+                            onClick={() => handleProductQuantityUpdate(product._id, (product.stock || 0) + 1)}
+                            style={{
+                              width: '20px',
+                              height: '20px',
+                              padding: 0,
+                              background: '#f3f4f6',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Visibility Toggle */}
+                      <button
+                        onClick={() => handleProductVisibilityToggle(product._id)}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          padding: 0,
+                          background: product.isVisible !== false ? '#10b981' : '#e5e7eb',
+                          color: product.isVisible !== false ? 'white' : '#9ca3af',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '16px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          transition: 'all 0.2s'
+                        }}
+                        title={product.isVisible !== false ? 'Visible on website' : 'Hidden from website'}
+                      >
+                        {product.isVisible !== false ? '✓' : '○'}
+                      </button>
                     </div>
                   ))
                 )}
