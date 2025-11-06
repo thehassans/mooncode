@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { apiGet, apiPost, apiUpload } from '../../api'
+import BannerManager from '../../pages/admin/BannerManager'
+import ThemeSettings from '../../pages/admin/ThemeSettings'
+import SEOManager from '../../pages/admin/SEOManager'
+import PageManager from '../../pages/admin/PageManager'
+import NavigationMenu from '../../pages/admin/NavigationMenu'
 
 const GOOGLE_FONTS = [
   'Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana', 'Courier New',
@@ -32,6 +37,7 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
   const [products, setProducts] = useState([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [editWebsiteMenuOpen, setEditWebsiteMenuOpen] = useState(false)
+  const [activeToolModal, setActiveToolModal] = useState(null)
   const fileInputRef = useRef(null)
   const cropImageRef = useRef(null)
   const bannerInputRef = useRef(null)
@@ -431,55 +437,55 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
           
           {editWebsiteMenuOpen && (
             <div style={{ background: 'white', padding: '8px' }}>
-              <a href="/admin/website-modification" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', textDecoration: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+              <button onClick={() => { setActiveTab('content'); setSelectedElement(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', background: 'transparent', border: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                 <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', borderRadius: '8px', fontSize: '16px', flexShrink: 0 }}>🎨</div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '2px' }}>Live Editor</div>
                   <div style={{ fontSize: '10px', color: '#6b7280' }}>Edit page content & styles</div>
                 </div>
-              </a>
+              </button>
               
-              <a href="/admin/banners" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', textDecoration: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+              <button onClick={() => setActiveToolModal('banners')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', background: 'transparent', border: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                 <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', borderRadius: '8px', fontSize: '16px', flexShrink: 0 }}>🖼️</div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '2px' }}>Banner Manager</div>
                   <div style={{ fontSize: '10px', color: '#6b7280' }}>Upload & manage banners</div>
                 </div>
-              </a>
+              </button>
               
-              <a href="/admin/theme" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', textDecoration: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+              <button onClick={() => setActiveToolModal('theme')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', background: 'transparent', border: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                 <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', borderRadius: '8px', fontSize: '16px', flexShrink: 0 }}>🎭</div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '2px' }}>Theme Settings</div>
                   <div style={{ fontSize: '10px', color: '#6b7280' }}>Colors, fonts & layout</div>
                 </div>
-              </a>
+              </button>
               
-              <a href="/admin/seo" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', textDecoration: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+              <button onClick={() => setActiveToolModal('seo')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', background: 'transparent', border: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                 <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', borderRadius: '8px', fontSize: '16px', flexShrink: 0 }}>🔍</div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '2px' }}>SEO Manager</div>
                   <div style={{ fontSize: '10px', color: '#6b7280' }}>Meta tags & optimization</div>
                 </div>
-              </a>
+              </button>
               
               <div style={{ height: '1px', background: '#e5e7eb', margin: '8px 4px' }}></div>
               
-              <a href="/admin/pages" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', textDecoration: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+              <button onClick={() => setActiveToolModal('pages')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', background: 'transparent', border: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                 <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', borderRadius: '8px', fontSize: '16px', flexShrink: 0 }}>📄</div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '2px' }}>Page Manager</div>
                   <div style={{ fontSize: '10px', color: '#6b7280' }}>Create & manage pages</div>
                 </div>
-              </a>
+              </button>
               
-              <a href="/admin/navigation" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', textDecoration: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+              <button onClick={() => setActiveToolModal('navigation')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', background: 'transparent', border: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                 <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', borderRadius: '8px', fontSize: '16px', flexShrink: 0 }}>🧭</div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '2px' }}>Navigation Menu</div>
                   <div style={{ fontSize: '10px', color: '#6b7280' }}>Customize menu items</div>
                 </div>
-              </a>
+              </button>
             </div>
           )}
         </div>
@@ -819,6 +825,41 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
           <div style={{ padding: '20px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <button onClick={() => setCropModalOpen(false)} style={{ padding: '10px 20px', background: '#f3f4f6', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
             <button onClick={handleCropComplete} disabled={uploading} style={{ padding: '10px 20px', background: '#667eea', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.6 : 1 }}>{uploading ? 'Cropping...' : '✂️ Crop & Upload'}</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Tool Modals */}
+    {activeToolModal && (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 10003, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui', padding: '20px' }}>
+        <div style={{ background: 'white', borderRadius: '16px', maxWidth: '1400px', width: '100%', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+          {/* Modal Header */}
+          <div style={{ padding: '20px 24px', borderBottom: '2px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))' }}>
+            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#111827' }}>
+              {activeToolModal === 'banners' && '🖼️ Banner Manager'}
+              {activeToolModal === 'theme' && '🎭 Theme Settings'}
+              {activeToolModal === 'seo' && '🔍 SEO Manager'}
+              {activeToolModal === 'pages' && '📄 Page Manager'}
+              {activeToolModal === 'navigation' && '🧭 Navigation Menu'}
+            </h3>
+            <button 
+              onClick={() => setActiveToolModal(null)} 
+              style={{ background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer', color: '#6b7280', padding: '0 8px', lineHeight: 1, transition: 'color 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#111827'}
+              onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
+            >
+              ×
+            </button>
+          </div>
+          
+          {/* Modal Content */}
+          <div style={{ flex: 1, overflowY: 'auto', background: '#f9fafb' }}>
+            {activeToolModal === 'banners' && <BannerManager />}
+            {activeToolModal === 'theme' && <ThemeSettings />}
+            {activeToolModal === 'seo' && <SEOManager />}
+            {activeToolModal === 'pages' && <PageManager />}
+            {activeToolModal === 'navigation' && <NavigationMenu />}
           </div>
         </div>
       </div>
