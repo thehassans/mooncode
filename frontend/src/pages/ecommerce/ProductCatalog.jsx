@@ -16,7 +16,7 @@ import CountrySelector, { countries } from '../../components/ecommerce/CountrySe
 function StatsAndCategories({ categoryCount = 0, categoryCounts = {} }) {
   // Category icon components with professional SVG
   const getCategoryIcon = (name) => {
-    const iconProps = { className: "w-7 h-7 sm:w-8 sm:h-8" }
+    const iconProps = { className: "w-10 h-10 sm:w-12 sm:h-12", strokeWidth: 1.5 }
     
     switch(name.toLowerCase()) {
       case 'electronics':
@@ -152,25 +152,19 @@ function StatsAndCategories({ categoryCount = 0, categoryCounts = {} }) {
                 return (
                   <button
                     key={index}
-                    className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white hover:bg-gray-50 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 group border border-gray-100"
-                    style={{ borderRadius: 'var(--theme-card-radius)' }}
+                    className="flex flex-col items-center gap-3 p-3 transition-all duration-200 hover:scale-105 group"
                   >
                     <div 
-                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-md group-hover:shadow-xl transition-all bg-gradient-to-br"
+                      className="w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition-all border border-gray-100"
                       style={{ 
-                        backgroundImage: `linear-gradient(135deg, ${color}10 0%, ${color}25 100%)`,
-                        color: color,
-                        border: `1.5px solid ${color}30`
+                        color: '#4a5568'
                       }}
                     >
                       {getCategoryIcon(categoryName)}
                     </div>
                     <div className="text-center">
-                      <span className="text-xs sm:text-sm text-gray-700 font-semibold block leading-tight">
+                      <span className="text-xs sm:text-sm text-gray-700 font-medium block leading-tight">
                         {categoryName}
-                      </span>
-                      <span className="text-xs text-gray-500 mt-1">
-                        {categoryCounts[categoryName]} items
                       </span>
                     </div>
                   </button>
