@@ -471,17 +471,7 @@ const ProductDetail = () => {
                 {product.name}
               </h1>
               
-              {/* Rating */}
-              {product.rating && (
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-1">
-                    {renderStars(product.rating)}
-                  </div>
-                  <span className="text-sm text-gray-600 font-medium">
-                    {product.rating}/5 rating
-                  </span>
-                </div>
-              )}
+              {/* Rating - Hidden for now */}
 
               {/* Price Section */}
               <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-4 sm:p-6">
@@ -614,22 +604,26 @@ const ProductDetail = () => {
                       <span className="font-medium text-gray-900">{product.subcategory}</span>
                     </div>
                   )}
-                  {product.weight && (
+                  {product.weight && product.weight > 0 && (
                     <div className="flex justify-between py-2 border-b border-gray-100">
                       <span className="text-gray-600">Weight</span>
                       <span className="font-medium text-gray-900">{product.weight}</span>
                     </div>
                   )}
                   {product.dimensions && (
-                    <div className="flex justify-between py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Dimensions</span>
-                      <span className="font-medium text-gray-900">
-                        {typeof product.dimensions === 'object' 
-                          ? `${product.dimensions.length || 0} × ${product.dimensions.width || 0} × ${product.dimensions.height || 0} cm`
-                          : product.dimensions
-                        }
-                      </span>
-                    </div>
+                    typeof product.dimensions === 'object'
+                      ? (product.dimensions.length > 0 || product.dimensions.width > 0 || product.dimensions.height > 0) && (
+                        <div className="flex justify-between py-2 border-b border-gray-100">
+                          <span className="text-gray-600">Dimensions</span>
+                          <span className="font-medium text-gray-900">
+                            {`${product.dimensions.length || 0} × ${product.dimensions.width || 0} × ${product.dimensions.height || 0} cm`}
+                          </span>
+                        </div>
+                      )
+                      : <div className="flex justify-between py-2 border-b border-gray-100">
+                          <span className="text-gray-600">Dimensions</span>
+                          <span className="font-medium text-gray-900">{product.dimensions}</span>
+                        </div>
                   )}
                   {product.madeInCountry && (
                     <div className="flex justify-between py-2 border-b border-gray-100">
@@ -713,13 +707,15 @@ const ProductDetail = () => {
                       </div>
                       <div className="flex justify-between items-center py-3 px-4 bg-white rounded-xl shadow-sm">
                         <span className="text-gray-600 font-medium">Weight</span>
-                        <span className="font-semibold text-gray-900">{product.weight || 'N/A'}</span>
+                        <span className="font-semibold text-gray-900">{product.weight && product.weight > 0 ? product.weight : 'N/A'}</span>
                       </div>
                       <div className="flex justify-between items-center py-3 px-4 bg-white rounded-xl shadow-sm">
                         <span className="text-gray-600 font-medium">Dimensions</span>
                         <span className="font-semibold text-gray-900">
-                          {product.dimensions && typeof product.dimensions === 'object' 
-                            ? `${product.dimensions.length || 0} × ${product.dimensions.width || 0} × ${product.dimensions.height || 0} cm`
+                          {product.dimensions && typeof product.dimensions === 'object'
+                            ? (product.dimensions.length > 0 || product.dimensions.width > 0 || product.dimensions.height > 0)
+                              ? `${product.dimensions.length || 0} × ${product.dimensions.width || 0} × ${product.dimensions.height || 0} cm`
+                              : 'N/A'
                             : product.dimensions || 'N/A'
                           }
                         </span>
