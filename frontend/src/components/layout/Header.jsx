@@ -18,7 +18,6 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
   const [cartCount, setCartCount] = useState(0)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const [editDropdownOpen, setEditDropdownOpen] = useState(false)
 
   useEffect(() => {
     // Initial cart count load
@@ -69,68 +68,6 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
             <Link to="/categories" className="nav-link">Categories</Link>
             <Link to="/about" className="nav-link">About</Link>
             <Link to="/contact" className="nav-link">Contact</Link>
-            
-            {/* Edit Website Dropdown */}
-            <div 
-              className="nav-dropdown"
-              onMouseEnter={() => setEditDropdownOpen(true)}
-              onMouseLeave={() => setEditDropdownOpen(false)}
-            >
-              <button className="nav-link dropdown-trigger">
-                Edit Website
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: '4px' }}>
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-              
-              {editDropdownOpen && (
-                <div className="dropdown-menu">
-                  <Link to="/admin/website-modification" className="dropdown-item">
-                    <span className="dropdown-icon">🎨</span>
-                    <div>
-                      <div className="dropdown-title">Live Editor</div>
-                      <div className="dropdown-desc">Edit page content & styles</div>
-                    </div>
-                  </Link>
-                  <Link to="/admin/banners" className="dropdown-item">
-                    <span className="dropdown-icon">🖼️</span>
-                    <div>
-                      <div className="dropdown-title">Banner Manager</div>
-                      <div className="dropdown-desc">Upload & manage banners</div>
-                    </div>
-                  </Link>
-                  <Link to="/admin/theme" className="dropdown-item">
-                    <span className="dropdown-icon">🎭</span>
-                    <div>
-                      <div className="dropdown-title">Theme Settings</div>
-                      <div className="dropdown-desc">Colors, fonts & layout</div>
-                    </div>
-                  </Link>
-                  <Link to="/admin/seo" className="dropdown-item">
-                    <span className="dropdown-icon">🔍</span>
-                    <div>
-                      <div className="dropdown-title">SEO Manager</div>
-                      <div className="dropdown-desc">Meta tags & optimization</div>
-                    </div>
-                  </Link>
-                  <div className="dropdown-divider"></div>
-                  <Link to="/admin/pages" className="dropdown-item">
-                    <span className="dropdown-icon">📄</span>
-                    <div>
-                      <div className="dropdown-title">Page Manager</div>
-                      <div className="dropdown-desc">Create & manage pages</div>
-                    </div>
-                  </Link>
-                  <Link to="/admin/navigation" className="dropdown-item">
-                    <span className="dropdown-icon">🧭</span>
-                    <div>
-                      <div className="dropdown-title">Navigation Menu</div>
-                      <div className="dropdown-desc">Customize menu items</div>
-                    </div>
-                  </Link>
-                </div>
-              )}
-            </div>
           </nav>
         </div>
 

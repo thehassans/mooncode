@@ -31,6 +31,7 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const [products, setProducts] = useState([])
   const [loadingProducts, setLoadingProducts] = useState(false)
+  const [editWebsiteMenuOpen, setEditWebsiteMenuOpen] = useState(false)
   const fileInputRef = useRef(null)
   const cropImageRef = useRef(null)
   const bannerInputRef = useRef(null)
@@ -397,9 +398,92 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
 
       {/* Header */}
       <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))' }}>
-        <h2 style={{ margin: 0, fontSize: '17px', fontWeight: 700 }}>{selectedElement ? '✏️ Edit Element' : '👆 Select Element'}</h2>
+        <h2 style={{ margin: 0, fontSize: '17px', fontWeight: 700 }}>{selectedElement ? '✏️ Edit Element' : '🎨 Edit Website'}</h2>
         {selectedElement && (<div style={{ display: 'flex', gap: '8px', marginTop: '8px', fontSize: '11px', color: '#6b7280' }}><span style={{ padding: '3px 8px', background: '#f3f4f6', borderRadius: '4px' }}>{selectedElement.tagName}</span><span style={{ padding: '3px 8px', background: '#f3f4f6', borderRadius: '4px' }}>{selectedElement.type}</span></div>)}
       </div>
+
+      {/* Edit Website Menu */}
+      {!selectedElement && (
+        <div style={{ borderBottom: '1px solid #e5e7eb' }}>
+          <button 
+            onClick={() => setEditWebsiteMenuOpen(!editWebsiteMenuOpen)}
+            style={{
+              width: '100%',
+              padding: '14px 20px',
+              background: editWebsiteMenuOpen ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))' : 'white',
+              border: 'none',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 600,
+              color: '#374151',
+              transition: 'all 0.2s'
+            }}
+          >
+            <span>📋 Website Tools</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: editWebsiteMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          
+          {editWebsiteMenuOpen && (
+            <div style={{ background: 'white', padding: '8px' }}>
+              <a href="/admin/website-modification" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', textDecoration: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', borderRadius: '8px', fontSize: '16px', flexShrink: 0 }}>🎨</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '2px' }}>Live Editor</div>
+                  <div style={{ fontSize: '10px', color: '#6b7280' }}>Edit page content & styles</div>
+                </div>
+              </a>
+              
+              <a href="/admin/banners" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', textDecoration: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', borderRadius: '8px', fontSize: '16px', flexShrink: 0 }}>🖼️</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '2px' }}>Banner Manager</div>
+                  <div style={{ fontSize: '10px', color: '#6b7280' }}>Upload & manage banners</div>
+                </div>
+              </a>
+              
+              <a href="/admin/theme" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', textDecoration: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', borderRadius: '8px', fontSize: '16px', flexShrink: 0 }}>🎭</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '2px' }}>Theme Settings</div>
+                  <div style={{ fontSize: '10px', color: '#6b7280' }}>Colors, fonts & layout</div>
+                </div>
+              </a>
+              
+              <a href="/admin/seo" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', textDecoration: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', borderRadius: '8px', fontSize: '16px', flexShrink: 0 }}>🔍</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '2px' }}>SEO Manager</div>
+                  <div style={{ fontSize: '10px', color: '#6b7280' }}>Meta tags & optimization</div>
+                </div>
+              </a>
+              
+              <div style={{ height: '1px', background: '#e5e7eb', margin: '8px 4px' }}></div>
+              
+              <a href="/admin/pages" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', textDecoration: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', borderRadius: '8px', fontSize: '16px', flexShrink: 0 }}>📄</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '2px' }}>Page Manager</div>
+                  <div style={{ fontSize: '10px', color: '#6b7280' }}>Create & manage pages</div>
+                </div>
+              </a>
+              
+              <a href="/admin/navigation" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '8px', textDecoration: 'none', color: '#374151', transition: 'all 0.2s', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', borderRadius: '8px', fontSize: '16px', flexShrink: 0 }}>🧭</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginBottom: '2px' }}>Navigation Menu</div>
+                  <div style={{ fontSize: '10px', color: '#6b7280' }}>Customize menu items</div>
+                </div>
+              </a>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       {selectedElement && (<div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
