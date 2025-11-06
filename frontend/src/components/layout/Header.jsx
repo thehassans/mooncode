@@ -18,6 +18,7 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
   const [cartCount, setCartCount] = useState(0)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [editDropdownOpen, setEditDropdownOpen] = useState(false)
 
   useEffect(() => {
     // Initial cart count load
@@ -68,6 +69,68 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
             <Link to="/categories" className="nav-link">Categories</Link>
             <Link to="/about" className="nav-link">About</Link>
             <Link to="/contact" className="nav-link">Contact</Link>
+            
+            {/* Edit Website Dropdown */}
+            <div 
+              className="nav-dropdown"
+              onMouseEnter={() => setEditDropdownOpen(true)}
+              onMouseLeave={() => setEditDropdownOpen(false)}
+            >
+              <button className="nav-link dropdown-trigger">
+                Edit Website
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: '4px' }}>
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              
+              {editDropdownOpen && (
+                <div className="dropdown-menu">
+                  <Link to="/admin/website-modification" className="dropdown-item">
+                    <span className="dropdown-icon">🎨</span>
+                    <div>
+                      <div className="dropdown-title">Live Editor</div>
+                      <div className="dropdown-desc">Edit page content & styles</div>
+                    </div>
+                  </Link>
+                  <Link to="/admin/banners" className="dropdown-item">
+                    <span className="dropdown-icon">🖼️</span>
+                    <div>
+                      <div className="dropdown-title">Banner Manager</div>
+                      <div className="dropdown-desc">Upload & manage banners</div>
+                    </div>
+                  </Link>
+                  <Link to="/admin/theme" className="dropdown-item">
+                    <span className="dropdown-icon">🎭</span>
+                    <div>
+                      <div className="dropdown-title">Theme Settings</div>
+                      <div className="dropdown-desc">Colors, fonts & layout</div>
+                    </div>
+                  </Link>
+                  <Link to="/admin/seo" className="dropdown-item">
+                    <span className="dropdown-icon">🔍</span>
+                    <div>
+                      <div className="dropdown-title">SEO Manager</div>
+                      <div className="dropdown-desc">Meta tags & optimization</div>
+                    </div>
+                  </Link>
+                  <div className="dropdown-divider"></div>
+                  <Link to="/admin/pages" className="dropdown-item">
+                    <span className="dropdown-icon">📄</span>
+                    <div>
+                      <div className="dropdown-title">Page Manager</div>
+                      <div className="dropdown-desc">Create & manage pages</div>
+                    </div>
+                  </Link>
+                  <Link to="/admin/navigation" className="dropdown-item">
+                    <span className="dropdown-icon">🧭</span>
+                    <div>
+                      <div className="dropdown-title">Navigation Menu</div>
+                      <div className="dropdown-desc">Customize menu items</div>
+                    </div>
+                  </Link>
+                </div>
+              )}
+            </div>
           </nav>
         </div>
 
@@ -634,6 +697,103 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
+        }
+
+        /* Edit Website Dropdown */
+        .nav-dropdown {
+          position: relative;
+          display: inline-block;
+        }
+
+        .dropdown-trigger {
+          background: none;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          color: inherit;
+          font-size: inherit;
+          font-weight: inherit;
+          font-family: inherit;
+          padding: 0;
+        }
+
+        .dropdown-menu {
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          transform: translateX(-50%);
+          margin-top: 12px;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+          padding: 8px;
+          min-width: 280px;
+          z-index: 1000;
+          animation: dropdownSlide 0.2s ease;
+        }
+
+        @keyframes dropdownSlide {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+        }
+
+        .dropdown-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px;
+          border-radius: 8px;
+          text-decoration: none;
+          color: #374151;
+          transition: all 0.2s;
+          cursor: pointer;
+        }
+
+        .dropdown-item:hover {
+          background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08));
+        }
+
+        .dropdown-icon {
+          font-size: 20px;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #f3f4f6;
+          border-radius: 8px;
+          flex-shrink: 0;
+        }
+
+        .dropdown-title {
+          font-weight: 600;
+          font-size: 14px;
+          color: #111827;
+          margin-bottom: 2px;
+        }
+
+        .dropdown-desc {
+          font-size: 11px;
+          color: #6b7280;
+        }
+
+        .dropdown-divider {
+          height: 1px;
+          background: #e5e7eb;
+          margin: 8px 4px;
+        }
+
+        @media (max-width: 768px) {
+          .nav-dropdown {
+            display: none;
+          }
         }
       `}</style>
     </header>

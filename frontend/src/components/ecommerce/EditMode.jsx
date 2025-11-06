@@ -11,6 +11,7 @@ const EDITOR_TABS = [
   { id: 'content', label: 'Content', icon: '📝' },
   { id: 'style', label: 'Style', icon: '🎨' },
   { id: 'layout', label: 'Layout', icon: '📐' },
+  { id: 'media', label: 'Media', icon: '🖼️' },
   { id: 'advanced', label: 'Advanced', icon: '⚙️' }
 ]
 
@@ -25,8 +26,11 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
   const [cropModalOpen, setCropModalOpen] = useState(false)
   const [imageToCrop, setImageToCrop] = useState(null)
   const [cropData, setCropData] = useState({ x: 0, y: 0, width: 100, height: 100, zoom: 1 })
+  const [banners, setBanners] = useState([])
+  const [uploadingBanner, setUploadingBanner] = useState(false)
   const fileInputRef = useRef(null)
   const cropImageRef = useRef(null)
+  const bannerInputRef = useRef(null)
 
   useEffect(() => {
     if (isActive) {
@@ -49,6 +53,11 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
       if (data.content?.elements) {
         setElements(data.content.elements)
         applyPageContent(data.content.elements)
+      }
+      // Load banners
+      const bannersData = await apiGet(`/api/settings/website/banners?page=${page}`)
+      if (bannersData.banners) {
+        setBanners(bannersData.banners)
       }
     } catch (err) {
       console.error('Failed to load page content:', err)
@@ -258,6 +267,58 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
     showToast('Element duplicated')
   }
 
+  async function handleBannerUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select an image file', 'error')
+      return
+    }
+    
+    setUploadingBanner(true)
+    try {
+      const formData = new FormData()
+      formData.append('banner', file)
+      formData.append('title', `Banner ${banners.length + 1}`)
+      formData.append('page', page)
+      formData.append('active', 'true')
+      
+      const result = await apiUpload('/api/settings/website/banners', formData)
+      if (result.banner) {
+        setBanners(prev => [...prev, result.banner])
+        showToast('✓ Banner uploaded successfully!')
+        // Reload to show new banner
+        setTimeout(() => window.location.reload(), 1500)
+      }
+    } catch (err) {
+      showToast('Banner upload failed', 'error')
+    } finally {
+      setUploadingBanner(false)
+      if (bannerInputRef.current) bannerInputRef.current.value = ''
+    }
+  }
+
+  async function handleBannerDelete(bannerId) {
+    if (!confirm('Delete this banner?')) return
+    try {
+      await apiPost(`/api/settings/website/banners/${bannerId}/delete`, {})
+      setBanners(prev => prev.filter(b => b._id !== bannerId))
+      showToast('✓ Banner deleted')
+    } catch (err) {
+      showToast('Delete failed', 'error')
+    }
+  }
+
+  async function handleBannerToggle(bannerId, currentStatus) {
+    try {
+      await apiPost(`/api/settings/website/banners/${bannerId}/toggle`, { active: !currentStatus })
+      setBanners(prev => prev.map(b => b._id === bannerId ? { ...b, active: !currentStatus } : b))
+      showToast(`✓ Banner ${!currentStatus ? 'activated' : 'deactivated'}`)
+    } catch (err) {
+      showToast('Toggle failed', 'error')
+    }
+  }
+
   useEffect(() => {
     if (isActive) {
       const handleClick = (e) => {
@@ -322,6 +383,116 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
             {selectedElement.type === 'image' && (<><div><Label>Width</Label><select value={selectedElement.styles.width} onChange={(e) => handleStyleChange('width', e.target.value)} style={{ width: '100%', padding: '8px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}><option value="auto">Auto</option><option value="100%">Full (100%)</option><option value="75%">75%</option><option value="50%">50%</option><option value="25%">25%</option><option value="300px">300px</option><option value="500px">500px</option></select></div><div><Label>Height</Label><select value={selectedElement.styles.height} onChange={(e) => handleStyleChange('height', e.target.value)} style={{ width: '100%', padding: '8px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}><option value="auto">Auto</option><option value="150px">150px</option><option value="200px">200px</option><option value="300px">300px</option><option value="400px">400px</option></select></div><div><Label>Object Fit</Label><select value={selectedElement.styles.objectFit} onChange={(e) => handleStyleChange('objectFit', e.target.value)} style={{ width: '100%', padding: '8px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}><option value="cover">Cover</option><option value="contain">Contain</option><option value="fill">Fill</option><option value="none">None</option></select></div></>)}
             <div><Label>Padding</Label><select value={selectedElement.styles.padding} onChange={(e) => handleStyleChange('padding', e.target.value)} style={{ width: '100%', padding: '8px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}><option value="0">None</option><option value="4px">4px</option><option value="8px">8px</option><option value="12px">12px</option><option value="16px">16px</option><option value="24px">24px</option></select></div>
             <div><Label>Margin</Label><select value={selectedElement.styles.margin} onChange={(e) => handleStyleChange('margin', e.target.value)} style={{ width: '100%', padding: '8px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}><option value="0">None</option><option value="4px">4px</option><option value="8px">8px</option><option value="12px">12px</option><option value="16px">16px</option><option value="24px">24px</option></select></div>
+          </div>)}
+
+          {/* MEDIA TAB */}
+          {activeTab === 'media' && (<div style={{ display: 'grid', gap: '16px' }}>
+            <div style={{ padding: '12px', background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>🖼️ Banner Management</div>
+              <div style={{ fontSize: '11px', color: '#6b7280' }}>Upload and manage page banners</div>
+            </div>
+
+            <div>
+              <Label>Upload New Banner</Label>
+              <input 
+                ref={bannerInputRef}
+                type="file" 
+                accept="image/*" 
+                onChange={handleBannerUpload}
+                style={{ display: 'none' }}
+              />
+              <button 
+                onClick={() => bannerInputRef.current?.click()}
+                disabled={uploadingBanner}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: uploadingBanner ? '#e5e7eb' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: uploadingBanner ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                {uploadingBanner ? '⏳ Uploading...' : '📸 Upload Banner'}
+              </button>
+            </div>
+
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
+              <Label>Current Banners ({banners.length})</Label>
+              <div style={{ display: 'grid', gap: '12px', maxHeight: '400px', overflowY: 'auto' }}>
+                {banners.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#9ca3af', fontSize: '12px' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>📁</div>
+                    <div>No banners uploaded yet</div>
+                  </div>
+                ) : (
+                  banners.map((banner, idx) => (
+                    <div key={banner._id || idx} style={{ 
+                      background: 'white', 
+                      border: '2px solid #e5e7eb', 
+                      borderRadius: '8px', 
+                      padding: '12px',
+                      position: 'relative'
+                    }}>
+                      <img 
+                        src={banner.imageUrl} 
+                        alt={banner.title}
+                        style={{ 
+                          width: '100%', 
+                          height: '120px', 
+                          objectFit: 'cover', 
+                          borderRadius: '6px',
+                          marginBottom: '8px'
+                        }}
+                      />
+                      <div style={{ fontSize: '11px', fontWeight: 600, marginBottom: '8px', color: '#374151' }}>
+                        {banner.title || `Banner ${idx + 1}`}
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          onClick={() => handleBannerToggle(banner._id, banner.active)}
+                          style={{
+                            flex: 1,
+                            padding: '6px',
+                            background: banner.active ? '#10b981' : '#f3f4f6',
+                            color: banner.active ? 'white' : '#374151',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '4px',
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {banner.active ? '✓ Active' : 'Inactive'}
+                        </button>
+                        <button
+                          onClick={() => handleBannerDelete(banner._id)}
+                          style={{
+                            padding: '6px 10px',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            color: '#ef4444',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            borderRadius: '4px',
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>)}
 
           {/* ADVANCED TAB */}
