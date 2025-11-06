@@ -56,6 +56,29 @@ export default function ProductManager() {
     }
   }
 
+  async function handleCountryVisibilityToggle(productId, country) {
+    const product = products.find(p => p._id === productId)
+    if (!product) return
+
+    try {
+      const currentVisibility = product.countryVisibility || {}
+      const newVisibility = {
+        ...currentVisibility,
+        [country]: !currentVisibility[country]
+      }
+      
+      await apiPatch(`/api/products/${productId}`, { countryVisibility: newVisibility })
+      setProducts(prev => prev.map(p => 
+        p._id === productId 
+          ? { ...p, countryVisibility: newVisibility } 
+          : p
+      ))
+      showToast(`✓ ${country}: ${newVisibility[country] ? 'Visible' : 'Hidden'}`)
+    } catch (err) {
+      showToast('Update failed', 'error')
+    }
+  }
+
   async function handleProductQuantityUpdate(productId, newQuantity, country = null) {
     if (newQuantity < 0) return
 
@@ -117,7 +140,7 @@ export default function ProductManager() {
           📦 Product Management
         </h1>
         <p style={{ fontSize: '14px', color: '#6b7280' }}>
-          Control product visibility and stock levels across different countries
+          Control product visibility, prices, and stock levels for each country. Toggle country-specific visibility to show products only where they're in stock.
         </p>
       </div>
 
@@ -225,86 +248,164 @@ export default function ProductManager() {
                 </button>
               </div>
               
-              {/* Stock by Country */}
+              {/* Stock & Visibility by Country */}
               {product.countryStock && Object.keys(product.countryStock).length > 0 && (
                 <div style={{ borderTop: '2px solid #f3f4f6', paddingTop: '16px' }}>
                   <label style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: '12px' }}>
-                    📊 Stock by Country:
+                    📊 Stock & Visibility by Country:
                   </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                    {Object.entries(product.countryStock).map(([country, stock]) => (
-                      <div key={country} style={{ 
-                        background: '#f9fafb', 
-                        padding: '12px', 
-                        borderRadius: '8px',
-                        border: '1px solid #e5e7eb'
-                      }}>
-                        <div style={{ 
-                          fontSize: '13px', 
-                          fontWeight: 600, 
-                          color: '#374151',
-                          marginBottom: '8px'
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+                    {Object.entries(product.countryStock).map(([country, stock]) => {
+                      const price = product.countryPrices?.[country] || 0
+                      const currency = COUNTRY_CURRENCIES[country] || ''
+                      const isVisible = product.countryVisibility?.[country] !== false
+                      
+                      return (
+                        <div key={country} style={{ 
+                          background: isVisible ? '#f0fdf4' : '#f9fafb', 
+                          padding: '14px', 
+                          borderRadius: '10px',
+                          border: isVisible ? '2px solid #10b981' : '2px solid #e5e7eb',
+                          transition: 'all 0.2s'
                         }}>
-                          {country}
+                          {/* Country Header with Toggle */}
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            marginBottom: '10px'
+                          }}>
+                            <div style={{ 
+                              fontSize: '14px', 
+                              fontWeight: 700, 
+                              color: '#111827'
+                            }}>
+                              {country}
+                            </div>
+                            
+                            {/* Visibility Toggle Switch */}
+                            <button
+                              onClick={() => handleCountryVisibilityToggle(product._id, country)}
+                              style={{
+                                position: 'relative',
+                                width: '44px',
+                                height: '24px',
+                                borderRadius: '12px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                background: isVisible ? '#10b981' : '#d1d5db',
+                                padding: 0
+                              }}
+                              title={isVisible ? 'Hide in this country' : 'Show in this country'}
+                            >
+                              <div style={{
+                                position: 'absolute',
+                                top: '2px',
+                                left: isVisible ? '22px' : '2px',
+                                width: '20px',
+                                height: '20px',
+                                borderRadius: '50%',
+                                background: 'white',
+                                transition: 'all 0.2s',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                              }} />
+                            </button>
+                          </div>
+                          
+                          {/* Price */}
+                          <div style={{ 
+                            fontSize: '11px', 
+                            color: '#6b7280', 
+                            marginBottom: '6px',
+                            fontWeight: 500
+                          }}>
+                            💰 Price: <span style={{ fontWeight: 700, color: '#059669' }}>{price} {currency}</span>
+                          </div>
+                          
+                          {/* Stock Controls */}
+                          <div style={{ 
+                            fontSize: '11px', 
+                            color: '#6b7280', 
+                            marginBottom: '6px',
+                            fontWeight: 500
+                          }}>
+                            📦 Stock: {stock > 0 ? stock : <span style={{ color: '#ef4444' }}>Out of Stock</span>}
+                          </div>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
+                            <button
+                              onClick={() => handleProductQuantityUpdate(product._id, Math.max(0, stock - 1), country)}
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                padding: 0,
+                                background: 'white',
+                                border: '2px solid #e5e7eb',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 700,
+                                color: '#6b7280'
+                              }}
+                            >
+                              −
+                            </button>
+                            <input
+                              type="number"
+                              value={stock || 0}
+                              onChange={(e) => handleProductQuantityUpdate(product._id, parseInt(e.target.value) || 0, country)}
+                              style={{
+                                flex: 1,
+                                padding: '6px',
+                                border: '2px solid #e5e7eb',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                textAlign: 'center',
+                                fontWeight: 600
+                              }}
+                            />
+                            <button
+                              onClick={() => handleProductQuantityUpdate(product._id, stock + 1, country)}
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                padding: 0,
+                                background: 'white',
+                                border: '2px solid #e5e7eb',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 700,
+                                color: '#6b7280'
+                              }}
+                            >
+                              +
+                            </button>
+                          </div>
+                          
+                          {/* Visibility Status */}
+                          <div style={{ 
+                            marginTop: '8px',
+                            fontSize: '10px',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            textAlign: 'center',
+                            fontWeight: 600,
+                            background: isVisible ? 'rgba(16, 185, 129, 0.15)' : 'rgba(107, 114, 128, 0.15)',
+                            color: isVisible ? '#059669' : '#6b7280'
+                          }}>
+                            {isVisible ? '● Visible in ' + country : '○ Hidden in ' + country}
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <button
-                            onClick={() => handleProductQuantityUpdate(product._id, Math.max(0, stock - 1), country)}
-                            style={{
-                              width: '28px',
-                              height: '28px',
-                              padding: 0,
-                              background: 'white',
-                              border: '2px solid #e5e7eb',
-                              borderRadius: '6px',
-                              fontSize: '14px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 700,
-                              color: '#6b7280'
-                            }}
-                          >
-                            −
-                          </button>
-                          <input
-                            type="number"
-                            value={stock || 0}
-                            onChange={(e) => handleProductQuantityUpdate(product._id, parseInt(e.target.value) || 0, country)}
-                            style={{
-                              flex: 1,
-                              padding: '6px',
-                              border: '2px solid #e5e7eb',
-                              borderRadius: '6px',
-                              fontSize: '13px',
-                              textAlign: 'center',
-                              fontWeight: 600
-                            }}
-                          />
-                          <button
-                            onClick={() => handleProductQuantityUpdate(product._id, stock + 1, country)}
-                            style={{
-                              width: '28px',
-                              height: '28px',
-                              padding: 0,
-                              background: 'white',
-                              border: '2px solid #e5e7eb',
-                              borderRadius: '6px',
-                              fontSize: '14px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 700,
-                              color: '#6b7280'
-                            }}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}
