@@ -246,18 +246,6 @@ export default function ProductCatalog() {
   const productsPerPage = 12
   const [isCartOpen, setIsCartOpen] = useState(false)
 
-  // Multi-select add-to-cart
-  const [selectionMode, setSelectionMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState(() => new Set())
-
-  const toggleSelectionMode = () => {
-    setSelectionMode(prev => {
-      const next = !prev
-      if (!next) setSelectedIds(new Set())
-      return next
-    })
-  }
-
   // Load category usage counts (public)
   useEffect(() => {
     let alive = true
@@ -333,16 +321,6 @@ export default function ProductCatalog() {
       }
     })
   }
-  const toggleSelectFor = (id) => {
-    setSelectedIds(prev => {
-      const s = new Set(prev)
-      if (s.has(id)) s.delete(id); else s.add(id)
-      return s
-    })
-  }
-  const isSelected = (id) => selectedIds.has(id)
-  const selectedCount = selectedIds.size
-
  // Load products when filters change
   useEffect(() => {
     loadProducts()
@@ -749,22 +727,6 @@ export default function ProductCatalog() {
                 {selectedCategory !== 'all' && ` in ${selectedCategory}`}
                 {searchQuery && ` matching "${searchQuery}"`}
               </p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleSelectionMode}
-                  className={`px-3 py-2 rounded-md text-sm font-medium border transition-colors ${selectionMode ? 'bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-                >
-                  {selectionMode ? 'Done Selecting' : 'Select Multiple'}
-                </button>
-                {selectionMode && (
-                  <button
-                    onClick={() => setSelectedIds(new Set(products.map(p=>p._id)))}
-                    className="px-3 py-2 rounded-md text-sm font-medium border bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                  >
-                    Select All
-                  </button>
-                )}
-              </div>
             </div>
 
             {/* Products Grid */}
@@ -789,9 +751,6 @@ export default function ProductCatalog() {
                       product={product}
                       selectedCountry={selectedCountry}
                       onAddToCart={handleAddToCart}
-                      selectionEnabled={selectionMode}
-                      selected={isSelected(product._id)}
-                      onToggleSelect={() => toggleSelectFor(product._id)}
                     />
                   ))}
                 </div>
