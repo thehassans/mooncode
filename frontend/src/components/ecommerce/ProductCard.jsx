@@ -233,15 +233,6 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
           {product.name}
         </h3>
 
-        {/* Rating */}
-        {product.rating && (
-          <div className="flex items-center mb-2">
-            <div className="flex items-center">
-              {renderStars(product.rating)}
-            </div>
-          </div>
-        )}
-
         {/* Price */}
         <div className="mb-3">
           {product.discount && product.discount > 0 ? (
