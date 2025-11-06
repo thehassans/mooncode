@@ -75,6 +75,7 @@ export default function ProductCatalog() {
   // Edit mode
   const [editMode, setEditMode] = useState(false)
   const [pageContent, setPageContent] = useState({})
+  const [editState, setEditState] = useState({ canSave: false, elementCount: 0, saving: false, handleSave: null })
   
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -437,9 +438,15 @@ export default function ProductCatalog() {
         page="catalog" 
         isActive={editMode} 
         onExit={() => setEditMode(false)} 
+        onSave={setEditState}
       />
       
-      <Header onCartClick={() => setIsCartOpen(true)} />
+      <Header 
+        onCartClick={() => setIsCartOpen(true)} 
+        editMode={editMode}
+        editState={editState}
+        onExitEdit={() => setEditMode(false)}
+      />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 editable-area">
         {/* Top Banner */}

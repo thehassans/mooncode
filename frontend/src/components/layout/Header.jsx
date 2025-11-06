@@ -14,7 +14,7 @@ const getCartItemCount = () => {
   }
 }
 
-export default function Header({ onCartClick }) {
+export default function Header({ onCartClick, editMode = false, editState = {}, onExitEdit = null }) {
   const [cartCount, setCartCount] = useState(0)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -73,28 +73,84 @@ export default function Header({ onCartClick }) {
 
         <div className="header-right">
           <div className="header-actions">
-            <button className="search-btn" onClick={toggleSearch}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-              </svg>
-            </button>
+            {/* Edit Mode Controls */}
+            {editMode ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', borderRadius: '20px', marginRight: '8px' }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', animation: 'pulse 2s infinite' }} />
+                  <span style={{ color: 'white', fontSize: '13px', fontWeight: 600 }}>Edit Mode</span>
+                  {editState.elementCount > 0 && (
+                    <span style={{ background: 'rgba(255,255,255,0.25)', color: 'white', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>{editState.elementCount}</span>
+                  )}
+                </div>
+                <button 
+                  onClick={() => editState.handleSave && editState.handleSave()} 
+                  disabled={!editState.canSave || editState.saving}
+                  style={{
+                    padding: '8px 16px',
+                    background: editState.canSave && !editState.saving ? '#10b981' : '#d1d5db',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: editState.canSave && !editState.saving ? 'pointer' : 'not-allowed',
+                    marginRight: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    <polyline points="17 21 17 13 7 13 7 21"/>
+                    <polyline points="7 3 7 8 15 8"/>
+                  </svg>
+                  {editState.saving ? 'Saving...' : 'Save'}
+                </button>
+                <button 
+                  onClick={onExitEdit}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginRight: '8px'
+                  }}
+                >
+                  Exit
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="search-btn" onClick={toggleSearch}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                  </svg>
+                </button>
 
-            <button className="cart-btn" onClick={onCartClick}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z"></path>
-                <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z"></path>
-                <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6"></path>
-              </svg>
-              {cartCount > 0 && (
-                <span className="cart-count">{cartCount}</span>
-              )}
-            </button>
+                <button className="cart-btn" onClick={onCartClick}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z"></path>
+                    <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z"></path>
+                    <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6"></path>
+                  </svg>
+                  {cartCount > 0 && (
+                    <span className="cart-count">{cartCount}</span>
+                  )}
+                </button>
 
-            <div className="auth-buttons">
-              <Link to="/login" className="login-btn">Login</Link>
-              <Link to="/register" className="register-btn">Sign Up</Link>
-            </div>
+                <div className="auth-buttons">
+                  <Link to="/login" className="login-btn">Login</Link>
+                  <Link to="/register" className="register-btn">Sign Up</Link>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -573,6 +629,11 @@ export default function Header({ onCartClick }) {
           .mobile-menu-content {
             width: 100vw;
           }
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
       `}</style>
     </header>

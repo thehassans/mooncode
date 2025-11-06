@@ -14,7 +14,7 @@ const EDITOR_TABS = [
   { id: 'advanced', label: 'Advanced', icon: '⚙️' }
 ]
 
-export default function EditMode({ page, isActive, onExit }) {
+export default function EditMode({ page, isActive, onExit, onSave }) {
   const [elements, setElements] = useState([])
   const [selectedElement, setSelectedElement] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -22,7 +22,11 @@ export default function EditMode({ page, isActive, onExit }) {
   const [activeTab, setActiveTab] = useState('content')
   const [uploading, setUploading] = useState(false)
   const [toast, setToast] = useState(null)
+  const [cropModalOpen, setCropModalOpen] = useState(false)
+  const [imageToCrop, setImageToCrop] = useState(null)
+  const [cropData, setCropData] = useState({ x: 0, y: 0, width: 100, height: 100, zoom: 1 })
   const fileInputRef = useRef(null)
+  const cropImageRef = useRef(null)
 
   useEffect(() => {
     if (isActive) {
@@ -77,6 +81,7 @@ export default function EditMode({ page, isActive, onExit }) {
     try {
       await apiPost('/api/settings/website/content', { page, elements })
       showToast('✓ Changes saved successfully!')
+      if (onSave) onSave({ elements, count: elements.length })
       setTimeout(() => window.location.reload(), 1500)
     } catch (err) {
       showToast('✗ Save failed', 'error')
@@ -84,6 +89,18 @@ export default function EditMode({ page, isActive, onExit }) {
       setSaving(false)
     }
   }
+
+  // Expose save/state to parent via useEffect
+  useEffect(() => {
+    if (isActive && onSave) {
+      onSave({ 
+        canSave: elements.length > 0 && !saving,
+        elementCount: elements.length,
+        saving,
+        handleSave
+      })
+    }
+  }, [elements.length, saving, isActive])
 
   function handleElementClick(e) {
     if (!isActive) return
@@ -154,40 +171,76 @@ export default function EditMode({ page, isActive, onExit }) {
     showToast(`Updated: ${property}`, 'info')
   }
 
-  async function handleImageUpload(e) {
+  function handleImageSelect(e) {
     const file = e.target.files?.[0]
-    if (!file || !selectedElement) return
+    if (!file) return
     if (!file.type.startsWith('image/')) {
       showToast('Please select an image file', 'error')
       return
     }
     
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      setImageToCrop(evt.target.result)
+      setCropModalOpen(true)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  async function handleCropComplete() {
+    if (!cropImageRef.current || !selectedElement) return
+    
     setUploading(true)
+    setCropModalOpen(false)
+    
     try {
-      const formData = new FormData()
-      formData.append('banner', file)
-      formData.append('title', selectedElement.id)
-      formData.append('page', page)
-      formData.append('active', 'true')
+      const canvas = document.createElement('canvas')
+      const img = cropImageRef.current
+      const scaleX = img.naturalWidth / img.width
+      const scaleY = img.naturalHeight / img.height
       
-      const result = await apiUpload('/api/settings/website/banners', formData)
-      const newImageUrl = result.banner?.imageUrl || result.imageUrl
+      canvas.width = cropData.width
+      canvas.height = cropData.height
+      const ctx = canvas.getContext('2d')
       
-      if (selectedElement.element && newImageUrl) {
-        selectedElement.element.src = newImageUrl
-        setElements(prev => {
-          const existing = prev.find(el => el.id === selectedElement.id)
-          if (existing) {
-            return prev.map(el => el.id === selectedElement.id ? { ...el, imageUrl: newImageUrl } : el)
-          }
-          return [...prev, { id: selectedElement.id, type: 'image', imageUrl: newImageUrl, styles: selectedElement.styles }]
-        })
-        setSelectedElement(prev => ({ ...prev, imageUrl: newImageUrl }))
-        showToast('✓ Image uploaded!')
-      }
+      ctx.drawImage(
+        img,
+        cropData.x * scaleX,
+        cropData.y * scaleY,
+        cropData.width * scaleX,
+        cropData.height * scaleY,
+        0,
+        0,
+        cropData.width,
+        cropData.height
+      )
+      
+      canvas.toBlob(async (blob) => {
+        const formData = new FormData()
+        formData.append('banner', blob, 'cropped-image.jpg')
+        formData.append('title', selectedElement.id)
+        formData.append('page', page)
+        formData.append('active', 'true')
+        
+        const result = await apiUpload('/api/settings/website/banners', formData)
+        const newImageUrl = result.banner?.imageUrl || result.imageUrl
+        
+        if (selectedElement.element && newImageUrl) {
+          selectedElement.element.src = newImageUrl
+          setElements(prev => {
+            const existing = prev.find(el => el.id === selectedElement.id)
+            if (existing) {
+              return prev.map(el => el.id === selectedElement.id ? { ...el, imageUrl: newImageUrl } : el)
+            }
+            return [...prev, { id: selectedElement.id, type: 'image', imageUrl: newImageUrl, styles: selectedElement.styles }]
+          })
+          setSelectedElement(prev => ({ ...prev, imageUrl: newImageUrl }))
+          showToast('✓ Image cropped & uploaded!')
+        }
+        setUploading(false)
+      }, 'image/jpeg', 0.9)
     } catch (err) {
-      showToast('Upload failed', 'error')
-    } finally {
+      showToast('Crop failed', 'error')
       setUploading(false)
     }
   }
@@ -226,24 +279,12 @@ export default function EditMode({ page, isActive, onExit }) {
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
       @keyframes slideIn { from { transform: translateY(-100%); } to { transform: translateY(0); } }
     `}</style>
-    
-    {/* Top Bar */}
-    <div style={{ position: 'fixed', top: 0, left: 0, right: sidebarOpen ? '380px' : 0, height: '60px', zIndex: 9998, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', fontFamily: 'system-ui', transition: 'right 0.3s ease' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', animation: 'pulse 2s infinite' }} />
-        <div><div style={{ fontSize: '15px', fontWeight: 700 }}>🎨 Edit Mode</div><div style={{ fontSize: '11px', opacity: 0.9 }}>{elements.length} changes</div></div>
-      </div>
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <button onClick={handleSave} disabled={saving || elements.length === 0} style={{ padding: '8px 20px', background: 'white', color: '#667eea', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: (saving || elements.length === 0) ? 'not-allowed' : 'pointer', opacity: (saving || elements.length === 0) ? 0.6 : 1, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>{saving ? '💾 Saving...' : '💾 Save'}</button>
-        <button onClick={onExit} style={{ padding: '8px 20px', background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>✕ Exit</button>
-      </div>
-    </div>
 
     {/* Toast Notification */}
-    {toast && (<div style={{ position: 'fixed', top: '80px', right: '20px', zIndex: 10001, padding: '12px 20px', background: toast.type === 'error' ? '#ef4444' : toast.type === 'info' ? '#3b82f6' : '#10b981', color: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', fontSize: '13px', fontWeight: 500, animation: 'slideIn 0.3s ease' }}>{toast.message}</div>)}
+    {toast && (<div style={{ position: 'fixed', top: '80px', right: sidebarOpen ? '400px' : '20px', zIndex: 10001, padding: '12px 20px', background: toast.type === 'error' ? '#ef4444' : toast.type === 'info' ? '#3b82f6' : '#10b981', color: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', fontSize: '13px', fontWeight: 500, animation: 'slideIn 0.3s ease', transition: 'right 0.3s ease' }}>{toast.message}</div>)}
 
     {/* Right Sidebar */}
-    <div className="edit-sidebar" style={{ position: 'fixed', top: '60px', right: 0, bottom: 0, width: '380px', background: 'white', boxShadow: '-4px 0 20px rgba(0,0,0,0.1)', zIndex: 9999, display: 'flex', flexDirection: 'column', transform: sidebarOpen ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.3s ease', fontFamily: 'system-ui' }}>
+    <div className="edit-sidebar" style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '380px', background: 'white', boxShadow: '-4px 0 20px rgba(0,0,0,0.1)', zIndex: 9999, display: 'flex', flexDirection: 'column', transform: sidebarOpen ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.3s ease', fontFamily: 'system-ui' }}>
       
       {/* Toggle Button */}
       <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ position: 'absolute', left: '-36px', top: '50%', transform: 'translateY(-50%)', width: '36px', height: '70px', background: 'white', border: 'none', borderRadius: '6px 0 0 6px', boxShadow: '-4px 0 12px rgba(0,0,0,0.1)', cursor: 'pointer', fontSize: '18px', color: '#667eea' }}>{sidebarOpen ? '→' : '←'}</button>
@@ -264,7 +305,7 @@ export default function EditMode({ page, isActive, onExit }) {
         {!selectedElement ? (<div style={{ textAlign: 'center', color: '#9ca3af' }}><div style={{ fontSize: '48px', marginBottom: '16px' }}>🖱️</div><p style={{ fontSize: '14px', margin: 0, lineHeight: 1.5 }}>Click any text or image on your website to start editing</p><p style={{ fontSize: '12px', color: '#d1d5db', marginTop: '12px' }}>All elements with data-editable-id are editable</p></div>) : (<>
           {/* CONTENT TAB */}
           {activeTab === 'content' && (<div style={{ display: 'grid', gap: '16px' }}>
-            {selectedElement.type === 'text' ? (<div><Label>Text Content</Label><textarea value={selectedElement.text} onChange={(e) => handleTextChange(e.target.value)} style={{ width: '100%', minHeight: '100px', padding: '10px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', resize: 'vertical', fontFamily: 'inherit' }} /></div>) : (<><div><Label>Replace Image</Label><input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} /><button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{ width: '100%', padding: '12px', background: uploading ? '#e5e7eb' : '#667eea', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: uploading ? 'not-allowed' : 'pointer' }}>📸 {uploading ? 'Uploading...' : 'Upload New Image'}</button></div>{selectedElement.imageUrl && <div><Label>Current Image</Label><img src={selectedElement.imageUrl} alt="Current" style={{ width: '100%', height: 'auto', maxHeight: '180px', objectFit: 'contain', border: '2px solid #e5e7eb', borderRadius: '8px' }} /></div>}</>)}
+            {selectedElement.type === 'text' ? (<div><Label>Text Content</Label><textarea value={selectedElement.text} onChange={(e) => handleTextChange(e.target.value)} style={{ width: '100%', minHeight: '100px', padding: '10px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', resize: 'vertical', fontFamily: 'inherit' }} /></div>) : (<><div><Label>Replace Image</Label><input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} style={{ display: 'none' }} /><button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{ width: '100%', padding: '12px', background: uploading ? '#e5e7eb' : '#667eea', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: uploading ? 'not-allowed' : 'pointer' }}>📸 {uploading ? 'Uploading...' : 'Upload & Crop Image'}</button></div>{selectedElement.imageUrl && <div><Label>Current Image</Label><img src={selectedElement.imageUrl} alt="Current" style={{ width: '100%', height: 'auto', maxHeight: '180px', objectFit: 'contain', border: '2px solid #e5e7eb', borderRadius: '8px' }} /></div>}</>)}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}><button onClick={handleDuplicate} style={{ padding: '8px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>📋 Duplicate</button><button onClick={handleDelete} style={{ padding: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>🗑️ Hide</button></div>
           </div>)}
 
@@ -292,5 +333,47 @@ export default function EditMode({ page, isActive, onExit }) {
         </>)}
       </div>
     </div>
+
+    {/* Crop Modal */}
+    {cropModalOpen && imageToCrop && (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui' }}>
+        <div style={{ background: 'white', borderRadius: '16px', maxWidth: '90vw', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>✂️ Crop Image</h3>
+            <button onClick={() => setCropModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280' }}>×</button>
+          </div>
+          
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ position: 'relative', maxHeight: '60vh', overflow: 'hidden', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img ref={cropImageRef} src={imageToCrop} alt="Crop preview" style={{ maxWidth: '100%', maxHeight: '60vh', display: 'block' }} onLoad={() => {
+                const img = cropImageRef.current
+                if (img) {
+                  setCropData({ x: 0, y: 0, width: Math.min(400, img.width), height: Math.min(400, img.height), zoom: 1 })
+                }
+              }} />
+              
+              {/* Crop Overlay */}
+              <div style={{ position: 'absolute', border: '2px dashed #667eea', boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)', left: `${cropData.x}px`, top: `${cropData.y}px`, width: `${cropData.width}px`, height: `${cropData.height}px`, pointerEvents: 'none' }} />
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div><label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Width</label><input type="number" value={Math.round(cropData.width)} onChange={(e) => setCropData(prev => ({ ...prev, width: parseInt(e.target.value) || 100 }))} style={{ width: '100%', padding: '8px', border: '2px solid #e5e7eb', borderRadius: '6px' }} /></div>
+              <div><label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Height</label><input type="number" value={Math.round(cropData.height)} onChange={(e) => setCropData(prev => ({ ...prev, height: parseInt(e.target.value) || 100 }))} style={{ width: '100%', padding: '8px', border: '2px solid #e5e7eb', borderRadius: '6px' }} /></div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => setCropData(prev => ({ ...prev, width: prev.width, height: prev.width }))} style={{ flex: 1, padding: '8px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Square</button>
+              <button onClick={() => setCropData(prev => ({ ...prev, width: prev.height * 1.5, height: prev.height }))} style={{ flex: 1, padding: '8px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>3:2</button>
+              <button onClick={() => setCropData(prev => ({ ...prev, width: prev.height * 1.777, height: prev.height }))} style={{ flex: 1, padding: '8px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>16:9</button>
+            </div>
+          </div>
+          
+          <div style={{ padding: '20px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button onClick={() => setCropModalOpen(false)} style={{ padding: '10px 20px', background: '#f3f4f6', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+            <button onClick={handleCropComplete} disabled={uploading} style={{ padding: '10px 20px', background: '#667eea', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.6 : 1 }}>{uploading ? 'Cropping...' : '✂️ Crop & Upload'}</button>
+          </div>
+        </div>
+      </div>
+    )}
   </>)
 }
