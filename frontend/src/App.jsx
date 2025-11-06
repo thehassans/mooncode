@@ -9,6 +9,11 @@ import ManagerLayout from './layout/ManagerLayout.jsx'
 import AdminDashboard from './pages/admin/Dashboard.jsx'
 import AdminUsers from './pages/admin/Users.jsx'
 import Branding from './pages/admin/Branding.jsx'
+import BannerManager from './pages/admin/BannerManager.jsx'
+import ThemeSettings from './pages/admin/ThemeSettings.jsx'
+import SEOManager from './pages/admin/SEOManager.jsx'
+import PageManager from './pages/admin/PageManager.jsx'
+import NavigationMenu from './pages/admin/NavigationMenu.jsx'
 // import AISettings from './pages/admin/AISettings.jsx'
 
 import UserLogin from './pages/user/Login.jsx'
@@ -333,6 +338,11 @@ export default function App() {
         <Route path="inbox/connect" element={<WhatsAppConnect />} />
         <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
         <Route path="branding" element={<Branding />} />
+        <Route path="banners" element={<BannerManager />} />
+        <Route path="theme" element={<ThemeSettings />} />
+        <Route path="seo" element={<SEOManager />} />
+        <Route path="pages" element={<PageManager />} />
+        <Route path="navigation" element={<NavigationMenu />} />
         {/** AI Settings moved to User panel */}
       </Route>
 
