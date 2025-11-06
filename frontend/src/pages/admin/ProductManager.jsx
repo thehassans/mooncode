@@ -28,9 +28,12 @@ export default function ProductManager() {
     try {
       const data = await apiGet('/api/products?limit=100')
       if (data.products) {
+        console.log('Products loaded:', data.products)
+        console.log('Sample product data:', data.products[0])
         setProducts(data.products)
       }
     } catch (err) {
+      console.error('Failed to load products:', err)
       showToast('Failed to load products', 'error')
     } finally {
       setLoading(false)
@@ -166,7 +169,7 @@ export default function ProductManager() {
             return (
             <div key={product._id} style={{ 
               background: 'white', 
-              border: product.isVisible !== false ? '2px solid #10b981' : '2px solid #e5e7eb', 
+              border: product.isVisible === true ? '2px solid #10b981' : '2px solid #e5e7eb', 
               borderRadius: '12px', 
               padding: '20px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
@@ -222,9 +225,11 @@ export default function ProductManager() {
                   {/* Total Stock Display */}
                   <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>
                     {product.countryStock && Object.keys(product.countryStock).length > 0 ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         <span style={{ fontWeight: 600 }}>📦 Total Stock:</span>
-                        {Object.entries(product.countryStock).map(([country, stock]) => (
+                        {Object.entries(product.countryStock)
+                          .filter(([_, stock]) => stock !== null && stock !== undefined)
+                          .map(([country, stock]) => (
                           <span key={country} style={{ 
                             padding: '3px 8px', 
                             background: stock > 0 ? '#ecfdf5' : '#fee2e2', 
@@ -233,7 +238,7 @@ export default function ProductManager() {
                             fontSize: '11px',
                             fontWeight: 700
                           }}>
-                            {country}: {stock}
+                            {country}: {stock || 0}
                           </span>
                         ))}
                       </div>
@@ -262,15 +267,15 @@ export default function ProductManager() {
                       border: 'none',
                       cursor: 'pointer',
                       transition: 'all 0.3s',
-                      background: product.isVisible !== false ? '#10b981' : '#d1d5db',
+                      background: product.isVisible === true ? '#10b981' : '#d1d5db',
                       padding: 0
                     }}
-                    title={product.isVisible !== false ? 'Click to hide from website' : 'Click to show on website'}
+                    title={product.isVisible === true ? 'Click to hide from website' : 'Click to show on website'}
                   >
                     <div style={{
                       position: 'absolute',
                       top: '2px',
-                      left: product.isVisible !== false ? '30px' : '2px',
+                      left: product.isVisible === true ? '30px' : '2px',
                       width: '24px',
                       height: '24px',
                       borderRadius: '50%',
@@ -282,9 +287,9 @@ export default function ProductManager() {
                   <span style={{ 
                     fontSize: '10px', 
                     fontWeight: 600,
-                    color: product.isVisible !== false ? '#10b981' : '#9ca3af'
+                    color: product.isVisible === true ? '#10b981' : '#9ca3af'
                   }}>
-                    {product.isVisible !== false ? 'ON' : 'OFF'}
+                    {product.isVisible === true ? 'ON' : 'OFF'}
                   </span>
                 </div>
               </div>
@@ -297,9 +302,14 @@ export default function ProductManager() {
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
                     {Object.entries(product.countryStock).map(([country, stock]) => {
-                      const price = product.countryPrices?.[country] || 0
+                      const price = product.countryPrices?.[country] || product.price || 0
                       const currency = COUNTRY_CURRENCIES[country] || ''
                       const isVisible = product.countryVisibility?.[country] !== false
+                      
+                      // Debug log for first country
+                      if (Object.keys(product.countryStock)[0] === country) {
+                        console.log(`Product: ${product.name}, Country: ${country}, Price: ${price}, Currency: ${currency}, Stock: ${stock}`)
+                      }
                       
                       return (
                         <div key={country} style={{ 
