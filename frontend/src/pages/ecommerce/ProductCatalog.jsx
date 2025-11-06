@@ -496,58 +496,6 @@ export default function ProductCatalog() {
     setIsCartOpen(true)
   }
 
-  const addSelectedToCart = () => {
-    try {
-      let cartItems = []
-      const saved = localStorage.getItem('shopping_cart')
-      if (saved) cartItems = JSON.parse(saved)
-
-      const ids = Array.from(selectedIds)
-      if (ids.length === 0) { toast.info('No products selected'); return }
-      let lastId = ''
-      ids.forEach(id => {
-        const p = products.find(pp => pp._id === id)
-        if (!p) return
-        const basePrice = Number(p?.price) || 0
-        const discounted = Number(p?.discount) > 0 ? basePrice * (1 - Number(p.discount) / 100) : basePrice
-        const unitPrice = Number(p?.onSale && (p?.salePrice ?? null) != null ? p.salePrice : discounted) || 0
-        const max = Number(p?.stockQty || 0)
-        const qty = 1
-        const idx = cartItems.findIndex(ci => ci.id === id)
-        if (idx >= 0) {
-          const current = Number(cartItems[idx].quantity || 0)
-          const candidate = current + qty
-          cartItems[idx].quantity = max > 0 && candidate > max ? max : candidate
-          cartItems[idx].price = unitPrice
-          cartItems[idx].currency = p.baseCurrency || 'SAR'
-          cartItems[idx].maxStock = p.stockQty
-        } else {
-          cartItems.push({
-            id,
-            name: p.name,
-            price: unitPrice,
-            currency: p.baseCurrency || 'SAR',
-            image: (Array.isArray(p.images) && p.images.length ? p.images[0] : (p.imagePath || '')),
-            quantity: Math.max(1, Math.min(max > 0 ? max : qty, qty)),
-            maxStock: p.stockQty
-          })
-        }
-        lastId = id
-      })
-
-      localStorage.setItem('shopping_cart', JSON.stringify(cartItems))
-      try { localStorage.setItem('last_added_product', String(lastId)) } catch {}
-      window.dispatchEvent(new CustomEvent('cartUpdated'))
-      toast.success(`Added ${ids.length} product${ids.length>1?'s':''} to cart`)
-      setIsCartOpen(true)
-      setSelectionMode(false)
-      setSelectedIds(new Set())
-    } catch (e) {
-      console.error('Failed to add selected to cart', e)
-      toast.error('Failed to add selected items')
-    }
-  }
-
   // Calculate pagination for display
   const totalPages = pagination?.pages || 1
   const totalProducts = pagination?.total || 0
@@ -874,37 +822,6 @@ export default function ProductCatalog() {
           </div>
         </div>
       </div>
-
-      {/* Sticky selection bar */}
-      {selectionMode && (
-        <div className="fixed inset-x-0 bottom-0 z-40">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-[env(safe-area-inset-bottom)]">
-            <div className="bg-white border-t border-gray-200 shadow-lg rounded-t-2xl p-3 sm:p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-xs text-gray-500">Selected</div>
-                  <div className="text-sm font-semibold text-gray-900">{selectedCount} item{selectedCount!==1?'s':''}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setSelectedIds(new Set())}
-                    className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium"
-                  >
-                    Clear
-                  </button>
-                  <button
-                    onClick={addSelectedToCart}
-                    disabled={selectedCount === 0}
-                    className={`px-4 py-2 rounded-lg text-white text-sm font-semibold shadow ${selectedCount===0 ? 'bg-gray-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'}`}
-                  >
-                    Add Selected to Cart
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Shopping Cart Sidebar */}
       <ShoppingCart 
