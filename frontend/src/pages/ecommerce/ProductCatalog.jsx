@@ -119,25 +119,25 @@ function StatsAndCategories({ categoryCount = 0, categoryCounts = {} }) {
               <div className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent mb-1">
                 10,000+
               </div>
-              <div className="text-sm sm:text-base text-gray-600 font-medium">products</div>
+              <div className="text-sm sm:text-base text-gray-600 font-medium">Products</div>
             </div>
             <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
               <div className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent mb-1">
                 50,000+
               </div>
-              <div className="text-sm sm:text-base text-gray-600 font-medium">orders monthly</div>
+              <div className="text-sm sm:text-base text-gray-600 font-medium">Monthly Orders</div>
             </div>
             <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
               <div className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-purple-500 to-purple-600 bg-clip-text text-transparent mb-1">
-                {categoryCount > 0 ? `${categoryCount}+` : '100+'}
+                500+
               </div>
-              <div className="text-sm sm:text-base text-gray-600 font-medium">product categories</div>
+              <div className="text-sm sm:text-base text-gray-600 font-medium">Active Brands</div>
             </div>
             <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
               <div className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-green-500 to-green-600 bg-clip-text text-transparent mb-1">
                 10+
               </div>
-              <div className="text-sm sm:text-base text-gray-600 font-medium">countries and regions</div>
+              <div className="text-sm sm:text-base text-gray-600 font-medium">Countries</div>
             </div>
           </div>
         </div>
@@ -156,10 +156,11 @@ function StatsAndCategories({ categoryCount = 0, categoryCounts = {} }) {
                     style={{ borderRadius: 'var(--theme-card-radius)' }}
                   >
                     <div 
-                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all"
+                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-md group-hover:shadow-xl transition-all bg-gradient-to-br"
                       style={{ 
-                        backgroundColor: color + '15',
-                        color: color
+                        backgroundImage: `linear-gradient(135deg, ${color}10 0%, ${color}25 100%)`,
+                        color: color,
+                        border: `1.5px solid ${color}30`
                       }}
                     >
                       {getCategoryIcon(categoryName)}

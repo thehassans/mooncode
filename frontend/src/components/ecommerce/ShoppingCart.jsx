@@ -270,26 +270,6 @@ export default function ShoppingCart({ isOpen, onClose }) {
             </div>
           ) : (
             <>
-              {/* Add More Items Button - Top Position */}
-              <div className="p-4 sm:p-6 pb-0">
-                <button 
-                  className="w-full text-white py-3 px-4 transition-all duration-200 font-semibold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
-                  style={{
-                    background: 'var(--theme-accent)',
-                    borderRadius: 'var(--theme-button-radius)'
-                  }}
-                  onClick={() => {
-                    onClose()
-                    navigate('/catalog')
-                  }}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add More Items
-                </button>
-              </div>
-
               {/* Cart Items */}
               <div className="p-4 sm:p-6 space-y-4">
                 {cartItems.map((item) => (
@@ -447,6 +427,25 @@ export default function ShoppingCart({ isOpen, onClose }) {
                 <div className="text-lg font-bold text-gray-900">{formatPrice(getTotalPrice(), displayCurrency)}</div>
               </div>
             </div>
+            
+            {/* Add More Items Button - Below Total */}
+            <button 
+              className="w-full text-white py-2.5 px-4 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2 shadow-sm hover:shadow-md mb-3"
+              style={{
+                background: 'var(--theme-accent)',
+                borderRadius: 'var(--theme-button-radius)'
+              }}
+              onClick={() => {
+                onClose()
+                navigate('/catalog')
+              }}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add More Items
+            </button>
+
             <div className="flex gap-2">
               <button 
                 className="flex-1 text-white py-3 px-4 transition-all duration-200 font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
