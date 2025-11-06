@@ -69,6 +69,7 @@ export default function ProductCatalog() {
   const [error, setError] = useState('')
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 })
   const [categoryCounts, setCategoryCounts] = useState({})
+  const [bannerImages, setBannerImages] = useState([])
   
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -106,6 +107,28 @@ export default function ProductCatalog() {
         if (alive) setCategoryCounts(counts)
       }catch{
         if (alive) setCategoryCounts({})
+      }
+    })()
+    return ()=>{ alive = false }
+  }, [])
+  
+  // Load banners from API
+  useEffect(() => {
+    let alive = true
+    ;(async()=>{
+      try{
+        const res = await apiGet('/api/settings/website/banners')
+        const banners = res?.banners || []
+        const activeBanners = banners.filter(b => b.active)
+        if (alive && activeBanners.length > 0) {
+          setBannerImages(activeBanners.map(b => b.imageUrl))
+        } else {
+          // Fallback to default banners if no banners uploaded
+          if (alive) setBannerImages(['/banners/banner1.jpg.png','/banners/banner2.jpg.png','/banners/banner3.jpg.png'])
+        }
+      }catch{
+        // Fallback to default banners on error
+        if (alive) setBannerImages(['/banners/banner1.jpg.png','/banners/banner2.jpg.png','/banners/banner3.jpg.png'])
       }
     })()
     return ()=>{ alive = false }
@@ -371,7 +394,7 @@ export default function ProductCatalog() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Top Banner */}
         <div className="mb-6">
-          <BannerCarousel images={[ '/banners/banner1.jpg.png','/banners/banner2.jpg.png','/banners/banner3.jpg.png' ]} />
+          <BannerCarousel images={bannerImages} />
           <div className="mt-3 flex items-center justify-end">
             <CountrySelector
               selectedCountry={selectedCountry}
