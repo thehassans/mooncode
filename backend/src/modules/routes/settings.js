@@ -426,3 +426,53 @@ router.post('/seo', auth, allowRoles('admin','user'), async (req, res) => {
     res.status(500).json({ error: e?.message || 'failed' })
   }
 })
+
+// GET /api/settings/theme - Get theme settings (public)
+router.get('/theme', async (_req, res) => {
+  try {
+    const doc = await Setting.findOne({ key: 'theme' }).lean()
+    const theme = (doc && doc.value) || {
+      themeName: 'modern',
+      primary: '#000000',
+      secondary: '#ffffff',
+      accent: '#f59e0b',
+      success: '#10b981',
+      danger: '#ef4444',
+      headerBg: '#ffffff',
+      headerText: '#000000',
+      cardBg: '#ffffff',
+      buttonStyle: 'solid',
+      headerFont: 'Inter',
+      bodyFont: 'Inter',
+      buttonRadius: '8',
+      cardRadius: '12',
+      borderStyle: '1px solid #e5e7eb',
+      shadow: '0 1px 3px rgba(0,0,0,0.1)',
+      headerStyle: 'sticky'
+    }
+    res.json({ theme })
+  } catch (e) {
+    console.error('Error loading theme settings:', e)
+    res.status(500).json({ error: e?.message || 'failed' })
+  }
+})
+
+// POST /api/settings/theme - Save theme settings (admin only)
+router.post('/theme', auth, allowRoles('admin','user'), async (req, res) => {
+  try {
+    const themeData = req.body || {}
+    
+    let doc = await Setting.findOne({ key: 'theme' })
+    if (!doc) doc = new Setting({ key: 'theme', value: {} })
+    
+    // Save all theme properties
+    doc.value = themeData
+    await doc.save()
+    
+    console.log('Theme settings saved successfully:', themeData.themeName || 'custom')
+    res.json({ success: true })
+  } catch (e) {
+    console.error('Error saving theme settings:', e)
+    res.status(500).json({ error: e?.message || 'failed' })
+  }
+})
