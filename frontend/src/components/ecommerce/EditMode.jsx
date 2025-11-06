@@ -359,13 +359,27 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
     }
   }
 
-  async function handleProductQuantityUpdate(productId, newQuantity) {
+  async function handleProductQuantityUpdate(productId, newQuantity, country = null) {
     if (newQuantity < 0) return
 
     try {
-      await apiPost(`/api/products/${productId}`, { stock: newQuantity })
-      setProducts(prev => prev.map(p => p._id === productId ? { ...p, stock: newQuantity } : p))
-      showToast('✓ Quantity updated')
+      if (country) {
+        // Update country-specific stock
+        await apiPost(`/api/products/${productId}`, { 
+          countryStock: { [country]: newQuantity } 
+        })
+        setProducts(prev => prev.map(p => 
+          p._id === productId 
+            ? { ...p, countryStock: { ...p.countryStock, [country]: newQuantity } } 
+            : p
+        ))
+        showToast(`✓ ${country} stock updated`)
+      } else {
+        // Update general stock
+        await apiPost(`/api/products/${productId}`, { stock: newQuantity })
+        setProducts(prev => prev.map(p => p._id === productId ? { ...p, stock: newQuantity } : p))
+        showToast('✓ Quantity updated')
+      }
     } catch (err) {
       showToast('Update failed', 'error')
     }
@@ -657,120 +671,210 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
                       border: product.isVisible !== false ? '2px solid #10b981' : '2px solid #e5e7eb', 
                       borderRadius: '8px', 
                       padding: '10px',
-                      display: 'flex',
-                      gap: '10px',
-                      alignItems: 'center',
                       transition: 'all 0.2s'
                     }}>
-                      {/* Product Image */}
-                      <img 
-                        src={product.image || '/placeholder.png'} 
-                        alt={product.name}
-                        style={{ 
-                          width: '50px', 
-                          height: '50px', 
-                          objectFit: 'cover', 
-                          borderRadius: '6px',
-                          border: '1px solid #e5e7eb',
-                          flexShrink: 0
-                        }}
-                      />
-                      
-                      {/* Product Details */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ 
-                          fontSize: '12px', 
-                          fontWeight: 600, 
-                          color: '#111827',
-                          marginBottom: '4px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {product.name}
-                        </div>
-                        <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '6px' }}>
-                          {product.price} SAR
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginBottom: '8px' }}>
+                        {/* Product Image */}
+                        <img 
+                          src={product.images?.[0] || product.image || product.imageUrl || '/placeholder.png'} 
+                          alt={product.name}
+                          style={{ 
+                            width: '60px', 
+                            height: '60px', 
+                            objectFit: 'cover', 
+                            borderRadius: '6px',
+                            border: '1px solid #e5e7eb',
+                            flexShrink: 0
+                          }}
+                        />
+                        
+                        {/* Product Details */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ 
+                            fontSize: '12px', 
+                            fontWeight: 600, 
+                            color: '#111827',
+                            marginBottom: '4px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {product.name}
+                          </div>
+                          
+                          {/* Prices by Country */}
+                          <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '4px' }}>
+                            {product.countryPrices && Object.keys(product.countryPrices).length > 0 ? (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {Object.entries(product.countryPrices).map(([country, price]) => (
+                                  <span key={country} style={{ 
+                                    padding: '2px 6px', 
+                                    background: '#f3f4f6', 
+                                    borderRadius: '4px',
+                                    fontSize: '9px',
+                                    fontWeight: 600
+                                  }}>
+                                    {country}: {price}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span>Price: {product.price || 'N/A'} SAR</span>
+                            )}
+                          </div>
                         </div>
                         
-                        {/* Quantity Controls */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <label style={{ fontSize: '9px', color: '#6b7280', fontWeight: 600 }}>Stock:</label>
-                          <button
-                            onClick={() => handleProductQuantityUpdate(product._id, (product.stock || 0) - 1)}
-                            style={{
-                              width: '20px',
-                              height: '20px',
-                              padding: 0,
-                              background: '#f3f4f6',
-                              border: '1px solid #e5e7eb',
-                              borderRadius: '4px',
-                              fontSize: '12px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                          >
-                            −
-                          </button>
-                          <input
-                            type="number"
-                            value={product.stock || 0}
-                            onChange={(e) => handleProductQuantityUpdate(product._id, parseInt(e.target.value) || 0)}
-                            style={{
-                              width: '40px',
-                              padding: '4px',
-                              border: '1px solid #e5e7eb',
-                              borderRadius: '4px',
-                              fontSize: '10px',
-                              textAlign: 'center'
-                            }}
-                          />
-                          <button
-                            onClick={() => handleProductQuantityUpdate(product._id, (product.stock || 0) + 1)}
-                            style={{
-                              width: '20px',
-                              height: '20px',
-                              padding: 0,
-                              background: '#f3f4f6',
-                              border: '1px solid #e5e7eb',
-                              borderRadius: '4px',
-                              fontSize: '12px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                          >
-                            +
-                          </button>
-                        </div>
+                        {/* Visibility Toggle */}
+                        <button
+                          onClick={() => handleProductVisibilityToggle(product._id)}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            padding: 0,
+                            background: product.isVisible !== false ? '#10b981' : '#e5e7eb',
+                            color: product.isVisible !== false ? 'white' : '#9ca3af',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '16px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            transition: 'all 0.2s'
+                          }}
+                          title={product.isVisible !== false ? 'Visible on website' : 'Hidden from website'}
+                        >
+                          {product.isVisible !== false ? '✓' : '○'}
+                        </button>
                       </div>
                       
-                      {/* Visibility Toggle */}
-                      <button
-                        onClick={() => handleProductVisibilityToggle(product._id)}
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          padding: 0,
-                          background: product.isVisible !== false ? '#10b981' : '#e5e7eb',
-                          color: product.isVisible !== false ? 'white' : '#9ca3af',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '16px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                          transition: 'all 0.2s'
-                        }}
-                        title={product.isVisible !== false ? 'Visible on website' : 'Hidden from website'}
-                      >
-                        {product.isVisible !== false ? '✓' : '○'}
-                      </button>
+                      {/* Stock by Country */}
+                      <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '8px' }}>
+                        <label style={{ fontSize: '9px', color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                          Stock by Country:
+                        </label>
+                        {product.countryStock && Object.keys(product.countryStock).length > 0 ? (
+                          <div style={{ display: 'grid', gap: '6px' }}>
+                            {Object.entries(product.countryStock).map(([country, stock]) => (
+                              <div key={country} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ 
+                                  fontSize: '10px', 
+                                  fontWeight: 600, 
+                                  color: '#374151',
+                                  minWidth: '35px'
+                                }}>
+                                  {country}:
+                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1 }}>
+                                  <button
+                                    onClick={() => handleProductQuantityUpdate(product._id, Math.max(0, stock - 1), country)}
+                                    style={{
+                                      width: '20px',
+                                      height: '20px',
+                                      padding: 0,
+                                      background: '#f3f4f6',
+                                      border: '1px solid #e5e7eb',
+                                      borderRadius: '4px',
+                                      fontSize: '12px',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center'
+                                    }}
+                                  >
+                                    −
+                                  </button>
+                                  <input
+                                    type="number"
+                                    value={stock || 0}
+                                    onChange={(e) => handleProductQuantityUpdate(product._id, parseInt(e.target.value) || 0, country)}
+                                    style={{
+                                      width: '45px',
+                                      padding: '4px',
+                                      border: '1px solid #e5e7eb',
+                                      borderRadius: '4px',
+                                      fontSize: '10px',
+                                      textAlign: 'center'
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => handleProductQuantityUpdate(product._id, stock + 1, country)}
+                                    style={{
+                                      width: '20px',
+                                      height: '20px',
+                                      padding: 0,
+                                      background: '#f3f4f6',
+                                      border: '1px solid #e5e7eb',
+                                      borderRadius: '4px',
+                                      fontSize: '12px',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center'
+                                    }}
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '10px', color: '#6b7280' }}>Total:</span>
+                            <button
+                              onClick={() => handleProductQuantityUpdate(product._id, Math.max(0, (product.stock || 0) - 1))}
+                              style={{
+                                width: '20px',
+                                height: '20px',
+                                padding: 0,
+                                background: '#f3f4f6',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              −
+                            </button>
+                            <input
+                              type="number"
+                              value={product.stock || 0}
+                              onChange={(e) => handleProductQuantityUpdate(product._id, parseInt(e.target.value) || 0)}
+                              style={{
+                                width: '45px',
+                                padding: '4px',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '4px',
+                                fontSize: '10px',
+                                textAlign: 'center'
+                              }}
+                            />
+                            <button
+                              onClick={() => handleProductQuantityUpdate(product._id, (product.stock || 0) + 1)}
+                              style={{
+                                width: '20px',
+                                height: '20px',
+                                padding: 0,
+                                background: '#f3f4f6',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))
                 )}
