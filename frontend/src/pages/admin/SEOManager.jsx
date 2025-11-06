@@ -10,6 +10,7 @@ export default function SEOManager() {
     twitterCard: 'summary_large_image',
     googleAnalytics: '',
     facebookPixel: '',
+    tiktokPixel: '',
     structuredData: true
   })
   const [saving, setSaving] = useState(false)
@@ -53,10 +54,37 @@ export default function SEOManager() {
 
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateY(-100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `}</style>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 10000,
+          padding: '12px 20px',
+          background: toast.type === 'error' ? '#ef4444' : '#10b981',
+          color: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+          fontSize: '14px',
+          fontWeight: 500,
+          animation: 'slideIn 0.3s ease'
+        }}>
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '8px' }}>🔍 SEO Manager</h1>
-        <p style={{ color: '#6b7280', fontSize: '14px' }}>Optimize your website for search engines</p>
+        <p style={{ color: '#6b7280', fontSize: '14px' }}>Optimize your website for search engines and track analytics</p>
       </div>
 
       <div style={{ display: 'grid', gap: '24px' }}>
@@ -92,8 +120,15 @@ export default function SEOManager() {
                 rows={3}
                 style={{ width: '100%', padding: '10px 12px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', resize: 'vertical' }}
               />
-              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                {seoSettings.siteDescription.length}/160 characters (recommended)
+              <p style={{ 
+                fontSize: '12px', 
+                color: seoSettings.siteDescription.length > 160 ? '#ef4444' : '#6b7280', 
+                marginTop: '4px',
+                fontWeight: seoSettings.siteDescription.length > 160 ? 600 : 400
+              }}>
+                {seoSettings.siteDescription.length}/160 characters 
+                {seoSettings.siteDescription.length > 160 && ' ⚠️ Too long'}
+                {seoSettings.siteDescription.length >= 120 && seoSettings.siteDescription.length <= 160 && ' ✓ Good'}
               </p>
             </div>
 
@@ -161,7 +196,7 @@ export default function SEOManager() {
           <div style={{ display: 'grid', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
-                Google Analytics ID
+                📊 Google Analytics ID
               </label>
               <input
                 type="text"
@@ -170,11 +205,14 @@ export default function SEOManager() {
                 placeholder="G-XXXXXXXXXX or UA-XXXXXXXXX"
                 style={{ width: '100%', padding: '10px 12px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
               />
+              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                Track website traffic and user behavior
+              </p>
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
-                Facebook Pixel ID
+                📘 Facebook Pixel ID
               </label>
               <input
                 type="text"
@@ -183,6 +221,25 @@ export default function SEOManager() {
                 placeholder="123456789012345"
                 style={{ width: '100%', padding: '10px 12px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
               />
+              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                Track Facebook ad conversions and retarget visitors
+              </p>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
+                🎵 TikTok Pixel ID
+              </label>
+              <input
+                type="text"
+                value={seoSettings.tiktokPixel}
+                onChange={(e) => handleChange('tiktokPixel', e.target.value)}
+                placeholder="XXXXXXXXXXXXXXX"
+                style={{ width: '100%', padding: '10px 12px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+              />
+              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                Track TikTok ad performance and optimize campaigns
+              </p>
             </div>
           </div>
         </div>
@@ -244,25 +301,6 @@ export default function SEOManager() {
           </button>
         </div>
       </div>
-
-      {/* Toast */}
-      {toast && (
-        <div style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          padding: '12px 20px',
-          background: toast.type === 'error' ? '#ef4444' : '#10b981',
-          color: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-          fontSize: '14px',
-          fontWeight: 500,
-          zIndex: 1000
-        }}>
-          {toast.message}
-        </div>
-      )}
     </div>
   )
 }

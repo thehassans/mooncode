@@ -362,3 +362,67 @@ router.post('/api-keys', auth, allowRoles('admin','user'), async (req, res) => {
     res.status(500).json({ error: e?.message || 'failed' })
   }
 })
+
+// GET /api/settings/seo - Get SEO settings
+router.get('/seo', async (_req, res) => {
+  try {
+    const doc = await Setting.findOne({ key: 'seo' }).lean()
+    const seo = (doc && doc.value) || {
+      siteTitle: '',
+      siteDescription: '',
+      keywords: '',
+      ogImage: '',
+      twitterCard: 'summary_large_image',
+      googleAnalytics: '',
+      facebookPixel: '',
+      tiktokPixel: '',
+      structuredData: true
+    }
+    res.json({ seo })
+  } catch (e) {
+    console.error('Error loading SEO settings:', e)
+    res.status(500).json({ error: e?.message || 'failed' })
+  }
+})
+
+// POST /api/settings/seo - Save SEO settings
+router.post('/seo', auth, allowRoles('admin','user'), async (req, res) => {
+  try {
+    const {
+      siteTitle,
+      siteDescription,
+      keywords,
+      ogImage,
+      twitterCard,
+      googleAnalytics,
+      facebookPixel,
+      tiktokPixel,
+      structuredData
+    } = req.body || {}
+    
+    let doc = await Setting.findOne({ key: 'seo' })
+    if (!doc) doc = new Setting({ key: 'seo', value: {} })
+    
+    const value = (doc.value && typeof doc.value === 'object') ? doc.value : {}
+    
+    // Update all SEO fields
+    if (typeof siteTitle === 'string') value.siteTitle = siteTitle.trim()
+    if (typeof siteDescription === 'string') value.siteDescription = siteDescription.trim()
+    if (typeof keywords === 'string') value.keywords = keywords.trim()
+    if (typeof ogImage === 'string') value.ogImage = ogImage.trim()
+    if (typeof twitterCard === 'string') value.twitterCard = twitterCard.trim()
+    if (typeof googleAnalytics === 'string') value.googleAnalytics = googleAnalytics.trim()
+    if (typeof facebookPixel === 'string') value.facebookPixel = facebookPixel.trim()
+    if (typeof tiktokPixel === 'string') value.tiktokPixel = tiktokPixel.trim()
+    if (typeof structuredData === 'boolean') value.structuredData = structuredData
+    
+    doc.value = value
+    await doc.save()
+    
+    console.log('SEO settings saved successfully')
+    res.json({ success: true })
+  } catch (e) {
+    console.error('Error saving SEO settings:', e)
+    res.status(500).json({ error: e?.message || 'failed' })
+  }
+})
