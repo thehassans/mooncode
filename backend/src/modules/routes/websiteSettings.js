@@ -45,17 +45,26 @@ const upload = multer({
 
 /**
  * Get all banners (public endpoint)
+ * Query params: page (optional) - filter by page (e.g., 'catalog', 'product-detail', 'checkout')
  */
 router.get('/banners', async (req, res) => {
   try {
+    const { page } = req.query
     const bannersSetting = await Setting.findOne({ key: 'websiteBanners' })
-    const banners = bannersSetting?.value || []
+    let banners = bannersSetting?.value || []
     
     // Filter only active banners for public access if not authenticated
     const isAuthenticated = req.headers.authorization
-    const filteredBanners = isAuthenticated ? banners : banners.filter(b => b.active)
+    if (!isAuthenticated) {
+      banners = banners.filter(b => b.active)
+    }
     
-    return res.json({ banners: filteredBanners })
+    // Filter by page if specified
+    if (page) {
+      banners = banners.filter(b => b.page === page)
+    }
+    
+    return res.json({ banners })
   } catch (err) {
     return res.status(500).json({ message: err?.message || 'Failed to get banners' })
   }
@@ -70,7 +79,7 @@ router.post('/banners', auth, allowRoles('admin', 'user'), upload.single('banner
       return res.status(400).json({ message: 'No file uploaded' })
     }
     
-    const { title, link, active } = req.body
+    const { title, link, active, page } = req.body
     
     // Build image URL
     const imageUrl = `/uploads/banners/${req.file.filename}`
@@ -85,6 +94,7 @@ router.post('/banners', auth, allowRoles('admin', 'user'), upload.single('banner
       imageUrl,
       title: title || '',
       link: link || '',
+      page: page || 'catalog', // Default to catalog page
       active: active === 'true' || active === true,
       createdAt: new Date(),
       uploadedBy: req.user.id

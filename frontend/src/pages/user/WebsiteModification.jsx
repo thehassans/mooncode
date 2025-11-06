@@ -1,5 +1,12 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { apiGet, apiUpload, API_BASE } from '../../api'
+
+const AVAILABLE_PAGES = [
+  { value: 'catalog', label: 'Product Catalog (Homepage)', url: '/catalog' },
+  { value: 'product-detail', label: 'Product Detail Page', url: '/catalog' },
+  { value: 'checkout', label: 'Checkout Page', url: '/catalog' },
+  { value: 'cart', label: 'Shopping Cart', url: '/catalog' }
+]
 
 export default function WebsiteModification() {
   const [loading, setLoading] = useState(false)
@@ -13,11 +20,27 @@ export default function WebsiteModification() {
   const [previewUrl, setPreviewUrl] = useState('')
   const [bannerTitle, setBannerTitle] = useState('')
   const [bannerLink, setBannerLink] = useState('')
+  const [bannerPage, setBannerPage] = useState('catalog')
   const [bannerActive, setBannerActive] = useState(true)
+  
+  // Live preview
+  const [iframeKey, setIframeKey] = useState(0)
+  const iframeRef = useRef(null)
+  
+  // Filter banners by selected page
+  const [filterPage, setFilterPage] = useState('all')
 
   useEffect(() => {
     loadBanners()
   }, [])
+  
+  // Auto-refresh preview when banners change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      refreshPreview()
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [banners])
 
   async function loadBanners() {
     setLoading(true)
@@ -35,13 +58,11 @@ export default function WebsiteModification() {
     const file = e.target.files?.[0]
     if (!file) return
     
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file')
       return
     }
     
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError('Image size must be less than 5MB')
       return
@@ -50,7 +71,6 @@ export default function WebsiteModification() {
     setSelectedFile(file)
     setError('')
     
-    // Create preview
     const reader = new FileReader()
     reader.onloadend = () => {
       setPreviewUrl(reader.result)
@@ -58,6 +78,10 @@ export default function WebsiteModification() {
     reader.readAsDataURL(file)
   }
 
+  function refreshPreview() {
+    setIframeKey(prev => prev + 1)
+  }
+  
   async function handleUploadBanner(e) {
     e.preventDefault()
     
@@ -75,22 +99,24 @@ export default function WebsiteModification() {
       formData.append('banner', selectedFile)
       formData.append('title', bannerTitle)
       formData.append('link', bannerLink)
+      formData.append('page', bannerPage)
       formData.append('active', String(bannerActive))
       
       await apiUpload('/api/settings/website/banners', formData)
       
-      setMessage('Banner uploaded successfully!')
+      setMessage(`Banner uploaded to ${AVAILABLE_PAGES.find(p => p.value === bannerPage)?.label}!`)
       setSelectedFile(null)
       setPreviewUrl('')
       setBannerTitle('')
       setBannerLink('')
+      setBannerPage('catalog')
       setBannerActive(true)
       
-      // Reset file input
       const fileInput = document.getElementById('banner-file-input')
       if (fileInput) fileInput.value = ''
       
       await loadBanners()
+      refreshPreview()
       
       setTimeout(() => setMessage(''), 3000)
     } catch (err) {
@@ -107,6 +133,7 @@ export default function WebsiteModification() {
       await apiGet(`/api/settings/website/banners/${bannerId}/delete`)
       setMessage('Banner deleted successfully!')
       await loadBanners()
+      refreshPreview()
       setTimeout(() => setMessage(''), 3000)
     } catch (err) {
       setError(err.message || 'Failed to delete banner')
@@ -116,23 +143,32 @@ export default function WebsiteModification() {
   async function handleToggleBanner(bannerId, currentStatus) {
     try {
       await apiGet(`/api/settings/website/banners/${bannerId}/toggle`)
-      setMessage(`Banner ${currentStatus ? 'deactivated' : 'activated'} successfully!`)
+      setMessage(`Banner ${currentStatus ? 'deactivated' : 'activated'}!`)
       await loadBanners()
+      refreshPreview()
       setTimeout(() => setMessage(''), 3000)
     } catch (err) {
       setError(err.message || 'Failed to update banner')
     }
   }
-
-  const websiteUrl = 'https://web.buysial.com/catalog'
+  
+  const filteredBanners = filterPage === 'all' 
+    ? banners 
+    : banners.filter(b => b.page === filterPage)
+  
+  const getPreviewUrl = () => {
+    const baseUrl = window.location.origin
+    return `${baseUrl}/catalog`
+  }
 
   return (
     <div className="section">
+      {/* Header */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: '32px',
+        marginBottom: '24px',
         flexWrap: 'wrap',
         gap: '16px'
       }}>
@@ -141,25 +177,23 @@ export default function WebsiteModification() {
             Website Modification
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: '15px' }}>
-            Manage your e-commerce website banners with live preview
+            Manage banners with live preview - WordPress style
           </p>
         </div>
-        <a
-          href={websiteUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn"
+        <button
+          onClick={refreshPreview}
+          className="btn secondary"
           style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-            <polyline points="15 3 21 3 21 9"/>
-            <line x1="10" y1="14" x2="21" y2="3"/>
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
           </svg>
-          View Live Website
-        </a>
+          Refresh Preview
+        </button>
       </div>
 
+      {/* Messages */}
       {message && (
         <div style={{
           padding: '16px',
@@ -190,296 +224,287 @@ export default function WebsiteModification() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gap: '24px' }}>
-        {/* Upload New Banner Card */}
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{
-            padding: '24px',
-            borderBottom: '1px solid var(--border)',
-            background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(37, 99, 235, 0.05))'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21 15 16 10 5 21"/>
-              </svg>
-              <div>
-                <h2 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '4px' }}>
-                  Upload New Banner
-                </h2>
-                <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
-                  Add banners to display on your e-commerce homepage (Recommended: 1920x480px)
-                </p>
-              </div>
+      {/* Two Column Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '500px 1fr', gap: '24px', marginBottom: '24px' }}>
+        {/* Left: Forms */}
+        <div style={{ display: 'grid', gap: '24px', height: 'fit-content' }}>
+          {/* Upload Banner */}
+          <div className="card" style={{ padding: 0 }}>
+            <div style={{
+              padding: '20px',
+              borderBottom: '1px solid var(--border)',
+              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(37, 99, 235, 0.05))'
+            }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Upload New Banner</h2>
             </div>
-          </div>
-          
-          <form onSubmit={handleUploadBanner} style={{ padding: '24px' }}>
-            <div style={{ display: 'grid', gap: '20px' }}>
-              {/* File Upload */}
-              <div className="field">
-                <label className="label">Banner Image *</label>
-                <input
-                  id="banner-file-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '2px dashed var(--border)',
-                    borderRadius: '8px',
-                    cursor: 'pointer'
-                  }}
-                  required
-                />
-                <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '6px' }}>
-                  Supported formats: JPG, PNG, GIF, WebP (Max 5MB)
+            
+            <form onSubmit={handleUploadBanner} style={{ padding: '20px' }}>
+              <div style={{ display: 'grid', gap: '16px' }}>
+                {/* Page Selector */}
+                <div className="field">
+                  <label className="label">Page *</label>
+                  <select
+                    className="input"
+                    value={bannerPage}
+                    onChange={(e) => setBannerPage(e.target.value)}
+                    required
+                  >
+                    {AVAILABLE_PAGES.map(page => (
+                      <option key={page.value} value={page.value}>
+                        {page.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
 
-              {/* Preview */}
-              {previewUrl && (
-                <div style={{
-                  padding: '16px',
-                  background: 'var(--bg)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '12px'
-                }}>
-                  <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>
-                    Preview:
-                  </div>
-                  <img
-                    src={previewUrl}
-                    alt="Banner preview"
+                {/* File Upload */}
+                <div className="field">
+                  <label className="label">Banner Image *</label>
+                  <input
+                    id="banner-file-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
                     style={{
                       width: '100%',
-                      height: 'auto',
-                      maxHeight: '300px',
-                      objectFit: 'contain',
+                      padding: '12px',
+                      border: '2px dashed var(--border)',
                       borderRadius: '8px',
+                      cursor: 'pointer'
+                    }}
+                    required
+                  />
+                </div>
+
+                {/* Preview */}
+                {previewUrl && (
+                  <div style={{
+                    padding: '12px',
+                    background: 'var(--bg)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px'
+                  }}>
+                    <img
+                      src={previewUrl}
+                      alt="Preview"
+                      style={{
+                        width: '100%',
+                        height: 'auto',
+                        maxHeight: '200px',
+                        objectFit: 'contain',
+                        borderRadius: '4px'
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Title */}
+                <div className="field">
+                  <label className="label">Title (Optional)</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={bannerTitle}
+                    onChange={(e) => setBannerTitle(e.target.value)}
+                    placeholder="e.g., Summer Sale"
+                  />
+                </div>
+
+                {/* Link */}
+                <div className="field">
+                  <label className="label">Link URL (Optional)</label>
+                  <input
+                    type="url"
+                    className="input"
+                    value={bannerLink}
+                    onChange={(e) => setBannerLink(e.target.value)}
+                    placeholder="https://..."
+                  />
+                </div>
+
+                {/* Active */}
+                <div className="field">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={bannerActive}
+                      onChange={(e) => setBannerActive(e.target.checked)}
+                    />
+                    <span>Active (Display on website)</span>
+                  </label>
+                </div>
+
+                <button type="submit" className="btn" disabled={uploading || !selectedFile}>
+                  {uploading ? 'Uploading...' : 'Upload Banner'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* Right: Live Preview */}
+        <div className="card" style={{ padding: 0, overflow: 'hidden', position: 'sticky', top: '20px', height: 'calc(100vh - 120px)' }}>
+          <div style={{
+            padding: '16px 20px',
+            borderBottom: '1px solid var(--border)',
+            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.05), rgba(139, 92, 246, 0.05))',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Live Website Preview</h2>
+            <a
+              href={getPreviewUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: '13px', color: 'var(--primary)' }}
+            >
+              Open in new tab ↗
+            </a>
+          </div>
+          
+          <div style={{ width: '100%', height: 'calc(100% - 60px)', background: '#f5f5f5' }}>
+            <iframe
+              key={iframeKey}
+              ref={iframeRef}
+              src={getPreviewUrl()}
+              style={{
+                width: '100%',
+                height: '100%',
+                border: 'none'
+              }}
+              title="Live Website Preview"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Banner List */}
+      <div className="card" style={{ padding: 0 }}>
+        <div style={{
+          padding: '20px',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 600 }}>
+            All Banners ({filteredBanners.length})
+          </h2>
+          
+          {/* Filter by Page */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{ fontSize: '14px', color: 'var(--muted)' }}>Filter:</label>
+            <select
+              className="input"
+              value={filterPage}
+              onChange={(e) => setFilterPage(e.target.value)}
+              style={{ width: 'auto', padding: '6px 12px' }}
+            >
+              <option value="all">All Pages</option>
+              {AVAILABLE_PAGES.map(page => (
+                <option key={page.value} value={page.value}>
+                  {page.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        
+        <div style={{ padding: '20px' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--muted)' }}>
+              Loading...
+            </div>
+          ) : filteredBanners.length === 0 ? (
+            <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--muted)' }}>
+              <p>No banners found</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: '12px' }}>
+              {filteredBanners.map((banner, index) => (
+                <div
+                  key={banner._id || index}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'auto 1fr auto',
+                    gap: '16px',
+                    alignItems: 'center',
+                    padding: '12px',
+                    background: 'var(--panel)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px'
+                  }}
+                >
+                  <img
+                    src={banner.imageUrl}
+                    alt={banner.title || 'Banner'}
+                    style={{
+                      width: '160px',
+                      height: '60px',
+                      objectFit: 'cover',
+                      borderRadius: '6px',
                       border: '1px solid var(--border)'
                     }}
                   />
-                </div>
-              )}
-
-              {/* Banner Details */}
-              <div className="field">
-                <label className="label">Banner Title (Optional)</label>
-                <input
-                  type="text"
-                  className="input"
-                  value={bannerTitle}
-                  onChange={(e) => setBannerTitle(e.target.value)}
-                  placeholder="e.g., Summer Sale 2024"
-                />
-              </div>
-
-              <div className="field">
-                <label className="label">Link URL (Optional)</label>
-                <input
-                  type="url"
-                  className="input"
-                  value={bannerLink}
-                  onChange={(e) => setBannerLink(e.target.value)}
-                  placeholder="https://example.com/sale"
-                />
-                <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '6px' }}>
-                  When clicked, users will be redirected to this URL
-                </div>
-              </div>
-
-              <div className="field">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={bannerActive}
-                    onChange={(e) => setBannerActive(e.target.checked)}
-                    style={{ width: '18px', height: '18px' }}
-                  />
-                  <span style={{ fontSize: '14px', fontWeight: 500 }}>
-                    Active (Display on website)
-                  </span>
-                </label>
-              </div>
-
-              <button type="submit" className="btn" disabled={uploading || !selectedFile}>
-                {uploading ? 'Uploading...' : 'Upload Banner'}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Current Banners Card */}
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{
-            padding: '24px',
-            borderBottom: '1px solid var(--border)',
-            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.05), rgba(139, 92, 246, 0.05))'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                  <line x1="8" y1="21" x2="16" y2="21"/>
-                  <line x1="12" y1="17" x2="12" y2="21"/>
-                </svg>
-                <div>
-                  <h2 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '4px' }}>
-                    Current Banners
-                  </h2>
-                  <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
-                    {banners.length} banner(s) • {banners.filter(b => b.active).length} active
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div style={{ padding: '24px' }}>
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--muted)' }}>
-                Loading banners...
-              </div>
-            ) : banners.length === 0 ? (
-              <div style={{
-                padding: '48px 24px',
-                textAlign: 'center',
-                color: 'var(--muted)'
-              }}>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 16px', opacity: 0.4 }}>
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                  <circle cx="8.5" cy="8.5" r="1.5"/>
-                  <polyline points="21 15 16 10 5 21"/>
-                </svg>
-                <p style={{ fontSize: '16px', marginBottom: '8px' }}>No banners uploaded yet</p>
-                <p style={{ fontSize: '14px' }}>
-                  Upload your first banner to get started
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: 'grid', gap: '16px' }}>
-                {banners.map((banner, index) => (
-                  <div
-                    key={banner._id || index}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'auto 1fr auto',
-                      gap: '16px',
-                      alignItems: 'center',
-                      padding: '16px',
-                      background: 'var(--panel)',
-                      border: '1px solid var(--border)',
-                      borderRadius: '12px'
-                    }}
-                  >
-                    {/* Banner Image */}
-                    <img
-                      src={banner.imageUrl}
-                      alt={banner.title || `Banner ${index + 1}`}
-                      style={{
-                        width: '200px',
-                        height: '80px',
-                        objectFit: 'cover',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border)'
-                      }}
-                    />
-                    
-                    {/* Banner Info */}
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '4px' }}>
-                        {banner.title || `Banner ${index + 1}`}
-                      </div>
-                      {banner.link && (
-                        <div style={{ fontSize: '13px', color: 'var(--muted)', marginBottom: '4px' }}>
-                          🔗 {banner.link}
-                        </div>
-                      )}
-                      <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
-                        Uploaded: {new Date(banner.createdAt).toLocaleDateString()}
-                      </div>
-                      <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        marginTop: '8px',
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        background: banner.active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                        color: banner.active ? '#10b981' : '#6b7280'
-                      }}>
-                        {banner.active ? '● Active' : '○ Inactive'}
-                      </div>
+                  
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
+                      {banner.title || `Banner ${index + 1}`}
                     </div>
-                    
-                    {/* Actions */}
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        onClick={() => handleToggleBanner(banner._id, banner.active)}
-                        className="btn secondary"
-                        style={{ padding: '8px 16px', fontSize: '13px' }}
-                      >
-                        {banner.active ? 'Deactivate' : 'Activate'}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteBanner(banner._id)}
-                        style={{
-                          padding: '8px 16px',
-                          fontSize: '13px',
-                          background: 'rgba(239, 68, 68, 0.1)',
-                          color: '#ef4444',
-                          border: '1px solid rgba(239, 68, 68, 0.3)',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontWeight: 500,
-                          transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
-                        }}
-                      >
-                        Delete
-                      </button>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '4px' }}>
+                      📄 {AVAILABLE_PAGES.find(p => p.value === banner.page)?.label || banner.page}
+                    </div>
+                    {banner.link && (
+                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                        🔗 {banner.link.substring(0, 40)}...
+                      </div>
+                    )}
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      marginTop: '6px',
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      fontWeight: 500,
+                      background: banner.active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                      color: banner.active ? '#10b981' : '#6b7280'
+                    }}>
+                      {banner.active ? '● Active' : '○ Inactive'}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Info Card */}
-        <div className="card" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05))' }}>
-          <div style={{ display: 'flex', gap: '14px' }}>
-            <div style={{ flexShrink: 0, marginTop: '2px' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="16" x2="12" y2="12"/>
-                <line x1="12" y1="8" x2="12.01" y2="8"/>
-              </svg>
+                  
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      onClick={() => handleToggleBanner(banner._id, banner.active)}
+                      className="btn secondary"
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                    >
+                      {banner.active ? 'Hide' : 'Show'}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteBanner(banner._id)}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        color: '#ef4444',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        borderRadius: '6px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '8px' }}>
-                Banner Guidelines
-              </div>
-              <ul style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.8', paddingLeft: '20px', margin: 0 }}>
-                <li>Recommended size: 1920x480 pixels (16:4 aspect ratio)</li>
-                <li>File formats: JPG, PNG, GIF, WebP</li>
-                <li>Maximum file size: 5MB</li>
-                <li>Active banners will automatically rotate on your website</li>
-                <li>Banners appear on the e-commerce homepage</li>
-                <li>Changes are reflected instantly on your live website</li>
-              </ul>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

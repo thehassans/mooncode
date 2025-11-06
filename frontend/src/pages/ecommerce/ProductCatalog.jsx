@@ -112,16 +112,15 @@ export default function ProductCatalog() {
     return ()=>{ alive = false }
   }, [])
   
-  // Load banners from API
+  // Load banners from API (filter by page='catalog')
   useEffect(() => {
     let alive = true
     ;(async()=>{
       try{
-        const res = await apiGet('/api/settings/website/banners')
+        const res = await apiGet('/api/settings/website/banners?page=catalog')
         const banners = res?.banners || []
-        const activeBanners = banners.filter(b => b.active)
-        if (alive && activeBanners.length > 0) {
-          setBannerImages(activeBanners.map(b => b.imageUrl))
+        if (alive && banners.length > 0) {
+          setBannerImages(banners.map(b => b.imageUrl))
         } else {
           // Fallback to default banners if no banners uploaded
           if (alive) setBannerImages(['/banners/banner1.jpg.png','/banners/banner2.jpg.png','/banners/banner3.jpg.png'])
