@@ -13,7 +13,7 @@ import SearchBar from '../../components/ecommerce/SearchBar'
 import CountrySelector, { countries } from '../../components/ecommerce/CountrySelector'
 
 // Professional Stats and Categories Section
-function StatsAndCategories({ categoryCount = 0, categoryCounts = {} }) {
+function StatsAndCategories({ categoryCount = 0, categoryCounts = {}, selectedCategory = 'all', onCategoryClick }) {
   // Category icon components with professional SVG
   const getCategoryIcon = (name) => {
     const iconProps = { className: "w-10 h-10 sm:w-12 sm:h-12", strokeWidth: 1.5 }
@@ -152,18 +152,25 @@ function StatsAndCategories({ categoryCount = 0, categoryCounts = {} }) {
                 return (
                   <button
                     key={index}
-                    className="flex flex-col items-center gap-3 p-3 transition-all duration-200 hover:scale-105 group"
+                    onClick={() => onCategoryClick(categoryName)}
+                    className="flex flex-col items-center gap-3 p-3 transition-all duration-200 hover:scale-105 group cursor-pointer"
                   >
                     <div 
-                      className="w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition-all border border-gray-100"
+                      className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition-all ${
+                        selectedCategory === categoryName 
+                          ? 'border-2 border-orange-500 shadow-md' 
+                          : 'border border-gray-100'
+                      }`}
                       style={{ 
-                        color: '#4a5568'
+                        color: selectedCategory === categoryName ? '#ea580c' : '#4a5568'
                       }}
                     >
                       {getCategoryIcon(categoryName)}
                     </div>
                     <div className="text-center">
-                      <span className="text-xs sm:text-sm text-gray-700 font-medium block leading-tight">
+                      <span className={`text-xs sm:text-sm font-medium block leading-tight ${
+                        selectedCategory === categoryName ? 'text-orange-600' : 'text-gray-700'
+                      }`}>
                         {categoryName}
                       </span>
                     </div>
@@ -572,6 +579,18 @@ export default function ProductCatalog() {
           <StatsAndCategories 
             categoryCount={Object.keys(categoryCounts).length} 
             categoryCounts={categoryCounts}
+            selectedCategory={selectedCategory}
+            onCategoryClick={(category) => {
+              setSelectedCategory(category)
+              setCurrentPage(1)
+              // Scroll to products section
+              setTimeout(() => {
+                const productsSection = document.querySelector('.product-grid-section')
+                if (productsSection) {
+                  productsSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+              }, 100)
+            }}
           />
           <div className="mt-3 flex items-center justify-end">
             <CountrySelector
@@ -719,6 +738,7 @@ export default function ProductCatalog() {
             </div>
 
             {/* Products Grid */}
+            <div className="product-grid-section">
             {products.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">📦</div>
@@ -805,6 +825,7 @@ export default function ProductCatalog() {
                 )}
               </>
             )}
+            </div>
           </div>
         </div>
       </div>
