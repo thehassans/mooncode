@@ -427,20 +427,34 @@ export default function ShoppingCart({ isOpen, onClose }) {
                 <div className="text-lg font-bold text-gray-900">{formatPrice(getTotalPrice(), displayCurrency)}</div>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="space-y-2">
               <button 
-                className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
                 onClick={handleCheckout}
                 disabled={isLoading}
               >
                 {isLoading ? 'Submitting…' : 'Place Order'}
               </button>
-              <button 
-                className="px-4 py-3 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors text-sm font-medium"
-                onClick={clearCart}
-              >
-                Clear
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2.5 px-4 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium text-sm flex items-center justify-center gap-2"
+                  onClick={() => {
+                    onClose()
+                    navigate('/catalog')
+                  }}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add More Items
+                </button>
+                <button 
+                  className="px-4 py-2.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors text-sm font-medium"
+                  onClick={clearCart}
+                >
+                  Clear
+                </button>
+              </div>
             </div>
           </div>
         )}
