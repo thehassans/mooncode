@@ -4,14 +4,11 @@ import { apiGet, apiPatch, apiPost } from '../../api'
 const COUNTRY_CURRENCIES = {
   'KSA': 'SAR',
   'UAE': 'AED',
-  'EGY': 'EGP',
-  'BHR': 'BHD',
-  'OMN': 'OMR',
-  'KWT': 'KWD',
-  'QAT': 'QAR',
-  'JOR': 'JOD',
-  'LBN': 'LBP',
-  'IRQ': 'IQD'
+  'Oman': 'OMR',
+  'Bahrain': 'BHD',
+  'Kuwait': 'KWD',
+  'Qatar': 'QAR',
+  'India': 'INR'
 }
 
 export default function ProductManager() {
@@ -50,37 +47,15 @@ export default function ProductManager() {
     if (!product) return
 
     try {
-      const newStatus = !product.isVisible
-      await apiPatch(`/api/products/${productId}`, { isVisible: newStatus })
-      setProducts(prev => prev.map(p => p._id === productId ? { ...p, isVisible: newStatus } : p))
+      const newStatus = !product.displayOnWebsite
+      await apiPatch(`/api/products/${productId}`, { displayOnWebsite: newStatus })
+      setProducts(prev => prev.map(p => p._id === productId ? { ...p, displayOnWebsite: newStatus } : p))
       showToast(`✓ Product ${newStatus ? 'shown' : 'hidden'} on website`)
     } catch (err) {
       showToast('Update failed', 'error')
     }
   }
 
-  async function handleCountryVisibilityToggle(productId, country) {
-    const product = products.find(p => p._id === productId)
-    if (!product) return
-
-    try {
-      const currentVisibility = product.countryVisibility || {}
-      const newVisibility = {
-        ...currentVisibility,
-        [country]: !currentVisibility[country]
-      }
-      
-      await apiPatch(`/api/products/${productId}`, { countryVisibility: newVisibility })
-      setProducts(prev => prev.map(p => 
-        p._id === productId 
-          ? { ...p, countryVisibility: newVisibility } 
-          : p
-      ))
-      showToast(`✓ ${country}: ${newVisibility[country] ? 'Visible' : 'Hidden'}`)
-    } catch (err) {
-      showToast('Update failed', 'error')
-    }
-  }
 
   async function handleProductQuantityUpdate(productId, newQuantity, country = null) {
     if (newQuantity < 0) return
@@ -89,21 +64,21 @@ export default function ProductManager() {
       if (country) {
         // Update country-specific stock
         const product = products.find(p => p._id === productId)
-        const updatedCountryStock = { ...product.countryStock, [country]: newQuantity }
+        const updatedStockByCountry = { ...product.stockByCountry, [country]: newQuantity }
         
         await apiPatch(`/api/products/${productId}`, { 
-          countryStock: updatedCountryStock
+          stockByCountry: updatedStockByCountry
         })
         setProducts(prev => prev.map(p => 
           p._id === productId 
-            ? { ...p, countryStock: updatedCountryStock } 
+            ? { ...p, stockByCountry: updatedStockByCountry } 
             : p
         ))
         showToast(`✓ ${country} stock updated`)
       } else {
         // Update general stock
-        await apiPatch(`/api/products/${productId}`, { stock: newQuantity })
-        setProducts(prev => prev.map(p => p._id === productId ? { ...p, stock: newQuantity } : p))
+        await apiPatch(`/api/products/${productId}`, { stockQty: newQuantity })
+        setProducts(prev => prev.map(p => p._id === productId ? { ...p, stockQty: newQuantity } : p))
         showToast('✓ Quantity updated')
       }
     } catch (err) {
@@ -162,14 +137,14 @@ export default function ProductManager() {
         ) : (
           products.map((product) => {
             // Calculate total stock across all countries
-            const totalStock = product.countryStock 
-              ? Object.values(product.countryStock).reduce((sum, stock) => sum + stock, 0)
-              : (product.stock || 0)
+            const totalStock = product.stockByCountry 
+              ? Object.values(product.stockByCountry).reduce((sum, stock) => sum + stock, 0)
+              : (product.stockQty || 0)
             
             return (
             <div key={product._id} style={{ 
               background: 'white', 
-              border: product.isVisible === true ? '2px solid #10b981' : '2px solid #e5e7eb', 
+              border: product.displayOnWebsite === true ? '2px solid #10b981' : '2px solid #e5e7eb', 
               borderRadius: '12px', 
               padding: '20px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
@@ -201,34 +176,18 @@ export default function ProductManager() {
                     {product.name}
                   </div>
                   
-                  {/* Prices by Country */}
+                  {/* Price Display */}
                   <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px' }}>
-                    {product.countryPrices && Object.keys(product.countryPrices).length > 0 ? (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        {Object.entries(product.countryPrices).map(([country, price]) => (
-                          <span key={country} style={{ 
-                            padding: '4px 10px', 
-                            background: '#f3f4f6', 
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            fontWeight: 600
-                          }}>
-                            {country}: {price} {COUNTRY_CURRENCIES[country] || ''}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span>Price: {product.price || 'N/A'}</span>
-                    )}
+                    <span style={{ fontWeight: 600 }}>💰 Price: {product.price || 0} {product.baseCurrency || 'SAR'}</span>
                   </div>
                   
                   {/* Total Stock Display */}
                   <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>
-                    {product.countryStock && Object.keys(product.countryStock).length > 0 ? (
+                    {product.stockByCountry && Object.keys(product.stockByCountry).length > 0 ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         <span style={{ fontWeight: 600 }}>📦 Total Stock:</span>
-                        {Object.entries(product.countryStock)
-                          .filter(([_, stock]) => stock !== null && stock !== undefined)
+                        {Object.entries(product.stockByCountry)
+                          .filter(([_, stock]) => stock !== null && stock !== undefined && stock > 0)
                           .map(([country, stock]) => (
                           <span key={country} style={{ 
                             padding: '3px 8px', 
@@ -238,12 +197,12 @@ export default function ProductManager() {
                             fontSize: '11px',
                             fontWeight: 700
                           }}>
-                            {country}: {stock || 0}
+                            {country}: {stock}
                           </span>
                         ))}
                       </div>
                     ) : (
-                      <span style={{ fontWeight: 600 }}>📦 Stock: {product.stock || 0}</span>
+                      <span style={{ fontWeight: 600 }}>📦 Stock: {product.stockQty || 0}</span>
                     )}
                   </div>
 
@@ -267,15 +226,15 @@ export default function ProductManager() {
                       border: 'none',
                       cursor: 'pointer',
                       transition: 'all 0.3s',
-                      background: product.isVisible === true ? '#10b981' : '#d1d5db',
+                      background: product.displayOnWebsite === true ? '#10b981' : '#d1d5db',
                       padding: 0
                     }}
-                    title={product.isVisible === true ? 'Click to hide from website' : 'Click to show on website'}
+                    title={product.displayOnWebsite === true ? 'Click to hide from website' : 'Click to show on website'}
                   >
                     <div style={{
                       position: 'absolute',
                       top: '2px',
-                      left: product.isVisible === true ? '30px' : '2px',
+                      left: product.displayOnWebsite === true ? '30px' : '2px',
                       width: '24px',
                       height: '24px',
                       borderRadius: '50%',
@@ -287,29 +246,26 @@ export default function ProductManager() {
                   <span style={{ 
                     fontSize: '10px', 
                     fontWeight: 600,
-                    color: product.isVisible === true ? '#10b981' : '#9ca3af'
+                    color: product.displayOnWebsite === true ? '#10b981' : '#9ca3af'
                   }}>
-                    {product.isVisible === true ? 'ON' : 'OFF'}
+                    {product.displayOnWebsite === true ? 'ON' : 'OFF'}
                   </span>
                 </div>
               </div>
               
               {/* Stock & Visibility by Country */}
-              {product.countryStock && Object.keys(product.countryStock).length > 0 && (
+              {product.stockByCountry && Object.keys(product.stockByCountry).length > 0 && (
                 <div style={{ borderTop: '2px solid #f3f4f6', paddingTop: '16px' }}>
                   <label style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: '12px' }}>
-                    📊 Stock & Visibility by Country:
+                    📊 Stock Management by Country:
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
-                    {Object.entries(product.countryStock).map(([country, stock]) => {
-                      const price = product.countryPrices?.[country] || product.price || 0
-                      const currency = COUNTRY_CURRENCIES[country] || ''
-                      const isVisible = product.countryVisibility?.[country] !== false
-                      
-                      // Debug log for first country
-                      if (Object.keys(product.countryStock)[0] === country) {
-                        console.log(`Product: ${product.name}, Country: ${country}, Price: ${price}, Currency: ${currency}, Stock: ${stock}`)
-                      }
+                    {Object.entries(product.stockByCountry)
+                      .filter(([_, stock]) => stock > 0)
+                      .map(([country, stock]) => {
+                      const price = product.price || 0
+                      const currency = product.baseCurrency || COUNTRY_CURRENCIES[country] || 'SAR'
+                      const isVisible = product.displayOnWebsite === true
                       
                       return (
                         <div key={country} style={{ 
@@ -319,49 +275,14 @@ export default function ProductManager() {
                           border: isVisible ? '2px solid #10b981' : '2px solid #e5e7eb',
                           transition: 'all 0.2s'
                         }}>
-                          {/* Country Header with Toggle */}
+                          {/* Country Header */}
                           <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'space-between',
+                            fontSize: '14px', 
+                            fontWeight: 700, 
+                            color: '#111827',
                             marginBottom: '10px'
                           }}>
-                            <div style={{ 
-                              fontSize: '14px', 
-                              fontWeight: 700, 
-                              color: '#111827'
-                            }}>
-                              {country}
-                            </div>
-                            
-                            {/* Visibility Toggle Switch */}
-                            <button
-                              onClick={() => handleCountryVisibilityToggle(product._id, country)}
-                              style={{
-                                position: 'relative',
-                                width: '44px',
-                                height: '24px',
-                                borderRadius: '12px',
-                                border: 'none',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                background: isVisible ? '#10b981' : '#d1d5db',
-                                padding: 0
-                              }}
-                              title={isVisible ? 'Hide in this country' : 'Show in this country'}
-                            >
-                              <div style={{
-                                position: 'absolute',
-                                top: '2px',
-                                left: isVisible ? '22px' : '2px',
-                                width: '20px',
-                                height: '20px',
-                                borderRadius: '50%',
-                                background: 'white',
-                                transition: 'all 0.2s',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                              }} />
-                            </button>
+                            {country}
                           </div>
                           
                           {/* Price */}
@@ -439,20 +360,6 @@ export default function ProductManager() {
                             >
                               +
                             </button>
-                          </div>
-                          
-                          {/* Visibility Status */}
-                          <div style={{ 
-                            marginTop: '8px',
-                            fontSize: '10px',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            textAlign: 'center',
-                            fontWeight: 600,
-                            background: isVisible ? 'rgba(16, 185, 129, 0.15)' : 'rgba(107, 114, 128, 0.15)',
-                            color: isVisible ? '#059669' : '#6b7280'
-                          }}>
-                            {isVisible ? '● Visible in ' + country : '○ Hidden in ' + country}
                           </div>
                         </div>
                       )
