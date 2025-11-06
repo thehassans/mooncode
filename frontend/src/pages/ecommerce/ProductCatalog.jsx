@@ -119,8 +119,16 @@ function StatsAndCategories({ categoryCount = 0, categoryCounts = {}, selectedCa
     return colors[name.toLowerCase()] || '#6b7280'
   }
 
-  // Filter to only show categories that have products
-  const availableCategories = Object.keys(categoryCounts).filter(cat => categoryCounts[cat] > 0)
+  // Define all available categories (show all, regardless of product count)
+  const allCategories = [
+    'Electronics', 'Fashion', 'Home', 'Beauty', 'Sports', 
+    'Books', 'Toys', 'Automotive', 'Food', 'Jewelry',
+    'Health', 'Office', 'Garden', 'Pets', 'Tools', 
+    'Music', 'Skincare', 'Other'
+  ]
+  
+  // Show all categories (not filtering by product count)
+  const availableCategories = allCategories
 
   return (
     <div className="bg-gradient-to-br from-orange-50 via-white to-blue-50 rounded-2xl shadow-lg overflow-hidden mb-8">
@@ -166,7 +174,7 @@ function StatsAndCategories({ categoryCount = 0, categoryCounts = {}, selectedCa
           </div>
         </div>
 
-        {/* Categories Section - Only show categories with products */}
+        {/* Categories Section - Show all categories */}
         {availableCategories.length > 0 && (
           <div className="mt-10">
             <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-6 text-center">Shop by Category</h3>
