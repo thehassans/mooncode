@@ -292,7 +292,7 @@ export default function App() {
       <CustomDomainRouter>
         <Routes>
         {/* Public site pages */}
-        <Route path="/" element={<SiteHome />} />
+        <Route path="/" element={<Navigate to="/catalog" replace />} />
       <Route path="/about" element={<SiteAbout />} />
       <Route path="/contact" element={<SiteContact />} />
       <Route path="/categories" element={<SiteCategories />} />

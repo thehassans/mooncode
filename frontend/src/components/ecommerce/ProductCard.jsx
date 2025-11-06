@@ -24,6 +24,28 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
     'QA': 'QAR', // Qatar
   }
 
+  // Country code to name mapping for stockByCountry
+  const COUNTRY_CODE_TO_NAME = {
+    'AE': 'UAE',
+    'OM': 'Oman',
+    'SA': 'KSA',
+    'BH': 'Bahrain',
+    'IN': 'India',
+    'KW': 'Kuwait',
+    'QA': 'Qatar'
+  }
+
+  // Get stock for selected country
+  const getCountryStock = () => {
+    if (product.stockByCountry) {
+      const countryName = COUNTRY_CODE_TO_NAME[selectedCountry] || 'KSA'
+      return product.stockByCountry[countryName] || 0
+    }
+    return product.stockQty || 0
+  }
+
+  const availableStock = getCountryStock()
+
   const convertPrice = (value, fromCurrency, toCurrency) => fxConvert(value, fromCurrency||'SAR', toCurrency||getDisplayCurrency(), ccyCfg)
 
   const getDisplayCurrency = () => {
@@ -116,7 +138,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
       }
 
       const existingItemIndex = cartItems.findIndex(item => item.id === product._id)
-      const max = Number(product.stockQty || 0)
+      const max = Number(availableStock || 0)
       
       if (existingItemIndex > -1) {
         // Item already exists, increase quantity within stock limits
@@ -218,7 +240,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
             ))}
           </div>
         )}
-        {(!product.inStock || product.stockQty === 0) && (
+        {availableStock === 0 && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
             <span className="bg-white text-gray-900 px-3 py-1 rounded-full text-sm font-semibold">
               Out of Stock
@@ -266,10 +288,10 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
 
         {/* Stock Status */}
         <div className="mb-3">
-          {product.inStock && product.stockQty > 0 ? (
+          {availableStock > 0 ? (
             <span className="text-xs sm:text-sm text-green-600 font-medium flex items-center gap-1">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              In Stock ({product.stockQty} available)
+              In Stock ({availableStock} available)
             </span>
           ) : (
             <span className="text-xs sm:text-sm text-red-600 font-medium flex items-center gap-1">
@@ -294,14 +316,13 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
             </button>
             <span className="px-3 text-sm font-medium min-w-[2.5rem] text-center select-none">{qty}</span>
             <button
-              className={`h-full w-9 flex items-center justify-center transition-colors ${Number(product.stockQty) > 0 && qty >= Number(product.stockQty) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+              className={`h-full w-9 flex items-center justify-center transition-colors ${availableStock > 0 && qty >= availableStock ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
               onClick={(e) => {
                 e.stopPropagation()
-                const max = Number(product.stockQty)
-                if (max > 0 && qty >= max) return
+                if (availableStock > 0 && qty >= availableStock) return
                 setQty(qty + 1)
               }}
-              disabled={Number(product.stockQty) > 0 && qty >= Number(product.stockQty)}
+              disabled={availableStock > 0 && qty >= availableStock}
               aria-label="Increase quantity"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -311,10 +332,10 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
           </div>
           <button
             onClick={handleAddToCart}
-            disabled={!product.inStock || product.stockQty === 0}
+            disabled={availableStock === 0}
             className="flex-1 min-w-[120px] sm:min-w-[140px] h-9 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm shadow-sm hover:shadow-md"
           >
-            {!product.inStock || product.stockQty === 0 ? 'Out of Stock' : 'Add to Cart'}
+            {availableStock === 0 ? 'Out of Stock' : 'Add to Cart'}
           </button>
         </div>
       </div>
