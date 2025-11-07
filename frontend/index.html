@@ -14,25 +14,6 @@
   </head>
   <body class="min-h-screen bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
     <div id="root"></div>
-    <!-- Immediate redirect script - runs BEFORE React loads -->
-    <script>
-      (function() {
-        // Check if user is on /login without being authenticated
-        var path = window.location.pathname;
-        if (path === '/login') {
-          try {
-            var token = localStorage.getItem('token');
-            // If no token, redirect to home (product catalog)
-            if (!token) {
-              window.location.replace('/');
-            }
-          } catch (e) {
-            // If localStorage fails, still redirect to home
-            window.location.replace('/');
-          }
-        }
-      })();
-    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

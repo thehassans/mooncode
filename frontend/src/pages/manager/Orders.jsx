@@ -550,8 +550,8 @@ export default function ManagerOrders(){
     const isDelivered = status === 'delivered'
     const isReturnSubmitted = o.returnSubmittedToCompany && !o.returnVerified
     const isReturnVerified = o.returnVerified
-    // Lock driver and commission once assigned
-    const isDriverAssigned = driverId !== '' && editingDriver[id] === undefined
+    // Manager can edit driver until order is delivered
+    const canEditDriver = !isDelivered
     
     return (
       <div className="card" style={{display:'grid', gap:12, border: isReturnSubmitted ? '2px solid #f59e0b' : undefined, background: isReturnSubmitted ? 'rgba(251, 146, 60, 0.05)' : undefined}}>
@@ -575,9 +575,9 @@ export default function ManagerOrders(){
                 🔒 Status Locked
               </span>
             )}
-            {isDriverAssigned && (
+            {!canEditDriver && driverId && (
               <span className="badge" style={{background:'#e0e7ff', color:'#3730a3', border:'1px solid #6366f1', fontWeight:600, fontSize:12}}>
-                🔒 Driver Locked
+                🔒 Driver Locked (Delivered)
               </span>
             )}
             {driverName && (
@@ -654,9 +654,9 @@ export default function ManagerOrders(){
               className="input" 
               value={editingDriver[id] !== undefined ? editingDriver[id] : driverId} 
               onChange={(e)=> handleDriverChange(id, e.target.value)} 
-              disabled={updating[`save-${id}`] || isDriverAssigned}
-              style={{fontSize:14, opacity: isDriverAssigned ? 0.6 : 1, cursor: isDriverAssigned ? 'not-allowed' : 'pointer'}}
-              title={isDriverAssigned ? 'Driver already assigned. Cannot be changed. Contact owner.' : ''}
+              disabled={updating[`save-${id}`] || !canEditDriver}
+              style={{fontSize:14, opacity: !canEditDriver ? 0.6 : 1, cursor: !canEditDriver ? 'not-allowed' : 'pointer'}}
+              title={!canEditDriver ? 'Driver locked. Order is already delivered.' : ''}
             >
               <option value="">-- Select Driver --</option>
               {countryDrivers.map(d => (
@@ -697,9 +697,9 @@ export default function ManagerOrders(){
               placeholder="0.00" 
               min="0" 
               step="0.01"
-              disabled={updating[`save-${id}`] || isDriverAssigned}
-              style={{fontSize:16, fontWeight:600, maxWidth:180, opacity: isDriverAssigned ? 0.6 : 1, cursor: isDriverAssigned ? 'not-allowed' : 'pointer'}}
-              title={isDriverAssigned ? 'Commission locked with driver assignment. Contact owner.' : ''}
+              disabled={updating[`save-${id}`] || !canEditDriver}
+              style={{fontSize:16, fontWeight:600, maxWidth:180, opacity: !canEditDriver ? 0.6 : 1, cursor: !canEditDriver ? 'not-allowed' : 'pointer'}}
+              title={!canEditDriver ? 'Commission locked. Order is already delivered.' : ''}
             />
             <div className="helper" style={{fontSize:11, marginTop:4}}>{orderCountryCurrency(o.orderCountry)}</div>
           </div>
@@ -853,7 +853,7 @@ export default function ManagerOrders(){
           {/* Search Bar - Full Width */}
           <input 
             className="input" 
-            placeholder="🔎 Search invoice, product, driver, agent, city, phone, details..." 
+            placeholder="🔎 Search by: invoice, product, driver, agent, city, phone number, details..." 
             value={q} 
             onChange={e=> setQ(e.target.value)}
             style={{fontSize:15, padding:'12px 16px'}}

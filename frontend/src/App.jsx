@@ -478,7 +478,7 @@ export default function App() {
         <Route path="support" element={<Support />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
     </CustomDomainRouter>
     </ThemeProvider>
