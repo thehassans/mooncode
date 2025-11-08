@@ -1,0 +1,10 @@
+# COPY THIS INTO PLESK "Deploy actions" FIELD
+# This version uses system Node.js - no nodenv/nvm needed
+
+cd backend
+npm ci --production
+pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend
+cd ../frontend
+npm ci
+npm run build
+echo "✅ Deployment complete at $(date)"

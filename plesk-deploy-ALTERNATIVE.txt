@@ -1,0 +1,27 @@
+# ALTERNATIVE SOLUTION - Try this if the path version doesn't work
+# This finds and uses nodenv dynamically
+
+# Find nodenv and set up Node.js 24
+if [ -d "$HOME/.nodenv" ]; then
+    export PATH="$HOME/.nodenv/bin:$PATH"
+    export PATH="$HOME/.nodenv/versions/24.9.0/bin:$PATH"
+elif [ -d "/usr/local/nodenv" ]; then
+    export PATH="/usr/local/nodenv/bin:$PATH"
+    export PATH="/usr/local/nodenv/versions/24.9.0/bin:$PATH"
+fi
+
+# Verify npm is available
+which npm || echo "ERROR: npm not found in PATH"
+npm --version || echo "ERROR: npm command failed"
+
+# Backend deployment
+cd backend
+npm ci --production
+pm2 restart mooncode-backend || pm2 start src/index.js --name mooncode-backend
+
+# Frontend deployment
+cd ../frontend
+npm ci
+npm run build
+
+echo "✅ Deployment complete at $(date)"

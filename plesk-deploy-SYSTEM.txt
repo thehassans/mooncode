@@ -1,0 +1,4 @@
+# SYSTEM NODE.JS VERSION - Use Plesk's built-in Node.js
+# This should work on any Plesk server with Node.js installed
+
+/opt/plesk/node/24/bin/npm --version && cd backend && /opt/plesk/node/24/bin/npm ci --production && /opt/plesk/node/24/bin/pm2 restart mooncode-backend || /opt/plesk/node/24/bin/pm2 start src/index.js --name mooncode-backend && cd ../frontend && /opt/plesk/node/24/bin/npm ci && /opt/plesk/node/24/bin/npm run build && echo "Deployment complete"
