@@ -46,68 +46,159 @@ export default function InvestorLayout(){
     <div>
       <div className={`main ${hideSidebar ? 'full-mobile' : (closed ? 'full' : '')} ${tabsVisible ? 'with-mobile-tabs' : ''}`}>
         {!isMobile && !closed && (
-          <aside className="sidebar">
-            <div style={{padding:'16px 12px', borderBottom:'1px solid var(--border)'}}>
+          <aside className="sidebar" style={{
+            background: 'linear-gradient(180deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.08) 100%)',
+            backdropFilter: 'blur(20px)',
+            borderRight: '1px solid rgba(102, 126, 234, 0.2)',
+            boxShadow: '4px 0 24px rgba(102, 126, 234, 0.12)'
+          }}>
+            <div style={{
+              padding:'20px 16px',
+              borderBottom:'1px solid rgba(102, 126, 234, 0.15)',
+              background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))',
+              backdropFilter: 'blur(10px)'
+            }}>
               {(()=>{
                 const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
                 const src = me.headerLogo ? `${API_BASE}${me.headerLogo}` : fallback
-                return <img src={src} alt="BuySial" style={{height:32, width:'auto', objectFit:'contain'}} />
+                return <img src={src} alt="BuySial" style={{height:36, width:'auto', objectFit:'contain', filter: 'drop-shadow(0 2px 8px rgba(102, 126, 234, 0.3))'}} />
               })()}
             </div>
-            <nav style={{padding:'8px'}}>
-              <NavLink to="/investor" end className={({isActive})=>`nav-item ${isActive?'active':''}`}>
+            <nav style={{padding:'12px 8px'}}>
+              <NavLink to="/investor" end className={({isActive})=>`nav-item ${isActive?'active':''}`} style={{
+                margin: '4px 0',
+                borderRadius: '12px',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                 <span>Dashboard</span>
               </NavLink>
-              <NavLink to="/investor/me" className={({isActive})=>`nav-item ${isActive?'active':''}`}>
+              <NavLink to="/investor/me" className={({isActive})=>`nav-item ${isActive?'active':''}`} style={{
+                margin: '4px 0',
+                borderRadius: '12px',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                 <span>Payment Requests</span>
               </NavLink>
             </nav>
-            <div style={{marginTop:'auto', padding:'12px', borderTop:'1px solid var(--border)'}}>
-              <button className="btn secondary" onClick={()=> setTheme(t=> t==='light' ? 'dark' : 'light')} style={{width:'100%', marginBottom:8}}>
+            <div style={{
+              marginTop:'auto',
+              padding:'16px 12px',
+              borderTop:'1px solid rgba(102, 126, 234, 0.15)',
+              background: 'linear-gradient(180deg, transparent, rgba(102, 126, 234, 0.05))'
+            }}>
+              <button className="btn secondary" onClick={()=> setTheme(t=> t==='light' ? 'dark' : 'light')} style={{
+                width:'100%',
+                marginBottom:10,
+                background: 'rgba(102, 126, 234, 0.1)',
+                border: '1px solid rgba(102, 126, 234, 0.2)',
+                backdropFilter: 'blur(10px)',
+                fontWeight: 600
+              }}>
                 {theme==='light' ? '🌙 Dark Mode' : '🌞 Light Mode'}
               </button>
-              <button type="button" className="btn danger" onClick={doLogout} style={{width:'100%'}}>Logout</button>
+              <button type="button" className="btn danger" onClick={doLogout} style={{
+                width:'100%',
+                background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                border: 'none',
+                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                fontWeight: 600
+              }}>Logout</button>
             </div>
           </aside>
         )}
         {!isMobile && (
-        <div className="topbar" style={{background:'var(--sidebar-bg)', borderBottom:'1px solid var(--sidebar-border)'}}>
-          <div style={{display:'flex', alignItems:'center', gap:12, minHeight:48}}>
+        <div className="topbar" style={{
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15))',
+          backdropFilter: 'blur(20px)',
+          borderBottom:'1px solid rgba(102, 126, 234, 0.2)',
+          boxShadow: '0 4px 24px rgba(102, 126, 234, 0.12)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 100
+        }}>
+          <div style={{display:'flex', alignItems:'center', gap:16, minHeight:56}}>
             <button
               className="btn secondary"
               onClick={()=> setClosed(c=>!c)}
               title={closed ? 'Open menu' : 'Close menu'}
               aria-label={closed ? 'Open menu' : 'Close menu'}
-              style={{ width:36, height:36, padding:0, display:'grid', placeItems:'center' }}
+              style={{
+                width:40,
+                height:40,
+                padding:0,
+                display:'grid',
+                placeItems:'center',
+                background: 'rgba(102, 126, 234, 0.15)',
+                border: '1px solid rgba(102, 126, 234, 0.3)',
+                borderRadius: '10px',
+                fontWeight: 700,
+                fontSize: 18,
+                boxShadow: '0 2px 8px rgba(102, 126, 234, 0.2)',
+                transition: 'all 0.3s ease'
+              }}
             >
               ☰
             </button>
             {closed && (()=>{
               const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
               const src = me.headerLogo ? `${API_BASE}${me.headerLogo}` : fallback
-              return <img src={src} alt="BuySial" style={{height:28, width:'auto', objectFit:'contain'}} />
+              return <img src={src} alt="BuySial" style={{height:32, width:'auto', objectFit:'contain', filter: 'drop-shadow(0 2px 8px rgba(102, 126, 234, 0.3))'}} />
             })()}
             <div
               style={{
-                display:'inline-flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:999,
-                background:'var(--panel)', border:'1px solid var(--border)', boxShadow:'0 1px 0 rgba(0,0,0,0.15) inset',
+                display:'inline-flex',
+                alignItems:'center',
+                gap:10,
+                padding:'10px 20px',
+                borderRadius:999,
+                background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2))',
+                border:'1px solid rgba(102, 126, 234, 0.4)',
+                boxShadow:'0 4px 16px rgba(102, 126, 234, 0.25), inset 0 1px 0 rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(10px)'
               }}
             >
-              <span aria-hidden style={{display:'inline-flex', alignItems:'center', color:'var(--muted)'}}>💼</span>
-              <span style={{fontWeight:800, letterSpacing:0.3}}>
+              <span aria-hidden style={{
+                display:'inline-flex',
+                alignItems:'center',
+                fontSize: 20,
+                filter: 'drop-shadow(0 2px 4px rgba(102, 126, 234, 0.5))'
+              }}>💼</span>
+              <span style={{
+                fontWeight:800,
+                letterSpacing:0.5,
+                background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                fontSize: 15
+              }}>
                 {`Investor ${me.firstName||''} ${me.lastName||''}`.trim()}
               </span>
             </div>
           </div>
-          <div style={{display:'flex', alignItems:'center', gap:8}}>
+          <div style={{display:'flex', alignItems:'center', gap:10}}>
             {closed && (
               <>
-                <button className="btn secondary" onClick={()=> setTheme(t=> t==='light' ? 'dark' : 'light')} title="Toggle theme">
+                <button className="btn secondary" onClick={()=> setTheme(t=> t==='light' ? 'dark' : 'light')} title="Toggle theme" style={{
+                  background: 'rgba(102, 126, 234, 0.15)',
+                  border: '1px solid rgba(102, 126, 234, 0.3)',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  padding: '8px 16px',
+                  boxShadow: '0 2px 8px rgba(102, 126, 234, 0.2)'
+                }}>
                   {theme==='light' ? '🌙 Dark' : '🌞 Light'}
                 </button>
-                <button type="button" className="btn danger" onClick={doLogout}>Logout</button>
+                <button type="button" className="btn danger" onClick={doLogout} style={{
+                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  padding: '8px 16px',
+                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
+                }}>Logout</button>
               </>
             )}
           </div>
@@ -118,11 +209,18 @@ export default function InvestorLayout(){
         </div>
       </div>
       {tabsVisible && (
-        <nav className="mobile-tabs" role="navigation" aria-label="Primary">
+        <nav className="mobile-tabs" role="navigation" aria-label="Primary" style={{
+          background: 'linear-gradient(180deg, rgba(102, 126, 234, 0.12), rgba(118, 75, 162, 0.15))',
+          backdropFilter: 'blur(20px)',
+          borderTop: '1px solid rgba(102, 126, 234, 0.25)',
+          boxShadow: '0 -4px 24px rgba(102, 126, 234, 0.15)'
+        }}>
           {mobileTabs.map(tab => (
-            <NavLink key={tab.to} to={tab.to} end={tab.to === '/investor'} className={({isActive})=>`tab ${isActive?'active':''}`}>
+            <NavLink key={tab.to} to={tab.to} end={tab.to === '/investor'} className={({isActive})=>`tab ${isActive?'active':''}`} style={{
+              transition: 'all 0.3s ease'
+            }}>
               <span className="icon">{tab.icon}</span>
-              <span style={{fontSize:11}}>{tab.label}</span>
+              <span style={{fontSize:11, fontWeight: 600}}>{tab.label}</span>
             </NavLink>
           ))}
         </nav>

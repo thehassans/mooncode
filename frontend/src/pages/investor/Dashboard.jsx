@@ -64,14 +64,46 @@ export default function InvestorDashboard(){
   function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
 
   return (
-    <div className="section" style={{display:'grid', gap:20, padding: isMobile ? '12px' : '20px'}}>
-      <div className="page-header" style={{flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 12 : 0, alignItems: isMobile ? 'stretch' : 'center'}}>
+    <div className="section" style={{display:'grid', gap:24, padding: isMobile ? '12px' : '24px', background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.02), rgba(118, 75, 162, 0.03))'}}>
+      <div className="page-header" style={{
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? 16 : 0,
+        alignItems: isMobile ? 'stretch' : 'center',
+        padding: isMobile ? '16px' : '24px',
+        background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.12))',
+        borderRadius: '16px',
+        border: '1px solid rgba(102, 126, 234, 0.2)',
+        boxShadow: '0 8px 32px rgba(102, 126, 234, 0.15)',
+        backdropFilter: 'blur(10px)'
+      }}>
         <div>
-          <div className="page-title" style={{fontSize: isMobile ? 22 : 28}}>Investment Dashboard</div>
-          <div className="page-subtitle" style={{fontSize: isMobile ? 13 : 14}}>Track your portfolio performance and earnings</div>
+          <div className="page-title" style={{
+            fontSize: isMobile ? 24 : 32,
+            fontWeight: 900,
+            background: 'linear-gradient(135deg, #667eea, #764ba2)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            marginBottom: 6
+          }}>💎 Investment Dashboard</div>
+          <div className="page-subtitle" style={{
+            fontSize: isMobile ? 14 : 16,
+            opacity: 0.8,
+            fontWeight: 500
+          }}>Track your portfolio performance and earnings</div>
         </div>
-        <button className="btn success" onClick={()=> navigate('/investor/me')} style={{width: isMobile ? '100%' : 'auto'}}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:6}}>
+        <button className="btn success" onClick={()=> navigate('/investor/me')} style={{
+          width: isMobile ? '100%' : 'auto',
+          background: 'linear-gradient(135deg, #10b981, #059669)',
+          border: 'none',
+          padding: isMobile ? '12px 20px' : '12px 24px',
+          fontWeight: 700,
+          fontSize: isMobile ? 14 : 15,
+          borderRadius: '12px',
+          boxShadow: '0 8px 24px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
+          transition: 'all 0.3s ease'
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:8}}>
             <line x1="12" y1="1" x2="12" y2="23"/>
             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
           </svg>
@@ -80,71 +112,159 @@ export default function InvestorDashboard(){
       </div>
 
       {/* Summary Cards */}
-      <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(220px,1fr))', gap: isMobile ? 12 : 16}}>
-        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)', transition:'transform 0.2s, box-shadow 0.2s'}}>
-          <div style={{padding:'20px', display:'flex', alignItems:'center', gap:16}}>
-            <div style={{width:48, height:48, borderRadius:12, background:'rgba(102, 126, 234, 0.1)', display:'flex', alignItems:'center', justifyContent:'center'}}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#667eea" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div style={{display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(240px,1fr))', gap: isMobile ? 16 : 20}}>
+        <div className="card" style={{
+          border:'1px solid rgba(102, 126, 234, 0.25)',
+          background:'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(102, 126, 234, 0.05))',
+          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(102, 126, 234, 0.15)',
+          backdropFilter: 'blur(10px)',
+          transition:'all 0.3s ease',
+          cursor: 'default'
+        }}>
+          <div style={{padding:'24px', display:'flex', alignItems:'center', gap:20}}>
+            <div style={{
+              width:56,
+              height:56,
+              borderRadius:16,
+              background:'linear-gradient(135deg, #667eea, #764ba2)',
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center',
+              boxShadow: '0 8px 24px rgba(102, 126, 234, 0.4)'
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
                 <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
               </svg>
             </div>
             <div style={{flex:1}}>
-              <div style={{fontSize:13, opacity:0.7, marginBottom:4}}>Total Investment</div>
-              <div style={{fontSize:24, fontWeight:800, color:'#667eea'}}>{data.currency} {num(data.totalInvestment)}</div>
+              <div style={{fontSize:13, opacity:0.7, marginBottom:6, fontWeight:600, letterSpacing:0.3}}>Total Investment</div>
+              <div style={{fontSize:26, fontWeight:900, color:'#667eea', letterSpacing:-0.5}}>{data.currency} {num(data.totalInvestment)}</div>
             </div>
           </div>
         </div>
-        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)', transition:'transform 0.2s, box-shadow 0.2s'}}>
-          <div style={{padding:'20px', display:'flex', alignItems:'center', gap:16}}>
-            <div style={{width:48, height:48, borderRadius:12, background:'rgba(245, 158, 11, 0.1)', display:'flex', alignItems:'center', justifyContent:'center'}}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <div className="card" style={{
+          border:'1px solid rgba(245, 158, 11, 0.25)',
+          background:'linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.05))',
+          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(245, 158, 11, 0.15)',
+          backdropFilter: 'blur(10px)',
+          transition:'all 0.3s ease',
+          cursor: 'default'
+        }}>
+          <div style={{padding:'24px', display:'flex', alignItems:'center', gap:20}}>
+            <div style={{
+              width:56,
+              height:56,
+              borderRadius:16,
+              background:'linear-gradient(135deg, #f59e0b, #d97706)',
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center',
+              boxShadow: '0 8px 24px rgba(245, 158, 11, 0.4)'
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
                 <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
                 <line x1="12" y1="22.08" x2="12" y2="12"/>
               </svg>
             </div>
             <div style={{flex:1}}>
-              <div style={{fontSize:13, opacity:0.7, marginBottom:4}}>Total Units</div>
-              <div style={{fontSize:24, fontWeight:800, color:'#f59e0b'}}>{num(data.totalUnits)}</div>
+              <div style={{fontSize:13, opacity:0.7, marginBottom:6, fontWeight:600, letterSpacing:0.3}}>Total Units</div>
+              <div style={{fontSize:26, fontWeight:900, color:'#f59e0b', letterSpacing:-0.5}}>{num(data.totalUnits)}</div>
             </div>
           </div>
         </div>
-        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)', transition:'transform 0.2s, box-shadow 0.2s'}}>
-          <div style={{padding:'20px', display:'flex', alignItems:'center', gap:16}}>
-            <div style={{width:48, height:48, borderRadius:12, background:'rgba(59, 130, 246, 0.1)', display:'flex', alignItems:'center', justifyContent:'center'}}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <div className="card" style={{
+          border:'1px solid rgba(59, 130, 246, 0.25)',
+          background:'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.05))',
+          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(59, 130, 246, 0.15)',
+          backdropFilter: 'blur(10px)',
+          transition:'all 0.3s ease',
+          cursor: 'default'
+        }}>
+          <div style={{padding:'24px', display:'flex', alignItems:'center', gap:20}}>
+            <div style={{
+              width:56,
+              height:56,
+              borderRadius:16,
+              background:'linear-gradient(135deg, #3b82f6, #2563eb)',
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center',
+              boxShadow: '0 8px 24px rgba(59, 130, 246, 0.4)'
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                 <polyline points="22 4 12 14.01 9 11.01"/>
               </svg>
             </div>
             <div style={{flex:1}}>
-              <div style={{fontSize:13, opacity:0.7, marginBottom:4}}>Delivered Units</div>
-              <div style={{fontSize:24, fontWeight:800, color:'#3b82f6'}}>{num(data.totalDeliveredUnits)}</div>
+              <div style={{fontSize:13, opacity:0.7, marginBottom:6, fontWeight:600, letterSpacing:0.3}}>Delivered Units</div>
+              <div style={{fontSize:26, fontWeight:900, color:'#3b82f6', letterSpacing:-0.5}}>{num(data.totalDeliveredUnits)}</div>
             </div>
           </div>
         </div>
-        <div className="card" style={{border:'1px solid var(--border)', background:'var(--card-bg)', transition:'transform 0.2s, box-shadow 0.2s'}}>
-          <div style={{padding:'20px', display:'flex', alignItems:'center', gap:16}}>
-            <div style={{width:48, height:48, borderRadius:12, background:'rgba(16, 185, 129, 0.1)', display:'flex', alignItems:'center', justifyContent:'center'}}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <div className="card" style={{
+          border:'1px solid rgba(16, 185, 129, 0.25)',
+          background:'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.05))',
+          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(16, 185, 129, 0.15)',
+          backdropFilter: 'blur(10px)',
+          transition:'all 0.3s ease',
+          cursor: 'default'
+        }}>
+          <div style={{padding:'24px', display:'flex', alignItems:'center', gap:20}}>
+            <div style={{
+              width:56,
+              height:56,
+              borderRadius:16,
+              background:'linear-gradient(135deg, #10b981, #059669)',
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center',
+              boxShadow: '0 8px 24px rgba(16, 185, 129, 0.4)'
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="1" x2="12" y2="23"/>
                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
               </svg>
             </div>
             <div style={{flex:1}}>
-              <div style={{fontSize:13, opacity:0.7, marginBottom:4}}>Total Profit</div>
-              <div style={{fontSize:24, fontWeight:800, color:'#10b981'}}>{data.currency} {num(data.totalProfit)}</div>
+              <div style={{fontSize:13, opacity:0.7, marginBottom:6, fontWeight:600, letterSpacing:0.3}}>Total Profit</div>
+              <div style={{fontSize:26, fontWeight:900, color:'#10b981', letterSpacing:-0.5}}>{data.currency} {num(data.totalProfit)}</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Product Cards */}
-      <div className="card" style={{border:'1px solid var(--border)'}}>  
-        <div className="card-header" style={{padding: isMobile ? '16px' : '20px'}}>
-          <div className="card-title" style={{display:'flex', alignItems:'center', gap:8, fontSize: isMobile ? 16 : 18}}>
-            <svg width={isMobile ? 18 : 20} height={isMobile ? 18 : 20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div className="card" style={{
+        border:'1px solid rgba(102, 126, 234, 0.2)',
+        background:'linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.08))',
+        borderRadius: '16px',
+        boxShadow: '0 8px 32px rgba(102, 126, 234, 0.12)',
+        backdropFilter: 'blur(10px)'
+      }}>  
+        <div className="card-header" style={{
+          padding: isMobile ? '20px' : '24px',
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))',
+          borderBottom: '1px solid rgba(102, 126, 234, 0.15)'
+        }}>
+          <div className="card-title" style={{
+            display:'flex',
+            alignItems:'center',
+            gap:12,
+            fontSize: isMobile ? 18 : 22,
+            fontWeight: 800,
+            background: 'linear-gradient(135deg, #667eea, #764ba2)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}>
+            <svg width={isMobile ? 22 : 24} height={isMobile ? 22 : 24} viewBox="0 0 24 24" fill="none" stroke="#667eea" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
               <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
               <line x1="12" y1="22.08" x2="12" y2="12"/>
