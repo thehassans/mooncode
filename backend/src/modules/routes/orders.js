@@ -9,6 +9,7 @@ import { auth, allowRoles } from '../middleware/auth.js'
 import User from '../models/User.js'
 import { getIO } from '../config/socket.js'
 import { createNotification } from './notifications.js'
+import { assignInvestorProfitToOrder } from '../services/investorProfitService.js'
 // Removed invoice PDF generation
 
 const router = express.Router()
@@ -1998,6 +1999,19 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), async (req, res
     
     await ord.save()
     emitOrderChange(ord, 'updated').catch(()=>{})
+    
+    // Assign investor profit if status changed to delivered
+    if (shipmentStatus === 'delivered') {
+      // Get owner ID for this order
+      const creator = await User.findById(ord.createdBy).select('createdBy role')
+      const ownerId = creator?.role === 'user' ? creator._id : creator?.createdBy
+      
+      if (ownerId) {
+        assignInvestorProfitToOrder(ord, ownerId).catch((err) => {
+          console.error('Failed to assign investor profit:', err)
+        })
+      }
+    }
     
     // Update driver commission if:
     // 1. Commission was changed AND order is delivered

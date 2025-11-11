@@ -75,6 +75,13 @@ const OrderSchema = new mongoose.Schema({
   agentCommissionPKR: { type: Number, default: 0 },
   agentCommissionComputedAt: { type: Date },
 
+  // Investor profit tracking (assigned sequentially when order is delivered)
+  investorProfit: {
+    investor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Which investor gets profit from this order
+    profitAmount: { type: Number, default: 0 }, // Profit amount assigned to investor
+    assignedAt: { type: Date }, // When profit was assigned
+  },
+
   invoiceNumber: { type: String, unique: true, sparse: true, index: true },
   total: { type: Number },
   discount: { type: Number, default: 0 },

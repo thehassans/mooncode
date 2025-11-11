@@ -3,20 +3,12 @@ import { API_BASE, apiGet } from '../../api';
 import { io } from 'socket.io-client';
 
 export default function MyInvestments() {
-  const [investments, setInvestments] = useState([]);
-  const [stats, setStats] = useState({
-    totalInvested: 0,
-    totalProfit: 0,
-    totalRevenue: 0,
-    roi: 0,
-    activeInvestments: 0,
-    currency: 'SAR'
-  });
+  const [investorData, setInvestorData] = useState(null);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadInvestments();
-    loadStats();
+    loadData();
 
     // Socket for real-time updates
     let socket;
@@ -29,38 +21,35 @@ export default function MyInvestments() {
         auth: { token },
         withCredentials: true
       });
-      socket.on('investment.created', loadInvestments);
-      socket.on('investment.withdrawn', loadInvestments);
+      socket.on('investor.updated', loadData);
+      socket.on('orders.changed', loadData);
     } catch (e) {}
 
     return () => {
       try {
         if (socket) {
-          socket.off('investment.created');
-          socket.off('investment.withdrawn');
+          socket.off('investor.updated');
+          socket.off('orders.changed');
           socket.disconnect();
         }
       } catch (e) {}
     };
   }, []);
 
-  async function loadInvestments() {
+  async function loadData() {
     try {
-      const data = await apiGet('/api/investor/my-investments');
-      setInvestments(data.investments || []);
+      setLoading(true);
+      const [userData, ordersData] = await Promise.all([
+        apiGet('/api/users/me'),
+        apiGet('/api/investor/my-orders')
+      ]);
+      
+      setInvestorData(userData.user);
+      setOrders(ordersData.orders || []);
     } catch (e) {
-      console.error('Failed to load investments:', e);
+      console.error('Failed to load data:', e);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function loadStats() {
-    try {
-      const data = await apiGet('/api/investor/dashboard');
-      setStats(data);
-    } catch (e) {
-      console.error('Failed to load stats:', e);
     }
   }
 
@@ -68,187 +57,189 @@ export default function MyInvestments() {
     return Number(val || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
   }
 
+  const profile = investorData?.investorProfile || {};
+  const investmentAmount = profile.investmentAmount || 0;
+  const profitPercentage = profile.profitPercentage || 15;
+  const targetProfit = profile.targetProfit || 0;
+  const earnedProfit = profile.earnedProfit || 0;
+  const totalReturn = profile.totalReturn || investmentAmount;
+  const currency = profile.currency || 'SAR';
+  const status = profile.status || 'active';
+  const progressPercentage = targetProfit > 0 ? Math.min(100, (earnedProfit / targetProfit) * 100) : 0;
+
   return (
     <div className="section" style={{ display: 'grid', gap: 24, maxWidth: 1400, margin: '0 auto', padding: '24px' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 32, fontWeight: 800, margin: 0, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            My Investments
+            My Investment
           </h1>
-          <p style={{ fontSize: 15, opacity: 0.7, margin: '8px 0 0 0' }}>Track your portfolio and performance</p>
+          <p style={{ fontSize: 15, opacity: 0.7, margin: '8px 0 0 0' }}>Track your investment progress and profit from orders</p>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-        {/* Total Invested */}
-        <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', borderRadius: 16, padding: 24, color: '#fff', boxShadow: '0 10px 40px rgba(102, 126, 234, 0.3)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Total Invested</div>
-            <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>{stats.currency} {formatCurrency(stats.totalInvested)}</div>
-            <div style={{ fontSize: 13, opacity: 0.85 }}>{stats.activeInvestments} active investment{stats.activeInvestments !== 1 ? 's' : ''}</div>
-          </div>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 80 }}>
+          <div style={{ display: 'inline-block', width: 50, height: 50, border: '5px solid var(--border)', borderTopColor: '#667eea', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+          <div style={{ marginTop: 20, fontSize: 16, opacity: 0.7 }}>Loading investment data...</div>
         </div>
+      ) : (
+        <>
+          {/* Investment Overview */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+            {/* Investment Amount */}
+            <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', borderRadius: 16, padding: 24, color: '#fff', boxShadow: '0 10px 40px rgba(102, 126, 234, 0.3)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Investment Amount</div>
+                <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>{currency} {formatCurrency(investmentAmount)}</div>
+                <div style={{ fontSize: 13, opacity: 0.85 }}>Initial capital invested</div>
+              </div>
+            </div>
 
-        {/* Total Profit */}
-        <div style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', borderRadius: 16, padding: 24, color: '#fff', boxShadow: '0 10px 40px rgba(245, 87, 108, 0.3)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Total Profit</div>
-            <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>{stats.currency} {formatCurrency(stats.totalProfit)}</div>
-            <div style={{ fontSize: 13, opacity: 0.85 }}>From all investments</div>
-          </div>
-        </div>
+            {/* Target Profit */}
+            <div style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', borderRadius: 16, padding: 24, color: '#fff', boxShadow: '0 10px 40px rgba(245, 87, 108, 0.3)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Target Profit ({profitPercentage}%)</div>
+                <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>{currency} {formatCurrency(targetProfit)}</div>
+                <div style={{ fontSize: 13, opacity: 0.85 }}>Goal to achieve</div>
+              </div>
+            </div>
 
-        {/* Total Revenue */}
-        <div style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', borderRadius: 16, padding: 24, color: '#fff', boxShadow: '0 10px 40px rgba(79, 172, 254, 0.3)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Total Revenue</div>
-            <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>{stats.currency} {formatCurrency(stats.totalRevenue)}</div>
-            <div style={{ fontSize: 13, opacity: 0.85 }}>Generated revenue</div>
-          </div>
-        </div>
+            {/* Earned Profit */}
+            <div style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', borderRadius: 16, padding: 24, color: '#fff', boxShadow: '0 10px 40px rgba(79, 172, 254, 0.3)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Earned Profit</div>
+                <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>{currency} {formatCurrency(earnedProfit)}</div>
+                <div style={{ fontSize: 13, opacity: 0.85 }}>From {orders.length} order{orders.length !== 1 ? 's' : ''}</div>
+              </div>
+            </div>
 
-        {/* ROI */}
-        <div style={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', borderRadius: 16, padding: 24, color: '#fff', boxShadow: '0 10px 40px rgba(250, 112, 154, 0.3)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>ROI</div>
-            <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>{stats.roi}%</div>
-            <div style={{ fontSize: 13, opacity: 0.85 }}>Return on Investment</div>
+            {/* Total Return */}
+            <div style={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', borderRadius: 16, padding: 24, color: '#fff', boxShadow: '0 10px 40px rgba(250, 112, 154, 0.3)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Total Return</div>
+                <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>{currency} {formatCurrency(totalReturn)}</div>
+                <div style={{ fontSize: 13, opacity: 0.85 }}>Investment + Profit</div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Investments List */}
-      <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 28, boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-        <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Investment Portfolio</h2>
-        </div>
-
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 60 }}>
-            <div style={{ display: 'inline-block', width: 40, height: 40, border: '4px solid var(--border)', borderTopColor: '#667eea', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-            <div style={{ marginTop: 16, opacity: 0.7 }}>Loading investments...</div>
-          </div>
-        ) : investments.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 60, opacity: 0.7 }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
-            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>No investments yet</div>
-            <div style={{ fontSize: 14 }}>Start investing in products to build your portfolio</div>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gap: 16 }}>
-            {investments.map((inv) => (
-              <div
-                key={inv._id}
-                style={{
-                  background: 'var(--panel)',
+          {/* Progress Bar */}
+          <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 28, boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Investment Progress</h2>
+              <span style={{
+                padding: '6px 16px',
+                borderRadius: 20,
+                fontSize: 13,
+                fontWeight: 700,
+                background: status === 'completed' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                color: '#fff',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5
+              }}>
+                {status}
+              </span>
+            </div>
+            
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ height: 32, background: 'var(--panel)', borderRadius: 16, overflow: 'hidden', position: 'relative' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${progressPercentage}%`,
+                  background: status === 'completed' ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)' : 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
                   borderRadius: 16,
-                  padding: 20,
-                  border: '1px solid var(--border)',
-                  display: 'grid',
-                  gridTemplateColumns: 'auto 1fr auto',
-                  gap: 20,
+                  transition: 'width 0.5s ease',
+                  display: 'flex',
                   alignItems: 'center',
-                  transition: 'all 0.3s ease',
-                  cursor: 'default'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                {/* Product Image */}
-                <div style={{ width: 80, height: 80, borderRadius: 12, overflow: 'hidden', background: 'var(--panel-2)' }}>
-                  {inv.product?.image ? (
-                    <img
-                      src={`${API_BASE}${inv.product.image}`}
-                      alt={inv.product?.name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>📦</div>
-                  )}
-                </div>
-
-                {/* Investment Details */}
-                <div style={{ display: 'grid', gap: 12 }}>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{inv.product?.name || 'Product'}</div>
-                    <div style={{ fontSize: 13, opacity: 0.7 }}>Invested on {new Date(inv.createdAt).toLocaleDateString()}</div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
-                    <div>
-                      <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', fontWeight: 600 }}>Investment</div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: '#667eea' }}>{inv.currency} {formatCurrency(inv.amount)}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', fontWeight: 600 }}>Quantity</div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: '#4facfe' }}>{inv.quantity} units</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', fontWeight: 600 }}>Sold</div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: '#f5576c' }}>{inv.unitsSold} units</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', fontWeight: 600 }}>Revenue</div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: '#00f2fe' }}>{inv.currency} {formatCurrency(inv.totalRevenue)}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', fontWeight: 600 }}>Profit</div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: '#10b981' }}>{inv.currency} {formatCurrency(inv.totalProfit)}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', fontWeight: 600 }}>ROI</div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: inv.roi > 0 ? '#10b981' : '#ef4444' }}>{inv.roi}%</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status Badge */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                  <span
-                    style={{
-                      padding: '6px 16px',
-                      borderRadius: 20,
-                      fontSize: 12,
-                      fontWeight: 700,
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color: '#fff',
-                      textTransform: 'uppercase',
-                      letterSpacing: 0.5
-                    }}
-                  >
-                    Active
-                  </span>
+                  justifyContent: 'flex-end',
+                  paddingRight: 16,
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: 14
+                }}>
+                  {progressPercentage > 10 && `${progressPercentage.toFixed(1)}%`}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
 
-      {/* Inline CSS for animation */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, opacity: 0.8 }}>
+              <span>Earned: {currency} {formatCurrency(earnedProfit)}</span>
+              <span>Target: {currency} {formatCurrency(targetProfit)}</span>
+            </div>
+
+            {status !== 'completed' && (
+              <div style={{ marginTop: 12, padding: 12, background: 'var(--panel)', borderRadius: 8, fontSize: 13 }}>
+                <strong>Remaining:</strong> {currency} {formatCurrency(Math.max(0, targetProfit - earnedProfit))} 
+                <span style={{ opacity: 0.7, marginLeft: 8 }}>
+                  ({Math.max(0, 100 - progressPercentage).toFixed(1)}% to go)
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Orders with Profit */}
+          <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: 28, boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 20px 0' }}>Orders Contributing to Your Profit</h2>
+
+            {orders.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 40, opacity: 0.7 }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
+                <div style={{ fontSize: 16, fontWeight: 600 }}>No orders yet</div>
+                <div style={{ fontSize: 14, marginTop: 4 }}>Profits will be assigned from delivered orders sequentially</div>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+                  <thead>
+                    <tr style={{ background: 'var(--panel)' }}>
+                      <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid var(--border)' }}>Order #</th>
+                      <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid var(--border)' }}>Date</th>
+                      <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid var(--border)' }}>Customer</th>
+                      <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid var(--border)' }}>Order Total</th>
+                      <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid var(--border)' }}>Your Profit</th>
+                      <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid var(--border)' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map((order, idx) => (
+                      <tr key={order._id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: 12, fontWeight: 700 }}>{order.invoiceNumber || `#${String(order._id).slice(-6)}`}</td>
+                        <td style={{ padding: 12 }}>{new Date(order.deliveredAt || order.createdAt).toLocaleDateString()}</td>
+                        <td style={{ padding: 12 }}>{order.customerName || 'N/A'}</td>
+                        <td style={{ padding: 12, fontWeight: 600 }}>{currency} {formatCurrency(order.total)}</td>
+                        <td style={{ padding: 12, color: '#10b981', fontWeight: 800 }}>+{currency} {formatCurrency(order.investorProfit?.profitAmount || 0)}</td>
+                        <td style={{ padding: 12 }}>
+                          <span style={{
+                            padding: '4px 12px',
+                            borderRadius: 12,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            background: 'rgba(16, 185, 129, 0.1)',
+                            color: '#10b981'
+                          }}>
+                            Delivered
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Inline CSS */}
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
-        }
-        @media (max-width: 768px) {
-          div[style*="gridTemplateColumns: 'auto 1fr auto'"] {
-            grid-template-columns: 1fr !important;
-          }
         }
       `}</style>
     </div>

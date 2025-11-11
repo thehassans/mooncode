@@ -916,34 +916,40 @@ router.get('/investors', auth, allowRoles('admin','user'), async (req, res) => {
 
 // Create investor (admin, user)
 router.post('/investors', auth, allowRoles('admin','user'), async (req, res) => {
-  const { firstName, lastName, email, password, phone, investmentAmount, currency, assignments } = req.body || {}
+  const { firstName, lastName, email, password, phone, investmentAmount, profitPercentage, currency } = req.body || {}
   if (!firstName || !lastName || !email || !password) return res.status(400).json({ message: 'Missing required fields' })
+  if (!investmentAmount || investmentAmount <= 0) return res.status(400).json({ message: 'Investment amount is required' })
+  
   const exists = await User.findOne({ email })
   if (exists) return res.status(400).json({ message: 'Email already in use' })
+  
   // Validate currency
   const CUR = ['AED','SAR','OMR','BHD','INR','KWD','QAR','USD','CNY']
   const cur = CUR.includes(currency) ? currency : 'SAR'
-  // Validate products list
-  const assignedProducts = []
-  if (Array.isArray(assignments)){
-    for (const it of assignments){
-      const pid = it?.productId || it?.product
-      if (!pid) continue
-      const prod = await Product.findById(pid).select('_id')
-      if (!prod) continue
-      const ppu = Number(it?.profitPerUnit || 0)
-      const country = String(it?.country || '').trim()
-      assignedProducts.push({ product: prod._id, country, profitPerUnit: Math.max(0, ppu) })
-    }
-  }
+  
+  // Parse investment details
+  const invAmount = Math.max(0, Number(investmentAmount || 0))
+  const profitPct = Math.max(0, Math.min(100, Number(profitPercentage || 15))) // Default 15%, max 100%
+  const targetProfit = (invAmount * profitPct) / 100
+  
   const createdBy = req.user?.id
   const investor = new User({
     firstName, lastName, email, password, phone, role: 'investor', createdBy,
-    investorProfile: { investmentAmount: Math.max(0, Number(investmentAmount||0)), currency: cur, assignedProducts }
+    investorProfile: {
+      investmentAmount: invAmount,
+      profitPercentage: profitPct,
+      targetProfit: targetProfit,
+      earnedProfit: 0,
+      totalReturn: invAmount,
+      currency: cur,
+      status: 'active'
+    }
   })
   await investor.save()
+  
   // Broadcast: owner workspace should refresh investors; investor self can refresh dashboard
   try{ const io = getIO(); io.to(`workspace:${createdBy}`).emit('investor.created', { id: String(investor._id) }); io.to(`user:${String(investor._id)}`).emit('investor.updated', { id: String(investor._id) }) }catch{}
+  
   // Try to send WhatsApp welcome message (non-blocking)
   ;(async ()=>{
     try{
@@ -958,14 +964,15 @@ router.post('/investors', auth, allowRoles('admin','user'), async (req, res) => 
       try { console.error('[investors] failed to send welcome WA', err?.message||err) } catch {}
     }
   })()
-  const populated = await User.findById(investor._id, '-password').populate('investorProfile.assignedProducts.product', 'name')
+  
+  const populated = await User.findById(investor._id, '-password')
   res.status(201).json({ message: 'Investor created', user: populated })
 })
 
 // Update investor (admin, user)
 router.post('/investors/:id', auth, allowRoles('admin','user'), async (req, res) => {
   const { id } = req.params
-  const { firstName, lastName, email, phone, investmentAmount, currency, assignments } = req.body || {}
+  const { firstName, lastName, email, phone, investmentAmount, profitPercentage, currency } = req.body || {}
   
   const investor = await User.findOne({ _id: id, role: 'investor' })
   if (!investor) return res.status(404).json({ message: 'Investor not found' })
@@ -981,30 +988,32 @@ router.post('/investors/:id', auth, allowRoles('admin','user'), async (req, res)
   if (email) investor.email = email
   if (phone !== undefined) investor.phone = phone
   
-  // Update investment details
-  if (investmentAmount !== undefined) {
-    investor.investorProfile.investmentAmount = Math.max(0, Number(investmentAmount||0))
+  // Update investment details (only if not completed)
+  if (investor.investorProfile.status !== 'completed') {
+    if (investmentAmount !== undefined) {
+      const invAmount = Math.max(0, Number(investmentAmount || 0))
+      investor.investorProfile.investmentAmount = invAmount
+      
+      // Recalculate target profit
+      const profitPct = investor.investorProfile.profitPercentage || 15
+      investor.investorProfile.targetProfit = (invAmount * profitPct) / 100
+      investor.investorProfile.totalReturn = invAmount + (investor.investorProfile.earnedProfit || 0)
+    }
+    
+    if (profitPercentage !== undefined) {
+      const profitPct = Math.max(0, Math.min(100, Number(profitPercentage || 15)))
+      investor.investorProfile.profitPercentage = profitPct
+      
+      // Recalculate target profit
+      const invAmount = investor.investorProfile.investmentAmount || 0
+      investor.investorProfile.targetProfit = (invAmount * profitPct) / 100
+    }
   }
   
   // Validate and update currency
   const CUR = ['AED','SAR','OMR','BHD','INR','KWD','QAR','USD','CNY']
   if (currency && CUR.includes(currency)) {
     investor.investorProfile.currency = currency
-  }
-  
-  // Update assigned products
-  if (Array.isArray(assignments)){
-    const assignedProducts = []
-    for (const it of assignments){
-      const pid = it?.productId || it?.product
-      if (!pid) continue
-      const prod = await Product.findById(pid).select('_id')
-      if (!prod) continue
-      const ppu = Number(it?.profitPerUnit || 0)
-      const country = String(it?.country || '').trim()
-      assignedProducts.push({ product: prod._id, country, profitPerUnit: Math.max(0, ppu) })
-    }
-    investor.investorProfile.assignedProducts = assignedProducts
   }
   
   await investor.save()
@@ -1017,7 +1026,7 @@ router.post('/investors/:id', auth, allowRoles('admin','user'), async (req, res)
     io.to(`user:${String(investor._id)}`).emit('investor.updated', { id: String(investor._id) })
   }catch{}
   
-  const populated = await User.findById(investor._id, '-password').populate('investorProfile.assignedProducts.product', 'name')
+  const populated = await User.findById(investor._id, '-password')
   res.json({ message: 'Investor updated', user: populated })
 })
 

@@ -31,13 +31,14 @@ const UserSchema = new mongoose.Schema({
   welcomeError: { type: String, default: '' },
   // Investor specific profile (only applicable when role === 'investor')
   investorProfile: {
-    investmentAmount: { type: Number, default: 0 },
+    investmentAmount: { type: Number, default: 0 }, // Initial investment
+    profitPercentage: { type: Number, default: 15 }, // Profit % per order (e.g., 15%)
+    targetProfit: { type: Number, default: 0 }, // Total profit to earn (investmentAmount * profitPercentage / 100)
+    earnedProfit: { type: Number, default: 0 }, // Profit earned so far from orders
+    totalReturn: { type: Number, default: 0 }, // investmentAmount + earnedProfit
     currency: { type: String, enum: ['AED','SAR','OMR','BHD','INR','KWD','QAR','USD','CNY'], default: 'SAR' },
-    assignedProducts: [{
-      product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
-      country: { type: String, default: '' },
-      profitPerUnit: { type: Number, default: 0 },
-    }],
+    status: { type: String, enum: ['active', 'completed', 'inactive'], default: 'active' }, // Investment status
+    completedAt: { type: Date }, // When target profit was reached
   },
   // Agent payout profile (withdrawal method and details)
   payoutProfile: {
