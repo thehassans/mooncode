@@ -31,8 +31,9 @@ import ManagerCreateDriver from './pages/manager/CreateDriver.jsx'
 import AgentRemitHistory from './pages/manager/AgentRemitHistory.jsx'
 import ManagerExpenses from './pages/manager/Expenses.jsx'
 import AgentInhouseProducts from './pages/agent/AgentInhouseProducts.jsx'
-import InvestorDashboard from './pages/investor/Dashboard.jsx'
-import InvestorMe from './pages/investor/Me.jsx'
+import MyInvestments from './pages/investor/MyInvestments.jsx'
+import InvestorProducts from './pages/investor/Products.jsx'
+import InvestorProfile from './pages/investor/Profile.jsx'
 import InvestorLayout from './layout/InvestorLayout.jsx'
 import DriverLayout from './layout/DriverLayout.jsx'
 import AgentOrdersHistory from './pages/agent/OrdersHistory.jsx'
@@ -382,8 +383,9 @@ export default function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<InvestorDashboard />} />
-        <Route path="me" element={<InvestorMe />} />
+        <Route index element={<MyInvestments />} />
+        <Route path="products" element={<InvestorProducts />} />
+        <Route path="profile" element={<InvestorProfile />} />
       </Route>
 
       <Route
