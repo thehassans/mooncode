@@ -50,9 +50,7 @@ export default function Investors() {
 
   useEffect(() => {
     loadInvestors()
-  }, [q])
-
-  useEffect(() => {
+    
     const token = localStorage.getItem('token') || ''
     const socket = io(undefined, { path: '/socket.io', transports: ['polling'], upgrade: false, auth: { token }, withCredentials: true })
     socket.on('investor.created', loadInvestors)
@@ -66,14 +64,21 @@ export default function Investors() {
     }
   }, [])
 
+  useEffect(() => {
+    if (q !== undefined) {
+      loadInvestors()
+    }
+  }, [q])
+
   async function loadInvestors() {
-    setLoadingList(true)
     try {
+      setLoadingList(true)
       const data = await apiGet(`/api/users/investors?q=${encodeURIComponent(q)}`)
+      console.log('Investors loaded:', data.users?.length || 0)
       setRows(data.users || [])
     } catch (err) {
       console.error('Failed to load investors:', err)
-      setRows([]) // Set empty array on error
+      setRows([])
     } finally {
       setLoadingList(false)
     }
