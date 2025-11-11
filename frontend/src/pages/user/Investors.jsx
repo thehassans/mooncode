@@ -304,7 +304,7 @@ export default function Investors() {
       {/* Investors List */}
       <div className="card">
         <div className="card-header">
-          <div className="card-title">Investors List ({filteredRows.length})</div>
+          <div className="card-title">Investors List ({rows.length})</div>
           <input
             className="input"
             type="text"
