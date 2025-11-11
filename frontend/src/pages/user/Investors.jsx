@@ -50,6 +50,9 @@ export default function Investors() {
 
   useEffect(() => {
     loadInvestors()
+  }, [q])
+
+  useEffect(() => {
     const token = localStorage.getItem('token') || ''
     const socket = io(undefined, { path: '/socket.io', transports: ['polling'], upgrade: false, auth: { token }, withCredentials: true })
     socket.on('investor.created', loadInvestors)
@@ -70,6 +73,7 @@ export default function Investors() {
       setRows(data.users || [])
     } catch (err) {
       console.error('Failed to load investors:', err)
+      setRows([]) // Set empty array on error
     } finally {
       setLoadingList(false)
     }
@@ -186,17 +190,12 @@ export default function Investors() {
     }
   }
 
-  function calculateTargetProfit(amount, percentage) {
-    return (Number(amount || 0) * Number(percentage || 15)) / 100
+  function formatValue(value, currency = '', suffix = '') {
+    if (value === null || value === undefined || value === '' || value === 0) {
+      return <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>
+    }
+    return `${currency ? currency + ' ' : ''}${typeof value === 'number' ? value.toFixed(2) : value}${suffix}`
   }
-
-  function calculateTotalReturn(amount, percentage) {
-    return Number(amount || 0) + calculateTargetProfit(amount, percentage)
-  }
-
-  const filteredRows = rows.filter(r =>
-    `${r.firstName} ${r.lastName} ${r.email}`.toLowerCase().includes(q.toLowerCase())
-  )
 
   return (
     <div className="section" style={{ display: 'grid', gap: 24 }}>
@@ -333,37 +332,56 @@ export default function Investors() {
             <tbody>
               {loadingList ? (
                 <tr><td colSpan={8} style={{ padding: 20, textAlign: 'center', opacity: 0.7 }}>Loading...</td></tr>
-              ) : filteredRows.length === 0 ? (
+              ) : rows.length === 0 ? (
                 <tr><td colSpan={8} style={{ padding: 20, textAlign: 'center', opacity: 0.7 }}>No investors found</td></tr>
               ) : (
-                filteredRows.map((inv) => (
-                  <tr key={inv._id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: 12 }}>{inv.firstName} {inv.lastName}</td>
-                    <td style={{ padding: 12 }}>{inv.email}</td>
-                    <td style={{ padding: 12 }}>{inv.investorProfile?.currency} {Number(inv.investorProfile?.investmentAmount || 0).toFixed(2)}</td>
-                    <td style={{ padding: 12, fontWeight: 700, color: '#667eea' }}>{inv.investorProfile?.currency} {Number(inv.investorProfile?.profitAmount || 0).toFixed(2)}</td>
-                    <td style={{ padding: 12 }}>{inv.investorProfile?.profitPercentage || 15}%</td>
-                    <td style={{ padding: 12, color: '#10b981', fontWeight: 600 }}>{inv.investorProfile?.currency} {Number(inv.investorProfile?.earnedProfit || 0).toFixed(2)}</td>
-                    <td style={{ padding: 12 }}>
-                      <span style={{
-                        padding: '4px 8px',
-                        borderRadius: 4,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        background: inv.investorProfile?.status === 'completed' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                        color: inv.investorProfile?.status === 'completed' ? '#10b981' : '#3b82f6'
-                      }}>
-                        {inv.investorProfile?.status || 'active'}
-                      </span>
-                    </td>
-                    <td style={{ padding: 12 }}>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn secondary small" onClick={() => openEditModal(inv)}>Edit</button>
-                        <button className="btn danger small" onClick={() => openDelModal(inv)}>Delete</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                rows.map((inv) => {
+                  const profile = inv.investorProfile || {}
+                  const currency = profile.currency || 'SAR'
+                  const investmentAmount = profile.investmentAmount
+                  const profitAmount = profile.profitAmount
+                  const profitPercentage = profile.profitPercentage
+                  const earnedProfit = profile.earnedProfit
+                  const status = profile.status || 'active'
+
+                  return (
+                    <tr key={inv._id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: 12 }}>
+                        {inv.firstName || inv.lastName ? `${inv.firstName || ''} ${inv.lastName || ''}`.trim() : <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>}
+                      </td>
+                      <td style={{ padding: 12 }}>{inv.email || <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>}</td>
+                      <td style={{ padding: 12 }}>
+                        {investmentAmount ? `${currency} ${Number(investmentAmount).toFixed(2)}` : <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>}
+                      </td>
+                      <td style={{ padding: 12, fontWeight: 700, color: profitAmount ? '#667eea' : 'inherit' }}>
+                        {profitAmount ? `${currency} ${Number(profitAmount).toFixed(2)}` : <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>}
+                      </td>
+                      <td style={{ padding: 12 }}>
+                        {profitPercentage !== null && profitPercentage !== undefined ? `${profitPercentage}%` : <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>}
+                      </td>
+                      <td style={{ padding: 12, color: earnedProfit ? '#10b981' : 'inherit', fontWeight: earnedProfit ? 600 : 400 }}>
+                        {earnedProfit ? `${currency} ${Number(earnedProfit).toFixed(2)}` : `${currency} 0.00`}
+                      </td>
+                      <td style={{ padding: 12 }}>
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: 4,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          background: status === 'completed' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                          color: status === 'completed' ? '#10b981' : '#3b82f6'
+                        }}>
+                          {status}
+                        </span>
+                      </td>
+                      <td style={{ padding: 12 }}>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button className="btn secondary small" onClick={() => openEditModal(inv)}>Edit</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>
