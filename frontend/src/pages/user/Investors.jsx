@@ -236,12 +236,12 @@ export default function Investors() {
 
           <div>
             <div className="label">Email *</div>
-            <input className="input" type="email" name="email" value={form.email} onChange={onChange} required />
+            <input className="input" type="email" name="email" value={form.email} onChange={onChange} required autoComplete="off" />
           </div>
 
           <div>
             <div className="label">Password *</div>
-            <input className="input" type="password" name="password" value={form.password} onChange={onChange} required minLength={6} />
+            <input className="input" type="password" name="password" value={form.password} onChange={onChange} required minLength={6} autoComplete="new-password" />
           </div>
 
           <div>
