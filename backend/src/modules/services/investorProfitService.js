@@ -32,14 +32,14 @@ export async function assignInvestorProfitToOrder(order, ownerId) {
       };
     }
 
-    // Find first investor who hasn't reached target profit
+    // Find first investor who hasn't reached profit amount
     let selectedInvestor = null;
     for (const inv of investors) {
       const profile = inv.investorProfile || {};
       const earnedProfit = profile.earnedProfit || 0;
-      const targetProfit = profile.targetProfit || 0;
+      const profitAmount = profile.profitAmount || 0;
 
-      if (earnedProfit < targetProfit) {
+      if (earnedProfit < profitAmount) {
         selectedInvestor = inv;
         break;
       }
@@ -73,8 +73,8 @@ export async function assignInvestorProfitToOrder(order, ownerId) {
         (updatedInvestor.investorProfile.investmentAmount || 0) + 
         updatedInvestor.investorProfile.earnedProfit;
 
-      // Check if investor reached target profit
-      if (updatedInvestor.investorProfile.earnedProfit >= updatedInvestor.investorProfile.targetProfit) {
+      // Check if investor reached profit amount
+      if (updatedInvestor.investorProfile.earnedProfit >= updatedInvestor.investorProfile.profitAmount) {
         updatedInvestor.investorProfile.status = 'completed';
         updatedInvestor.investorProfile.completedAt = new Date();
       }
@@ -116,18 +116,18 @@ export async function getNextInvestorInSequence(ownerId) {
     for (const inv of investors) {
       const profile = inv.investorProfile || {};
       const earnedProfit = profile.earnedProfit || 0;
-      const targetProfit = profile.targetProfit || 0;
+      const profitAmount = profile.profitAmount || 0;
 
-      if (earnedProfit < targetProfit) {
+      if (earnedProfit < profitAmount) {
         return {
           id: inv._id,
           name: `${inv.firstName} ${inv.lastName}`.trim(),
           email: inv.email,
           investmentAmount: profile.investmentAmount,
           profitPercentage: profile.profitPercentage,
-          targetProfit: profile.targetProfit,
+          profitAmount: profile.profitAmount,
           earnedProfit: profile.earnedProfit,
-          remaining: targetProfit - earnedProfit
+          remaining: profitAmount - earnedProfit
         };
       }
     }
@@ -165,7 +165,7 @@ export async function removeInvestorProfitFromOrder(order) {
 
       // If was completed, revert to active
       if (investor.investorProfile.status === 'completed' && 
-          investor.investorProfile.earnedProfit < investor.investorProfile.targetProfit) {
+          investor.investorProfile.earnedProfit < investor.investorProfile.profitAmount) {
         investor.investorProfile.status = 'active';
         investor.investorProfile.completedAt = null;
       }

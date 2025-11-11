@@ -60,12 +60,12 @@ export default function MyInvestments() {
   const profile = investorData?.investorProfile || {};
   const investmentAmount = profile.investmentAmount || 0;
   const profitPercentage = profile.profitPercentage || 15;
-  const targetProfit = profile.targetProfit || 0;
+  const profitAmount = profile.profitAmount || 0;
   const earnedProfit = profile.earnedProfit || 0;
   const totalReturn = profile.totalReturn || investmentAmount;
   const currency = profile.currency || 'SAR';
   const status = profile.status || 'active';
-  const progressPercentage = targetProfit > 0 ? Math.min(100, (earnedProfit / targetProfit) * 100) : 0;
+  const progressPercentage = profitAmount > 0 ? Math.min(100, (earnedProfit / profitAmount) * 100) : 0;
 
   return (
     <div className="section" style={{ display: 'grid', gap: 24, maxWidth: 1400, margin: '0 auto', padding: '24px' }}>
@@ -98,13 +98,13 @@ export default function MyInvestments() {
               </div>
             </div>
 
-            {/* Target Profit */}
+            {/* Profit Amount */}
             <div style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', borderRadius: 16, padding: 24, color: '#fff', boxShadow: '0 10px 40px rgba(245, 87, 108, 0.3)', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
               <div style={{ position: 'relative', zIndex: 1 }}>
-                <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Target Profit ({profitPercentage}%)</div>
-                <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>{currency} {formatCurrency(targetProfit)}</div>
-                <div style={{ fontSize: 13, opacity: 0.85 }}>Goal to achieve</div>
+                <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Profit Amount Target</div>
+                <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>{currency} {formatCurrency(profitAmount)}</div>
+                <div style={{ fontSize: 13, opacity: 0.85 }}>Goal to achieve from orders</div>
               </div>
             </div>
 
@@ -170,17 +170,29 @@ export default function MyInvestments() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, opacity: 0.8 }}>
               <span>Earned: {currency} {formatCurrency(earnedProfit)}</span>
-              <span>Target: {currency} {formatCurrency(targetProfit)}</span>
+              <span>Target: {currency} {formatCurrency(profitAmount)}</span>
             </div>
 
             {status !== 'completed' && (
               <div style={{ marginTop: 12, padding: 12, background: 'var(--panel)', borderRadius: 8, fontSize: 13 }}>
-                <strong>Remaining:</strong> {currency} {formatCurrency(Math.max(0, targetProfit - earnedProfit))} 
+                <strong>Remaining:</strong> {currency} {formatCurrency(Math.max(0, profitAmount - earnedProfit))} 
                 <span style={{ opacity: 0.7, marginLeft: 8 }}>
                   ({Math.max(0, 100 - progressPercentage).toFixed(1)}% to go)
                 </span>
               </div>
             )}
+
+            <div style={{ marginTop: 12, padding: 12, background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)', borderRadius: 8, border: '1px solid rgba(102, 126, 234, 0.2)' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>📊 Investment Details</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, opacity: 0.8, marginBottom: 4 }}>
+                <span>Profit per Order:</span>
+                <strong>{profitPercentage}%</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, opacity: 0.8 }}>
+                <span>Orders Contributing:</span>
+                <strong>{orders.length} order{orders.length !== 1 ? 's' : ''}</strong>
+              </div>
+            </div>
           </div>
 
           {/* Orders with Profit */}

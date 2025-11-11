@@ -916,9 +916,10 @@ router.get('/investors', auth, allowRoles('admin','user'), async (req, res) => {
 
 // Create investor (admin, user)
 router.post('/investors', auth, allowRoles('admin','user'), async (req, res) => {
-  const { firstName, lastName, email, password, phone, investmentAmount, profitPercentage, currency } = req.body || {}
+  const { firstName, lastName, email, password, phone, investmentAmount, profitAmount, profitPercentage, currency } = req.body || {}
   if (!firstName || !lastName || !email || !password) return res.status(400).json({ message: 'Missing required fields' })
   if (!investmentAmount || investmentAmount <= 0) return res.status(400).json({ message: 'Investment amount is required' })
+  if (!profitAmount || profitAmount <= 0) return res.status(400).json({ message: 'Profit amount is required' })
   
   const exists = await User.findOne({ email })
   if (exists) return res.status(400).json({ message: 'Email already in use' })
@@ -929,16 +930,16 @@ router.post('/investors', auth, allowRoles('admin','user'), async (req, res) => 
   
   // Parse investment details
   const invAmount = Math.max(0, Number(investmentAmount || 0))
+  const profitAmt = Math.max(0, Number(profitAmount || 0))
   const profitPct = Math.max(0, Math.min(100, Number(profitPercentage || 15))) // Default 15%, max 100%
-  const targetProfit = (invAmount * profitPct) / 100
   
   const createdBy = req.user?.id
   const investor = new User({
     firstName, lastName, email, password, phone, role: 'investor', createdBy,
     investorProfile: {
       investmentAmount: invAmount,
+      profitAmount: profitAmt,
       profitPercentage: profitPct,
-      targetProfit: targetProfit,
       earnedProfit: 0,
       totalReturn: invAmount,
       currency: cur,
@@ -972,7 +973,7 @@ router.post('/investors', auth, allowRoles('admin','user'), async (req, res) => 
 // Update investor (admin, user)
 router.post('/investors/:id', auth, allowRoles('admin','user'), async (req, res) => {
   const { id } = req.params
-  const { firstName, lastName, email, phone, investmentAmount, profitPercentage, currency } = req.body || {}
+  const { firstName, lastName, email, phone, investmentAmount, profitAmount, profitPercentage, currency } = req.body || {}
   
   const investor = await User.findOne({ _id: id, role: 'investor' })
   if (!investor) return res.status(404).json({ message: 'Investor not found' })
@@ -993,20 +994,15 @@ router.post('/investors/:id', auth, allowRoles('admin','user'), async (req, res)
     if (investmentAmount !== undefined) {
       const invAmount = Math.max(0, Number(investmentAmount || 0))
       investor.investorProfile.investmentAmount = invAmount
-      
-      // Recalculate target profit
-      const profitPct = investor.investorProfile.profitPercentage || 15
-      investor.investorProfile.targetProfit = (invAmount * profitPct) / 100
       investor.investorProfile.totalReturn = invAmount + (investor.investorProfile.earnedProfit || 0)
     }
     
+    if (profitAmount !== undefined) {
+      investor.investorProfile.profitAmount = Math.max(0, Number(profitAmount || 0))
+    }
+    
     if (profitPercentage !== undefined) {
-      const profitPct = Math.max(0, Math.min(100, Number(profitPercentage || 15)))
-      investor.investorProfile.profitPercentage = profitPct
-      
-      // Recalculate target profit
-      const invAmount = investor.investorProfile.investmentAmount || 0
-      investor.investorProfile.targetProfit = (invAmount * profitPct) / 100
+      investor.investorProfile.profitPercentage = Math.max(0, Math.min(100, Number(profitPercentage || 15)))
     }
   }
   

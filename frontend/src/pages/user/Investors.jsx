@@ -13,6 +13,7 @@ export default function Investors() {
     password: '', 
     phone: '', 
     investmentAmount: '', 
+    profitAmount: '',
     profitPercentage: '15', 
     currency: 'SAR' 
   })
@@ -29,7 +30,8 @@ export default function Investors() {
     lastName: '', 
     email: '', 
     phone: '', 
-    investmentAmount: '', 
+    investmentAmount: '',
+    profitAmount: '',
     profitPercentage: '15', 
     currency: 'SAR' 
   })
@@ -103,6 +105,7 @@ export default function Investors() {
       await apiPost('/api/users/investors', {
         ...form,
         investmentAmount: Number(form.investmentAmount || 0),
+        profitAmount: Number(form.profitAmount || 0),
         profitPercentage: Number(form.profitPercentage || 15)
       })
       setMsg('Investor created successfully!')
@@ -112,7 +115,8 @@ export default function Investors() {
         email: '', 
         password: '', 
         phone: '', 
-        investmentAmount: '', 
+        investmentAmount: '',
+        profitAmount: '',
         profitPercentage: '15', 
         currency: 'SAR' 
       })
@@ -131,6 +135,7 @@ export default function Investors() {
       email: investor.email || '',
       phone: investor.phone || '',
       investmentAmount: String(investor.investorProfile?.investmentAmount || ''),
+      profitAmount: String(investor.investorProfile?.profitAmount || ''),
       profitPercentage: String(investor.investorProfile?.profitPercentage || '15'),
       currency: investor.investorProfile?.currency || 'SAR'
     })
@@ -150,6 +155,7 @@ export default function Investors() {
       await apiPost(`/api/users/investors/${editModal.investor._id}`, {
         ...editForm,
         investmentAmount: Number(editForm.investmentAmount || 0),
+        profitAmount: Number(editForm.profitAmount || 0),
         profitPercentage: Number(editForm.profitPercentage || 15)
       })
       setEditModal({ open: false, busy: false, error: '', investor: null })
@@ -240,14 +246,22 @@ export default function Investors() {
             {phoneError && <div style={{ color: '#ef4444', fontSize: 13, marginTop: 4 }}>{phoneError}</div>}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <div className="label">Investment Amount *</div>
               <input className="input" type="number" min="0" step="0.01" name="investmentAmount" value={form.investmentAmount} onChange={onChange} placeholder="1000" required />
             </div>
             <div>
+              <div className="label">Profit Amount (Total) *</div>
+              <input className="input" type="number" min="0" step="0.01" name="profitAmount" value={form.profitAmount} onChange={onChange} placeholder="150" required />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
               <div className="label">Profit % per Order *</div>
               <input className="input" type="number" min="0" max="100" step="0.1" name="profitPercentage" value={form.profitPercentage} onChange={onChange} placeholder="15" required />
+              <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>Profit percentage from each delivered order</div>
             </div>
             <div>
               <div className="label">Currency</div>
@@ -257,21 +271,26 @@ export default function Investors() {
             </div>
           </div>
 
-          {form.investmentAmount && form.profitPercentage && (
-            <div style={{ padding: 16, background: 'var(--panel)', borderRadius: 8 }}>
-              <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 12 }}>Investment Summary</div>
-              <div style={{ display: 'grid', gap: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Investment Amount:</span>
-                  <strong>{form.currency} {Number(form.investmentAmount).toFixed(2)}</strong>
+          {form.investmentAmount && form.profitAmount && (
+            <div style={{ padding: 20, background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)', borderRadius: 12, border: '1px solid rgba(102, 126, 234, 0.2)' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: '#667eea' }}>💰 Investment Summary</div>
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 14, opacity: 0.8 }}>Investment Amount:</span>
+                  <strong style={{ fontSize: 16 }}>{form.currency} {Number(form.investmentAmount).toFixed(2)}</strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Target Profit ({form.profitPercentage}%):</span>
-                  <strong>{form.currency} {calculateTargetProfit(form.investmentAmount, form.profitPercentage).toFixed(2)}</strong>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 14, opacity: 0.8 }}>Profit Target:</span>
+                  <strong style={{ fontSize: 16, color: '#667eea' }}>{form.currency} {Number(form.profitAmount).toFixed(2)}</strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-                  <span style={{ fontWeight: 700 }}>Total Return:</span>
-                  <strong style={{ color: '#10b981', fontSize: 18 }}>{form.currency} {calculateTotalReturn(form.investmentAmount, form.profitPercentage).toFixed(2)}</strong>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 14, opacity: 0.8 }}>Profit per Order:</span>
+                  <strong style={{ fontSize: 16 }}>{form.profitPercentage}%</strong>
+                </div>
+                <div style={{ height: 1, background: 'var(--border)', margin: '8px 0' }}></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 15, fontWeight: 700 }}>Total Return:</span>
+                  <strong style={{ fontSize: 20, color: '#10b981', fontWeight: 800 }}>{form.currency} {(Number(form.investmentAmount) + Number(form.profitAmount)).toFixed(2)}</strong>
                 </div>
               </div>
             </div>
@@ -304,8 +323,8 @@ export default function Investors() {
                 <th style={{ padding: 12, textAlign: 'left' }}>Name</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Email</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Investment</th>
+                <th style={{ padding: 12, textAlign: 'left' }}>Profit Amount</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Profit %</th>
-                <th style={{ padding: 12, textAlign: 'left' }}>Target Profit</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Earned</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Status</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Actions</th>
@@ -322,9 +341,9 @@ export default function Investors() {
                     <td style={{ padding: 12 }}>{inv.firstName} {inv.lastName}</td>
                     <td style={{ padding: 12 }}>{inv.email}</td>
                     <td style={{ padding: 12 }}>{inv.investorProfile?.currency} {Number(inv.investorProfile?.investmentAmount || 0).toFixed(2)}</td>
+                    <td style={{ padding: 12, fontWeight: 700, color: '#667eea' }}>{inv.investorProfile?.currency} {Number(inv.investorProfile?.profitAmount || 0).toFixed(2)}</td>
                     <td style={{ padding: 12 }}>{inv.investorProfile?.profitPercentage || 15}%</td>
-                    <td style={{ padding: 12 }}>{inv.investorProfile?.currency} {Number(inv.investorProfile?.targetProfit || 0).toFixed(2)}</td>
-                    <td style={{ padding: 12 }}>{inv.investorProfile?.currency} {Number(inv.investorProfile?.earnedProfit || 0).toFixed(2)}</td>
+                    <td style={{ padding: 12, color: '#10b981', fontWeight: 600 }}>{inv.investorProfile?.currency} {Number(inv.investorProfile?.earnedProfit || 0).toFixed(2)}</td>
                     <td style={{ padding: 12 }}>
                       <span style={{
                         padding: '4px 8px',
@@ -393,13 +412,20 @@ export default function Investors() {
 
           {editModal.investor?.investorProfile?.status !== 'completed' && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <div className="label">Investment Amount</div>
                   <input className="input" type="number" min="0" step="0.01" name="investmentAmount" value={editForm.investmentAmount} onChange={onEditFormChange} />
                 </div>
                 <div>
-                  <div className="label">Profit %</div>
+                  <div className="label">Profit Amount</div>
+                  <input className="input" type="number" min="0" step="0.01" name="profitAmount" value={editForm.profitAmount} onChange={onEditFormChange} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <div className="label">Profit % per Order</div>
                   <input className="input" type="number" min="0" max="100" step="0.1" name="profitPercentage" value={editForm.profitPercentage} onChange={onEditFormChange} />
                 </div>
                 <div>
@@ -410,15 +436,20 @@ export default function Investors() {
                 </div>
               </div>
 
-              {editForm.investmentAmount && (
-                <div style={{ padding: 12, background: 'var(--panel)', borderRadius: 8, fontSize: 13 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span>New Target Profit:</span>
-                    <strong>{editForm.currency} {calculateTargetProfit(editForm.investmentAmount, editForm.profitPercentage).toFixed(2)}</strong>
+              {editForm.investmentAmount && editForm.profitAmount && (
+                <div style={{ padding: 16, background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)', borderRadius: 10, fontSize: 13 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span>Investment:</span>
+                    <strong>{editForm.currency} {Number(editForm.investmentAmount).toFixed(2)}</strong>
                   </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span>Profit Target:</span>
+                    <strong style={{ color: '#667eea' }}>{editForm.currency} {Number(editForm.profitAmount).toFixed(2)}</strong>
+                  </div>
+                  <div style={{ height: 1, background: 'var(--border)', margin: '8px 0' }}></div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>New Total Return:</span>
-                    <strong>{editForm.currency} {calculateTotalReturn(editForm.investmentAmount, editForm.profitPercentage).toFixed(2)}</strong>
+                    <span style={{ fontWeight: 600 }}>Total Return:</span>
+                    <strong style={{ color: '#10b981', fontSize: 16 }}>{editForm.currency} {(Number(editForm.investmentAmount) + Number(editForm.profitAmount)).toFixed(2)}</strong>
                   </div>
                 </div>
               )}
