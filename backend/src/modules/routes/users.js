@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import User from '../models/User.js';
 import Product from '../models/Product.js';
 import InvestorPlan from '../models/InvestorPlan.js';
+import InvestorRequest from '../models/InvestorRequest.js';
 import { auth, allowRoles } from '../middleware/auth.js';
 import { getIO } from '../config/socket.js';
 // Lazy WhatsApp import to avoid startup crashes when WA is disabled or deps missing
@@ -683,6 +684,68 @@ router.post('/investor-plans', auth, allowRoles('admin','user'), uploadIP.any(),
     return res.json({ ok: true, packages: updated.packages })
   } catch (err) {
     return res.status(500).json({ message: err?.message || 'Failed to update investor plans' })
+  }
+})
+
+// Investor Requests (owner)
+router.get('/investor-requests', auth, allowRoles('admin','user'), async (req, res) => {
+  try{
+    const base = req.user.role === 'admin' ? {} : { owner: req.user.id }
+    const list = await InvestorRequest.find(base).sort({ createdAt: -1 }).populate('investor','firstName lastName email').lean()
+    return res.json({ requests: list })
+  }catch(err){
+    return res.status(500).json({ message: err?.message || 'Failed to load investor requests' })
+  }
+})
+
+router.post('/investor-requests/:id/accept', auth, allowRoles('admin','user'), async (req, res) => {
+  try{
+    const { id } = req.params
+    const cond = { _id: id }
+    if (req.user.role !== 'admin') cond.owner = req.user.id
+    const rq = await InvestorRequest.findOne(cond)
+    if (!rq) return res.status(404).json({ message: 'Request not found' })
+    if (rq.status !== 'pending') return res.status(400).json({ message: 'Already processed' })
+    rq.status = 'accepted'
+    rq.acceptedAt = new Date()
+    await rq.save()
+    const inv = await User.findById(rq.investor)
+    if (inv){
+      const p = inv.investorProfile || {}
+      const pct = Number(rq.packageProfitPercentage||p.profitPercentage||15)
+      p.investmentAmount = Number(rq.amount||0)
+      p.currency = rq.currency || p.currency || 'AED'
+      p.profitPercentage = pct
+      p.profitAmount = Math.round((Number(rq.amount||0)) * pct / 100)
+      p.totalReturn = Number(p.investmentAmount||0)
+      p.status = 'active'
+      inv.investorProfile = p
+      await inv.save()
+      try{ const io = getIO(); io.to(`user:${String(inv._id)}`).emit('investor.updated', { ok:true }) }catch{}
+    }
+    try{ const io = getIO(); io.to(`workspace:${String(rq.owner)}`).emit('investor.request.accepted', { id: String(rq._id) }) }catch{}
+    return res.json({ ok:true })
+  }catch(err){
+    return res.status(500).json({ message: err?.message || 'Failed to accept request' })
+  }
+})
+
+router.post('/investor-requests/:id/reject', auth, allowRoles('admin','user'), async (req, res) => {
+  try{
+    const { id } = req.params
+    const cond = { _id: id }
+    if (req.user.role !== 'admin') cond.owner = req.user.id
+    const rq = await InvestorRequest.findOne(cond)
+    if (!rq) return res.status(404).json({ message: 'Request not found' })
+    if (rq.status !== 'pending') return res.status(400).json({ message: 'Already processed' })
+    rq.status = 'rejected'
+    rq.rejectedAt = new Date()
+    await rq.save()
+    try{ const io = getIO(); io.to(`user:${String(rq.investor)}`).emit('investor.updated', { ok:true }) }catch{}
+    try{ const io = getIO(); io.to(`workspace:${String(rq.owner)}`).emit('investor.request.rejected', { id: String(rq._id) }) }catch{}
+    return res.json({ ok:true })
+  }catch(err){
+    return res.status(500).json({ message: err?.message || 'Failed to reject request' })
   }
 })
 

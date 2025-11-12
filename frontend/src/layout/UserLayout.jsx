@@ -74,6 +74,7 @@ export default function UserLayout(){
         { to: '/user/products', label: 'Product Detail', icon: '📦' },
         { to: '/user/inhouse-products', label: 'Inhouse Products', icon: '🏷️' },
         { to: '/user/investor-products', label: 'Investor Products', icon: '💼' },
+        { to: '/user/investor-requests', label: 'Investor Requests', icon: '📝' },
         { to: '/user/warehouses', label: 'Warehouses', icon: '🏬' },
         { to: '/user/shipments', label: 'Shipments', icon: '🚚' },
         { to: '/user/expense', label: 'Expense Management', icon: '💸' },

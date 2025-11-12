@@ -3,6 +3,7 @@ import Product from '../models/Product.js';
 import User from '../models/User.js';
 import Order from '../models/Order.js';
 import InvestorPlan from '../models/InvestorPlan.js';
+import InvestorRequest from '../models/InvestorRequest.js';
 import { auth, allowRoles } from '../middleware/auth.js';
 import { getIO } from '../config/socket.js';
 
@@ -77,3 +78,44 @@ router.get('/my-orders', auth, allowRoles('investor'), async (req, res) => {
 });
 
 export default router;
+
+// Create an investment request for a package
+router.post('/requests', auth, allowRoles('investor'), async (req, res) => {
+  try {
+    const investor = await User.findById(req.user.id).select('createdBy firstName lastName').lean();
+    const ownerId = investor?.createdBy;
+    if (!ownerId) return res.status(400).json({ message: 'Workspace not found' });
+
+    const { packageIndex, amount, currency='AED', note='' } = req.body || {};
+    const idx = Number(packageIndex);
+    if (![1,2,3].includes(idx)) return res.status(400).json({ message: 'Invalid package' });
+    const plans = await InvestorPlan.findOne({ owner: ownerId }).lean();
+    const pkg = (plans?.packages||[]).find(p=> p.index === idx) || { index: idx, name: `Products Package ${idx}`, price: 0, profitPercentage: 0 };
+    const doc = await InvestorRequest.create({
+      owner: ownerId,
+      investor: req.user.id,
+      packageIndex: idx,
+      packageName: pkg.name || `Products Package ${idx}`,
+      packagePrice: Number(pkg.price||0),
+      packageProfitPercentage: Number(pkg.profitPercentage||0),
+      amount: Math.max(0, Number(amount||0)),
+      currency: String(currency||'AED').toUpperCase(),
+      note: String(note||'')
+    })
+    try{ const io = getIO(); io.to(`workspace:${ownerId}`).emit('investor.request.created', { id: String(doc._id) }) }catch{}
+    return res.status(201).json({ ok: true, request: doc })
+  } catch (err) {
+    console.error('Create investor request failed', err)
+    return res.status(500).json({ message: 'Failed to create request' })
+  }
+})
+
+// List my requests (investor)
+router.get('/requests', auth, allowRoles('investor'), async (req, res) => {
+  try{
+    const list = await InvestorRequest.find({ investor: req.user.id }).sort({ createdAt: -1 }).lean();
+    res.json({ requests: list })
+  }catch(err){
+    res.status(500).json({ message: 'Failed to load requests' })
+  }
+})

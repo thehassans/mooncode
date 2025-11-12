@@ -34,6 +34,7 @@ import AgentInhouseProducts from './pages/agent/AgentInhouseProducts.jsx'
 import InvestorPlans from './pages/investor/Plans.jsx'
 import InvestorProducts from './pages/investor/Products.jsx'
 import InvestorProfile from './pages/investor/Profile.jsx'
+import MyInvestments from './pages/investor/MyInvestments.jsx'
 import InvestorLayout from './layout/InvestorLayout.jsx'
 import DriverLayout from './layout/DriverLayout.jsx'
 import AgentOrdersHistory from './pages/agent/OrdersHistory.jsx'
@@ -50,6 +51,7 @@ import Investors from './pages/user/Investors.jsx'
 import Drivers from './pages/user/Drivers.jsx'
 import Notifications from './pages/user/Notifications.jsx'
 import UserInvestorProducts from './pages/user/InvestorProducts.jsx'
+import InvestorRequests from './pages/user/InvestorRequests.jsx'
 import DriverDashboard from './pages/driver/Dashboard.jsx'
 import DriverPanel from './pages/driver/DriverPanel.jsx'
 import DriverMe from './pages/driver/Me.jsx'
@@ -386,6 +388,7 @@ export default function App() {
       >
         <Route index element={<InvestorPlans />} />
         <Route path="products" element={<InvestorProducts />} />
+        <Route path="my-invest" element={<MyInvestments />} />
         <Route path="profile" element={<InvestorProfile />} />
       </Route>
 
@@ -430,6 +433,7 @@ export default function App() {
         <Route path="managers" element={<Managers />} />
         <Route path="investors" element={<Investors />} />
         <Route path="investor-products" element={<UserInvestorProducts />} />
+        <Route path="investor-requests" element={<InvestorRequests />} />
         <Route path="drivers" element={<Drivers />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="campaigns" element={<Campaign />} />

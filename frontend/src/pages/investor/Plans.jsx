@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { apiGet, API_BASE } from '../../api'
+import { apiGet, apiPost, API_BASE } from '../../api'
 import { getCurrencyConfig, convert } from '../../util/currency'
 import { io } from 'socket.io-client'
 
@@ -127,12 +127,16 @@ export default function InvestorPlans(){
                   type="button"
                   onClick={async ()=>{
                     try{
-                      const priceAED = convert(p.price, 'SAR', 'AED')
-                      const txt = `Package ${p.index}: ${p.name} | Price: AED ${fmt(priceAED)} | Profit: ${fmt(p.profitPercentage)}%`
-                      await navigator.clipboard.writeText(txt)
-                      setToast('Plan details copied. Contact your owner to proceed.')
+                      const suggested = Math.max(0, Number(convert(p.price, 'SAR', 'AED')||0))
+                      const input = window.prompt('Enter investment amount (AED):', suggested ? String(suggested) : '')
+                      if (input == null) return
+                      const amt = Number(input)
+                      if (!Number.isFinite(amt) || amt <= 0){ setToast('Please enter a valid amount'); setTimeout(()=> setToast(''), 2000); return }
+                      const note = window.prompt('Optional note for the owner (press Cancel to skip):', '') || ''
+                      await apiPost('/api/investor/requests', { packageIndex: p.index, amount: amt, currency: 'AED', note })
+                      setToast('Request sent to owner')
                       setTimeout(()=> setToast(''), 2500)
-                    }catch{}
+                    }catch(e){ setToast(e?.message || 'Failed to send request'); setTimeout(()=> setToast(''), 2500) }
                   }}
                   style={{
                     padding: '8px 12px',
