@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react'
-import { apiGet, apiPost } from '../../api'
+import { apiGet, apiUpload, API_BASE } from '../../api'
 
 export default function InvestorProducts(){
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
   const [packages_, setPackages] = useState([
-    { index: 1, name: 'Products Package 1', price: '', profitPercentage: '' },
-    { index: 2, name: 'Products Package 2', price: '', profitPercentage: '' },
-    { index: 3, name: 'Products Package 3', price: '', profitPercentage: '' },
+    { index: 1, name: 'Products Package 1', price: '', profitPercentage: '', image: '', imageFile: null },
+    { index: 2, name: 'Products Package 2', price: '', profitPercentage: '', image: '', imageFile: null },
+    { index: 3, name: 'Products Package 3', price: '', profitPercentage: '', image: '', imageFile: null },
   ])
 
   async function load(){
@@ -19,7 +19,9 @@ export default function InvestorProducts(){
         index: p.index,
         name: p.name || `Products Package ${p.index}`,
         price: String(p.price ?? ''),
-        profitPercentage: String(p.profitPercentage ?? '')
+        profitPercentage: String(p.profitPercentage ?? ''),
+        image: p.image || '',
+        imageFile: null
       }))
       setPackages(hydrated)
     }catch(err){
@@ -36,16 +38,24 @@ export default function InvestorProducts(){
     setPackages(arr => arr.map(p => p.index === idx ? { ...p, [key]: val } : p))
   }
 
+  function onFileChange(idx, file){
+    setPackages(arr => arr.map(p => p.index === idx ? { ...p, imageFile: file } : p))
+  }
+
   async function save(){
     try{
       setSaving(true); setMsg('')
-      const payload = { packages: packages_.map(p => ({
+      const form = new FormData()
+      const payload = packages_.map(p => ({
         index: p.index,
         name: String(p.name||'').trim() || `Products Package ${p.index}`,
         price: Number(p.price||0),
         profitPercentage: Number(p.profitPercentage||0),
-      })) }
-      const res = await apiPost('/api/users/investor-plans', payload)
+        image: p.image || ''
+      }))
+      form.append('packages', JSON.stringify(payload))
+      packages_.forEach(p => { if (p.imageFile) form.append(`image${p.index}`, p.imageFile) })
+      const res = await apiUpload('/api/users/investor-plans', form)
       setMsg('Saved! Investor panel updated.')
       // Reload to normalize values
       await load()
@@ -84,6 +94,28 @@ export default function InvestorProducts(){
                 <div key={p.index} className="card" style={{ borderRadius: 12 }}>
                   <div className="card-header"><div className="card-title">Products Package {p.index}</div></div>
                   <div style={{ padding: 16, display:'grid', gap: 12 }}>
+                    {/* Image preview & upload */}
+                    <div>
+                      <div className="label">Image</div>
+                      <div style={{ display:'grid', gap:8 }}>
+                        <div style={{
+                          width: '100%',
+                          aspectRatio: '16 / 9',
+                          borderRadius: 10,
+                          border: '1px solid var(--border)',
+                          background: 'linear-gradient(135deg, #667eea22, #764ba222)',
+                          display:'flex', alignItems:'center', justifyContent:'center',
+                          overflow: 'hidden'
+                        }}>
+                          {p.image ? (
+                            <img src={`${API_BASE}${p.image}`} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                          ) : (
+                            <div style={{ opacity:0.6, fontSize:13 }}>No image</div>
+                          )}
+                        </div>
+                        <input type="file" accept="image/*" onChange={e=> onFileChange(p.index, e.target.files?.[0] || null)} />
+                      </div>
+                    </div>
                     <div>
                       <div className="label">Name</div>
                       <input className="input" type="text" value={p.name} onChange={e=> updateField(p.index, 'name', e.target.value)} placeholder={`Products Package ${p.index}`} />

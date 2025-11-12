@@ -5,6 +5,7 @@ const PackageSchema = new mongoose.Schema({
   name: { type: String, default: '' },
   price: { type: Number, default: 0 },
   profitPercentage: { type: Number, default: 0 },
+  image: { type: String, default: '' }, // /uploads/xyz.png
 }, { _id: false })
 
 const InvestorPlanSchema = new mongoose.Schema({

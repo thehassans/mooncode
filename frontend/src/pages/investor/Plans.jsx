@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { apiGet } from '../../api'
+import { apiGet, API_BASE } from '../../api'
 import { io } from 'socket.io-client'
 
 export default function InvestorPlans(){
@@ -14,7 +14,7 @@ export default function InvestorPlans(){
   async function load(){
     try{
       setLoading(true)
-      const { packages } = await apiGet('/api/investors/plans')
+      const { packages } = await apiGet('/api/investor/plans')
       setPackages(packages || [])
     }catch(err){
       console.error('Failed to load plans', err)
@@ -91,6 +91,12 @@ export default function InvestorPlans(){
               onMouseLeave={(e)=>{ e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 12px 40px rgba(0,0,0,0.12)'}}
             >
               <div style={{ position: 'absolute', inset: 0, opacity: 0.12, background: 'radial-gradient(600px 200px at 0% 0%, #fff, transparent)' }} />
+              {/* Image preview (if provided by owner) */}
+              {p.image ? (
+                <div style={{ position:'relative', margin:'-12px -12px 12px -12px', borderRadius: 16, overflow:'hidden', aspectRatio:'16 / 9', boxShadow:'inset 0 -40px 80px rgba(0,0,0,0.25)' }}>
+                  <img src={`${API_BASE}${p.image}`} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                </div>
+              ) : null}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <div style={{ fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.95 }}>Products Package {p.index}</div>
                 <span style={{ padding: '6px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(4px)' }}>

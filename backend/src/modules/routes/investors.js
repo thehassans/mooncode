@@ -37,16 +37,16 @@ router.get('/plans', auth, allowRoles('investor'), async (req, res) => {
     const investor = await User.findById(req.user.id).select('createdBy').lean();
     const ownerId = investor?.createdBy;
     if (!ownerId) return res.json({ packages: [
-      { index: 1, name: 'Products Package 1', price: 0, profitPercentage: 0 },
-      { index: 2, name: 'Products Package 2', price: 0, profitPercentage: 0 },
-      { index: 3, name: 'Products Package 3', price: 0, profitPercentage: 0 },
+      { index: 1, name: 'Products Package 1', price: 0, profitPercentage: 0, image: '' },
+      { index: 2, name: 'Products Package 2', price: 0, profitPercentage: 0, image: '' },
+      { index: 3, name: 'Products Package 3', price: 0, profitPercentage: 0, image: '' },
     ]});
 
     const doc = await InvestorPlan.findOne({ owner: ownerId }).lean();
     const defaults = [
-      { index: 1, name: 'Products Package 1', price: 0, profitPercentage: 0 },
-      { index: 2, name: 'Products Package 2', price: 0, profitPercentage: 0 },
-      { index: 3, name: 'Products Package 3', price: 0, profitPercentage: 0 },
+      { index: 1, name: 'Products Package 1', price: 0, profitPercentage: 0, image: '' },
+      { index: 2, name: 'Products Package 2', price: 0, profitPercentage: 0, image: '' },
+      { index: 3, name: 'Products Package 3', price: 0, profitPercentage: 0, image: '' },
     ];
     if (!doc) return res.json({ packages: defaults });
     const map = new Map((doc.packages||[]).map(p => [p.index, p]));

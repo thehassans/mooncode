@@ -1,4 +1,8 @@
 import { Router } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import User from '../models/User.js';
 import Product from '../models/Product.js';
 import InvestorPlan from '../models/InvestorPlan.js';
@@ -601,9 +605,9 @@ router.get('/investor-plans', auth, allowRoles('admin','user'), async (req, res)
     const ownerId = req.user.id
     const doc = await InvestorPlan.findOne({ owner: ownerId }).lean()
     const defaults = [
-      { index: 1, name: 'Products Package 1', price: 0, profitPercentage: 0 },
-      { index: 2, name: 'Products Package 2', price: 0, profitPercentage: 0 },
-      { index: 3, name: 'Products Package 3', price: 0, profitPercentage: 0 },
+      { index: 1, name: 'Products Package 1', price: 0, profitPercentage: 0, image: '' },
+      { index: 2, name: 'Products Package 2', price: 0, profitPercentage: 0, image: '' },
+      { index: 3, name: 'Products Package 3', price: 0, profitPercentage: 0, image: '' },
     ]
     if (!doc) return res.json({ packages: defaults })
     const map = new Map((doc.packages||[]).map(p => [p.index, p]))
@@ -614,17 +618,52 @@ router.get('/investor-plans', auth, allowRoles('admin','user'), async (req, res)
   }
 })
 
-// Update investor plans (owner scope) – accepts up to three packages
-router.post('/investor-plans', auth, allowRoles('admin','user'), async (req, res) => {
+// Configure uploads dir (reuse logic from products.js)
+function resolveUploadsDir(){
+  try{
+    const here = path.dirname(fileURLToPath(import.meta.url))
+    const candidates = [
+      path.resolve(process.cwd(), 'uploads'),
+      path.resolve(here, '../../../uploads'),
+      path.resolve(here, '../../uploads'),
+      path.resolve('/httpdocs/uploads'),
+    ]
+    for (const c of candidates){
+      try{ if (!fs.existsSync(c)) fs.mkdirSync(c, { recursive: true }); return c }catch{}
+    }
+  }catch{}
+  try{ fs.mkdirSync('uploads', { recursive: true }) }catch{}
+  return path.resolve('uploads')
+}
+const UPLOADS_DIR_IP = resolveUploadsDir()
+const storageIP = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR_IP),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname)
+    const base = path.basename(file.originalname, ext)
+    const safeBase = String(base).normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').toLowerCase()
+    cb(null, `${safeBase||'plan'}-${Date.now()}${ext.toLowerCase()}`)
+  }
+})
+const uploadIP = multer({ storage: storageIP })
+
+// Update investor plans (owner scope) – accepts up to three packages + images
+router.post('/investor-plans', auth, allowRoles('admin','user'), uploadIP.any(), async (req, res) => {
   try {
     const ownerId = req.user.id
-    const inArr = Array.isArray(req.body?.packages) ? req.body.packages : []
+    let inArr = []
+    const raw = req.body?.packages
+    if (Array.isArray(raw)) inArr = raw
+    else if (typeof raw === 'string') { try{ inArr = JSON.parse(raw) }catch{ inArr = [] } }
     const clean = [1,2,3].map(idx => {
       const found = inArr.find(p => Number(p.index) === idx) || {}
       const name = String(found.name || `Products Package ${idx}`).slice(0,80)
       const price = Math.max(0, Number(found.price || 0))
       const profitPercentage = Math.max(0, Math.min(100, Number(found.profitPercentage || 0)))
-      return { index: idx, name, price, profitPercentage }
+      const files = Array.isArray(req.files) ? req.files : []
+      const fx = files.find(f => String(f.fieldname).toLowerCase() === (`image${idx}`))
+      const image = fx ? `/uploads/${fx.filename}` : (found.image || '')
+      return { index: idx, name, price, profitPercentage, image }
     })
     const updated = await InvestorPlan.findOneAndUpdate(
       { owner: ownerId },
