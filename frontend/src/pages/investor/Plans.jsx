@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { apiGet, API_BASE } from '../../api'
+import { getCurrencyConfig, convert } from '../../util/currency'
 import { io } from 'socket.io-client'
 
 export default function InvestorPlans(){
@@ -10,6 +11,7 @@ export default function InvestorPlans(){
     { index: 3, name: 'Products Package 3', price: 0, profitPercentage: 0 },
   ])
   const [toast, setToast] = useState('')
+  const [currencyReady, setCurrencyReady] = useState(false)
 
   async function load(){
     try{
@@ -29,6 +31,15 @@ export default function InvestorPlans(){
     const socket = io(undefined, { path: '/socket.io', transports: ['polling'], upgrade: false, auth: { token }, withCredentials: true })
     socket.on('investor-plans.updated', load)
     return ()=>{ try{ socket.off('investor-plans.updated', load); socket.disconnect() }catch{} }
+  },[])
+
+  useEffect(()=>{
+    let alive = true
+    ;(async()=>{
+      try{ await getCurrencyConfig() }catch{}
+      if (alive) setCurrencyReady(true)
+    })()
+    return ()=>{ alive = false }
   },[])
 
   const fmt = (n)=> Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 })
@@ -107,7 +118,7 @@ export default function InvestorPlans(){
                 <div style={{ fontWeight: 900, fontSize: 22, marginBottom: 6 }}>{p.name || `Products Package ${p.index}`}</div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                   <div style={{ fontSize: 14, opacity: 0.95 }}>Price</div>
-                  <div style={{ fontSize: 22, fontWeight: 900 }}>SAR {fmt(p.price)}</div>
+                  <div style={{ fontSize: 22, fontWeight: 900 }}>AED {fmt(convert(p.price, 'SAR', 'AED'))}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, gap: 10, flexWrap: 'wrap' }}>
@@ -116,7 +127,8 @@ export default function InvestorPlans(){
                   type="button"
                   onClick={async ()=>{
                     try{
-                      const txt = `Package ${p.index}: ${p.name} | Price: SAR ${fmt(p.price)} | Profit: ${fmt(p.profitPercentage)}%`
+                      const priceAED = convert(p.price, 'SAR', 'AED')
+                      const txt = `Package ${p.index}: ${p.name} | Price: AED ${fmt(priceAED)} | Profit: ${fmt(p.profitPercentage)}%`
                       await navigator.clipboard.writeText(txt)
                       setToast('Plan details copied. Contact your owner to proceed.')
                       setTimeout(()=> setToast(''), 2500)
