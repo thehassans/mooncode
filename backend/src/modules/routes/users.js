@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import User from '../models/User.js';
 import Product from '../models/Product.js';
+import InvestorPlan from '../models/InvestorPlan.js';
 import { auth, allowRoles } from '../middleware/auth.js';
 import { getIO } from '../config/socket.js';
 // Lazy WhatsApp import to avoid startup crashes when WA is disabled or deps missing
@@ -591,6 +592,58 @@ router.post('/custom-domain', auth, allowRoles('user', 'admin'), async (req, res
     return res.json({ ok: true, customDomain: user.customDomain })
   } catch (err) {
     return res.status(500).json({ message: err?.message || 'Failed to update custom domain' })
+  }
+})
+
+// Get investor plans (owner scope) – returns three packages
+router.get('/investor-plans', auth, allowRoles('admin','user'), async (req, res) => {
+  try {
+    const ownerId = req.user.id
+    const doc = await InvestorPlan.findOne({ owner: ownerId }).lean()
+    const defaults = [
+      { index: 1, name: 'Products Package 1', price: 0, profitPercentage: 0 },
+      { index: 2, name: 'Products Package 2', price: 0, profitPercentage: 0 },
+      { index: 3, name: 'Products Package 3', price: 0, profitPercentage: 0 },
+    ]
+    if (!doc) return res.json({ packages: defaults })
+    const map = new Map((doc.packages||[]).map(p => [p.index, p]))
+    const merged = defaults.map(d => ({ ...d, ...(map.get(d.index)||{}) }))
+    return res.json({ packages: merged })
+  } catch (err) {
+    return res.status(500).json({ message: err?.message || 'Failed to load investor plans' })
+  }
+})
+
+// Update investor plans (owner scope) – accepts up to three packages
+router.post('/investor-plans', auth, allowRoles('admin','user'), async (req, res) => {
+  try {
+    const ownerId = req.user.id
+    const inArr = Array.isArray(req.body?.packages) ? req.body.packages : []
+    const clean = [1,2,3].map(idx => {
+      const found = inArr.find(p => Number(p.index) === idx) || {}
+      const name = String(found.name || `Products Package ${idx}`).slice(0,80)
+      const price = Math.max(0, Number(found.price || 0))
+      const profitPercentage = Math.max(0, Math.min(100, Number(found.profitPercentage || 0)))
+      return { index: idx, name, price, profitPercentage }
+    })
+    const updated = await InvestorPlan.findOneAndUpdate(
+      { owner: ownerId },
+      { $set: { packages: clean } },
+      { new: true, upsert: true }
+    )
+
+    // Broadcast to all investors in this workspace
+    try {
+      const io = getIO()
+      const investors = await User.find({ role: 'investor', createdBy: ownerId }).select('_id')
+      for (const inv of investors) {
+        io.to(`user:${String(inv._id)}`).emit('investor-plans.updated', { owner: ownerId })
+      }
+    } catch {}
+
+    return res.json({ ok: true, packages: updated.packages })
+  } catch (err) {
+    return res.status(500).json({ message: err?.message || 'Failed to update investor plans' })
   }
 })
 
