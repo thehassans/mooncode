@@ -31,44 +31,50 @@ export default function InvestorProducts() {
   );
 
   return (
-    <div className="section" style={{ display: 'grid', gap: 24, maxWidth: 1400, margin: '0 auto', padding: '24px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-        <div>
-          <h1 style={{ fontSize: 32, fontWeight: 800, margin: 0, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            All Products
-          </h1>
-          <p style={{ fontSize: 15, opacity: 0.7, margin: '8px 0 0 0' }}>Browse and invest in available products</p>
-        </div>
-
-        {/* Search */}
-        <div style={{ position: 'relative', minWidth: 280 }}>
-          <input
-            type="text"
-            placeholder="Search products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 16px 12px 44px',
-              borderRadius: 12,
-              border: '2px solid var(--border)',
-              fontSize: 14,
-              background: 'var(--panel)',
-              outline: 'none',
-              transition: 'all 0.3s ease'
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = '#667eea';
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = 'var(--border)';
-            }}
-          />
-          <svg style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <path d="m21 21-4.35-4.35"></path>
-          </svg>
+    <div className="section" style={{ display: 'grid', gap: 24, maxWidth: 1200, margin: '0 auto', padding: '24px' }}>
+      {/* Hero */}
+      <div style={{
+        borderRadius: 20,
+        padding: 24,
+        background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.12), rgba(118, 75, 162, 0.12))',
+        border: '1px solid rgba(102, 126, 234, 0.25)',
+        boxShadow: '0 10px 40px rgba(102, 126, 234, 0.15)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 32, fontWeight: 900, lineHeight: 1, marginBottom: 6,
+              background: 'linear-gradient(135deg, #667eea, #764ba2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              All Products
+            </div>
+            <div style={{ opacity: 0.75 }}>Explore the catalog from your workspace owner</div>
+          </div>
+          {/* Search */}
+          <div style={{ position: 'relative', minWidth: 280 }}>
+            <input
+              type="search"
+              placeholder="Search products..."
+              aria-label="Search products"
+              autoComplete="off"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 16px 12px 44px',
+                borderRadius: 12,
+                border: '2px solid var(--border)',
+                fontSize: 14,
+                background: 'var(--panel)',
+                outline: 'none',
+                transition: 'all 0.3s ease'
+              }}
+              onFocus={(e) => { e.target.style.borderColor = '#667eea' }}
+              onBlur={(e) => { e.target.style.borderColor = 'var(--border)' }}
+            />
+            <svg style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+          </div>
         </div>
       </div>
 
@@ -87,7 +93,7 @@ export default function InvestorProducts() {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 18 }}>
           {filteredProducts.map((product) => (
             <div
               key={product._id}
@@ -96,21 +102,21 @@ export default function InvestorProducts() {
                 borderRadius: 20,
                 overflow: 'hidden',
                 border: '1px solid var(--border)',
-                transition: 'all 0.3s ease',
+                transition: 'transform .25s ease, box-shadow .25s ease',
                 cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                boxShadow: '0 10px 30px rgba(0,0,0,0.08)'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-8px)';
-                e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.12)';
+                e.currentTarget.style.transform = 'translateY(-6px)';
+                e.currentTarget.style.boxShadow = '0 18px 50px rgba(0,0,0,0.16)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+                e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.08)';
               }}
             >
               {/* Product Image */}
-              <div style={{ position: 'relative', paddingTop: '75%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+              <div style={{ position: 'relative', paddingTop: '70%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
                 {product.image ? (
                   <img
                     src={`${API_BASE}${product.image}`}
@@ -132,11 +138,13 @@ export default function InvestorProducts() {
                     📦
                   </div>
                 )}
+                {/* overlay gloss */}
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.08))' }} />
               </div>
 
               {/* Product Details */}
               <div style={{ padding: 20 }}>
-                <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 8px 0', lineHeight: 1.4 }}>{product.name}</h3>
+                <h3 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 8px 0', lineHeight: 1.35 }}>{product.name}</h3>
                 
                 {product.description && (
                   <p style={{ fontSize: 13, opacity: 0.7, margin: '0 0 16px 0', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -145,9 +153,9 @@ export default function InvestorProducts() {
                 )}
 
                 {/* Price */}
-                <div style={{ background: 'var(--panel)', padding: 16, borderRadius: 10 }}>
-                  <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', fontWeight: 600 }}>Sell Price</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: '#667eea' }}>{formatCurrency(product.price, product.baseCurrency)}</div>
+                <div style={{ background: 'var(--panel)', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', fontWeight: 700 }}>Sell Price</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: '#667eea' }}>{formatCurrency(product.price, product.baseCurrency)}</div>
                 </div>
               </div>
             </div>
@@ -161,9 +169,7 @@ export default function InvestorProducts() {
           to { transform: rotate(360deg); }
         }
         @media (max-width: 640px) {
-          div[style*="gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))'"] {
-            grid-template-columns: 1fr !important;
-          }
+          .section { padding: 16px !important; }
         }
       `}</style>
     </div>
