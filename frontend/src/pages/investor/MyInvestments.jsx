@@ -101,6 +101,12 @@ export default function MyInvestments() {
             See how much you earn every day from your invested amount (10% of capital divided by
             30).
           </p>
+          <p style={{ fontSize: 13, opacity: 0.8, margin: '4px 0 0 0' }}>
+            Today's estimated earnings:{' '}
+            <strong>
+              {currency} {formatCurrency(dailyProfit)}
+            </strong>
+          </p>
         </div>
       </div>
 

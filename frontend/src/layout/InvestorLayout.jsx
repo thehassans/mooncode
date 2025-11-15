@@ -543,27 +543,30 @@ export default function InvestorLayout() {
                       padding: '8px 10px',
                       borderRadius: 8,
                       fontSize: 13,
+                      marginBottom: 6,
                     }}
                   >
                     Profile
                   </button>
+                  <button
+                    type="button"
+                    className="btn danger"
+                    onClick={() => {
+                      setShowSettings(false)
+                      doLogout()
+                    }}
+                    style={{
+                      width: '100%',
+                      justifyContent: 'flex-start',
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      fontSize: 13,
+                    }}
+                  >
+                    Logout
+                  </button>
                 </div>
               )}
-              <button
-                type="button"
-                className="btn danger"
-                onClick={doLogout}
-                style={{
-                  background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
-                  border: 'none',
-                  borderRadius: 10,
-                  fontWeight: 600,
-                  padding: '8px 16px',
-                  boxShadow: '0 4px 12px rgba(239,68,68,0.35)',
-                }}
-              >
-                Logout
-              </button>
             </div>
           </div>
         }
