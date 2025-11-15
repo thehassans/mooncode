@@ -93,6 +93,9 @@ export default function UserDashboard() {
   const loadSeqRef = useRef(0)
   const reloadTimerRef = useRef(null)
   const [hydrated, setHydrated] = useState(false)
+  const loadAbortRef = useRef(null)
+  const bgAbortRef = useRef(null)
+  const monthDebounceRef = useRef(null)
 
   // Month/Year filtering - default to current month
   const now = new Date()
@@ -174,7 +177,6 @@ export default function UserDashboard() {
     Qatar: 0,
     Other: 0,
   })
-  const [orders, setOrders] = useState([])
   const [drivers, setDrivers] = useState([])
   const driverCountrySummary = useMemo(() => {
     const canonical = (c) => (c === 'Saudi Arabia' ? 'KSA' : String(c || ''))
@@ -474,6 +476,16 @@ export default function UserDashboard() {
     // Mark this load sequence to avoid late updates from previous loads
     const seq = (loadSeqRef.current = loadSeqRef.current + 1)
 
+    // Abort any in-flight requests from prior loads
+    try {
+      loadAbortRef.current && loadAbortRef.current.abort()
+    } catch {}
+    try {
+      bgAbortRef.current && bgAbortRef.current.abort()
+    } catch {}
+    const controller = new AbortController()
+    loadAbortRef.current = controller
+
     // Prime UI quickly with cached data if available
     const cachedAnalytics = cacheGet('analytics', dateParams)
     if (cachedAnalytics) setAnalytics(cachedAnalytics)
@@ -481,17 +493,23 @@ export default function UserDashboard() {
     if (cachedMetrics) setMetrics(cachedMetrics)
     const cachedSales = cacheGet('salesByCountry', dateParams)
     if (cachedSales) setSalesByCountry(cachedSales)
-    const cachedOrders = cacheGet('orders', dateParams)
-    if (cachedOrders) setOrders(cachedOrders)
 
     // Fire independent requests in parallel
-    const cfgP = getCurrencyConfig().catch(() => null)
-    const analyticsP = apiGet(`/api/orders/analytics/last7days?${dateParams}`).catch(() => ({
+    const cfgP = (currencyCfg ? Promise.resolve(currencyCfg) : getCurrencyConfig()).catch(
+      () => null
+    )
+    const analyticsP = apiGet(`/api/orders/analytics/last7days?${dateParams}`, {
+      signal: controller.signal,
+    }).catch(() => ({
       days: [],
       totals: {},
     }))
-    const metricsP = apiGet(`/api/reports/user-metrics?${dateParams}`).catch(() => null)
-    const salesP = apiGet(`/api/reports/user-metrics/sales-by-country?${dateParams}`).catch(() => ({
+    const metricsP = apiGet(`/api/reports/user-metrics?${dateParams}`, {
+      signal: controller.signal,
+    }).catch(() => null)
+    const salesP = apiGet(`/api/reports/user-metrics/sales-by-country?${dateParams}`, {
+      signal: controller.signal,
+    }).catch(() => ({
       KSA: 0,
       Oman: 0,
       UAE: 0,
@@ -501,19 +519,17 @@ export default function UserDashboard() {
       Qatar: 0,
       Other: 0,
     }))
-    const ordersP = apiGet(`/api/orders?${dateParams}`).catch(() => ({ orders: [] }))
 
     // Drivers: fetch first page fast for responsiveness, then background the rest
-    const driversFirstP = apiGet(
-      `/api/finance/drivers/summary?page=1&limit=100&${dateParams}`
-    ).catch(() => null)
+    const driversFirstP = apiGet(`/api/finance/drivers/summary?page=1&limit=100&${dateParams}`, {
+      signal: controller.signal,
+    }).catch((e) => (e?.name === 'AbortError' ? null : null))
 
-    const [cfg, analyticsRes, metricsRes, salesRes, ordersRes, driversFirst] = await Promise.all([
+    const [cfg, analyticsRes, metricsRes, salesRes, driversFirst] = await Promise.all([
       cfgP,
       analyticsP,
       metricsP,
       salesP,
-      ordersP,
       driversFirstP,
     ])
     if (loadSeqRef.current !== seq) return
@@ -532,11 +548,6 @@ export default function UserDashboard() {
       setSalesByCountry(salesRes)
       cacheSet('salesByCountry', dateParams, salesRes)
     }
-    if (ordersRes) {
-      const arr = Array.isArray(ordersRes?.orders) ? ordersRes.orders : []
-      setOrders(arr)
-      cacheSet('orders', dateParams, arr)
-    }
 
     if (driversFirst) {
       const arr = Array.isArray(driversFirst?.drivers) ? driversFirst.drivers : []
@@ -544,14 +555,21 @@ export default function UserDashboard() {
       // Background fetch remaining pages without blocking UI
       ;(async () => {
         try {
+          const bgController = new AbortController()
+          bgAbortRef.current = bgController
           let page = 2,
             limit = 100,
             all = arr.slice(0)
           while (driversFirst?.hasMore && page <= 100) {
             if (loadSeqRef.current !== seq) break
             const ds = await apiGet(
-              `/api/finance/drivers/summary?page=${page}&limit=${limit}&${dateParams}`
-            )
+              `/api/finance/drivers/summary?page=${page}&limit=${limit}&${dateParams}`,
+              { signal: bgController.signal }
+            ).catch((e) => {
+              if (e?.name === 'AbortError') return null
+              throw e
+            })
+            if (!ds) break
             const chunk = Array.isArray(ds?.drivers) ? ds.drivers : []
             all = all.concat(chunk)
             setDrivers(all)
@@ -566,7 +584,17 @@ export default function UserDashboard() {
     setHydrated(true)
   }
   useEffect(() => {
-    load()
+    try {
+      if (monthDebounceRef.current) clearTimeout(monthDebounceRef.current)
+    } catch {}
+    monthDebounceRef.current = setTimeout(() => {
+      load()
+    }, 250)
+    return () => {
+      try {
+        if (monthDebounceRef.current) clearTimeout(monthDebounceRef.current)
+      } catch {}
+    }
   }, [selectedMonth, selectedYear])
   // Live updates via socket
   useEffect(() => {
