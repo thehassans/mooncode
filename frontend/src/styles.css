@@ -2174,6 +2174,18 @@ a {
 .login-health {
   margin-top: 10px;
 }
+
+/* Force dark blue theme on login controls with higher specificity */
+.login-card .login-field button.btn.secondary {
+  background: linear-gradient(135deg, #1e3a8a, #1d4ed8) !important;
+  border: 1px solid rgba(37, 99, 235, 0.55) !important;
+  color: #eaf2ff !important;
+}
+button.btn.login-submit {
+  background: linear-gradient(135deg, #1e3a8a, #1d4ed8) !important;
+  border: 1px solid rgba(37, 99, 235, 0.5) !important;
+  color: #ffffff !important;
+}
 @media (max-width: 900px) {
   .login-shell {
     padding: 22px 18px;
