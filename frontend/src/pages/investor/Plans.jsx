@@ -218,6 +218,7 @@ export default function InvestorPlans() {
                   inset: 0,
                   opacity: 0.12,
                   background: 'radial-gradient(600px 200px at 0% 0%, #fff, transparent)',
+                  pointerEvents: 'none',
                 }}
               />
               {/* Image preview (if provided by owner) */}
@@ -323,18 +324,7 @@ export default function InvestorPlans() {
         </div>
       )}
 
-      <div
-        style={{
-          padding: 14,
-          background: 'var(--panel)',
-          borderRadius: 12,
-          fontSize: 13,
-          border: '1px solid var(--border)',
-        }}
-      >
-        Plans are configured by the store owner in the User panel under <b>Investor Products</b>.
-        Updates appear here automatically.
-      </div>
+      {/* Removed owner-configured note per request */}
 
       {requestOpen && (
         <div
