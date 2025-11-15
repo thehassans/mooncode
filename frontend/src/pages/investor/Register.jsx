@@ -172,7 +172,9 @@ export default function InvestorRegister() {
                 })()}
               </div>
               <div className="login-left-copy">
-                <div className="login-eyebrow">Welcome to BuySial</div>
+                <div className="login-eyebrow" style={{ color: '#23559D' }}>
+                  Welcome to BuyS<span style={{ color: '#EC8538' }}>ia</span>l
+                </div>
                 <h1 className="login-heading">Create your account</h1>
                 <p className="login-subtext">It takes just a minute and it’s free.</p>
               </div>
