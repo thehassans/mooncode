@@ -346,8 +346,8 @@ export default function InvestorPlans() {
               borderRadius: 20,
               overflow: 'hidden',
               boxShadow: '0 20px 80px rgba(0,0,0,0.35)',
-              background: 'linear-gradient(135deg, rgba(102,126,234,0.14), rgba(118,75,162,0.14))',
-              border: '1px solid rgba(118,75,162,0.35)',
+              background: 'var(--panel-2)',
+              border: '1px solid var(--border)',
             }}
           >
             <div
