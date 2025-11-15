@@ -250,21 +250,20 @@ router.post(
         email,
         password,
         phone,
-        ownerEmail,
+        ownerEmail, // optional now
         country,
+        referralCode,
+        referredBy,
       } = req.body || {};
 
-      // Basic required fields including owner email (workspace owner)
-      if (!firstName || !lastName || !email || !password || !ownerEmail) {
+      // Basic required fields (ownerEmail no longer required)
+      if (!firstName || !lastName || !email || !password) {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         return res.status(400).json({ message: "Invalid email format" });
-      }
-      if (!emailRegex.test(ownerEmail)) {
-        return res.status(400).json({ message: "Invalid owner email format" });
       }
 
       if (String(password).length < 6) {
@@ -274,7 +273,9 @@ router.post(
       }
 
       const normalizedEmail = String(email).trim().toLowerCase();
-      const normalizedOwnerEmail = String(ownerEmail).trim().toLowerCase();
+      const normalizedOwnerEmail = ownerEmail
+        ? String(ownerEmail).trim().toLowerCase()
+        : "";
 
       // Ensure investor email is not already used
       const existingUser = await User.findOne({ email: normalizedEmail });
@@ -284,25 +285,25 @@ router.post(
           .json({ message: "An account with this email already exists" });
       }
 
-      // Look up workspace owner by email (role=user)
-      let owner = await User.findOne({
-        email: normalizedOwnerEmail,
-        role: "user",
-      });
-      if (!owner) {
-        try {
-          const esc = normalizedOwnerEmail.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
-          );
-          owner = await User.findOne({
-            email: new RegExp("^" + esc + "$", "i"),
-            role: "user",
-          });
-        } catch {}
-      }
-      if (!owner) {
-        return res.status(404).json({ message: "Workspace owner not found" });
+      // Optional: Look up workspace owner by email (role=user) if provided, but do not error if missing/not found
+      let owner = null;
+      if (normalizedOwnerEmail) {
+        owner = await User.findOne({
+          email: normalizedOwnerEmail,
+          role: "user",
+        });
+        if (!owner) {
+          try {
+            const esc = normalizedOwnerEmail.replace(
+              /[.*+?^${}()|[\]\\]/g,
+              "\\$&"
+            );
+            owner = await User.findOne({
+              email: new RegExp("^" + esc + "$", "i"),
+              role: "user",
+            });
+          } catch {}
+        }
       }
 
       const investor = new User({
@@ -313,7 +314,7 @@ router.post(
         phone: phone?.trim() || "",
         country: country || "UAE",
         role: "investor",
-        createdBy: owner._id,
+        createdBy: owner ? owner._id : undefined,
       });
 
       await investor.save();

@@ -10,7 +10,6 @@ export default function InvestorRegister() {
     firstName: '',
     lastName: '',
     email: '',
-    ownerEmail: '',
     password: '',
     confirmPassword: '',
     phone: '',
@@ -40,21 +39,6 @@ export default function InvestorRegister() {
       const sp = new URLSearchParams(window.location.search)
       const r = sp.get('ref') || ''
       if (r) setReferralCode(r)
-      const owner = sp.get('owner') || sp.get('ownerEmail') || sp.get('o') || ''
-      if (owner) {
-        setFormData((prev) => ({ ...prev, ownerEmail: owner }))
-      }
-    } catch {}
-  }, [])
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('me') || '{}'
-      const me = JSON.parse(raw)
-      const owner = me?.role === 'user' ? me?.email : ''
-      if (owner) {
-        setFormData((prev) => (prev.ownerEmail ? prev : { ...prev, ownerEmail: owner }))
-      }
     } catch {}
   }, [])
 
@@ -83,14 +67,6 @@ export default function InvestorRegister() {
       toast.error('Please enter a valid email address')
       return false
     }
-    if (!formData.ownerEmail.trim()) {
-      toast.error("Owner's email is required")
-      return false
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.ownerEmail)) {
-      toast.error('Please enter a valid owner email address')
-      return false
-    }
     if (formData.password.length < 6) {
       toast.error('Password must be at least 6 characters long')
       return false
@@ -116,7 +92,6 @@ export default function InvestorRegister() {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         email: formData.email.trim().toLowerCase(),
-        ownerEmail: formData.ownerEmail.trim().toLowerCase(),
         password: formData.password,
         phone: formData.phone.trim(),
         country: formData.country,
