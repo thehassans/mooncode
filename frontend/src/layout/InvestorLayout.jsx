@@ -288,17 +288,28 @@ export default function InvestorLayout() {
           <div
             className="topbar"
             style={{
-              background:
-                'linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15))',
-              backdropFilter: 'blur(20px)',
-              borderBottom: '1px solid rgba(102, 126, 234, 0.2)',
-              boxShadow: '0 4px 24px rgba(102, 126, 234, 0.12)',
+              background: 'var(--sidebar-bg)',
+              borderBottom: '1px solid var(--sidebar-border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'nowrap',
+              minHeight: '60px',
+              padding: '0 1rem',
+              boxShadow: '0 4px 24px rgba(15,23,42,0.45)',
               position: 'sticky',
               top: 0,
               zIndex: 100,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, minHeight: 56 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                flexShrink: 0,
+              }}
+            >
               <button
                 className="btn secondary"
                 onClick={() => setClosed((c) => !c)}
@@ -310,47 +321,46 @@ export default function InvestorLayout() {
                   padding: 0,
                   display: 'grid',
                   placeItems: 'center',
-                  background: 'rgba(102, 126, 234, 0.15)',
-                  border: '1px solid rgba(102, 126, 234, 0.3)',
-                  borderRadius: '10px',
+                  background: 'var(--panel)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 10,
                   fontWeight: 700,
                   fontSize: 18,
-                  boxShadow: '0 2px 8px rgba(102, 126, 234, 0.2)',
+                  boxShadow: '0 2px 8px rgba(15,23,42,0.35)',
                   transition: 'all 0.3s ease',
                 }}
               >
                 ☰
               </button>
-              {closed &&
-                (() => {
-                  const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
-                  const src = me.headerLogo ? `${API_BASE}${me.headerLogo}` : fallback
-                  return (
-                    <img
-                      src={src}
-                      alt="BuySial"
-                      style={{
-                        height: 32,
-                        width: 'auto',
-                        objectFit: 'contain',
-                        filter: 'drop-shadow(0 2px 8px rgba(102, 126, 234, 0.3))',
-                      }}
-                    />
-                  )
-                })()}
+              {(() => {
+                const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
+                const src = me.headerLogo ? `${API_BASE}${me.headerLogo}` : fallback
+                return (
+                  <img
+                    src={src}
+                    alt="BuySial"
+                    style={{
+                      height: 32,
+                      width: 'auto',
+                      objectFit: 'contain',
+                      filter: 'drop-shadow(0 2px 8px rgba(15,23,42,0.4))',
+                    }}
+                  />
+                )
+              })()}
               <div
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 10,
-                  padding: '10px 20px',
-                  borderRadius: 999,
+                  padding: '8px 16px',
+                  borderRadius: 12,
                   background:
-                    'linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2))',
-                  border: '1px solid rgba(102, 126, 234, 0.4)',
-                  boxShadow:
-                    '0 4px 16px rgba(102, 126, 234, 0.25), inset 0 1px 0 rgba(255,255,255,0.1)',
+                    'linear-gradient(135deg, rgba(56,189,248,0.12) 0%, rgba(129,140,248,0.14) 100%)',
+                  border: '1px solid rgba(59,130,246,0.35)',
+                  boxShadow: '0 4px 16px rgba(15,23,42,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
                   backdropFilter: 'blur(10px)',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 <span
@@ -358,62 +368,120 @@ export default function InvestorLayout() {
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    fontSize: 20,
-                    filter: 'drop-shadow(0 2px 4px rgba(102, 126, 234, 0.5))',
+                    justifyContent: 'center',
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    background: 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)',
+                    boxShadow: '0 2px 8px rgba(37,99,235,0.4)',
+                    fontSize: 16,
                   }}
                 >
                   💼
                 </span>
-                <span
+                <div
                   style={{
-                    fontWeight: 800,
-                    letterSpacing: 0.5,
-                    background: 'linear-gradient(135deg, #667eea, #764ba2)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    fontSize: 15,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1,
                   }}
                 >
-                  {`Investor ${me.firstName || ''} ${me.lastName || ''}`.trim()}
-                </span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.6,
+                      background: 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                    }}
+                  >
+                    Investor Panel
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      letterSpacing: -0.02,
+                      background: 'linear-gradient(135deg, #e5e7eb 0%, #ffffff 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                    }}
+                  >
+                    {`${me.firstName || 'Investor'} ${me.lastName || ''}`.trim()}
+                  </span>
+                </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {closed && (
-                <>
-                  <button
-                    className="btn secondary"
-                    onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
-                    title="Toggle theme"
-                    style={{
-                      background: 'rgba(102, 126, 234, 0.15)',
-                      border: '1px solid rgba(102, 126, 234, 0.3)',
-                      borderRadius: '10px',
-                      fontWeight: 600,
-                      padding: '8px 16px',
-                      boxShadow: '0 2px 8px rgba(102, 126, 234, 0.2)',
-                    }}
-                  >
-                    {theme === 'light' ? '🌙 Dark' : '🌞 Light'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn danger"
-                    onClick={doLogout}
-                    style={{
-                      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                      border: 'none',
-                      borderRadius: '10px',
-                      fontWeight: 600,
-                      padding: '8px 16px',
-                      boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
-                    }}
-                  >
-                    Logout
-                  </button>
-                </>
-              )}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                flexShrink: 0,
+              }}
+            >
+              <button
+                className="btn secondary"
+                onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
+                title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+                style={{
+                  position: 'relative',
+                  width: 60,
+                  height: 30,
+                  background:
+                    theme === 'dark'
+                      ? 'linear-gradient(135deg, #0f172a 0%, #020617 100%)'
+                      : 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+                  borderRadius: 15,
+                  border: theme === 'dark' ? '2px solid #1f2937' : '2px solid #cbd5e1',
+                  cursor: 'pointer',
+                  padding: 0,
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: theme === 'dark' ? 32 : 4,
+                    transform: 'translateY(-50%)',
+                    width: 22,
+                    height: 22,
+                    borderRadius: '999px',
+                    background:
+                      theme === 'dark'
+                        ? 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)'
+                        : 'linear-gradient(135deg, #fbbf24 0%, #f97316 100%)',
+                    boxShadow: '0 2px 6px rgba(15,23,42,0.45)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 12,
+                    transition: 'left 0.3s ease',
+                  }}
+                >
+                  {theme === 'dark' ? '🌙' : '☀️'}
+                </div>
+              </button>
+              <button
+                type="button"
+                className="btn danger"
+                onClick={doLogout}
+                style={{
+                  background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                  border: 'none',
+                  borderRadius: 10,
+                  fontWeight: 600,
+                  padding: '8px 16px',
+                  boxShadow: '0 4px 12px rgba(239,68,68,0.35)',
+                }}
+              >
+                Logout
+              </button>
             </div>
           </div>
         )}
