@@ -87,6 +87,8 @@ import SiteHome from './pages/site/Home.jsx'
 import SiteAbout from './pages/site/About.jsx'
 import SiteContact from './pages/site/Contact.jsx'
 import SiteCategories from './pages/site/Categories.jsx'
+import Terms from './pages/site/Terms.jsx'
+import Privacy from './pages/site/Privacy.jsx'
 import UserFinances from './pages/user/Finances.jsx'
 import UserManagerFinances from './pages/user/ManagerFinances.jsx'
 import AgentAmounts from './pages/user/AgentAmounts.jsx'
@@ -329,6 +331,8 @@ export default function App() {
             <Route path="/about" element={<SiteAbout />} />
             <Route path="/contact" element={<SiteContact />} />
             <Route path="/categories" element={<SiteCategories />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
 
             {/* Public ecommerce routes */}
             <Route path="/catalog" element={<ProductCatalog />} />
