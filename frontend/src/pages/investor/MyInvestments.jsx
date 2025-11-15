@@ -90,15 +90,16 @@ export default function MyInvestments() {
               fontSize: 32,
               fontWeight: 800,
               margin: 0,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, #10b981 0%, #22c55e 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
             }}
           >
-            My Investment
+            My Daily Profit
           </h1>
           <p style={{ fontSize: 15, opacity: 0.7, margin: '8px 0 0 0' }}>
-            Track your investment progress and profit from orders
+            See how much you earn every day from your invested amount (10% of capital divided by
+            30).
           </p>
         </div>
       </div>
@@ -122,7 +123,7 @@ export default function MyInvestments() {
         </div>
       ) : (
         <>
-          {/* Investment Overview */}
+          {/* Daily & Investment Overview */}
           <div
             style={{
               display: 'grid',
@@ -130,6 +131,51 @@ export default function MyInvestments() {
               gap: 16,
             }}
           >
+            {/* Daily Profit (10% / 30) */}
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #10b981 0%, #22c55e 100%)',
+                borderRadius: 16,
+                padding: 24,
+                color: '#fff',
+                boxShadow: '0 10px 40px rgba(34, 197, 94, 0.35)',
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  top: -20,
+                  right: -20,
+                  width: 120,
+                  height: 120,
+                  background: 'rgba(255,255,255,0.1)',
+                  borderRadius: '50%',
+                }}
+              ></div>
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <div
+                  style={{
+                    fontSize: 13,
+                    opacity: 0.9,
+                    marginBottom: 12,
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                  }}
+                >
+                  Daily Profit
+                </div>
+                <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>
+                  {currency} {formatCurrency(dailyProfit)}
+                </div>
+                <div style={{ fontSize: 13, opacity: 0.85 }}>
+                  Based on {currency} {formatCurrency(investmentAmount)} × 10% ÷ 30
+                </div>
+              </div>
+            </div>
+
             {/* Investment Amount */}
             <div
               style={{
@@ -257,51 +303,6 @@ export default function MyInvestments() {
                 </div>
                 <div style={{ fontSize: 13, opacity: 0.85 }}>
                   From {orders.length} order{orders.length !== 1 ? 's' : ''}
-                </div>
-              </div>
-            </div>
-
-            {/* Daily Profit (10% / 30) */}
-            <div
-              style={{
-                background: 'linear-gradient(135deg, #10b981 0%, #22c55e 100%)',
-                borderRadius: 16,
-                padding: 24,
-                color: '#fff',
-                boxShadow: '0 10px 40px rgba(34, 197, 94, 0.35)',
-                position: 'relative',
-                overflow: 'hidden',
-              }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  top: -20,
-                  right: -20,
-                  width: 120,
-                  height: 120,
-                  background: 'rgba(255,255,255,0.1)',
-                  borderRadius: '50%',
-                }}
-              ></div>
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <div
-                  style={{
-                    fontSize: 13,
-                    opacity: 0.9,
-                    marginBottom: 12,
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: 1,
-                  }}
-                >
-                  Daily Profit
-                </div>
-                <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>
-                  {currency} {formatCurrency(dailyProfit)}
-                </div>
-                <div style={{ fontSize: 13, opacity: 0.85 }}>
-                  Calculated as {currency} {formatCurrency(investmentAmount)} × 10% ÷ 30
                 </div>
               </div>
             </div>

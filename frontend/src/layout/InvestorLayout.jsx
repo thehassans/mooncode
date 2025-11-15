@@ -18,6 +18,8 @@ export default function InvestorLayout() {
       return 'dark'
     }
   })
+  const [showSettings, setShowSettings] = useState(false)
+
   useEffect(() => {
     try {
       localStorage.setItem('theme', theme)
@@ -26,6 +28,19 @@ export default function InvestorLayout() {
     if (theme === 'light') root.setAttribute('data-theme', 'light')
     else root.removeAttribute('data-theme')
   }, [theme])
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (!showSettings) return
+      const dropdown = document.querySelector('.investor-settings-dropdown')
+      const button = document.querySelector('.investor-settings-button')
+      if (dropdown && dropdown.contains(e.target)) return
+      if (button && button.contains(e.target)) return
+      setShowSettings(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showSettings])
   useEffect(() => {
     function onResize() {
       setIsMobile(window.innerWidth <= 768)
@@ -284,7 +299,7 @@ export default function InvestorLayout() {
             </div>
           </aside>
         )}
-        {!isMobile && (
+        {
           <div
             className="topbar"
             style={{
@@ -422,6 +437,7 @@ export default function InvestorLayout() {
                 alignItems: 'center',
                 gap: 10,
                 flexShrink: 0,
+                position: 'relative',
               }}
             >
               <button
@@ -469,6 +485,72 @@ export default function InvestorLayout() {
               </button>
               <button
                 type="button"
+                className="btn secondary investor-settings-button"
+                title="Investor settings"
+                onClick={() => setShowSettings((s) => !s)}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  border: '1px solid var(--border)',
+                  background: 'var(--panel)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 0,
+                }}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0A1.65 1.65 0 0 0 9 3.09V3a2 2 0 0 1 4 0v.09c0 .67.39 1.28 1 1.57h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0c.3.61.91 1 1.58 1H21a2 2 0 0 1 0 4h-.09c-.67 0-1.28.39-1.57 1z" />
+                </svg>
+              </button>
+              {showSettings && (
+                <div
+                  className="investor-settings-dropdown"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    width: 220,
+                    background: 'var(--panel)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    boxShadow: '0 8px 32px rgba(15,23,42,0.6)',
+                    padding: 8,
+                    zIndex: 200,
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    onClick={() => {
+                      setShowSettings(false)
+                      navigate('/investor/profile')
+                    }}
+                    style={{
+                      width: '100%',
+                      justifyContent: 'flex-start',
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      fontSize: 13,
+                    }}
+                  >
+                    Profile
+                  </button>
+                </div>
+              )}
+              <button
+                type="button"
                 className="btn danger"
                 onClick={doLogout}
                 style={{
@@ -484,7 +566,7 @@ export default function InvestorLayout() {
               </button>
             </div>
           </div>
-        )}
+        }
         <div
           className={`container ${location.pathname.includes('/inbox/whatsapp') ? 'edge-to-edge' : ''}`}
           style={{
@@ -502,11 +584,9 @@ export default function InvestorLayout() {
           role="navigation"
           aria-label="Primary"
           style={{
-            background:
-              'linear-gradient(180deg, rgba(102, 126, 234, 0.12), rgba(118, 75, 162, 0.15))',
-            backdropFilter: 'blur(20px)',
-            borderTop: '1px solid rgba(102, 126, 234, 0.25)',
-            boxShadow: '0 -4px 24px rgba(102, 126, 234, 0.15)',
+            background: 'var(--sidebar-bg)',
+            borderTop: '1px solid var(--sidebar-border)',
+            boxShadow: '0 -4px 24px rgba(15,23,42,0.75)',
           }}
         >
           {mobileTabs.map((tab) => (
