@@ -126,13 +126,10 @@ export default function InvestorRegister() {
   }
 
   return (
-    <div className="animated-gradient grid min-h-[100dvh] grid-rows-[auto_1fr]">
+    <div className="login-root">
       <div
         className="header flex items-center justify-between px-6 py-4"
-        style={{
-          background: 'rgba(255,255,255,0.1)',
-          borderBottom: '1px solid rgba(255,255,255,0.2)',
-        }}
+        style={{ background: 'transparent', borderBottom: '1px solid transparent' }}
       >
         <Link
           to="/catalog"
@@ -155,220 +152,281 @@ export default function InvestorRegister() {
           Already an investor? Sign In
         </Link>
       </div>
-
-      <div className="grid place-items-center p-6">
-        <form
-          onSubmit={handleSubmit}
-          className="card grid w-full max-w-lg gap-4 rounded-xl border border-[var(--border)] bg-[var(--panel)]"
-          aria-busy={loading}
-        >
-          <div className="mb-4 grid place-items-center gap-2">
-            {(() => {
-              const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
-              const src = branding.loginLogo ? `${API_BASE}${branding.loginLogo}` : fallback
-              return (
-                <img
-                  src={src}
-                  alt="BuySial"
-                  className="h-16 w-16 rounded-xl bg-white object-contain"
-                />
-              )
-            })()}
-            <div className="page-title gradient heading-brand text-[28px] tracking-tight">
-              Investor Sign Up
+      <div className="login-main">
+        <div className="login-shell">
+          <div className="login-grid">
+            <div className="login-left">
+              <div className="login-left-top">
+                {(() => {
+                  const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
+                  const src = branding.loginLogo ? `${API_BASE}${branding.loginLogo}` : fallback
+                  return <img src={src} alt="BuySial" className="login-logo" />
+                })()}
+              </div>
+              <div className="login-left-copy">
+                <div className="login-eyebrow">Welcome to BuySial</div>
+                <h1 className="login-heading">Create your account</h1>
+                <p className="login-subtext">It takes just a minute and it’s free.</p>
+              </div>
             </div>
-            <div className="helper text-center">
-              Create your investor account and access your dashboard
+            <div className="login-right">
+              <form onSubmit={handleSubmit} className="login-card" aria-busy={loading}>
+                <div className="login-card-header">
+                  <div className="login-card-title">Investor Sign Up</div>
+                  <div className="login-card-subtitle">
+                    Create your investor account and access your dashboard.
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label
+                      htmlFor="firstName"
+                      className="mb-1 block text-sm font-medium text-gray-300"
+                    >
+                      First Name *
+                    </label>
+                    <input
+                      type="text"
+                      id="firstName"
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleChange}
+                      required
+                      className="input login-field-input"
+                      placeholder="John"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="lastName"
+                      className="mb-1 block text-sm font-medium text-gray-300"
+                    >
+                      Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      id="lastName"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      required
+                      className="input login-field-input"
+                      placeholder="Doe"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-300">
+                    Your Email (for login) *
+                  </label>
+                  <div className="login-field">
+                    <div className="login-field-icon" aria-hidden>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8" />
+                        <path
+                          d="M4 20.5C4.8 17.5 8 15 12 15C16 15 19.2 17.5 20 20.5"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                      className="input login-field-input"
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="ownerEmail"
+                    className="mb-1 block text-sm font-medium text-gray-300"
+                  >
+                    Workspace Owner Email *
+                  </label>
+                  <input
+                    type="email"
+                    id="ownerEmail"
+                    name="ownerEmail"
+                    value={formData.ownerEmail}
+                    onChange={handleChange}
+                    required
+                    className="input login-field-input"
+                    placeholder="owner@business.com"
+                  />
+                  <p className="mt-1 text-xs text-gray-400">
+                    This is your workspace owner's email so we can link your account to their store.
+                    You will sign in using <strong>your own email</strong> above.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="phone" className="mb-1 block text-sm font-medium text-gray-300">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      className="input login-field-input"
+                      placeholder="+971 50 123 4567"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="country"
+                      className="mb-1 block text-sm font-medium text-gray-300"
+                    >
+                      Country
+                    </label>
+                    <select
+                      id="country"
+                      name="country"
+                      value={formData.country}
+                      onChange={handleChange}
+                      className="input login-field-input"
+                    >
+                      <option value="UAE">UAE</option>
+                      <option value="Oman">Oman</option>
+                      <option value="KSA">Saudi Arabia</option>
+                      <option value="Bahrain">Bahrain</option>
+                      <option value="India">India</option>
+                      <option value="Kuwait">Kuwait</option>
+                      <option value="Qatar">Qatar</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="mb-1 block text-sm font-medium text-gray-300"
+                  >
+                    Password *
+                  </label>
+                  <div className="login-field">
+                    <div className="login-field-icon" aria-hidden>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <rect
+                          x="5"
+                          y="10"
+                          width="14"
+                          height="10"
+                          rx="2"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                        />
+                        <path
+                          d="M8 10V8.5C8 6.57 9.57 5 11.5 5H12.5C14.43 5 16 6.57 16 8.5V10"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <PasswordInput
+                      id="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={(value) => setFormData((prev) => ({ ...prev, password: value }))}
+                      required
+                      placeholder="Enter your password"
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-400">Must be at least 6 characters long</p>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="confirmPassword"
+                    className="mb-1 block text-sm font-medium text-gray-300"
+                  >
+                    Confirm Password *
+                  </label>
+                  <div className="login-field">
+                    <div className="login-field-icon" aria-hidden>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <rect
+                          x="5"
+                          y="10"
+                          width="14"
+                          height="10"
+                          rx="2"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                        />
+                        <path
+                          d="M8 10V8.5C8 6.57 9.57 5 11.5 5H12.5C14.43 5 16 6.57 16 8.5V10"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <PasswordInput
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={(value) =>
+                        setFormData((prev) => ({ ...prev, confirmPassword: value }))
+                      }
+                      required
+                      placeholder="Confirm your password"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    id="acceptTerms"
+                    name="acceptTerms"
+                    checked={formData.acceptTerms}
+                    onChange={handleChange}
+                    required
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
+                  />
+                  <label htmlFor="acceptTerms" className="text-sm text-gray-300">
+                    I agree to the{' '}
+                    <Link to="/terms" className="text-emerald-300 underline hover:text-emerald-200">
+                      Terms and Conditions
+                    </Link>{' '}
+                    and{' '}
+                    <Link
+                      to="/privacy"
+                      className="text-emerald-300 underline hover:text-emerald-200"
+                    >
+                      Privacy Policy
+                    </Link>
+                  </label>
+                </div>
+
+                <button type="submit" disabled={loading} className="btn login-submit w-full">
+                  {loading ? 'Creating Account...' : 'Create Investor Account'}
+                </button>
+
+                <div className="text-center text-sm text-gray-300">
+                  Already an investor?{' '}
+                  <Link to="/login" className="font-medium text-emerald-300 hover:text-emerald-200">
+                    Sign in here
+                  </Link>
+                </div>
+              </form>
             </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="firstName" className="mb-1 block text-sm font-medium text-gray-700">
-                First Name *
-              </label>
-              <input
-                type="text"
-                id="firstName"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                required
-                className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
-                placeholder="John"
-              />
-            </div>
-            <div>
-              <label htmlFor="lastName" className="mb-1 block text-sm font-medium text-gray-700">
-                Last Name *
-              </label>
-              <input
-                type="text"
-                id="lastName"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                required
-                className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
-                placeholder="Doe"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700">
-              Your Email (for login) *
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
-              placeholder="you@example.com"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="ownerEmail" className="mb-1 block text-sm font-medium text-gray-700">
-              Workspace Owner Email *
-            </label>
-            <input
-              type="email"
-              id="ownerEmail"
-              name="ownerEmail"
-              value={formData.ownerEmail}
-              onChange={handleChange}
-              required
-              className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
-              placeholder="owner@business.com"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              This is your workspace owner's email so we can link your account to their store. You
-              will sign in using <strong>your own email</strong> above.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="phone" className="mb-1 block text-sm font-medium text-gray-700">
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
-                placeholder="+971 50 123 4567"
-              />
-            </div>
-            <div>
-              <label htmlFor="country" className="mb-1 block text-sm font-medium text-gray-700">
-                Country
-              </label>
-              <select
-                id="country"
-                name="country"
-                value={formData.country}
-                onChange={handleChange}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
-              >
-                <option value="UAE">UAE</option>
-                <option value="Oman">Oman</option>
-                <option value="KSA">Saudi Arabia</option>
-                <option value="Bahrain">Bahrain</option>
-                <option value="India">India</option>
-                <option value="Kuwait">Kuwait</option>
-                <option value="Qatar">Qatar</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700">
-              Password *
-            </label>
-            <PasswordInput
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={(value) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  password: value,
-                }))
-              }
-              required
-              placeholder="Enter your password"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
-            />
-            <p className="mt-1 text-xs text-gray-500">Must be at least 6 characters long</p>
-          </div>
-
-          <div>
-            <label
-              htmlFor="confirmPassword"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Confirm Password *
-            </label>
-            <PasswordInput
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={(value) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  confirmPassword: value,
-                }))
-              }
-              required
-              placeholder="Confirm your password"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
-            />
-          </div>
-
-          <div className="flex items-start gap-2">
-            <input
-              type="checkbox"
-              id="acceptTerms"
-              name="acceptTerms"
-              checked={formData.acceptTerms}
-              onChange={handleChange}
-              required
-              className="mt-1 h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
-            />
-            <label htmlFor="acceptTerms" className="text-sm text-gray-700">
-              I agree to the{' '}
-              <Link to="/terms" className="text-orange-600 underline hover:text-orange-700">
-                Terms and Conditions
-              </Link>{' '}
-              and{' '}
-              <Link to="/privacy" className="text-orange-600 underline hover:text-orange-700">
-                Privacy Policy
-              </Link>
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-md bg-orange-500 px-4 py-3 font-medium text-white transition-colors outline-none hover:bg-orange-600 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:bg-gray-400"
-          >
-            {loading ? 'Creating Account...' : 'Create Investor Account'}
-          </button>
-
-          <div className="text-center text-sm text-gray-600">
-            Already an investor?{' '}
-            <Link to="/login" className="font-medium text-orange-600 hover:text-orange-700">
-              Sign in here
-            </Link>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   )
