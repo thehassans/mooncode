@@ -126,10 +126,11 @@ export default function UserLogin() {
           <div className="login-grid">
             <div className="login-left">
               <div className="login-left-top">
-                <img src={logoSrc} alt="BuySial" className="login-logo" />
+                <div className="login-logo-badge">
+                  <img src={logoSrc} alt="BuySial" className="login-logo" />
+                </div>
               </div>
               <div className="login-left-copy">
-                <div className="login-eyebrow">Welcome to BuySial</div>
                 <h1 className="login-heading">Welcome to BuySial</h1>
                 <p className="login-subtext">Sign in to continue to your workspace dashboard.</p>
               </div>
