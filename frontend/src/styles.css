@@ -1890,6 +1890,8 @@ a {
   color: #e5e7eb;
   position: relative;
   overflow: hidden;
+  /* Force brand button color to dark blue within login scope */
+  --btn: #1d4ed8;
 }
 .login-root::before {
   content: '';
@@ -1955,8 +1957,8 @@ a {
 .login-left {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 32px;
+  justify-content: flex-start; /* keep hero copy high */
+  gap: 18px;
   padding: 12px 8px;
   color: #e5e7eb;
 }
@@ -1981,7 +1983,7 @@ a {
   display: block;
 }
 .login-left-copy {
-  margin-top: 32px;
+  margin-top: 4px;
   max-width: 360px;
 }
 .login-eyebrow {
@@ -2182,6 +2184,11 @@ a {
   color: #eaf2ff !important;
 }
 button.btn.login-submit {
+  background: linear-gradient(135deg, #1e3a8a, #1d4ed8) !important;
+  border: 1px solid rgba(37, 99, 235, 0.5) !important;
+  color: #ffffff !important;
+}
+.login-card button[type='submit'] {
   background: linear-gradient(135deg, #1e3a8a, #1d4ed8) !important;
   border: 1px solid rgba(37, 99, 235, 0.5) !important;
   color: #ffffff !important;
