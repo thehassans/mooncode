@@ -10,6 +10,7 @@ export default function InvestorRegister() {
     firstName: '',
     lastName: '',
     email: '',
+    ownerEmail: '',
     password: '',
     confirmPassword: '',
     phone: '',
@@ -39,6 +40,21 @@ export default function InvestorRegister() {
       const sp = new URLSearchParams(window.location.search)
       const r = sp.get('ref') || ''
       if (r) setReferralCode(r)
+      const owner = sp.get('owner') || sp.get('ownerEmail') || sp.get('o') || ''
+      if (owner) {
+        setFormData((prev) => ({ ...prev, ownerEmail: owner }))
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('me') || '{}'
+      const me = JSON.parse(raw)
+      const owner = me?.role === 'user' ? me?.email : ''
+      if (owner) {
+        setFormData((prev) => (prev.ownerEmail ? prev : { ...prev, ownerEmail: owner }))
+      }
     } catch {}
   }, [])
 
@@ -67,6 +83,14 @@ export default function InvestorRegister() {
       toast.error('Please enter a valid email address')
       return false
     }
+    if (!formData.ownerEmail.trim()) {
+      toast.error("Owner's email is required")
+      return false
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.ownerEmail)) {
+      toast.error('Please enter a valid owner email address')
+      return false
+    }
     if (formData.password.length < 6) {
       toast.error('Password must be at least 6 characters long')
       return false
@@ -92,6 +116,7 @@ export default function InvestorRegister() {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         email: formData.email.trim().toLowerCase(),
+        ownerEmail: formData.ownerEmail.trim().toLowerCase(),
         password: formData.password,
         phone: formData.phone.trim(),
         country: formData.country,
@@ -271,6 +296,38 @@ export default function InvestorRegister() {
                       required
                       className="input login-field-input"
                       placeholder="you@example.com"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="ownerEmail"
+                    className="mb-1 block text-sm font-medium text-gray-300"
+                  >
+                    Workspace Owner Email (required)
+                  </label>
+                  <div className="login-field">
+                    <div className="login-field-icon" aria-hidden>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8" />
+                        <path
+                          d="M4 20.5C4.8 17.5 8 15 12 15C16 15 19.2 17.5 20 20.5"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <input
+                      type="email"
+                      id="ownerEmail"
+                      name="ownerEmail"
+                      value={formData.ownerEmail}
+                      onChange={handleChange}
+                      required
+                      className="input login-field-input"
+                      placeholder="workspace.owner@yourcompany.com"
                     />
                   </div>
                 </div>
