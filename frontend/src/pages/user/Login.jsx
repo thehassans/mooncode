@@ -107,8 +107,11 @@ export default function UserLogin() {
     }
   }
 
+  const fallbackLogo = `${import.meta.env.BASE_URL}BuySial2.png`
+  const logoSrc = branding.loginLogo ? `${API_BASE}${branding.loginLogo}` : fallbackLogo
+
   return (
-    <div className="animated-gradient grid min-h-[100dvh] grid-rows-[auto_1fr]">
+    <div className="login-root">
       {/* Header bar transparent on login to reveal gradient */}
       <div
         className="header flex items-center justify-center py-2"
@@ -118,94 +121,96 @@ export default function UserLogin() {
       </div>
 
       {/* Main content */}
-      <div className="grid place-items-center p-6">
-        <form
-          onSubmit={login}
-          className="card grid w-full max-w-md gap-3 rounded-xl border border-[var(--border)] bg-[var(--panel)]"
-          aria-busy={loading}
-        >
-          <div className="grid place-items-center gap-2">
-            {(() => {
-              const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
-              const src = branding.loginLogo ? `${API_BASE}${branding.loginLogo}` : fallback
-              return (
-                <img
-                  src={src}
-                  alt="BuySial"
-                  className="h-16 w-16 rounded-xl bg-white object-contain"
-                />
-              )
-            })()}
-            <div className="page-title gradient heading-brand text-[28px] tracking-tight">
-              Welcome
+      <div className="login-main">
+        <div className="login-shell">
+          <div className="login-grid">
+            <div className="login-left">
+              <div className="login-left-top">
+                <img src={logoSrc} alt="BuySial" className="login-logo" />
+              </div>
+              <div className="login-left-copy">
+                <div className="login-eyebrow">Welcome back . . .</div>
+                <h1 className="login-heading">Welcome back</h1>
+                <p className="login-subtext">Sign in to continue to your workspace dashboard.</p>
+              </div>
             </div>
-            <div className="helper text-center">Sign in to access your dashboard</div>
-          </div>
-
-          <div>
-            <div className="label">Email</div>
-            <input
-              className="input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@buysial.com"
-              autoComplete="email"
-              required
-            />
-          </div>
-          <div>
-            <div className="label">Password</div>
-            <PasswordInput
-              value={password}
-              onChange={setPassword}
-              autoComplete="current-password"
-            />
-          </div>
-          <div className="mt-0.5 text-right">
-            <a
-              className="text-sm text-slate-500 underline-offset-4 hover:text-slate-700 hover:underline dark:text-slate-400 dark:hover:text-slate-200"
-              href="#"
-              onClick={(e) => {
-                e.preventDefault()
-                toast.info('Forgot password coming soon')
-              }}
-            >
-              Forgot password?
-            </a>
-          </div>
-
-          <button className="btn mt-1.5 w-full" disabled={loading}>
-            {loading ? (
-              <>
-                <span className="spinner mr-2 align-middle"></span>Signing in…
-              </>
-            ) : (
-              'Login'
-            )}
-          </button>
-
-          <div className="mt-2 grid gap-1.5">
-            {(() => {
-              const dbLabel = String(health.dbLabel || '').toLowerCase()
-              const allGood = health.ok && dbLabel === 'connected'
-              if (allGood) return null
-              const apiLabel = health.ok ? 'ok' : 'down'
-              const statusText = `API: ${apiLabel} · DB: ${health.dbLabel || 'unknown'}`
-              return (
-                <div className="flex justify-center">
-                  <button
-                    type="button"
-                    className="btn danger"
-                    title={statusText}
-                    onClick={() => window.location.reload()}
-                  >
-                    Connection issue
-                  </button>
+            <div className="login-right">
+              <form onSubmit={login} className="login-card" aria-busy={loading}>
+                <div className="login-card-header">
+                  <div className="login-card-title">Sign in to continue</div>
+                  <div className="login-card-subtitle">
+                    Use your email and password to access your dashboard.
+                  </div>
                 </div>
-              )
-            })()}
+
+                <div>
+                  <div className="label">Email</div>
+                  <input
+                    className="input"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@buysial.com"
+                    autoComplete="email"
+                    required
+                  />
+                </div>
+                <div>
+                  <div className="label">Password</div>
+                  <PasswordInput
+                    value={password}
+                    onChange={setPassword}
+                    autoComplete="current-password"
+                  />
+                </div>
+
+                <div className="login-forgot-row">
+                  <a
+                    className="login-forgot-link"
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      toast.info('Forgot password coming soon')
+                    }}
+                  >
+                    Forgot password?
+                  </a>
+                </div>
+
+                <button className="btn login-submit" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <span className="spinner mr-2 align-middle"></span>Signing in…
+                    </>
+                  ) : (
+                    'Login'
+                  )}
+                </button>
+
+                <div className="login-health">
+                  {(() => {
+                    const dbLabel = String(health.dbLabel || '').toLowerCase()
+                    const allGood = health.ok && dbLabel === 'connected'
+                    if (allGood) return null
+                    const apiLabel = health.ok ? 'ok' : 'down'
+                    const statusText = `API: ${apiLabel} · DB: ${health.dbLabel || 'unknown'}`
+                    return (
+                      <div className="flex justify-center">
+                        <button
+                          type="button"
+                          className="btn danger"
+                          title={statusText}
+                          onClick={() => window.location.reload()}
+                        >
+                          Connection issue
+                        </button>
+                      </div>
+                    )
+                  })()}
+                </div>
+              </form>
+            </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   )
