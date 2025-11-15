@@ -132,7 +132,9 @@ export default function UserLogin() {
               </div>
               <div className="login-left-copy">
                 <h1 className="login-heading">
-                  Welcome to BuyS<span className="login-heading-ia">ia</span>l
+                  Welcome to <span className="login-heading-buysl">BuyS</span>
+                  <span className="login-heading-ia">ia</span>
+                  <span className="login-heading-buysl">l</span>
                 </h1>
                 <p className="login-subtext">Sign in to continue to your workspace dashboard.</p>
               </div>

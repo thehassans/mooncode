@@ -2086,6 +2086,10 @@ a {
   color: #ec8538;
   -webkit-text-fill-color: #ec8538;
 }
+.login-heading-buysl {
+  color: #4f8fef;
+  -webkit-text-fill-color: #4f8fef;
+}
 .login-subtext {
   font-size: 14px;
   max-width: 320px;

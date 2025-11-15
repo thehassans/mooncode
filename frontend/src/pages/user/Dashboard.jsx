@@ -520,26 +520,18 @@ export default function UserDashboard() {
       Other: 0,
     }))
 
-    // Drivers: fetch first page fast for responsiveness, then background the rest
+    // Drivers: fetch first page fast for responsiveness, then background the rest.
+    // Do NOT block main dashboard hydration on drivers.
     const driversFirstP = apiGet(`/api/finance/drivers/summary?page=1&limit=100&${dateParams}`, {
       signal: controller.signal,
     }).catch((e) => (e?.name === 'AbortError' ? null : null))
 
-    const [cfg, analyticsRes, metricsRes, salesRes, driversFirst] = await Promise.all([
-      cfgP,
-      analyticsP,
-      metricsP,
-      salesP,
-      driversFirstP,
-    ])
+    // Core data needed for main cards (metrics + sales + currency config)
+    const [cfg, metricsRes, salesRes] = await Promise.all([cfgP, metricsP, salesP])
     if (loadSeqRef.current !== seq) return
 
-    // Apply results + cache
+    // Apply core results + cache and hydrate UI as soon as possible
     setCurrencyCfg(cfg)
-    if (analyticsRes) {
-      setAnalytics(analyticsRes)
-      cacheSet('analytics', dateParams, analyticsRes)
-    }
     if (metricsRes) {
       setMetrics(metricsRes)
       cacheSet('metrics', dateParams, metricsRes)
@@ -548,40 +540,59 @@ export default function UserDashboard() {
       setSalesByCountry(salesRes)
       cacheSet('salesByCountry', dateParams, salesRes)
     }
-
-    if (driversFirst) {
-      const arr = Array.isArray(driversFirst?.drivers) ? driversFirst.drivers : []
-      setDrivers(arr)
-      // Background fetch remaining pages without blocking UI
-      ;(async () => {
-        try {
-          const bgController = new AbortController()
-          bgAbortRef.current = bgController
-          let page = 2,
-            limit = 100,
-            all = arr.slice(0)
-          while (driversFirst?.hasMore && page <= 100) {
-            if (loadSeqRef.current !== seq) break
-            const ds = await apiGet(
-              `/api/finance/drivers/summary?page=${page}&limit=${limit}&${dateParams}`,
-              { signal: bgController.signal }
-            ).catch((e) => {
-              if (e?.name === 'AbortError') return null
-              throw e
-            })
-            if (!ds) break
-            const chunk = Array.isArray(ds?.drivers) ? ds.drivers : []
-            all = all.concat(chunk)
-            setDrivers(all)
-            if (!ds?.hasMore) break
-            page += 1
-          }
-        } catch {}
-      })()
-    } else {
-      setDrivers([])
-    }
     setHydrated(true)
+
+    // Handle analytics in parallel: used mainly for the chart, so don't block hydration
+    analyticsP
+      .then((analyticsRes) => {
+        if (loadSeqRef.current !== seq) return
+        if (analyticsRes) {
+          setAnalytics(analyticsRes)
+          cacheSet('analytics', dateParams, analyticsRes)
+        }
+      })
+      .catch(() => {})
+
+    // Handle drivers in parallel and then background remaining pages
+    driversFirstP
+      .then((driversFirst) => {
+        if (loadSeqRef.current !== seq) return
+        if (driversFirst) {
+          const arr = Array.isArray(driversFirst?.drivers) ? driversFirst.drivers : []
+          setDrivers(arr)
+          ;(async () => {
+            try {
+              const bgController = new AbortController()
+              bgAbortRef.current = bgController
+              let page = 2,
+                limit = 100,
+                all = arr.slice(0)
+              while (driversFirst?.hasMore && page <= 100) {
+                if (loadSeqRef.current !== seq) break
+                const ds = await apiGet(
+                  `/api/finance/drivers/summary?page=${page}&limit=${limit}&${dateParams}`,
+                  { signal: bgController.signal }
+                ).catch((e) => {
+                  if (e?.name === 'AbortError') return null
+                  throw e
+                })
+                if (!ds) break
+                const chunk = Array.isArray(ds?.drivers) ? ds.drivers : []
+                all = all.concat(chunk)
+                setDrivers(all)
+                if (!ds?.hasMore) break
+                page += 1
+              }
+            } catch {}
+          })()
+        } else {
+          setDrivers([])
+        }
+      })
+      .catch(() => {
+        if (loadSeqRef.current !== seq) return
+        setDrivers([])
+      })
   }
   useEffect(() => {
     try {
