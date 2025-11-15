@@ -337,6 +337,7 @@ export default function App() {
 
             {/* Staff/Admin Login */}
             <Route path="/login" element={<UserLogin />} />
+            <Route path="/investorsignup" element={<InvestorRegister />} />
             <Route path="/investor-register" element={<InvestorRegister />} />
 
             {/* Print Label (standalone, minimal UI) */}

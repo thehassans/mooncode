@@ -205,16 +205,6 @@ export default function UserLogin() {
               )
             })()}
           </div>
-
-          <div className="mt-4 text-center text-sm text-slate-500 dark:text-slate-400">
-            <span>Investor? </span>
-            <a
-              href="/investor-register"
-              className="underline underline-offset-4 hover:text-slate-700 dark:hover:text-slate-200"
-            >
-              Create your account
-            </a>
-          </div>
         </form>
       </div>
     </div>

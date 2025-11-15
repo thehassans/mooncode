@@ -140,7 +140,7 @@ export default function InvestorLayout() {
         minHeight: '100vh',
         background:
           'radial-gradient(1200px circle at top, rgba(129,140,248,0.18), transparent), radial-gradient(1200px circle at bottom, rgba(248,113,113,0.16), #020617)',
-        color: 'var(--text)',
+        color: 'var(--fg)',
       }}
     >
       <div
@@ -325,28 +325,30 @@ export default function InvestorLayout() {
                 flexShrink: 0,
               }}
             >
-              <button
-                className="btn secondary"
-                onClick={() => setClosed((c) => !c)}
-                title={closed ? 'Open menu' : 'Close menu'}
-                aria-label={closed ? 'Open menu' : 'Close menu'}
-                style={{
-                  width: 40,
-                  height: 40,
-                  padding: 0,
-                  display: 'grid',
-                  placeItems: 'center',
-                  background: 'var(--panel)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 10,
-                  fontWeight: 700,
-                  fontSize: 18,
-                  boxShadow: '0 2px 8px rgba(15,23,42,0.35)',
-                  transition: 'all 0.3s ease',
-                }}
-              >
-                ☰
-              </button>
+              {!isMobile && (
+                <button
+                  className="btn secondary"
+                  onClick={() => setClosed((c) => !c)}
+                  title={closed ? 'Open menu' : 'Close menu'}
+                  aria-label={closed ? 'Open menu' : 'Close menu'}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    padding: 0,
+                    display: 'grid',
+                    placeItems: 'center',
+                    background: 'var(--panel)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    fontWeight: 700,
+                    fontSize: 18,
+                    boxShadow: '0 2px 8px rgba(15,23,42,0.35)',
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  ☰
+                </button>
+              )}
               {(() => {
                 const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
                 const src = me.headerLogo ? `${API_BASE}${me.headerLogo}` : fallback
@@ -587,9 +589,9 @@ export default function InvestorLayout() {
           role="navigation"
           aria-label="Primary"
           style={{
-            background: 'var(--sidebar-bg)',
-            borderTop: '1px solid var(--sidebar-border)',
-            boxShadow: '0 -4px 24px rgba(15,23,42,0.75)',
+            background: 'var(--panel-2)',
+            borderTop: '1px solid var(--border)',
+            boxShadow: '0 -4px 24px rgba(15,23,42,0.85)',
           }}
         >
           {mobileTabs.map((tab) => (
