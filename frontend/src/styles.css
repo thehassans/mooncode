@@ -2074,6 +2074,18 @@ a {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+.login-heading-brand {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: #23559d;
+  color: #23559d;
+}
+.login-heading-brand .login-heading-ia,
+.login-heading-ia {
+  color: #ec8538;
+  -webkit-text-fill-color: #ec8538;
+}
 .login-subtext {
   font-size: 14px;
   max-width: 320px;
