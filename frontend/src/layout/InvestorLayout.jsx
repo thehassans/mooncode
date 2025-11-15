@@ -25,7 +25,7 @@ export default function InvestorLayout() {
       localStorage.setItem('theme', theme)
     } catch {}
     const root = document.documentElement
-    if (theme === 'light') root.setAttribute('data-theme', 'light')
+    if (theme === 'dark') root.setAttribute('data-theme', 'dark')
     else root.removeAttribute('data-theme')
   }, [theme])
 
@@ -70,6 +70,25 @@ export default function InvestorLayout() {
           <path d="M3 3v5h5" />
           <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
           <path d="M16 16h5v5" />
+        </svg>
+      ),
+    },
+    {
+      to: '/investor/referrals',
+      label: 'Referrals',
+      icon: (
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M7 7h.01M17 7h.01M12 3a9 9 0 1 0 9 9" />
+          <path d="M12 12l7-3-3 7-2-3-2 3-3-7 3 3z" />
         </svg>
       ),
     },
@@ -139,7 +158,9 @@ export default function InvestorLayout() {
       style={{
         minHeight: '100vh',
         background:
-          'radial-gradient(1200px circle at top, rgba(129,140,248,0.18), transparent), radial-gradient(1200px circle at bottom, rgba(248,113,113,0.16), #020617)',
+          theme === 'light'
+            ? 'radial-gradient(1200px circle at top, rgba(59,130,246,0.10), transparent), radial-gradient(1200px circle at bottom, rgba(16,185,129,0.08), var(--bg))'
+            : 'radial-gradient(1200px circle at top, rgba(129,140,248,0.18), transparent), radial-gradient(1200px circle at bottom, rgba(248,113,113,0.16), #020617)',
         color: 'var(--fg)',
       }}
     >
@@ -210,6 +231,30 @@ export default function InvestorLayout() {
                   <path d="M16 16h5v5" />
                 </svg>
                 <span>Plans</span>
+              </NavLink>
+              <NavLink
+                to="/investor/referrals"
+                className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                style={{
+                  margin: '4px 0',
+                  borderRadius: '12px',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10 13a5 5 0 0 1 7-7l2 2a5 5 0 0 1-7 7l-1-1" />
+                  <path d="M14 11a5 5 0 0 1-7 7l-2-2a5 5 0 0 1 7-7l1 1" />
+                </svg>
+                <span>Referrals</span>
               </NavLink>
               <NavLink
                 to="/investor/my-invest"

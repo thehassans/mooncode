@@ -221,10 +221,10 @@ async function handle(res) {
   throw e
 }
 
-export async function apiGet(path) {
+export async function apiGet(path, opt = {}) {
   const res = await fetchWithRetry(
     buildUrl(path),
-    { headers: { 'Content-Type': 'application/json', ...authHeader() } },
+    { headers: { 'Content-Type': 'application/json', ...authHeader() }, signal: opt.signal },
     { method: 'GET' }
   )
   await handle(res)

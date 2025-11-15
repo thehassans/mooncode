@@ -18,6 +18,7 @@ export default function InvestorRegister() {
   })
   const [loading, setLoading] = useState(false)
   const [branding, setBranding] = useState({ headerLogo: null, loginLogo: null })
+  const [referralCode, setReferralCode] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -31,6 +32,14 @@ export default function InvestorRegister() {
     return () => {
       cancelled = true
     }
+  }, [])
+
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search)
+      const r = sp.get('ref') || ''
+      if (r) setReferralCode(r)
+    } catch {}
   }, [])
 
   const handleChange = (e) => {
@@ -86,6 +95,8 @@ export default function InvestorRegister() {
         password: formData.password,
         phone: formData.phone.trim(),
         country: formData.country,
+        referralCode: referralCode || undefined,
+        referredBy: referralCode || undefined,
       }
 
       const data = await apiPost('/api/auth/register-investor', registrationData)
@@ -167,6 +178,15 @@ export default function InvestorRegister() {
                     Create your investor account and access your dashboard.
                   </div>
                 </div>
+                {referralCode ? (
+                  <div
+                    className="panel"
+                    style={{ marginBottom: 10, padding: 10, borderRadius: 10 }}
+                  >
+                    <div className="helper">Referred by code</div>
+                    <div style={{ fontWeight: 700 }}>{referralCode}</div>
+                  </div>
+                ) : null}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>

@@ -33,6 +33,7 @@ import ManagerExpenses from './pages/manager/Expenses.jsx'
 import AgentInhouseProducts from './pages/agent/AgentInhouseProducts.jsx'
 import InvestorPlans from './pages/investor/Plans.jsx'
 import InvestorProfile from './pages/investor/Profile.jsx'
+import InvestorReferrals from './pages/investor/Referrals.jsx'
 import MyInvestments from './pages/investor/MyInvestments.jsx'
 import InvestorLayout from './layout/InvestorLayout.jsx'
 import DriverLayout from './layout/DriverLayout.jsx'
@@ -419,6 +420,7 @@ export default function App() {
               }
             >
               <Route index element={<InvestorPlans />} />
+              <Route path="referrals" element={<InvestorReferrals />} />
               <Route path="my-invest" element={<MyInvestments />} />
               <Route path="profile" element={<InvestorProfile />} />
             </Route>
