@@ -217,7 +217,7 @@ export default function InvestorRegister() {
 
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700">
-              Your Email *
+              Your Email (for login) *
             </label>
             <input
               type="email"
@@ -246,7 +246,8 @@ export default function InvestorRegister() {
               placeholder="owner@business.com"
             />
             <p className="mt-1 text-xs text-gray-500">
-              Ask the business owner for the email they use to log in to BuySial.
+              This is your workspace owner's email so we can link your account to their store. You
+              will sign in using <strong>your own email</strong> above.
             </p>
           </div>
 
@@ -295,7 +296,12 @@ export default function InvestorRegister() {
               id="password"
               name="password"
               value={formData.password}
-              onChange={handleChange}
+              onChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  password: value,
+                }))
+              }
               required
               placeholder="Enter your password"
               className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
@@ -314,7 +320,12 @@ export default function InvestorRegister() {
               id="confirmPassword"
               name="confirmPassword"
               value={formData.confirmPassword}
-              onChange={handleChange}
+              onChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  confirmPassword: value,
+                }))
+              }
               required
               placeholder="Confirm your password"
               className="w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
