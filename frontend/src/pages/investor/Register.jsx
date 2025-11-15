@@ -161,7 +161,14 @@ export default function InvestorRegister() {
                 {(() => {
                   const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
                   const src = branding.loginLogo ? `${API_BASE}${branding.loginLogo}` : fallback
-                  return <img src={src} alt="BuySial" className="login-logo" />
+                  return (
+                    <img
+                      src={src}
+                      alt="BuySial"
+                      className="login-logo"
+                      style={{ height: 72, width: 'auto' }}
+                    />
+                  )
                 })()}
               </div>
               <div className="login-left-copy">
@@ -178,15 +185,23 @@ export default function InvestorRegister() {
                     Create your investor account and access your dashboard.
                   </div>
                 </div>
-                {referralCode ? (
-                  <div
-                    className="panel"
-                    style={{ marginBottom: 10, padding: 10, borderRadius: 10 }}
+                <div style={{ marginBottom: 12 }}>
+                  <label
+                    htmlFor="referralCode"
+                    className="mb-1 block text-sm font-medium text-gray-300"
                   >
-                    <div className="helper">Referred by code</div>
-                    <div style={{ fontWeight: 700 }}>{referralCode}</div>
-                  </div>
-                ) : null}
+                    Referral Code (optional)
+                  </label>
+                  <input
+                    id="referralCode"
+                    name="referralCode"
+                    type="text"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value)}
+                    className="input login-field-input"
+                    placeholder="Enter referral code if you have one"
+                  />
+                </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
