@@ -337,8 +337,9 @@ export default function App() {
 
             {/* Staff/Admin Login */}
             <Route path="/login" element={<UserLogin />} />
-            <Route path="/investorsignup" element={<InvestorRegister />} />
-            <Route path="/investor-register" element={<InvestorRegister />} />
+            <Route path="/investor/signup" element={<InvestorRegister />} />
+            <Route path="/investorsignup" element={<Navigate to="/investor/signup" replace />} />
+            <Route path="/investor-register" element={<Navigate to="/investor/signup" replace />} />
 
             {/* Print Label (standalone, minimal UI) */}
             <Route
