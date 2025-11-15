@@ -145,22 +145,68 @@ export default function UserLogin() {
 
                 <div>
                   <div className="label">Email</div>
-                  <input
-                    className="input"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@buysial.com"
-                    autoComplete="email"
-                    required
-                  />
+                  <div className="login-field">
+                    <div className="login-field-icon" aria-hidden>
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8" />
+                        <path
+                          d="M4 20.5C4.8 17.5 8 15 12 15C16 15 19.2 17.5 20 20.5"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <input
+                      className="input login-field-input"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@buysial.com"
+                      autoComplete="email"
+                      required
+                    />
+                  </div>
                 </div>
                 <div>
                   <div className="label">Password</div>
-                  <PasswordInput
-                    value={password}
-                    onChange={setPassword}
-                    autoComplete="current-password"
-                  />
+                  <div className="login-field">
+                    <div className="login-field-icon" aria-hidden>
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <rect
+                          x="5"
+                          y="10"
+                          width="14"
+                          height="10"
+                          rx="2"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                        />
+                        <path
+                          d="M8 10V8.5C8 6.57 9.57 5 11.5 5H12.5C14.43 5 16 6.57 16 8.5V10"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <PasswordInput
+                      value={password}
+                      onChange={setPassword}
+                      autoComplete="current-password"
+                    />
+                  </div>
                 </div>
 
                 <div className="login-forgot-row">
