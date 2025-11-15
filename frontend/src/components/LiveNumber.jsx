@@ -8,11 +8,14 @@ export default function LiveNumber({
   locale = undefined,
   maximumFractionDigits = 2,
   className = '',
+  showDelta = true,
 }) {
   const [display, setDisplay] = useState(Number(value) || 0)
   const [flash, setFlash] = useState(false)
+  const [delta, setDelta] = useState(0)
   const rafRef = useRef(null)
   const startRef = useRef({ from: Number(value) || 0, to: Number(value) || 0, t0: 0 })
+  const prevRef = useRef(Number(value) || 0)
 
   useEffect(() => {
     const to = Number(value) || 0
@@ -20,6 +23,8 @@ export default function LiveNumber({
     if (from === to) return
     startRef.current = { from, to, t0: performance.now() }
     setFlash(true)
+    setDelta(to - prevRef.current)
+    prevRef.current = to
     const step = (t) => {
       const { from, to, t0 } = startRef.current
       const p = Math.min(1, (t - t0) / Math.max(120, duration))
@@ -52,6 +57,11 @@ export default function LiveNumber({
       {prefix}
       {fmt(display)}
       {suffix}
+      {showDelta && delta !== 0 && (
+        <sup className={delta > 0 ? 'live-delta up' : 'live-delta down'} aria-hidden>
+          {delta > 0 ? '▲' : '▼'}
+        </sup>
+      )}
     </span>
   )
 }

@@ -761,6 +761,76 @@ a {
     padding: 0;
   }
 
+  /* Premium: live number change highlight */
+  .live-number {
+    transition:
+      color 200ms ease,
+      filter 200ms ease;
+  }
+  .live-number.changed {
+    animation: livePulse 720ms ease;
+  }
+  @keyframes livePulse {
+    0% {
+      filter: brightness(1.35);
+    }
+    100% {
+      filter: brightness(1);
+    }
+  }
+  .live-delta {
+    margin-left: 6px;
+    font-size: 0.7em;
+    font-weight: 800;
+  }
+  .live-delta.up {
+    color: #10b981;
+  }
+  .live-delta.down {
+    color: #ef4444;
+  }
+
+  /* Premium: skeleton shimmer for loading placeholders */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: rgba(148, 163, 184, 0.18);
+    border-radius: 12px;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, 0.22),
+      rgba(255, 255, 255, 0)
+    );
+    animation: skeleton-shimmer 1.25s ease-in-out infinite;
+  }
+  @keyframes skeleton-shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Chart fade-in on data update */
+  .chart-fade {
+    animation: chartFade 360ms ease;
+  }
+  @keyframes chartFade {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   /* Stack page header vertically */
   .page-header {
     flex-direction: column;

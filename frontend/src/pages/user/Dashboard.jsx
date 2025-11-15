@@ -675,214 +675,251 @@ export default function UserDashboard() {
         </div>
       </div>
       {/* Profit/Loss Section */}
-      {metrics?.profitLoss && (
+      {!hydrated ? (
         <div className="card" style={{ marginBottom: 12 }}>
           <div className="section" style={{ display: 'grid', gap: 12 }}>
             <div>
               <div style={{ fontWeight: 800, fontSize: 18 }}>Profit / Loss Overview</div>
               <div className="helper">Delivered orders only</div>
             </div>
-
-            {/* Global Profit/Loss */}
             <div
               className="panel"
               style={{
-                border: '2px solid ' + (metrics.profitLoss.isProfit ? '#10b981' : '#ef4444'),
+                border: '1px solid var(--border)',
                 borderRadius: 12,
                 padding: 16,
                 background: 'var(--panel)',
               }}
             >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: 12,
-                }}
-              >
-                <div>
-                  <div className="helper" style={{ fontSize: 14, marginBottom: 4 }}>
-                    {metrics.profitLoss.isProfit ? 'Total Profit' : 'Total Loss'}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 32,
-                      fontWeight: 900,
-                      color: metrics.profitLoss.isProfit ? '#10b981' : '#ef4444',
-                    }}
-                  >
-                    {metrics.profitLoss.isProfit ? '+' : '-'}{' '}
-                    <LiveNumber
-                      value={Math.abs(metrics.profitLoss.profit || 0)}
-                      prefix="AED "
-                      maximumFractionDigits={2}
-                    />
-                  </div>
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div className="skeleton" style={{ height: 28 }} />
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))',
+                    gap: 10,
+                  }}
+                >
+                  <div className="skeleton" style={{ height: 20 }} />
+                  <div className="skeleton" style={{ height: 20 }} />
+                  <div className="skeleton" style={{ height: 20 }} />
+                  <div className="skeleton" style={{ height: 20 }} />
                 </div>
-                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                  <div style={{ textAlign: 'center' }}>
-                    <div className="helper" style={{ fontSize: 12 }}>
-                      Revenue
-                    </div>
-                    <div style={{ fontWeight: 800, fontSize: 18, color: '#0ea5e9' }}>
-                      <LiveNumber
-                        value={metrics.profitLoss.revenue || 0}
-                        prefix="AED "
-                        maximumFractionDigits={2}
-                      />
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <div className="helper" style={{ fontSize: 12 }}>
-                      Purchase Cost
-                    </div>
-                    <div style={{ fontWeight: 800, fontSize: 18, color: '#8b5cf6' }}>
-                      <LiveNumber
-                        value={metrics.profitLoss.purchaseCost || 0}
-                        prefix="AED "
-                        maximumFractionDigits={2}
-                      />
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <div className="helper" style={{ fontSize: 12 }}>
-                      Driver Commission
-                    </div>
-                    <div style={{ fontWeight: 800, fontSize: 18, color: '#f59e0b' }}>
-                      <LiveNumber
-                        value={metrics.profitLoss.driverCommission || 0}
-                        prefix="AED "
-                        maximumFractionDigits={2}
-                      />
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <div className="helper" style={{ fontSize: 12 }}>
-                      Agent Commission
-                    </div>
-                    <div style={{ fontWeight: 800, fontSize: 18, color: '#f59e0b' }}>
-                      <LiveNumber
-                        value={metrics.profitLoss.agentCommission || 0}
-                        prefix="AED "
-                        maximumFractionDigits={2}
-                      />
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <div className="helper" style={{ fontSize: 12 }}>
-                      Investor Commission
-                    </div>
-                    <div style={{ fontWeight: 800, fontSize: 18, color: '#f59e0b' }}>
-                      <LiveNumber
-                        value={metrics.profitLoss.investorCommission || 0}
-                        prefix="AED "
-                        maximumFractionDigits={2}
-                      />
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <div className="helper" style={{ fontSize: 12 }}>
-                      Advertisement
-                    </div>
-                    <div style={{ fontWeight: 800, fontSize: 18, color: '#ef4444' }}>
-                      <LiveNumber
-                        value={metrics.profitLoss.advertisementExpense || 0}
-                        prefix="AED "
-                        maximumFractionDigits={2}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Country-wise Profit/Loss */}
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 12 }}>
-                Profit / Loss by Country
-              </div>
-              <div
-                className="grid"
-                style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}
-              >
-                {['KSA', 'UAE', 'Oman', 'Bahrain', 'India', 'Kuwait', 'Qatar'].map((c) => {
-                  const profitData = metrics.profitLoss.byCountry?.[c]
-                  if (!profitData) return null
-                  const isProfit = (profitData.profit || 0) >= 0
-                  const flag =
-                    COUNTRY_INFO[c] && COUNTRY_INFO[c].flag ? COUNTRY_INFO[c].flag + ' ' : ''
-                  const title = flag + (c === 'KSA' ? 'Saudi Arabia (KSA)' : c)
-                  const currency = profitData.currency || 'AED'
-
-                  return (
-                    <div
-                      key={c}
-                      className="panel"
-                      style={{
-                        border: '1px solid ' + (isProfit ? '#10b981' : '#ef4444'),
-                        borderRadius: 12,
-                        padding: 12,
-                        background: 'var(--panel)',
-                      }}
-                    >
-                      <div style={{ fontWeight: 900, marginBottom: 8 }}>{title}</div>
-                      <div
-                        style={{
-                          fontSize: 24,
-                          fontWeight: 900,
-                          color: isProfit ? '#10b981' : '#ef4444',
-                          marginBottom: 8,
-                        }}
-                      >
-                        {isProfit ? '+' : '-'} {currency} {fmtAmt(Math.abs(profitData.profit || 0))}
-                      </div>
-                      <div style={{ display: 'grid', gap: 6, fontSize: 13 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span className="helper">Delivered:</span>
-                          <span style={{ fontWeight: 700, color: '#0ea5e9' }}>
-                            {currency} {fmtAmt(profitData.revenue || 0)}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span className="helper">Purchase Cost:</span>
-                          <span style={{ fontWeight: 700, color: '#8b5cf6' }}>
-                            {currency} {fmtAmt(profitData.purchaseCost || 0)}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span className="helper">Driver Comm:</span>
-                          <span style={{ fontWeight: 700, color: '#f59e0b' }}>
-                            {currency} {fmtAmt(profitData.driverCommission || 0)}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span className="helper">Agent Comm:</span>
-                          <span style={{ fontWeight: 700, color: '#f59e0b' }}>
-                            {currency} {fmtAmt(profitData.agentCommission || 0)}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span className="helper">Investor Comm:</span>
-                          <span style={{ fontWeight: 700, color: '#f59e0b' }}>
-                            {currency} {fmtAmt(profitData.investorCommission || 0)}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span className="helper">Advertisement:</span>
-                          <span style={{ fontWeight: 700, color: '#ef4444' }}>
-                            {currency} {fmtAmt(profitData.advertisementExpense || 0)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
               </div>
             </div>
           </div>
         </div>
+      ) : (
+        metrics?.profitLoss && (
+          <div className="card" style={{ marginBottom: 12 }}>
+            <div className="section" style={{ display: 'grid', gap: 12 }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 18 }}>Profit / Loss Overview</div>
+                <div className="helper">Delivered orders only</div>
+              </div>
+
+              {/* Global Profit/Loss */}
+              <div
+                className="panel"
+                style={{
+                  border: '2px solid ' + (metrics.profitLoss.isProfit ? '#10b981' : '#ef4444'),
+                  borderRadius: 12,
+                  padding: 16,
+                  background: 'var(--panel)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: 12,
+                  }}
+                >
+                  <div>
+                    <div className="helper" style={{ fontSize: 14, marginBottom: 4 }}>
+                      {metrics.profitLoss.isProfit ? 'Total Profit' : 'Total Loss'}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 32,
+                        fontWeight: 900,
+                        color: metrics.profitLoss.isProfit ? '#10b981' : '#ef4444',
+                      }}
+                    >
+                      {metrics.profitLoss.isProfit ? '+' : '-'}{' '}
+                      <LiveNumber
+                        value={Math.abs(metrics.profitLoss.profit || 0)}
+                        prefix="AED "
+                        maximumFractionDigits={2}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div className="helper" style={{ fontSize: 12 }}>
+                        Revenue
+                      </div>
+                      <div style={{ fontWeight: 800, fontSize: 18, color: '#0ea5e9' }}>
+                        <LiveNumber
+                          value={metrics.profitLoss.revenue || 0}
+                          prefix="AED "
+                          maximumFractionDigits={2}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div className="helper" style={{ fontSize: 12 }}>
+                        Purchase Cost
+                      </div>
+                      <div style={{ fontWeight: 800, fontSize: 18, color: '#8b5cf6' }}>
+                        <LiveNumber
+                          value={metrics.profitLoss.purchaseCost || 0}
+                          prefix="AED "
+                          maximumFractionDigits={2}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div className="helper" style={{ fontSize: 12 }}>
+                        Driver Commission
+                      </div>
+                      <div style={{ fontWeight: 800, fontSize: 18, color: '#f59e0b' }}>
+                        <LiveNumber
+                          value={metrics.profitLoss.driverCommission || 0}
+                          prefix="AED "
+                          maximumFractionDigits={2}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div className="helper" style={{ fontSize: 12 }}>
+                        Agent Commission
+                      </div>
+                      <div style={{ fontWeight: 800, fontSize: 18, color: '#f59e0b' }}>
+                        <LiveNumber
+                          value={metrics.profitLoss.agentCommission || 0}
+                          prefix="AED "
+                          maximumFractionDigits={2}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div className="helper" style={{ fontSize: 12 }}>
+                        Investor Commission
+                      </div>
+                      <div style={{ fontWeight: 800, fontSize: 18, color: '#f59e0b' }}>
+                        <LiveNumber
+                          value={metrics.profitLoss.investorCommission || 0}
+                          prefix="AED "
+                          maximumFractionDigits={2}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div className="helper" style={{ fontSize: 12 }}>
+                        Advertisement
+                      </div>
+                      <div style={{ fontWeight: 800, fontSize: 18, color: '#ef4444' }}>
+                        <LiveNumber
+                          value={metrics.profitLoss.advertisementExpense || 0}
+                          prefix="AED "
+                          maximumFractionDigits={2}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Country-wise Profit/Loss */}
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 12 }}>
+                  Profit / Loss by Country
+                </div>
+                <div
+                  className="grid"
+                  style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}
+                >
+                  {['KSA', 'UAE', 'Oman', 'Bahrain', 'India', 'Kuwait', 'Qatar'].map((c) => {
+                    const profitData = metrics.profitLoss.byCountry?.[c]
+                    if (!profitData) return null
+                    const isProfit = (profitData.profit || 0) >= 0
+                    const flag =
+                      COUNTRY_INFO[c] && COUNTRY_INFO[c].flag ? COUNTRY_INFO[c].flag + ' ' : ''
+                    const title = flag + (c === 'KSA' ? 'Saudi Arabia (KSA)' : c)
+                    const currency = profitData.currency || 'AED'
+
+                    return (
+                      <div
+                        key={c}
+                        className="panel"
+                        style={{
+                          border: '1px solid ' + (isProfit ? '#10b981' : '#ef4444'),
+                          borderRadius: 12,
+                          padding: 12,
+                          background: 'var(--panel)',
+                        }}
+                      >
+                        <div style={{ fontWeight: 900, marginBottom: 8 }}>{title}</div>
+                        <div
+                          style={{
+                            fontSize: 24,
+                            fontWeight: 900,
+                            color: isProfit ? '#10b981' : '#ef4444',
+                            marginBottom: 8,
+                          }}
+                        >
+                          {isProfit ? '+' : '-'} {currency}{' '}
+                          {fmtAmt(Math.abs(profitData.profit || 0))}
+                        </div>
+                        <div style={{ display: 'grid', gap: 6, fontSize: 13 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span className="helper">Delivered:</span>
+                            <span style={{ fontWeight: 700, color: '#0ea5e9' }}>
+                              {currency} {fmtAmt(profitData.revenue || 0)}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span className="helper">Purchase Cost:</span>
+                            <span style={{ fontWeight: 700, color: '#8b5cf6' }}>
+                              {currency} {fmtAmt(profitData.purchaseCost || 0)}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span className="helper">Driver Comm:</span>
+                            <span style={{ fontWeight: 700, color: '#f59e0b' }}>
+                              {currency} {fmtAmt(profitData.driverCommission || 0)}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span className="helper">Agent Comm:</span>
+                            <span style={{ fontWeight: 700, color: '#f59e0b' }}>
+                              {currency} {fmtAmt(profitData.agentCommission || 0)}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span className="helper">Investor Comm:</span>
+                            <span style={{ fontWeight: 700, color: '#f59e0b' }}>
+                              {currency} {fmtAmt(profitData.investorCommission || 0)}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span className="helper">Advertisement:</span>
+                            <span style={{ fontWeight: 700, color: '#ef4444' }}>
+                              {currency} {fmtAmt(profitData.advertisementExpense || 0)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
       )}
 
       {/* Orders Summary (Counts & Amounts) */}
@@ -942,6 +979,39 @@ export default function UserDashboard() {
               return null
             }
           }
+          if (!hydrated)
+            return (
+              <div className="section" style={{ display: 'grid', gap: 12 }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 16 }}>
+                    Orders Summary (All Countries)
+                  </div>
+                  <div className="helper">Totals only (amounts in AED)</div>
+                </div>
+                <div
+                  className="grid"
+                  style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}
+                >
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="mini-card"
+                      style={{
+                        border: '1px solid var(--border)',
+                        borderRadius: 12,
+                        padding: '12px',
+                        background: 'var(--panel)',
+                      }}
+                    >
+                      <div className="helper">&nbsp;</div>
+                      <div style={{ fontSize: 24, fontWeight: 900 }}>
+                        <div className="skeleton" style={{ height: 24 }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
           return (
             <div className="section" style={{ display: 'grid', gap: 12 }}>
               <div>
@@ -1064,6 +1134,39 @@ export default function UserDashboard() {
               </div>
             )
           }
+          if (!hydrated)
+            return (
+              <div className="section" style={{ display: 'grid', gap: 12 }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 16 }}>
+                    Product Metrics (All Countries)
+                  </div>
+                  <div className="helper">Amounts in AED</div>
+                </div>
+                <div
+                  className="grid"
+                  style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}
+                >
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="mini-card"
+                      style={{
+                        border: '1px solid var(--border)',
+                        borderRadius: 12,
+                        padding: '12px',
+                        background: 'var(--panel)',
+                      }}
+                    >
+                      <div className="helper">&nbsp;</div>
+                      <div style={{ fontSize: 24, fontWeight: 900 }}>
+                        <div className="skeleton" style={{ height: 24 }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
           return (
             <div className="section" style={{ display: 'grid', gap: 12 }}>
               <div>
@@ -1674,7 +1777,20 @@ export default function UserDashboard() {
           <div style={{ fontWeight: 800, fontSize: 16 }}>Sales Trend</div>
           <div className="helper">Performance overview</div>
         </div>
-        <Chart analytics={analytics} />
+        {!hydrated ? (
+          <div className="skeleton" style={{ height: 220 }} />
+        ) : (
+          <div
+            className="chart-fade"
+            key={
+              Array.isArray(analytics?.days) && analytics.days.length
+                ? `c-${analytics.days.length}-${analytics.days[analytics.days.length - 1]?.day}`
+                : 'empty'
+            }
+          >
+            <Chart analytics={analytics} />
+          </div>
+        )}
       </div>
 
       {/* Order Status Distribution */}
