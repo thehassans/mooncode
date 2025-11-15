@@ -14,7 +14,6 @@ export default function InvestorRegister() {
     confirmPassword: '',
     phone: '',
     country: 'UAE',
-    ownerEmail: '',
     acceptTerms: false,
   })
   const [loading, setLoading] = useState(false)
@@ -59,14 +58,6 @@ export default function InvestorRegister() {
       toast.error('Please enter a valid email address')
       return false
     }
-    if (!formData.ownerEmail.trim()) {
-      toast.error('Owner email is required')
-      return false
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.ownerEmail)) {
-      toast.error('Please enter a valid owner email')
-      return false
-    }
     if (formData.password.length < 6) {
       toast.error('Password must be at least 6 characters long')
       return false
@@ -95,7 +86,6 @@ export default function InvestorRegister() {
         password: formData.password,
         phone: formData.phone.trim(),
         country: formData.country,
-        ownerEmail: formData.ownerEmail.trim().toLowerCase(),
       }
 
       const data = await apiPost('/api/auth/register-investor', registrationData)
@@ -113,8 +103,8 @@ export default function InvestorRegister() {
 
       if (status === 409 || msg.includes('already exists')) {
         toast.error('An account with this email already exists')
-      } else if (status === 404 || msg.toLowerCase().includes('owner')) {
-        toast.error(msg || 'Workspace owner not found. Please check the owner email.')
+      } else if (status === 404) {
+        toast.error(msg || 'Not found. Please check the information and try again.')
       } else if (status === 400) {
         toast.error(msg || 'Please check your information and try again')
       } else {
@@ -244,29 +234,6 @@ export default function InvestorRegister() {
                       placeholder="you@example.com"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="ownerEmail"
-                    className="mb-1 block text-sm font-medium text-gray-300"
-                  >
-                    Workspace Owner Email *
-                  </label>
-                  <input
-                    type="email"
-                    id="ownerEmail"
-                    name="ownerEmail"
-                    value={formData.ownerEmail}
-                    onChange={handleChange}
-                    required
-                    className="input login-field-input"
-                    placeholder="owner@business.com"
-                  />
-                  <p className="mt-1 text-xs text-gray-400">
-                    This is your workspace owner's email so we can link your account to their store.
-                    You will sign in using <strong>your own email</strong> above.
-                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
