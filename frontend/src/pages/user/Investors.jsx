@@ -6,16 +6,16 @@ import Modal from '../../components/Modal.jsx'
 import 'react-phone-number-input/style.css'
 
 export default function Investors() {
-  const [form, setForm] = useState({ 
-    firstName: '', 
-    lastName: '', 
-    email: '', 
-    password: '', 
-    phone: '', 
-    investmentAmount: '', 
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    phone: '',
+    investmentAmount: '',
     profitAmount: '',
-    profitPercentage: '15', 
-    currency: 'SAR' 
+    profitPercentage: '15',
+    currency: 'SAR',
   })
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
@@ -23,17 +23,28 @@ export default function Investors() {
   const [rows, setRows] = useState([])
   const [loadingList, setLoadingList] = useState(false)
   const [phoneError, setPhoneError] = useState('')
-  const [delModal, setDelModal] = useState({ open: false, busy: false, error: '', confirm: '', investor: null })
-  const [editModal, setEditModal] = useState({ open: false, busy: false, error: '', investor: null })
-  const [editForm, setEditForm] = useState({ 
-    firstName: '', 
-    lastName: '', 
-    email: '', 
-    phone: '', 
+  const [delModal, setDelModal] = useState({
+    open: false,
+    busy: false,
+    error: '',
+    confirm: '',
+    investor: null,
+  })
+  const [editModal, setEditModal] = useState({
+    open: false,
+    busy: false,
+    error: '',
+    investor: null,
+  })
+  const [editForm, setEditForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
     investmentAmount: '',
     profitAmount: '',
-    profitPercentage: '15', 
-    currency: 'SAR' 
+    profitPercentage: '15',
+    currency: 'SAR',
   })
 
   const CURRENCIES = [
@@ -50,9 +61,15 @@ export default function Investors() {
 
   useEffect(() => {
     loadInvestors()
-    
+
     const token = localStorage.getItem('token') || ''
-    const socket = io(undefined, { path: '/socket.io', transports: ['polling'], upgrade: false, auth: { token }, withCredentials: true })
+    const socket = io(undefined, {
+      path: '/socket.io',
+      transports: ['polling'],
+      upgrade: false,
+      auth: { token },
+      withCredentials: true,
+    })
     socket.on('investor.created', loadInvestors)
     socket.on('investor.updated', loadInvestors)
     socket.on('investor.deleted', loadInvestors)
@@ -86,12 +103,12 @@ export default function Investors() {
 
   function onChange(e) {
     const { name, value } = e.target
-    setForm(f => ({ ...f, [name]: value }))
+    setForm((f) => ({ ...f, [name]: value }))
   }
 
   function onEditFormChange(e) {
     const { name, value } = e.target
-    setEditForm(f => ({ ...f, [name]: value }))
+    setEditForm((f) => ({ ...f, [name]: value }))
   }
 
   async function handleCreate(e) {
@@ -115,19 +132,19 @@ export default function Investors() {
         ...form,
         investmentAmount: Number(form.investmentAmount || 0),
         profitAmount: Number(form.profitAmount || 0),
-        profitPercentage: Number(form.profitPercentage || 15)
+        profitPercentage: Number(form.profitPercentage || 15),
       })
       setMsg('Investor created successfully!')
-      setForm({ 
-        firstName: '', 
-        lastName: '', 
-        email: '', 
-        password: '', 
-        phone: '', 
+      setForm({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        phone: '',
         investmentAmount: '',
         profitAmount: '',
-        profitPercentage: '15', 
-        currency: 'SAR' 
+        profitPercentage: '15',
+        currency: 'SAR',
       })
       loadInvestors()
     } catch (err) {
@@ -146,7 +163,7 @@ export default function Investors() {
       investmentAmount: String(investor.investorProfile?.investmentAmount || ''),
       profitAmount: String(investor.investorProfile?.profitAmount || ''),
       profitPercentage: String(investor.investorProfile?.profitPercentage || '15'),
-      currency: investor.investorProfile?.currency || 'SAR'
+      currency: investor.investorProfile?.currency || 'SAR',
     })
     setEditModal({ open: true, busy: false, error: '', investor })
   }
@@ -154,23 +171,27 @@ export default function Investors() {
   async function handleEdit(e) {
     e.preventDefault()
     if (!editForm.firstName || !editForm.lastName || !editForm.email) {
-      setEditModal(m => ({ ...m, error: 'Please fill in all required fields' }))
+      setEditModal((m) => ({ ...m, error: 'Please fill in all required fields' }))
       return
     }
 
-    setEditModal(m => ({ ...m, busy: true, error: '' }))
+    setEditModal((m) => ({ ...m, busy: true, error: '' }))
 
     try {
       await apiPost(`/api/users/investors/${editModal.investor._id}`, {
         ...editForm,
         investmentAmount: Number(editForm.investmentAmount || 0),
         profitAmount: Number(editForm.profitAmount || 0),
-        profitPercentage: Number(editForm.profitPercentage || 15)
+        profitPercentage: Number(editForm.profitPercentage || 15),
       })
       setEditModal({ open: false, busy: false, error: '', investor: null })
       loadInvestors()
     } catch (err) {
-      setEditModal(m => ({ ...m, busy: false, error: err?.message || 'Failed to update investor' }))
+      setEditModal((m) => ({
+        ...m,
+        busy: false,
+        error: err?.message || 'Failed to update investor',
+      }))
     }
   }
 
@@ -180,18 +201,22 @@ export default function Investors() {
 
   async function handleDelete() {
     if (delModal.confirm !== 'DELETE') {
-      setDelModal(m => ({ ...m, error: 'Please type DELETE to confirm' }))
+      setDelModal((m) => ({ ...m, error: 'Please type DELETE to confirm' }))
       return
     }
 
-    setDelModal(m => ({ ...m, busy: true, error: '' }))
+    setDelModal((m) => ({ ...m, busy: true, error: '' }))
 
     try {
       await apiDelete(`/api/users/investors/${delModal.investor._id}`)
       setDelModal({ open: false, busy: false, error: '', confirm: '', investor: null })
       loadInvestors()
     } catch (err) {
-      setDelModal(m => ({ ...m, busy: false, error: err?.message || 'Failed to delete investor' }))
+      setDelModal((m) => ({
+        ...m,
+        busy: false,
+        error: err?.message || 'Failed to delete investor',
+      }))
     }
   }
 
@@ -207,7 +232,9 @@ export default function Investors() {
       <div className="page-header">
         <div>
           <div className="page-title">Investors</div>
-          <div className="page-subtitle">Manage investors and track sequential profit distribution</div>
+          <div className="page-subtitle">
+            Manage investors and track sequential profit distribution
+          </div>
         </div>
       </div>
 
@@ -218,7 +245,16 @@ export default function Investors() {
         </div>
         <form onSubmit={handleCreate} style={{ display: 'grid', gap: 20, padding: 24 }}>
           {msg && (
-            <div style={{ padding: 12, borderRadius: 8, background: msg.includes('success') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: msg.includes('success') ? '#10b981' : '#ef4444' }}>
+            <div
+              style={{
+                padding: 12,
+                borderRadius: 8,
+                background: msg.includes('success')
+                  ? 'rgba(16, 185, 129, 0.1)'
+                  : 'rgba(239, 68, 68, 0.1)',
+                color: msg.includes('success') ? '#10b981' : '#ef4444',
+              }}
+            >
               {msg}
             </div>
           )}
@@ -226,75 +262,175 @@ export default function Investors() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <div className="label">First Name *</div>
-              <input className="input" type="text" name="firstName" value={form.firstName} onChange={onChange} required />
+              <input
+                className="input"
+                type="text"
+                name="firstName"
+                value={form.firstName}
+                onChange={onChange}
+                required
+              />
             </div>
             <div>
               <div className="label">Last Name *</div>
-              <input className="input" type="text" name="lastName" value={form.lastName} onChange={onChange} required />
+              <input
+                className="input"
+                type="text"
+                name="lastName"
+                value={form.lastName}
+                onChange={onChange}
+                required
+              />
             </div>
           </div>
 
           <div>
             <div className="label">Email *</div>
-            <input className="input" type="email" name="email" value={form.email} onChange={onChange} required autoComplete="off" />
+            <input
+              className="input"
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={onChange}
+              required
+              autoComplete="off"
+            />
           </div>
 
           <div>
             <div className="label">Password *</div>
-            <input className="input" type="password" name="password" value={form.password} onChange={onChange} required minLength={6} autoComplete="new-password" />
+            <input
+              className="input"
+              type="password"
+              name="password"
+              value={form.password}
+              onChange={onChange}
+              required
+              minLength={6}
+              autoComplete="new-password"
+            />
           </div>
 
           <div>
             <div className="label">Phone</div>
-            <PhoneInput international defaultCountry="SA" value={form.phone} onChange={val => setForm(f => ({ ...f, phone: val || '' }))} />
-            {phoneError && <div style={{ color: '#ef4444', fontSize: 13, marginTop: 4 }}>{phoneError}</div>}
+            <PhoneInput
+              international
+              defaultCountry="SA"
+              value={form.phone}
+              onChange={(val) => setForm((f) => ({ ...f, phone: val || '' }))}
+            />
+            {phoneError && (
+              <div style={{ color: '#ef4444', fontSize: 13, marginTop: 4 }}>{phoneError}</div>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <div className="label">Investment Amount *</div>
-              <input className="input" type="number" min="0" step="0.01" name="investmentAmount" value={form.investmentAmount} onChange={onChange} placeholder="1000" required />
+              <input
+                className="input"
+                type="number"
+                min="0"
+                step="0.01"
+                name="investmentAmount"
+                value={form.investmentAmount}
+                onChange={onChange}
+                placeholder="1000"
+                required
+              />
             </div>
             <div>
               <div className="label">Profit Amount (Total) *</div>
-              <input className="input" type="number" min="0" step="0.01" name="profitAmount" value={form.profitAmount} onChange={onChange} placeholder="150" required />
+              <input
+                className="input"
+                type="number"
+                min="0"
+                step="0.01"
+                name="profitAmount"
+                value={form.profitAmount}
+                onChange={onChange}
+                placeholder="150"
+                required
+              />
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <div className="label">Profit % per Order *</div>
-              <input className="input" type="number" min="0" max="100" step="0.1" name="profitPercentage" value={form.profitPercentage} onChange={onChange} placeholder="15" required />
-              <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>Profit percentage from each delivered order</div>
+              <input
+                className="input"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                name="profitPercentage"
+                value={form.profitPercentage}
+                onChange={onChange}
+                placeholder="15"
+                required
+              />
+              <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>
+                Profit percentage from each delivered order
+              </div>
             </div>
             <div>
               <div className="label">Currency</div>
               <select className="input" name="currency" value={form.currency} onChange={onChange}>
-                {CURRENCIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                {CURRENCIES.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
 
           {form.investmentAmount && form.profitAmount && (
-            <div style={{ padding: 20, background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)', borderRadius: 12, border: '1px solid rgba(102, 126, 234, 0.2)' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: '#667eea' }}>💰 Investment Summary</div>
+            <div
+              style={{
+                padding: 20,
+                background:
+                  'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+                borderRadius: 12,
+                border: '1px solid rgba(102, 126, 234, 0.2)',
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: '#667eea' }}>
+                💰 Investment Summary
+              </div>
               <div style={{ display: 'grid', gap: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
                   <span style={{ fontSize: 14, opacity: 0.8 }}>Investment Amount:</span>
-                  <strong style={{ fontSize: 16 }}>{form.currency} {Number(form.investmentAmount).toFixed(2)}</strong>
+                  <strong style={{ fontSize: 16 }}>
+                    {form.currency} {Number(form.investmentAmount).toFixed(2)}
+                  </strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
                   <span style={{ fontSize: 14, opacity: 0.8 }}>Profit Target:</span>
-                  <strong style={{ fontSize: 16, color: '#667eea' }}>{form.currency} {Number(form.profitAmount).toFixed(2)}</strong>
+                  <strong style={{ fontSize: 16, color: '#667eea' }}>
+                    {form.currency} {Number(form.profitAmount).toFixed(2)}
+                  </strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
                   <span style={{ fontSize: 14, opacity: 0.8 }}>Profit per Order:</span>
                   <strong style={{ fontSize: 16 }}>{form.profitPercentage}%</strong>
                 </div>
                 <div style={{ height: 1, background: 'var(--border)', margin: '8px 0' }}></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
                   <span style={{ fontSize: 15, fontWeight: 700 }}>Total Return:</span>
-                  <strong style={{ fontSize: 20, color: '#10b981', fontWeight: 800 }}>{form.currency} {(Number(form.investmentAmount) + Number(form.profitAmount)).toFixed(2)}</strong>
+                  <strong style={{ fontSize: 20, color: '#10b981', fontWeight: 800 }}>
+                    {form.currency}{' '}
+                    {(Number(form.investmentAmount) + Number(form.profitAmount)).toFixed(2)}
+                  </strong>
                 </div>
               </div>
             </div>
@@ -326,6 +462,7 @@ export default function Investors() {
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
                 <th style={{ padding: 12, textAlign: 'left' }}>Name</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Email</th>
+                <th style={{ padding: 12, textAlign: 'left' }}>Referred By</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Investment</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Profit Amount</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Profit %</th>
@@ -336,9 +473,17 @@ export default function Investors() {
             </thead>
             <tbody>
               {loadingList ? (
-                <tr><td colSpan={8} style={{ padding: 20, textAlign: 'center', opacity: 0.7 }}>Loading...</td></tr>
+                <tr>
+                  <td colSpan={9} style={{ padding: 20, textAlign: 'center', opacity: 0.7 }}>
+                    Loading...
+                  </td>
+                </tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: 20, textAlign: 'center', opacity: 0.7 }}>No investors found</td></tr>
+                <tr>
+                  <td colSpan={9} style={{ padding: 20, textAlign: 'center', opacity: 0.7 }}>
+                    No investors found
+                  </td>
+                </tr>
               ) : (
                 rows.map((inv) => {
                   const profile = inv.investorProfile || {}
@@ -348,40 +493,97 @@ export default function Investors() {
                   const profitPercentage = profile.profitPercentage
                   const earnedProfit = profile.earnedProfit
                   const status = profile.status || 'active'
+                  const refUser = inv.referredBy
+                  const refLabel = refUser
+                    ? `${refUser.firstName || ''} ${refUser.lastName || ''}`.trim() ||
+                      refUser.email ||
+                      ''
+                    : inv.referredByCode || ''
 
                   return (
                     <tr key={inv._id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: 12 }}>
-                        {inv.firstName || inv.lastName ? `${inv.firstName || ''} ${inv.lastName || ''}`.trim() : <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>}
-                      </td>
-                      <td style={{ padding: 12 }}>{inv.email || <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>}</td>
-                      <td style={{ padding: 12 }}>
-                        {investmentAmount ? `${currency} ${Number(investmentAmount).toFixed(2)}` : <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>}
-                      </td>
-                      <td style={{ padding: 12, fontWeight: 700, color: profitAmount ? '#667eea' : 'inherit' }}>
-                        {profitAmount ? `${currency} ${Number(profitAmount).toFixed(2)}` : <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>}
+                        {inv.firstName || inv.lastName ? (
+                          `${inv.firstName || ''} ${inv.lastName || ''}`.trim()
+                        ) : (
+                          <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>
+                        )}
                       </td>
                       <td style={{ padding: 12 }}>
-                        {profitPercentage !== null && profitPercentage !== undefined ? `${profitPercentage}%` : <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>}
+                        {inv.email || (
+                          <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>
+                        )}
                       </td>
-                      <td style={{ padding: 12, color: earnedProfit ? '#10b981' : 'inherit', fontWeight: earnedProfit ? 600 : 400 }}>
-                        {earnedProfit ? `${currency} ${Number(earnedProfit).toFixed(2)}` : `${currency} 0.00`}
+                      <td style={{ padding: 12, fontSize: 13 }}>
+                        {refLabel ? (
+                          refLabel
+                        ) : (
+                          <span style={{ opacity: 0.5, fontStyle: 'italic' }}>—</span>
+                        )}
                       </td>
                       <td style={{ padding: 12 }}>
-                        <span style={{
-                          padding: '4px 8px',
-                          borderRadius: 4,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          background: status === 'completed' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                          color: status === 'completed' ? '#10b981' : '#3b82f6'
-                        }}>
+                        {investmentAmount ? (
+                          `${currency} ${Number(investmentAmount).toFixed(2)}`
+                        ) : (
+                          <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>
+                        )}
+                      </td>
+                      <td
+                        style={{
+                          padding: 12,
+                          fontWeight: 700,
+                          color: profitAmount ? '#667eea' : 'inherit',
+                        }}
+                      >
+                        {profitAmount ? (
+                          `${currency} ${Number(profitAmount).toFixed(2)}`
+                        ) : (
+                          <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>
+                        )}
+                      </td>
+                      <td style={{ padding: 12 }}>
+                        {profitPercentage !== null && profitPercentage !== undefined ? (
+                          `${profitPercentage}%`
+                        ) : (
+                          <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>
+                        )}
+                      </td>
+                      <td
+                        style={{
+                          padding: 12,
+                          color: earnedProfit ? '#10b981' : 'inherit',
+                          fontWeight: earnedProfit ? 600 : 400,
+                        }}
+                      >
+                        {earnedProfit
+                          ? `${currency} ${Number(earnedProfit).toFixed(2)}`
+                          : `${currency} 0.00`}
+                      </td>
+                      <td style={{ padding: 12 }}>
+                        <span
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: 4,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            background:
+                              status === 'completed'
+                                ? 'rgba(16, 185, 129, 0.1)'
+                                : 'rgba(59, 130, 246, 0.1)',
+                            color: status === 'completed' ? '#10b981' : '#3b82f6',
+                          }}
+                        >
                           {status}
                         </span>
                       </td>
                       <td style={{ padding: 12 }}>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <button className="btn secondary small" onClick={() => openEditModal(inv)}>Edit</button>
+                          <button
+                            className="btn secondary small"
+                            onClick={() => openEditModal(inv)}
+                          >
+                            Edit
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -400,14 +602,29 @@ export default function Investors() {
         onClose={() => setEditModal({ open: false, busy: false, error: '', investor: null })}
         footer={
           <>
-            <button className="btn secondary" onClick={() => setEditModal({ open: false, busy: false, error: '', investor: null })} disabled={editModal.busy}>Cancel</button>
-            <button className="btn" onClick={handleEdit} disabled={editModal.busy}>{editModal.busy ? 'Saving...' : 'Save Changes'}</button>
+            <button
+              className="btn secondary"
+              onClick={() => setEditModal({ open: false, busy: false, error: '', investor: null })}
+              disabled={editModal.busy}
+            >
+              Cancel
+            </button>
+            <button className="btn" onClick={handleEdit} disabled={editModal.busy}>
+              {editModal.busy ? 'Saving...' : 'Save Changes'}
+            </button>
           </>
         }
       >
         <form onSubmit={handleEdit} style={{ display: 'grid', gap: 16 }}>
           {editModal.error && (
-            <div style={{ padding: 12, borderRadius: 8, background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+            <div
+              style={{
+                padding: 12,
+                borderRadius: 8,
+                background: 'rgba(239, 68, 68, 0.1)',
+                color: '#ef4444',
+              }}
+            >
               {editModal.error}
             </div>
           )}
@@ -415,22 +632,48 @@ export default function Investors() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <div className="label">First Name *</div>
-              <input className="input" type="text" name="firstName" value={editForm.firstName} onChange={onEditFormChange} required />
+              <input
+                className="input"
+                type="text"
+                name="firstName"
+                value={editForm.firstName}
+                onChange={onEditFormChange}
+                required
+              />
             </div>
             <div>
               <div className="label">Last Name *</div>
-              <input className="input" type="text" name="lastName" value={editForm.lastName} onChange={onEditFormChange} required />
+              <input
+                className="input"
+                type="text"
+                name="lastName"
+                value={editForm.lastName}
+                onChange={onEditFormChange}
+                required
+              />
             </div>
           </div>
 
           <div>
             <div className="label">Email *</div>
-            <input className="input" type="email" name="email" value={editForm.email} onChange={onEditFormChange} required />
+            <input
+              className="input"
+              type="email"
+              name="email"
+              value={editForm.email}
+              onChange={onEditFormChange}
+              required
+            />
           </div>
 
           <div>
             <div className="label">Phone</div>
-            <PhoneInput international defaultCountry="SA" value={editForm.phone} onChange={val => setEditForm(f => ({ ...f, phone: val || '' }))} />
+            <PhoneInput
+              international
+              defaultCountry="SA"
+              value={editForm.phone}
+              onChange={(val) => setEditForm((f) => ({ ...f, phone: val || '' }))}
+            />
           </div>
 
           {editModal.investor?.investorProfile?.status !== 'completed' && (
@@ -438,41 +681,96 @@ export default function Investors() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <div className="label">Investment Amount</div>
-                  <input className="input" type="number" min="0" step="0.01" name="investmentAmount" value={editForm.investmentAmount} onChange={onEditFormChange} />
+                  <input
+                    className="input"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    name="investmentAmount"
+                    value={editForm.investmentAmount}
+                    onChange={onEditFormChange}
+                  />
                 </div>
                 <div>
                   <div className="label">Profit Amount</div>
-                  <input className="input" type="number" min="0" step="0.01" name="profitAmount" value={editForm.profitAmount} onChange={onEditFormChange} />
+                  <input
+                    className="input"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    name="profitAmount"
+                    value={editForm.profitAmount}
+                    onChange={onEditFormChange}
+                  />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <div className="label">Profit % per Order</div>
-                  <input className="input" type="number" min="0" max="100" step="0.1" name="profitPercentage" value={editForm.profitPercentage} onChange={onEditFormChange} />
+                  <input
+                    className="input"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    name="profitPercentage"
+                    value={editForm.profitPercentage}
+                    onChange={onEditFormChange}
+                  />
                 </div>
                 <div>
                   <div className="label">Currency</div>
-                  <select className="input" name="currency" value={editForm.currency} onChange={onEditFormChange}>
-                    {CURRENCIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                  <select
+                    className="input"
+                    name="currency"
+                    value={editForm.currency}
+                    onChange={onEditFormChange}
+                  >
+                    {CURRENCIES.map((c) => (
+                      <option key={c.key} value={c.key}>
+                        {c.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
 
               {editForm.investmentAmount && editForm.profitAmount && (
-                <div style={{ padding: 16, background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)', borderRadius: 10, fontSize: 13 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div
+                  style={{
+                    padding: 16,
+                    background:
+                      'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+                    borderRadius: 10,
+                    fontSize: 13,
+                  }}
+                >
+                  <div
+                    style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}
+                  >
                     <span>Investment:</span>
-                    <strong>{editForm.currency} {Number(editForm.investmentAmount).toFixed(2)}</strong>
+                    <strong>
+                      {editForm.currency} {Number(editForm.investmentAmount).toFixed(2)}
+                    </strong>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div
+                    style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}
+                  >
                     <span>Profit Target:</span>
-                    <strong style={{ color: '#667eea' }}>{editForm.currency} {Number(editForm.profitAmount).toFixed(2)}</strong>
+                    <strong style={{ color: '#667eea' }}>
+                      {editForm.currency} {Number(editForm.profitAmount).toFixed(2)}
+                    </strong>
                   </div>
                   <div style={{ height: 1, background: 'var(--border)', margin: '8px 0' }}></div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontWeight: 600 }}>Total Return:</span>
-                    <strong style={{ color: '#10b981', fontSize: 16 }}>{editForm.currency} {(Number(editForm.investmentAmount) + Number(editForm.profitAmount)).toFixed(2)}</strong>
+                    <strong style={{ color: '#10b981', fontSize: 16 }}>
+                      {editForm.currency}{' '}
+                      {(Number(editForm.investmentAmount) + Number(editForm.profitAmount)).toFixed(
+                        2
+                      )}
+                    </strong>
                   </div>
                 </div>
               )}
@@ -485,11 +783,25 @@ export default function Investors() {
       <Modal
         title="Delete Investor"
         open={delModal.open}
-        onClose={() => setDelModal({ open: false, busy: false, error: '', confirm: '', investor: null })}
+        onClose={() =>
+          setDelModal({ open: false, busy: false, error: '', confirm: '', investor: null })
+        }
         footer={
           <>
-            <button className="btn secondary" onClick={() => setDelModal({ open: false, busy: false, error: '', confirm: '', investor: null })} disabled={delModal.busy}>Cancel</button>
-            <button className="btn danger" onClick={handleDelete} disabled={delModal.busy || delModal.confirm !== 'DELETE'}>
+            <button
+              className="btn secondary"
+              onClick={() =>
+                setDelModal({ open: false, busy: false, error: '', confirm: '', investor: null })
+              }
+              disabled={delModal.busy}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn danger"
+              onClick={handleDelete}
+              disabled={delModal.busy || delModal.confirm !== 'DELETE'}
+            >
               {delModal.busy ? 'Deleting...' : 'Delete'}
             </button>
           </>
@@ -497,17 +809,32 @@ export default function Investors() {
       >
         <div style={{ display: 'grid', gap: 16 }}>
           {delModal.error && (
-            <div style={{ padding: 12, borderRadius: 8, background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+            <div
+              style={{
+                padding: 12,
+                borderRadius: 8,
+                background: 'rgba(239, 68, 68, 0.1)',
+                color: '#ef4444',
+              }}
+            >
               {delModal.error}
             </div>
           )}
-          <p>Are you sure you want to delete investor <strong>{delModal.investor?.firstName} {delModal.investor?.lastName}</strong>?</p>
-          <p style={{ fontSize: 13, opacity: 0.7 }}>Type <strong>DELETE</strong> to confirm:</p>
+          <p>
+            Are you sure you want to delete investor{' '}
+            <strong>
+              {delModal.investor?.firstName} {delModal.investor?.lastName}
+            </strong>
+            ?
+          </p>
+          <p style={{ fontSize: 13, opacity: 0.7 }}>
+            Type <strong>DELETE</strong> to confirm:
+          </p>
           <input
             className="input"
             type="text"
             value={delModal.confirm}
-            onChange={(e) => setDelModal(m => ({ ...m, confirm: e.target.value }))}
+            onChange={(e) => setDelModal((m) => ({ ...m, confirm: e.target.value }))}
             placeholder="Type DELETE"
           />
         </div>

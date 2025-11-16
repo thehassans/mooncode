@@ -307,6 +307,34 @@ router.post(
         }
       }
 
+      // Resolve referral source (optional)
+      let refUser = null;
+      let refCodeStr = "";
+      try {
+        const raw = String(referralCode || referredBy || "").trim();
+        if (raw) {
+          refCodeStr = raw;
+          try {
+            if (mongoose.Types.ObjectId.isValid(raw)) {
+              refUser = await User.findById(raw).select("_id");
+            }
+          } catch {}
+          if (!refUser) {
+            try {
+              const lc = raw.toLowerCase();
+              refUser = await User.findOne({
+                $or: [
+                  { referralCode: raw },
+                  { refCode: raw },
+                  { inviteCode: raw },
+                  { email: lc },
+                ],
+              }).select("_id");
+            } catch {}
+          }
+        }
+      } catch {}
+
       const investor = new User({
         firstName: String(firstName).trim(),
         lastName: String(lastName).trim(),
@@ -316,9 +344,20 @@ router.post(
         country: country || "UAE",
         role: "investor",
         createdBy: owner ? owner._id : undefined,
+        referredBy: refUser ? refUser._id : undefined,
+        referredByCode: refCodeStr || undefined,
       });
 
       await investor.save();
+
+      try {
+        if (!investor.referralCode) {
+          const code = String(investor._id);
+          investor.referralCode = code;
+          investor.refCode = code;
+          await investor.save();
+        }
+      } catch {}
 
       const token = jwt.sign(
         {

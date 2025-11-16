@@ -6,11 +6,60 @@ class GoogleMapsService {
     this.baseUrl = "https://maps.googleapis.com/maps/api";
     this.osmBase = "https://nominatim.openstreetmap.org";
     this.cache = new Map(); // simple in-memory cache
+    this.locationIqBase = "https://us1.locationiq.com/v1";
+    this.locationIqKey = null;
   }
 
-  /**
-   * Get API key from database or environment variable
-   */
+  async fetchJSON(url, options = {}, retries = 2, timeoutMs = 10000) {
+    let attempt = 0;
+    while (true) {
+      const controller = new AbortController();
+      const t = setTimeout(
+        () => controller.abort(new Error("timeout")),
+        timeoutMs
+      );
+      try {
+        const res = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(t);
+        // Retry on 5xx/429
+        if (!res.ok && (res.status >= 500 || res.status === 429)) {
+          if (attempt < retries) {
+            await new Promise((r) => setTimeout(r, 400 * Math.pow(2, attempt)));
+            attempt++;
+            continue;
+          }
+        }
+        return await res.json();
+      } catch (e) {
+        clearTimeout(t);
+        const msg = String(e?.message || "");
+        const retriable =
+          msg.includes("ECONNRESET") ||
+          msg.includes("connection reset") ||
+          msg.includes("incomplete envelope") ||
+          msg.includes("timeout") ||
+          e?.name === "AbortError";
+        if (attempt < retries && retriable) {
+          await new Promise((r) => setTimeout(r, 400 * Math.pow(2, attempt)));
+          attempt++;
+          continue;
+        }
+        throw e;
+      }
+    }
+  }
+
+  async getLocationIQKey() {
+    try {
+      const doc = await Setting.findOne({ key: "ai" }).lean();
+      const k = doc?.value?.locationIQApiKey || process.env.LOCATIONIQ_API_KEY;
+      if (k) this.locationIqKey = k;
+      return k || null;
+    } catch {
+      return null;
+    }
+  }
+
   async getApiKey() {
     try {
       // Try to get from database first
@@ -36,18 +85,45 @@ class GoogleMapsService {
     }
   }
 
-  /**
-   * Geocode an address to coordinates
-   * @param {string} address - Address to geocode
-   * @returns {Promise<Object>} - { lat, lng, formatted_address, address_components }
-   */
   async geocode(address) {
     try {
       // Try cache first
       const cacheKey = `geo:${address}`;
       if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
 
-      // Primary: Google (if configured)
+      // Primary: LocationIQ (if configured)
+      try {
+        const lk = await this.getLocationIQKey();
+        if (lk) {
+          const url = `${this.locationIqBase}/search?key=${encodeURIComponent(
+            lk
+          )}&q=${encodeURIComponent(
+            address
+          )}&format=json&addressdetails=1&limit=1`;
+          const j = await this.fetchJSON(url, {
+            headers: {
+              "User-Agent": "MooncodeApp/1.0",
+              "Accept-Language": "en",
+            },
+          });
+          if (Array.isArray(j) && j.length) {
+            const it = j[0];
+            const ok = {
+              success: true,
+              lat: Number(it.lat),
+              lng: Number(it.lon),
+              formatted_address: it.display_name,
+              address_components: it.address || {},
+              place_id: it.osm_id,
+              raw: it,
+            };
+            this.cache.set(cacheKey, ok);
+            return ok;
+          }
+        }
+      } catch {}
+
+      // Secondary: Google (if configured)
       try {
         const apiKey = await this.getApiKey();
         const url = `${this.baseUrl}/geocode/json?address=${encodeURIComponent(
@@ -80,13 +156,12 @@ class GoogleMapsService {
       }/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(
         address
       )}`;
-      const response = await fetch(url, {
+      const list = await this.fetchJSON(url, {
         headers: {
           "User-Agent": "MooncodeApp/1.0",
           "Accept-Language": "en",
         },
       });
-      const list = await response.json();
       if (Array.isArray(list) && list.length > 0) {
         const r = list[0];
         const ok = {
@@ -115,19 +190,60 @@ class GoogleMapsService {
     }
   }
 
-  /**
-   * Reverse geocode coordinates to address
-   * @param {number} lat - Latitude
-   * @param {number} lng - Longitude
-   * @returns {Promise<Object>} - { formatted_address, city, area, address_components }
-   */
   async reverseGeocode(lat, lng) {
     try {
       // Try cache first
       const cacheKey = `rev:${lat},${lng}`;
       if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
 
-      // Primary: Google (if configured)
+      // Primary: LocationIQ (if configured)
+      try {
+        const lk = await this.getLocationIQKey();
+        if (lk) {
+          const url = `${this.locationIqBase}/reverse?key=${encodeURIComponent(
+            lk
+          )}&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(
+            lng
+          )}&format=json&addressdetails=1`;
+          const data = await this.fetchJSON(url, {
+            headers: {
+              "User-Agent": "MooncodeApp/1.0",
+              "Accept-Language": "en",
+            },
+          });
+          if (data && data.address) {
+            const addr = data.address || {};
+            const city =
+              addr.city ||
+              addr.town ||
+              addr.village ||
+              addr.municipality ||
+              addr.county ||
+              "";
+            const area =
+              addr.suburb ||
+              addr.neighbourhood ||
+              addr.city_district ||
+              addr.state_district ||
+              "";
+            const country = addr.country || "";
+            const ok = {
+              success: true,
+              formatted_address: data.display_name,
+              city,
+              area,
+              country,
+              address_components: addr,
+              place_id: data.osm_id,
+              raw: data,
+            };
+            this.cache.set(cacheKey, ok);
+            return ok;
+          }
+        }
+      } catch {}
+
+      // Secondary: Google (if configured)
       try {
         const apiKey = await this.getApiKey();
         const url = `${
@@ -179,13 +295,12 @@ class GoogleMapsService {
       }/reverse?format=jsonv2&lat=${encodeURIComponent(
         lat
       )}&lon=${encodeURIComponent(lng)}&addressdetails=1`;
-      const response = await fetch(url, {
+      const data = await this.fetchJSON(url, {
         headers: {
           "User-Agent": "MooncodeApp/1.0",
           "Accept-Language": "en",
         },
       });
-      const data = await response.json();
       if (data && data.address) {
         const addr = data.address || {};
         const city =
@@ -229,11 +344,6 @@ class GoogleMapsService {
     }
   }
 
-  /**
-   * Resolve WhatsApp location code (Plus Code or address)
-   * @param {string} locationCode - Plus code or address string
-   * @returns {Promise<Object>} - Complete location data
-   */
   async resolveWhatsAppLocation(locationCode) {
     try {
       const result = await this.geocode(locationCode);
@@ -280,12 +390,6 @@ class GoogleMapsService {
     }
   }
 
-  /**
-   * Validate address and check if it's in allowed city
-   * @param {string} address - Address to validate
-   * @param {string} expectedCity - Expected city name
-   * @returns {Promise<Object>} - Validation result
-   */
   async validateAddress(address, expectedCity = null) {
     try {
       const result = await this.geocode(address);
@@ -297,13 +401,26 @@ class GoogleMapsService {
         };
       }
 
-      // Extract city from result
+      // Extract city from result (supports Google array or OSM object)
       let city = "";
-      for (const component of result.address_components || []) {
-        if (component.types.includes("locality")) {
-          city = component.long_name;
-          break;
+      const ac = result.address_components;
+      if (Array.isArray(ac)) {
+        for (const component of ac) {
+          if (component.types?.includes("locality")) {
+            city = component.long_name;
+            break;
+          }
+          if (!city && component.types?.includes("administrative_area_level_2"))
+            city = component.long_name;
         }
+      } else if (ac && typeof ac === "object") {
+        city =
+          ac.city ||
+          ac.town ||
+          ac.village ||
+          ac.municipality ||
+          ac.county ||
+          "";
       }
 
       // Validate against expected city if provided
@@ -337,12 +454,6 @@ class GoogleMapsService {
     }
   }
 
-  /**
-   * Get distance between two locations
-   * @param {Object} origin - { lat, lng } or address string
-   * @param {Object} destination - { lat, lng } or address string
-   * @returns {Promise<Object>} - Distance and duration
-   */
   async getDistance(origin, destination) {
     try {
       const apiKey = await this.getApiKey();
@@ -397,15 +508,26 @@ class GoogleMapsService {
     }
   }
 
-  /**
-   * Test API connection
-   * @returns {Promise<Object>} - Test result
-   */
   async testConnection() {
     try {
-      const apiKey = await this.getApiKey();
+      // Prefer LocationIQ if configured
+      const lk = await this.getLocationIQKey();
+      if (lk) {
+        const url = `${this.locationIqBase}/search?key=${encodeURIComponent(
+          lk
+        )}&q=${encodeURIComponent("Dubai")}&format=json&limit=1`;
+        const r = await fetch(url, {
+          headers: { "User-Agent": "MooncodeApp/1.0" },
+        });
+        if (r.ok) {
+          const j = await r.json();
+          if (Array.isArray(j)) return { ok: true, message: "LocationIQ OK" };
+        }
+        return { ok: false, message: "LocationIQ test failed" };
+      }
 
-      // Test with a known location (Dubai coordinates)
+      // Else test Google if available
+      const apiKey = await this.getApiKey();
       const testLat = 25.2048;
       const testLng = 55.2708;
       const url = `${
@@ -413,31 +535,17 @@ class GoogleMapsService {
       }/geocode/json?latlng=${testLat},${testLng}&key=${encodeURIComponent(
         apiKey
       )}`;
-
       const response = await fetch(url);
       const data = await response.json();
-
-      if (data.status === "OK") {
-        return {
-          ok: true,
-          message: "Connection successful",
-        };
-      } else if (data.status === "REQUEST_DENIED") {
-        return {
-          ok: false,
-          message: "API key invalid or Geocoding API not enabled",
-        };
-      } else {
-        return {
-          ok: false,
-          message: data.error_message || `Test failed: ${data.status}`,
-        };
-      }
-    } catch (err) {
+      if (data.status === "OK") return { ok: true, message: "Google Maps OK" };
+      if (data.status === "REQUEST_DENIED")
+        return { ok: false, message: "Google key invalid or API not enabled" };
       return {
         ok: false,
-        message: err.message || "Connection test failed",
+        message: data.error_message || `Test failed: ${data.status}`,
       };
+    } catch (err) {
+      return { ok: false, message: err.message || "Connection test failed" };
     }
   }
 }

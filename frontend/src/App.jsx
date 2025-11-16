@@ -96,6 +96,8 @@ import AgentAmounts from './pages/user/AgentAmounts.jsx'
 import InvestorAmounts from './pages/user/InvestorAmounts.jsx'
 import InvestorDaily from './pages/user/InvestorDaily.jsx'
 import DriverAmounts from './pages/user/DriverAmounts.jsx'
+import ReferralDetails from './pages/user/ReferralDetails.jsx'
+import ReferralAmounts from './pages/user/ReferralAmounts.jsx'
 import CurrencySettings from './pages/user/CurrencySettings.jsx'
 import UserReturnedOrders from './pages/user/ReturnedOrders.jsx'
 import ManagerReturnedOrders from './pages/manager/ReturnedOrders.jsx'
@@ -487,6 +489,8 @@ export default function App() {
               <Route path="agent-amounts" element={<AgentAmounts />} />
               <Route path="investor-amounts" element={<InvestorAmounts />} />
               <Route path="investor-daily" element={<InvestorDaily />} />
+              <Route path="referral-details" element={<ReferralDetails />} />
+              <Route path="referral-amounts" element={<ReferralAmounts />} />
               <Route path="driver-amounts" element={<DriverAmounts />} />
               <Route path="finances" element={<UserFinances />} />
               <Route path="currency" element={<CurrencySettings />} />
