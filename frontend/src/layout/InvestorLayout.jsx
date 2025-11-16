@@ -114,6 +114,26 @@ export default function InvestorLayout() {
       ),
     },
     {
+      to: '/investor/withdraw',
+      label: 'Withdraw',
+      icon: (
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M12 3v12" />
+          <path d="M8 11l4 4 4-4" />
+          <rect x="4" y="17" width="16" height="4" rx="1" />
+        </svg>
+      ),
+    },
+    {
       to: '/investor/profile',
       label: 'Profile',
       icon: (
@@ -279,6 +299,31 @@ export default function InvestorLayout() {
                   <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                 </svg>
                 <span>My Invest</span>
+              </NavLink>
+              <NavLink
+                to="/investor/withdraw"
+                className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                style={{
+                  margin: '4px 0',
+                  borderRadius: '12px',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 3v10" />
+                  <path d="M8 11l4 4 4-4" />
+                  <rect x="4" y="17" width="16" height="3" rx="1" />
+                </svg>
+                <span>Withdraw</span>
               </NavLink>
               <NavLink
                 to="/investor/profile"

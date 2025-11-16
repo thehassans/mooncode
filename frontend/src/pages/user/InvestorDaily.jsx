@@ -39,16 +39,19 @@ export default function InvestorDaily() {
         const investmentAmount = Number(p.investmentAmount || 0)
         const currency = p.currency || 'SAR'
         const status = p.status || 'inactive'
-        // Daily profit: invested * 10% / 30
+        const profitPercentage = Number(p.profitPercentage || 0)
+        // Daily profit: invested * profit% / 30
         const dailyProfit =
-          investmentAmount > 0 && status === 'active' ? (investmentAmount * 0.1) / 30 : 0
+          investmentAmount > 0 && status === 'active' && profitPercentage > 0
+            ? (investmentAmount * (profitPercentage / 100)) / 30
+            : 0
         return {
           id: String(inv._id || inv.id || ''),
           name: `${inv.firstName || ''} ${inv.lastName || ''}`.trim() || inv.email || '-',
           email: inv.email || '-',
           currency,
           investmentAmount,
-          profitPercentage: Number(p.profitPercentage || 10),
+          profitPercentage,
           dailyProfit,
           status,
         }
@@ -64,7 +67,8 @@ export default function InvestorDaily() {
         <div>
           <div className="page-title">Investor Daily</div>
           <div className="page-subtitle">
-            Daily profit overview for active investors (10% of invested amount / 30 days)
+            Daily profit overview for active investors based on each investor's profit percentage
+            target divided by 30 days
           </div>
         </div>
       </div>
@@ -164,7 +168,9 @@ export default function InvestorDaily() {
                 <th style={{ padding: '10px 12px', textAlign: 'left' }}>Status</th>
                 <th style={{ padding: '10px 12px', textAlign: 'left' }}>Investment</th>
                 <th style={{ padding: '10px 12px', textAlign: 'left' }}>Profit %</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left' }}>Daily Profit (10% / 30)</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left' }}>
+                  Daily Profit (profit% / 30)
+                </th>
               </tr>
             </thead>
             <tbody>

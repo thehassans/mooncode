@@ -67,7 +67,10 @@ export default function MyInvestments() {
   const status = profile.status || 'active'
   const progressPercentage =
     profitAmount > 0 ? Math.min(100, (earnedProfit / profitAmount) * 100) : 0
-  const dailyProfit = investmentAmount > 0 ? (investmentAmount * 0.1) / 30 : 0
+  const dailyProfit =
+    investmentAmount > 0 && profitPercentage > 0
+      ? (investmentAmount * (profitPercentage / 100)) / 30
+      : 0
 
   return (
     <div
@@ -98,8 +101,8 @@ export default function MyInvestments() {
             My Daily Profit
           </h1>
           <p style={{ fontSize: 15, opacity: 0.7, margin: '8px 0 0 0' }}>
-            See how much you earn every day from your invested amount (10% of capital divided by
-            30).
+            See how much you earn every day from your invested amount based on your profit
+            percentage target divided by 30 days.
           </p>
           <p style={{ fontSize: 13, opacity: 0.8, margin: '4px 0 0 0' }}>
             Today's estimated earnings:{' '}
@@ -177,7 +180,7 @@ export default function MyInvestments() {
                   {currency} {formatCurrency(dailyProfit)}
                 </div>
                 <div style={{ fontSize: 13, opacity: 0.85 }}>
-                  Based on {currency} {formatCurrency(investmentAmount)} × 10% ÷ 30
+                  Based on {currency} {formatCurrency(investmentAmount)} × {profitPercentage}% ÷ 30
                 </div>
               </div>
             </div>
