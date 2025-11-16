@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { apiPost, apiGet, API_BASE } from '../../api.js'
 import { useToast } from '../../ui/Toast.jsx'
@@ -19,6 +19,14 @@ export default function InvestorRegister() {
   const [loading, setLoading] = useState(false)
   const [branding, setBranding] = useState({ headerLogo: null, loginLogo: null })
   const [referralCode, setReferralCode] = useState('')
+  const [referralInfo, setReferralInfo] = useState({
+    name: '',
+    email: '',
+    ok: false,
+    loading: false,
+    error: '',
+  })
+  const refAbortRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -41,6 +49,39 @@ export default function InvestorRegister() {
       if (r) setReferralCode(r)
     } catch {}
   }, [])
+
+  useEffect(() => {
+    try {
+      if (refAbortRef.current) refAbortRef.current.abort()
+    } catch {}
+    const code = String(referralCode || '').trim()
+    if (!code) {
+      setReferralInfo({ name: '', email: '', ok: false, loading: false, error: '' })
+      return
+    }
+    const c = new AbortController()
+    refAbortRef.current = c
+    setReferralInfo((s) => ({ ...s, loading: true, error: '' }))
+    apiGet(`/api/auth/referral/resolve?code=${encodeURIComponent(code)}`, { signal: c.signal })
+      .then((res) => {
+        setReferralInfo({
+          name: res?.name || '',
+          email: res?.email || '',
+          ok: true,
+          loading: false,
+          error: '',
+        })
+      })
+      .catch((e) => {
+        if (e?.name === 'AbortError') return
+        setReferralInfo({ name: '', email: '', ok: false, loading: false, error: 'notfound' })
+      })
+    return () => {
+      try {
+        c.abort()
+      } catch {}
+    }
+  }, [referralCode])
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -205,6 +246,20 @@ export default function InvestorRegister() {
                     className="input login-field-input"
                     placeholder="Enter referral code if you have one"
                   />
+                  {referralInfo.loading ? (
+                    <div className="helper" style={{ marginTop: 6 }}>
+                      Checking referral…
+                    </div>
+                  ) : referralInfo.ok ? (
+                    <div className="helper" style={{ marginTop: 6 }}>
+                      Referred by: <span style={{ fontWeight: 700 }}>{referralInfo.name}</span>
+                      {referralInfo.email ? ` (${referralInfo.email})` : ''}
+                    </div>
+                  ) : referralInfo.error ? (
+                    <div className="helper" style={{ marginTop: 6, color: '#ef4444' }}>
+                      Referral not found
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

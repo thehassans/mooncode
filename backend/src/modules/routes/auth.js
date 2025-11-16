@@ -1,4 +1,5 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import rateLimit from "../middleware/rateLimit.js";
@@ -347,5 +348,36 @@ router.post(
     }
   }
 );
+
+// Public: resolve a referral code to a user summary (name/email)
+router.get("/referral/resolve", async (req, res) => {
+  try {
+    const code = String(req.query.code || "").trim();
+    if (!code) return res.status(400).json({ message: "Missing code" });
+
+    let u = null;
+    try {
+      if (mongoose.Types.ObjectId.isValid(code)) {
+        u = await User.findById(code).select("firstName lastName email");
+      }
+    } catch {}
+    if (!u) {
+      try {
+        u = await User.findOne({
+          $or: [
+            { referralCode: code },
+            { refCode: code },
+            { inviteCode: code },
+          ],
+        }).select("firstName lastName email");
+      } catch {}
+    }
+    if (!u) return res.status(404).json({ message: "Referral not found" });
+    const name = `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email;
+    return res.json({ id: String(u._id), name, email: u.email });
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to resolve referral" });
+  }
+});
 
 export default router;
