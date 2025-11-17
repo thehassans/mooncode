@@ -14,7 +14,10 @@ import Product from "../models/Product.js";
 import { getIO } from "../config/socket.js";
 import Setting from "../models/Setting.js";
 import { generatePayoutReceiptPDF } from "../utils/payoutReceipt.js";
-import { generateSettlementPDF, generateAcceptedSettlementPDF } from "../../utils/generateSettlementPDF.js";
+import {
+  generateSettlementPDF,
+  generateAcceptedSettlementPDF,
+} from "../../utils/generateSettlementPDF.js";
 import { generateCommissionPayoutPDF } from "../../utils/generateCommissionPayoutPDF.js";
 import { generateAgentCommissionReceiptPDF } from "../../utils/generateAgentCommissionReceiptPDF.js";
 import { generateAgentMonthlyReportPDF } from "../../utils/generateAgentMonthlyReportPDF.js";
@@ -157,36 +160,46 @@ router.post(
   auth,
   allowRoles("admin", "user", "agent", "manager"),
   async (req, res) => {
-    const { title, type, category, amount, currency, country, notes, incurredAt } =
-      req.body || {};
+    const {
+      title,
+      type,
+      category,
+      amount,
+      currency,
+      country,
+      notes,
+      incurredAt,
+    } = req.body || {};
     if (!title || amount == null)
       return res.status(400).json({ message: "Missing title or amount" });
-    
+
     // Validate advertisement expenses have a country
-    if (type === 'advertisement' && !country) {
-      return res.status(400).json({ message: "Advertisement expenses must specify a country" });
+    if (type === "advertisement" && !country) {
+      return res
+        .status(400)
+        .json({ message: "Advertisement expenses must specify a country" });
     }
-    
+
     // Manager expenses need approval, others are auto-approved
-    const status = req.user.role === 'manager' ? 'pending' : 'approved';
-    
+    const status = req.user.role === "manager" ? "pending" : "approved";
+
     const doc = new Expense({
       title,
-      type: type || 'general',
+      type: type || "general",
       category,
       amount: Math.max(0, Number(amount || 0)),
       currency: currency || "SAR",
-      country: type === 'advertisement' ? country : undefined,
+      country: type === "advertisement" ? country : undefined,
       notes,
       incurredAt: incurredAt ? new Date(incurredAt) : new Date(),
       createdBy: req.user.id,
       status,
     });
     await doc.save();
-    
+
     // Populate createdBy for response
-    await doc.populate('createdBy', 'firstName lastName email role');
-    
+    await doc.populate("createdBy", "firstName lastName email role");
+
     return res.status(201).json({ message: "Expense created", expense: doc });
   }
 );
@@ -274,11 +287,9 @@ router.post(
           .json({ message: "Minimum withdraw amount is PKR 10000" });
       }
       if (amt > available) {
-        return res
-          .status(400)
-          .json({
-            message: `Amount exceeds available wallet. Available: PKR ${available}`,
-          });
+        return res.status(400).json({
+          message: `Amount exceeds available wallet. Available: PKR ${available}`,
+        });
       }
       const doc = new AgentRemit({
         agent: req.user.id,
@@ -440,11 +451,9 @@ router.post(
         Math.round(deliveredCommissionPKR) - totalSentPKR
       );
       if (amt > available)
-        return res
-          .status(400)
-          .json({
-            message: `Amount exceeds available wallet. Available: PKR ${available}`,
-          });
+        return res.status(400).json({
+          message: `Amount exceeds available wallet. Available: PKR ${available}`,
+        });
       // Update remit to sent with specified amount
       r.amount = amt;
       r.status = "sent";
@@ -550,7 +559,10 @@ router.get(
         { role: "manager", createdBy: req.user.id },
         { _id: 1 }
       ).lean();
-      const ids = [...agents.map((a) => a._id.toString()), ...managers.map((m) => m._id.toString())];
+      const ids = [
+        ...agents.map((a) => a._id.toString()),
+        ...managers.map((m) => m._id.toString()),
+      ];
       match = { createdBy: { $in: [req.user.id, ...ids] } };
     } else if (req.user.role === "manager") {
       // Manager sees only their own expenses
@@ -561,8 +573,8 @@ router.get(
     }
     const items = await Expense.find(match)
       .sort({ incurredAt: -1 })
-      .populate('createdBy', 'firstName lastName email role')
-      .populate('approvedBy', 'firstName lastName email')
+      .populate("createdBy", "firstName lastName email role")
+      .populate("approvedBy", "firstName lastName email")
       .lean();
     const total = items.reduce((a, b) => a + Number(b.amount || 0), 0);
     res.json({ expenses: items, total });
@@ -577,31 +589,45 @@ router.post(
   async (req, res) => {
     try {
       const { id } = req.params;
-      const expense = await Expense.findById(id).populate('createdBy', 'firstName lastName role createdBy');
-      
+      const expense = await Expense.findById(id).populate(
+        "createdBy",
+        "firstName lastName role createdBy"
+      );
+
       if (!expense) {
         return res.status(404).json({ message: "Expense not found" });
       }
-      
+
       // Verify the expense creator is a manager created by this user
-      if (expense.createdBy?.role !== 'manager' || String(expense.createdBy?.createdBy) !== String(req.user.id)) {
-        return res.status(403).json({ message: "You can only approve expenses from your managers" });
+      if (
+        expense.createdBy?.role !== "manager" ||
+        String(expense.createdBy?.createdBy) !== String(req.user.id)
+      ) {
+        return res
+          .status(403)
+          .json({
+            message: "You can only approve expenses from your managers",
+          });
       }
-      
-      if (expense.status !== 'pending') {
-        return res.status(400).json({ message: "Expense is not pending approval" });
+
+      if (expense.status !== "pending") {
+        return res
+          .status(400)
+          .json({ message: "Expense is not pending approval" });
       }
-      
-      expense.status = 'approved';
+
+      expense.status = "approved";
       expense.approvedBy = req.user.id;
       expense.approvedAt = new Date();
       await expense.save();
-      
-      await expense.populate('approvedBy', 'firstName lastName email');
-      
+
+      await expense.populate("approvedBy", "firstName lastName email");
+
       res.json({ message: "Expense approved successfully", expense });
     } catch (err) {
-      res.status(500).json({ message: "Failed to approve expense", error: err?.message });
+      res
+        .status(500)
+        .json({ message: "Failed to approve expense", error: err?.message });
     }
   }
 );
@@ -615,32 +641,44 @@ router.post(
     try {
       const { id } = req.params;
       const { reason } = req.body || {};
-      const expense = await Expense.findById(id).populate('createdBy', 'firstName lastName role createdBy');
-      
+      const expense = await Expense.findById(id).populate(
+        "createdBy",
+        "firstName lastName role createdBy"
+      );
+
       if (!expense) {
         return res.status(404).json({ message: "Expense not found" });
       }
-      
+
       // Verify the expense creator is a manager created by this user
-      if (expense.createdBy?.role !== 'manager' || String(expense.createdBy?.createdBy) !== String(req.user.id)) {
-        return res.status(403).json({ message: "You can only reject expenses from your managers" });
+      if (
+        expense.createdBy?.role !== "manager" ||
+        String(expense.createdBy?.createdBy) !== String(req.user.id)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "You can only reject expenses from your managers" });
       }
-      
-      if (expense.status !== 'pending') {
-        return res.status(400).json({ message: "Expense is not pending approval" });
+
+      if (expense.status !== "pending") {
+        return res
+          .status(400)
+          .json({ message: "Expense is not pending approval" });
       }
-      
-      expense.status = 'rejected';
+
+      expense.status = "rejected";
       expense.approvedBy = req.user.id;
       expense.approvedAt = new Date();
-      expense.rejectionReason = reason || '';
+      expense.rejectionReason = reason || "";
       await expense.save();
-      
-      await expense.populate('approvedBy', 'firstName lastName email');
-      
+
+      await expense.populate("approvedBy", "firstName lastName email");
+
       res.json({ message: "Expense rejected", expense });
     } catch (err) {
-      res.status(500).json({ message: "Failed to reject expense", error: err?.message });
+      res
+        .status(500)
+        .json({ message: "Failed to reject expense", error: err?.message });
     }
   }
 );
@@ -900,9 +938,11 @@ router.post(
       // Get ALL delivered orders to calculate total collected (not filtered by date)
       const allDeliveredOrders = await Order.find({
         deliveryBoy: req.user.id,
-        shipmentStatus: "delivered"
+        shipmentStatus: "delivered",
       })
-        .select("total collectedAmount productId quantity items grandTotal subTotal")
+        .select(
+          "total collectedAmount productId quantity items grandTotal subTotal"
+        )
         .populate("productId", "name price")
         .populate("items.productId", "name price");
       const totalCollectedAmount = allDeliveredOrders.reduce((sum, o) => {
@@ -946,13 +986,11 @@ router.post(
       if (!Number.isFinite(amt) || amt <= 0)
         return res.status(400).json({ message: "Invalid amount" });
       if (amt > pendingToCompany)
-        return res
-          .status(400)
-          .json({
-            message: `Amount exceeds pending. Pending: ${pendingToCompany.toFixed(
-              2
-            )}`,
-          });
+        return res.status(400).json({
+          message: `Amount exceeds pending. Pending: ${pendingToCompany.toFixed(
+            2
+          )}`,
+        });
       // Optional country match
       if (
         mgrDoc &&
@@ -1010,65 +1048,93 @@ router.post(
         status: "pending",
       });
       await doc.save();
-      
+
       // Generate PDF settlement summary with comprehensive data
       try {
-        const driver = await User.findById(req.user.id).select('firstName lastName phone commission paidCommission driverProfile');
-        const manager = await User.findById(managerRef).select('firstName lastName');
-        
+        const driver = await User.findById(req.user.id).select(
+          "firstName lastName phone commission paidCommission driverProfile"
+        );
+        const manager = await User.findById(managerRef).select(
+          "firstName lastName"
+        );
+
         // Get orders for PDF - only pending orders (after last remittance)
         const acceptedRemittances = await Remittance.find({
           driver: req.user.id,
-          status: 'accepted'
-        }).select('createdAt');
-        
-        const lastAcceptedDate = acceptedRemittances.length > 0 
-          ? new Date(Math.max(...acceptedRemittances.map(r => new Date(r.createdAt))))
-          : new Date(0);
-        
+          status: "accepted",
+        }).select("createdAt");
+
+        const lastAcceptedDate =
+          acceptedRemittances.length > 0
+            ? new Date(
+                Math.max(
+                  ...acceptedRemittances.map((r) => new Date(r.createdAt))
+                )
+              )
+            : new Date(0);
+
         const deliveredOrders = await Order.find({
           deliveryBoy: req.user.id,
           shipmentStatus: "delivered",
-          deliveredAt: { $gt: lastAcceptedDate }  // Only orders after last remittance
+          deliveredAt: { $gt: lastAcceptedDate }, // Only orders after last remittance
         })
-          .select("invoiceNumber customerName shipmentStatus deliveredAt total collectedAmount productId quantity items grandTotal subTotal driverCommission")
+          .select(
+            "invoiceNumber customerName shipmentStatus deliveredAt total collectedAmount productId quantity items grandTotal subTotal driverCommission"
+          )
           .populate("productId", "name price")
           .populate("items.productId", "name price");
-        
+
         // Get order statistics for the driver
         // Count ALL orders ever assigned to this driver (not just currently assigned)
-        const assignedCount = await Order.countDocuments({ deliveryBoy: req.user.id });
-        const cancelledCount = await Order.countDocuments({ 
-          deliveryBoy: req.user.id, 
-          $or: [{ shipmentStatus: 'cancelled' }, { shipmentStatus: 'returned' }] 
+        const assignedCount = await Order.countDocuments({
+          deliveryBoy: req.user.id,
         });
-        
+        const cancelledCount = await Order.countDocuments({
+          deliveryBoy: req.user.id,
+          $or: [
+            { shipmentStatus: "cancelled" },
+            { shipmentStatus: "returned" },
+          ],
+        });
+
         // Calculate commission based on per-order commission
-        const commissionPerOrder = Number(driver?.driverProfile?.commissionPerOrder || 0);
-        const commissionCurrency = driver?.driverProfile?.commissionCurrency || doc.currency || 'SAR';
-        
+        const commissionPerOrder = Number(
+          driver?.driverProfile?.commissionPerOrder || 0
+        );
+        const commissionCurrency =
+          driver?.driverProfile?.commissionCurrency || doc.currency || "SAR";
+
         // Total commission = sum of each order's driverCommission (use driver's rate as fallback)
         const totalCommission = deliveredOrders.reduce((sum, o) => {
           const orderCommission = Number(o.driverCommission) || 0;
           // If order has no commission set, use driver's default rate
-          return sum + (orderCommission > 0 ? orderCommission : commissionPerOrder)
+          return (
+            sum + (orderCommission > 0 ? orderCommission : commissionPerOrder)
+          );
         }, 0);
-        
+
         // Get total paid commission from accepted remittances
         const paidRemittances = await Remittance.find({
           driver: req.user.id,
-          status: 'accepted'
+          status: "accepted",
         });
-        const paidCommission = paidRemittances.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
-        
+        const paidCommission = paidRemittances.reduce(
+          (sum, r) => sum + (Number(r.amount) || 0),
+          0
+        );
+
         // Pending commission = total earned - already paid
         const pendingCommission = Math.max(0, totalCommission - paidCommission);
-        
+
         const pdfPath = await generateSettlementPDF({
-          driverName: `${driver?.firstName || ''} ${driver?.lastName || ''}`.trim() || 'N/A',
-          driverPhone: driver?.phone || '',
+          driverName:
+            `${driver?.firstName || ""} ${driver?.lastName || ""}`.trim() ||
+            "N/A",
+          driverPhone: driver?.phone || "",
           driverCommissionRate: commissionPerOrder,
-          managerName: `${manager?.firstName || ''} ${manager?.lastName || ''}`.trim() || 'N/A',
+          managerName:
+            `${manager?.firstName || ""} ${manager?.lastName || ""}`.trim() ||
+            "N/A",
           totalDeliveredOrders,
           assignedOrders: assignedCount,
           cancelledOrders: cancelledCount,
@@ -1085,28 +1151,31 @@ router.post(
           fromDate: doc.fromDate,
           toDate: doc.toDate,
           note: doc.note,
-          orders: deliveredOrders.map(o => ({
+          orders: deliveredOrders.map((o) => ({
             invoiceNumber: o.invoiceNumber || String(o._id).slice(-6),
-            customerName: o.customerName || 'N/A',
-            status: o.shipmentStatus || 'delivered',
+            customerName: o.customerName || "N/A",
+            status: o.shipmentStatus || "delivered",
             deliveredAt: o.deliveredAt,
-            items: (o.items || []).map(item => ({
-              name: item.productId?.name || 'Unknown Product',
+            items: (o.items || []).map((item) => ({
+              name: item.productId?.name || "Unknown Product",
               quantity: item.quantity || 1,
-              price: item.productId?.price || 0
+              price: item.productId?.price || 0,
             })),
             subTotal: o.subTotal || o.total || o.collectedAmount || 0,
-            commission: Number(o.driverCommission) > 0 ? Number(o.driverCommission) : commissionPerOrder
-          }))
+            commission:
+              Number(o.driverCommission) > 0
+                ? Number(o.driverCommission)
+                : commissionPerOrder,
+          })),
         });
-        
+
         doc.pdfPath = pdfPath;
         await doc.save();
       } catch (pdfErr) {
-        console.error('Failed to generate settlement PDF:', pdfErr);
+        console.error("Failed to generate settlement PDF:", pdfErr);
         // Don't fail the entire operation if PDF generation fails
       }
-      
+
       try {
         const io = getIO();
         io.to(`user:${String(managerRef)}`).emit("remittance.created", {
@@ -1132,7 +1201,7 @@ router.post(
       const { id } = req.params;
       const r = await Remittance.findById(id);
       if (!r) return res.status(404).json({ message: "Remittance not found" });
-      
+
       // Scope: manager assigned OR owner of workspace
       if (
         req.user.role === "manager" &&
@@ -1141,7 +1210,7 @@ router.post(
         return res.status(403).json({ message: "Not allowed" });
       if (req.user.role === "user" && String(r.owner) !== String(req.user.id))
         return res.status(403).json({ message: "Not allowed" });
-      
+
       // Two-step approval process
       if (req.user.role === "manager") {
         // Manager acceptance - first step
@@ -1151,7 +1220,7 @@ router.post(
         r.managerAcceptedAt = new Date();
         r.managerAcceptedBy = req.user.id;
         await r.save();
-        
+
         // Notify owner that manager accepted
         try {
           const io = getIO();
@@ -1159,107 +1228,149 @@ router.post(
             id: String(r._id),
           });
         } catch {}
-        
-        return res.json({ message: "Remittance accepted by manager", remittance: r });
+
+        return res.json({
+          message: "Remittance accepted by manager",
+          remittance: r,
+        });
       } else {
         // User/owner acceptance - final step
         if (r.status !== "pending" && r.status !== "manager_accepted")
-          return res.status(400).json({ message: "Already processed or rejected" });
+          return res
+            .status(400)
+            .json({ message: "Already processed or rejected" });
         r.status = "accepted";
         r.acceptedAt = new Date();
         r.acceptedBy = req.user.id;
-        
+
         // Generate accepted PDF with ACCEPTED stamp for driver
         try {
-          const driver = await User.findById(r.driver).select('firstName lastName phone commission paidCommission driverProfile');
-          const manager = await User.findById(r.manager).select('firstName lastName');
-          const acceptedByUser = await User.findById(req.user.id).select('firstName lastName');
-          
+          const driver = await User.findById(r.driver).select(
+            "firstName lastName phone commission paidCommission driverProfile"
+          );
+          const manager = await User.findById(r.manager).select(
+            "firstName lastName"
+          );
+          const acceptedByUser = await User.findById(req.user.id).select(
+            "firstName lastName"
+          );
+
           // Get order statistics for the driver
-          const assignedCount = await Order.countDocuments({ deliveryBoy: r.driver });
-          const cancelledCount = await Order.countDocuments({ 
-            deliveryBoy: r.driver, 
-            $or: [{ shipmentStatus: 'cancelled' }, { shipmentStatus: 'returned' }] 
+          const assignedCount = await Order.countDocuments({
+            deliveryBoy: r.driver,
           });
-          
+          const cancelledCount = await Order.countDocuments({
+            deliveryBoy: r.driver,
+            $or: [
+              { shipmentStatus: "cancelled" },
+              { shipmentStatus: "returned" },
+            ],
+          });
+
           // Calculate commission from delivered orders
-          const commissionPerOrder = Number(driver?.driverProfile?.commissionPerOrder || 0);
-          
+          const commissionPerOrder = Number(
+            driver?.driverProfile?.commissionPerOrder || 0
+          );
+
           // Get financial data from original remittance (orders delivered up to this remittance)
           const deliveredOrders = await Order.find({
             deliveryBoy: r.driver,
-            shipmentStatus: 'delivered',
-            deliveredAt: { $lte: new Date(r.createdAt) }  // Orders delivered up to remittance date
+            shipmentStatus: "delivered",
+            deliveredAt: { $lte: new Date(r.createdAt) }, // Orders delivered up to remittance date
           })
-            .select("invoiceNumber customerName shipmentStatus deliveredAt total collectedAmount productId quantity items grandTotal subTotal driverCommission")
+            .select(
+              "invoiceNumber customerName shipmentStatus deliveredAt total collectedAmount productId quantity items grandTotal subTotal driverCommission"
+            )
             .populate("productId", "name price")
             .populate("items.productId", "name price");
-          
+
           // Calculate total commission from actual orders (use driver's rate as fallback)
           const totalCommission = deliveredOrders.reduce((sum, o) => {
             const orderCommission = Number(o.driverCommission) || 0;
-            return sum + (orderCommission > 0 ? orderCommission : commissionPerOrder)
+            return (
+              sum + (orderCommission > 0 ? orderCommission : commissionPerOrder)
+            );
           }, 0);
-          
+
           const paidRemittances = await Remittance.find({
             driver: r.driver,
-            status: 'accepted'
+            status: "accepted",
           });
-          const paidCommission = paidRemittances.reduce((sum, rem) => sum + (Number(rem.amount) || 0), 0);
-          const pendingCommission = Math.max(0, totalCommission - paidCommission);
-          const totalCollectedAmount = deliveredOrders.reduce((sum, o) => sum + (Number(o.grandTotal) || 0), 0);
+          const paidCommission = paidRemittances.reduce(
+            (sum, rem) => sum + (Number(rem.amount) || 0),
+            0
+          );
+          const pendingCommission = Math.max(
+            0,
+            totalCommission - paidCommission
+          );
+          const totalCollectedAmount = deliveredOrders.reduce(
+            (sum, o) => sum + (Number(o.grandTotal) || 0),
+            0
+          );
           const deliveredToCompany = paidCommission;
-          const pendingToCompany = Math.max(0, totalCollectedAmount - deliveredToCompany);
-          
+          const pendingToCompany = Math.max(
+            0,
+            totalCollectedAmount - deliveredToCompany
+          );
+
           // Generate minimal commission payout PDF
           const acceptedPdfPath = await generateCommissionPayoutPDF({
-            driverName: `${driver?.firstName || ''} ${driver?.lastName || ''}`.trim() || 'N/A',
-            driverPhone: driver?.phone || '',
+            driverName:
+              `${driver?.firstName || ""} ${driver?.lastName || ""}`.trim() ||
+              "N/A",
+            driverPhone: driver?.phone || "",
             totalDeliveredOrders: deliveredOrders.length,
             totalCommissionPaid: r.amount,
             currency: r.currency,
-            orders: deliveredOrders.map(o => ({
+            orders: deliveredOrders.map((o) => ({
               orderId: o.invoiceNumber || String(o._id).slice(-6),
               deliveryDate: o.deliveredAt,
-              commission: Number(o.driverCommission) > 0 ? Number(o.driverCommission) : commissionPerOrder
-            }))
+              commission:
+                Number(o.driverCommission) > 0
+                  ? Number(o.driverCommission)
+                  : commissionPerOrder,
+            })),
           });
-          
+
           r.acceptedPdfPath = acceptedPdfPath;
         } catch (pdfErr) {
-          console.error('Failed to generate accepted settlement PDF:', pdfErr);
+          console.error("Failed to generate accepted settlement PDF:", pdfErr);
           // Don't fail the entire operation if PDF generation fails
         }
-        
+
         await r.save();
-        
+
         // Update driver's paid commission
         try {
           const driver = await User.findById(r.driver);
-          if (driver && driver.role === 'driver') {
+          if (driver && driver.role === "driver") {
             const acceptedRemittances = await Remittance.find({
               driver: r.driver,
-              status: 'accepted'
-            }).select('amount');
-            const totalPaid = acceptedRemittances.reduce((sum, rem) => sum + (Number(rem.amount) || 0), 0);
+              status: "accepted",
+            }).select("amount");
+            const totalPaid = acceptedRemittances.reduce(
+              (sum, rem) => sum + (Number(rem.amount) || 0),
+              0
+            );
             if (!driver.driverProfile) driver.driverProfile = {};
             driver.driverProfile.paidCommission = totalPaid;
-            driver.markModified('driverProfile');
+            driver.markModified("driverProfile");
             await driver.save();
           }
         } catch (updateErr) {
-          console.error('Failed to update driver paidCommission:', updateErr);
+          console.error("Failed to update driver paidCommission:", updateErr);
         }
-        
+
         // Notify driver with accepted PDF
         try {
           const io = getIO();
           io.to(`user:${String(r.driver)}`).emit("remittance.accepted", {
             id: String(r._id),
-            acceptedPdfPath: r.acceptedPdfPath
+            acceptedPdfPath: r.acceptedPdfPath,
           });
         } catch {}
-        
+
         return res.json({ message: "Remittance accepted", remittance: r });
       }
     } catch (err) {
@@ -1280,10 +1391,15 @@ router.get(
       if (!r) return res.status(404).json({ message: "Remittance not found" });
 
       // Authorization: driver, manager assigned, or owner
-      const isDriver = req.user.role === "driver" && String(r.driver?._id || r.driver) === String(req.user.id);
-      const isManager = req.user.role === "manager" && String(r.manager?._id || r.manager) === String(req.user.id);
-      const isOwner = req.user.role === "user" && String(r.owner) === String(req.user.id);
-      
+      const isDriver =
+        req.user.role === "driver" &&
+        String(r.driver?._id || r.driver) === String(req.user.id);
+      const isManager =
+        req.user.role === "manager" &&
+        String(r.manager?._id || r.manager) === String(req.user.id);
+      const isOwner =
+        req.user.role === "user" && String(r.owner) === String(req.user.id);
+
       if (!isDriver && !isManager && !isOwner) {
         return res.status(403).json({ message: "Not authorized" });
       }
@@ -1291,24 +1407,27 @@ router.get(
       // Use acceptedPdfPath if accepted, otherwise use pdfPath
       const pdfPath = r.acceptedPdfPath || r.pdfPath;
       if (!pdfPath) {
-        return res.status(404).json({ message: "Settlement PDF not available" });
+        return res
+          .status(404)
+          .json({ message: "Settlement PDF not available" });
       }
 
       const fullPath = path.join(process.cwd(), pdfPath);
-      
+
       // Check if file exists
       if (!fs.existsSync(fullPath)) {
         return res.status(404).json({ message: "PDF file not found" });
       }
 
       // Send PDF file
-      const fileName = `Settlement_${r.driver?.firstName || 'Driver'}_${new Date(r.createdAt).toLocaleDateString().replace(/\//g, '-')}.pdf`;
+      const fileName = `Settlement_${
+        r.driver?.firstName || "Driver"
+      }_${new Date(r.createdAt).toLocaleDateString().replace(/\//g, "-")}.pdf`;
       res.download(fullPath, fileName, (err) => {
         if (err) {
-          console.error('Download error:', err);
+          console.error("Download error:", err);
         }
       });
-
     } catch (err) {
       console.error("Download settlement PDF error:", err);
       return res.status(500).json({ message: "Failed to download settlement" });
@@ -1435,6 +1554,7 @@ router.get(
         let deliveredCommissionPKR = 0;
         let upcomingCommissionPKR = 0;
         let ordersSubmitted = 0;
+        let ordersDelivered = 0;
         let totalOrderValueAED = 0;
         const aedRate = FX_PKR["AED"] || 76;
         for (const o of orders) {
@@ -1445,6 +1565,7 @@ router.get(
           );
           if (isCancelled) continue;
           ordersSubmitted++;
+          if (isDelivered) ordersDelivered++;
           // Calculate order value in AED
           const totalVal =
             o.total != null
@@ -1535,6 +1656,7 @@ router.get(
           phone: a.phone || "",
           payoutProfile: a.payoutProfile || {},
           ordersSubmitted,
+          ordersDelivered,
           totalOrderValueAED,
           deliveredCommissionPKR,
           upcomingCommissionPKR,
@@ -1561,7 +1683,7 @@ router.post(
       const amt = Number(amount);
       const rate = Number(commissionRate || 12);
       const orderValue = Number(totalOrderValueAED || 0);
-      
+
       if (Number.isNaN(amt) || amt <= 0)
         return res.status(400).json({ message: "Invalid amount" });
 
@@ -1580,26 +1702,31 @@ router.post(
       let totalDelivered = 0;
       try {
         const agentOrders = await Order.find({ agent: id })
-          .populate('productId', 'price baseCurrency')
+          .populate("productId", "price baseCurrency")
           .lean();
-        
+
         orders = agentOrders
-          .filter(o => String(o.shipmentStatus || '').toLowerCase() === 'delivered')
-          .map(o => {
+          .filter(
+            (o) => String(o.shipmentStatus || "").toLowerCase() === "delivered"
+          )
+          .map((o) => {
             const price = o.total || o.productId?.price || 0;
-            const currency = o.items?.[0]?.productId?.baseCurrency || o.productId?.baseCurrency || 'AED';
+            const currency =
+              o.items?.[0]?.productId?.baseCurrency ||
+              o.productId?.baseCurrency ||
+              "AED";
             return {
               orderId: o.invoiceId || `INV-${o._id.toString().slice(-8)}`,
               date: o.updatedAt || o.createdAt,
               amount: price,
-              currency: currency
+              currency: currency,
             };
           });
-        
+
         totalSubmitted = agentOrders.length;
         totalDelivered = orders.length;
       } catch (err) {
-        console.error('Error fetching agent orders:', err);
+        console.error("Error fetching agent orders:", err);
       }
 
       // Currency conversion (PKR to AED at ~76 PKR = 1 AED)
@@ -1610,47 +1737,59 @@ router.post(
       let pdfPath = null;
       try {
         pdfPath = await generateAgentCommissionReceiptPDF({
-          agentName: `${agent.firstName || ''} ${agent.lastName || ''}`.trim() || 'Agent',
-          agentPhone: agent.phone || '',
+          agentName:
+            `${agent.firstName || ""} ${agent.lastName || ""}`.trim() ||
+            "Agent",
+          agentPhone: agent.phone || "",
           totalSubmitted,
           totalDelivered,
           amountAED,
           amountPKR: amt,
           commissionRate: rate,
           totalOrderValueAED: orderValue,
-          orders
+          orders,
         });
       } catch (err) {
-        console.error('Error generating commission receipt PDF:', err);
+        console.error("Error generating commission receipt PDF:", err);
       }
 
       // Send PDF via WhatsApp
       if (pdfPath && agent.phone) {
         try {
           const getWA = async () => {
-            const enabled = process.env.ENABLE_WA !== 'false';
-            if (!enabled) return { sendDocument: async () => ({ ok: true }), sendText: async () => ({ ok: true }) };
+            const enabled = process.env.ENABLE_WA !== "false";
+            if (!enabled)
+              return {
+                sendDocument: async () => ({ ok: true }),
+                sendText: async () => ({ ok: true }),
+              };
             try {
-              const mod = await import('../services/whatsapp.js');
+              const mod = await import("../services/whatsapp.js");
               return mod?.default || mod;
             } catch {
-              return { sendDocument: async () => ({ ok: true }), sendText: async () => ({ ok: true }) };
+              return {
+                sendDocument: async () => ({ ok: true }),
+                sendText: async () => ({ ok: true }),
+              };
             }
           };
           const wa = await getWA();
-          const digits = String(agent.phone || '').replace(/\D/g, '');
+          const digits = String(agent.phone || "").replace(/\D/g, "");
           if (digits) {
             const jid = `${digits}@s.whatsapp.net`;
             const fullPath = path.join(process.cwd(), pdfPath);
-            
+
             // Send document
-            await wa.sendDocument(jid, fullPath, `Commission_Receipt_${Date.now()}.pdf`, 
+            await wa.sendDocument(
+              jid,
+              fullPath,
+              `Commission_Receipt_${Date.now()}.pdf`,
               `🎉 *Commission Payment Received!*\n\n` +
-              `Amount: PKR ${amt.toLocaleString()}\n` +
-              `Thank you for your excellent work!\n\n` +
-              `BuySial Commerce`
+                `Amount: PKR ${amt.toLocaleString()}\n` +
+                `Thank you for your excellent work!\n\n` +
+                `BuySial Commerce`
             );
-            
+
             // Clean up file after sending
             setTimeout(() => {
               try {
@@ -1659,17 +1798,22 @@ router.post(
             }, 5000);
           }
         } catch (err) {
-          console.error('Error sending commission receipt via WhatsApp:', err);
+          console.error("Error sending commission receipt via WhatsApp:", err);
         }
       }
 
       // Create an agent remittance record marking commission payment
       const pkrRate = 76;
       const totalInPKR = orderValue * pkrRate;
-      const noteText = orderValue > 0
-        ? `Commission payment: Total Orders AED ${orderValue.toFixed(2)} converted to PKR ${totalInPKR.toFixed(2)}, then ${rate}% commission = PKR ${amt.toFixed(2)}`
-        : `Commission payment (${rate}% commission rate)`;
-      
+      const noteText =
+        orderValue > 0
+          ? `Commission payment: Total Orders AED ${orderValue.toFixed(
+              2
+            )} converted to PKR ${totalInPKR.toFixed(
+              2
+            )}, then ${rate}% commission = PKR ${amt.toFixed(2)}`
+          : `Commission payment (${rate}% commission rate)`;
+
       const remit = new AgentRemit({
         agent: id,
         owner: agent.createdBy || req.user.id,
@@ -1708,21 +1852,29 @@ router.get(
   async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       // Find the remittance
-      const remit = await AgentRemit.findById(id).populate('agent', 'firstName lastName phone');
+      const remit = await AgentRemit.findById(id).populate(
+        "agent",
+        "firstName lastName phone"
+      );
       if (!remit) {
         return res.status(404).json({ message: "Remittance not found" });
       }
 
       // Check permission - agent can only see their own
-      if (req.user.role === 'agent' && String(remit.agent._id) !== String(req.user.id)) {
+      if (
+        req.user.role === "agent" &&
+        String(remit.agent._id) !== String(req.user.id)
+      ) {
         return res.status(403).json({ message: "Not allowed" });
       }
 
       // Only allow download for sent commissions
-      if (remit.status !== 'sent') {
-        return res.status(400).json({ message: "Receipt only available for sent commissions" });
+      if (remit.status !== "sent") {
+        return res
+          .status(400)
+          .json({ message: "Receipt only available for sent commissions" });
       }
 
       const agent = remit.agent;
@@ -1733,26 +1885,31 @@ router.get(
       let totalDelivered = 0;
       try {
         const agentOrders = await Order.find({ agent: agent._id })
-          .populate('productId', 'price baseCurrency')
+          .populate("productId", "price baseCurrency")
           .lean();
-        
+
         orders = agentOrders
-          .filter(o => String(o.shipmentStatus || '').toLowerCase() === 'delivered')
-          .map(o => {
+          .filter(
+            (o) => String(o.shipmentStatus || "").toLowerCase() === "delivered"
+          )
+          .map((o) => {
             const price = o.total || o.productId?.price || 0;
-            const currency = o.items?.[0]?.productId?.baseCurrency || o.productId?.baseCurrency || 'AED';
+            const currency =
+              o.items?.[0]?.productId?.baseCurrency ||
+              o.productId?.baseCurrency ||
+              "AED";
             return {
               orderId: o.invoiceId || `INV-${o._id.toString().slice(-8)}`,
               date: o.updatedAt || o.createdAt,
               amount: price,
-              currency: currency
+              currency: currency,
             };
           });
-        
+
         totalSubmitted = agentOrders.length;
         totalDelivered = orders.length;
       } catch (err) {
-        console.error('Error fetching agent orders:', err);
+        console.error("Error fetching agent orders:", err);
       }
 
       // Currency conversion
@@ -1761,30 +1918,34 @@ router.get(
 
       // Generate PDF
       const pdfPath = await generateAgentCommissionReceiptPDF({
-        agentName: `${agent.firstName || ''} ${agent.lastName || ''}`.trim() || 'Agent',
-        agentPhone: agent.phone || '',
+        agentName:
+          `${agent.firstName || ""} ${agent.lastName || ""}`.trim() || "Agent",
+        agentPhone: agent.phone || "",
         totalSubmitted,
         totalDelivered,
         amountAED,
         amountPKR: remit.amount,
-        orders
+        orders,
       });
 
       const fullPath = path.join(process.cwd(), pdfPath);
-      
-      // Send PDF file
-      res.download(fullPath, `Commission_Receipt_${new Date(remit.sentAt).toLocaleDateString()}.pdf`, (err) => {
-        if (err) {
-          console.error('Download error:', err);
-        }
-        // Clean up file after sending
-        setTimeout(() => {
-          try {
-            if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
-          } catch {}
-        }, 5000);
-      });
 
+      // Send PDF file
+      res.download(
+        fullPath,
+        `Commission_Receipt_${new Date(remit.sentAt).toLocaleDateString()}.pdf`,
+        (err) => {
+          if (err) {
+            console.error("Download error:", err);
+          }
+          // Clean up file after sending
+          setTimeout(() => {
+            try {
+              if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+            } catch {}
+          }, 5000);
+        }
+      );
     } catch (err) {
       console.error("Download commission receipt error:", err);
       return res.status(500).json({ message: "Failed to download receipt" });
@@ -1878,42 +2039,54 @@ router.get(
   async (req, res) => {
     try {
       const { month } = req.query; // Expected format: YYYY-MM
-      
+
       if (!month || !/^\d{4}-\d{2}$/.test(month)) {
-        return res.status(400).json({ message: "Invalid month format. Use YYYY-MM" });
+        return res
+          .status(400)
+          .json({ message: "Invalid month format. Use YYYY-MM" });
       }
 
       const driver = await User.findById(req.user.id)
         .select("firstName lastName phone driverProfile")
         .lean();
-      
+
       if (!driver) {
         return res.status(404).json({ message: "Driver not found" });
       }
 
       // Parse month range
-      const startDate = new Date(month + '-01T00:00:00.000Z');
+      const startDate = new Date(month + "-01T00:00:00.000Z");
       const endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + 1);
 
       // Get orders for this month
       const orders = await Order.find({
         deliveryBoy: req.user.id,
-        createdAt: { $gte: startDate, $lt: endDate }
+        createdAt: { $gte: startDate, $lt: endDate },
       })
-      .populate('productId', 'name')
-      .populate('items.productId', 'name')
-      .lean();
+        .populate("productId", "name")
+        .populate("items.productId", "name")
+        .lean();
 
       // Calculate statistics
       const ordersAssigned = orders.length;
-      const ordersDelivered = orders.filter(o => o.shipmentStatus === 'delivered').length;
-      const ordersCancelled = orders.filter(o => o.shipmentStatus === 'cancelled').length;
-      const ordersReturned = orders.filter(o => o.shipmentStatus === 'returned').length;
+      const ordersDelivered = orders.filter(
+        (o) => o.shipmentStatus === "delivered"
+      ).length;
+      const ordersCancelled = orders.filter(
+        (o) => o.shipmentStatus === "cancelled"
+      ).length;
+      const ordersReturned = orders.filter(
+        (o) => o.shipmentStatus === "returned"
+      ).length;
 
       // Get remittances for cancelled and returned orders - CASH ACCOUNTABILITY
-      const cancelledOrders = orders.filter(o => o.shipmentStatus === 'cancelled');
-      const returnedOrders = orders.filter(o => o.shipmentStatus === 'returned');
+      const cancelledOrders = orders.filter(
+        (o) => o.shipmentStatus === "cancelled"
+      );
+      const returnedOrders = orders.filter(
+        (o) => o.shipmentStatus === "returned"
+      );
 
       let cancelledSubmittedAmount = 0;
       let cancelledAcceptedAmount = 0;
@@ -1930,8 +2103,12 @@ router.get(
 
       for (const order of cancelledOrders) {
         // Get product name from items array or single productId
-        let productName = 'N/A';
-        if (order.items && order.items.length > 0 && order.items[0].productId?.name) {
+        let productName = "N/A";
+        if (
+          order.items &&
+          order.items.length > 0 &&
+          order.items[0].productId?.name
+        ) {
           productName = order.items[0].productId.name;
           if (order.items.length > 1) {
             productName += ` +${order.items.length - 1} more`;
@@ -1941,14 +2118,14 @@ router.get(
         }
 
         const orderDetail = {
-          invoiceNumber: order.invoiceNumber || 'N/A',
+          invoiceNumber: order.invoiceNumber || "N/A",
           productName: productName,
           submitted: order.returnSubmittedToCompany || false,
           verified: order.returnVerified || false,
-          amount: Number(order.collectedAmount || order.codAmount || 0)
+          amount: Number(order.collectedAmount || order.codAmount || 0),
         };
         cancelledOrderDetails.push(orderDetail);
-        
+
         if (order.returnSubmittedToCompany) {
           cancelledSubmittedAmount += orderDetail.amount;
           cancelledSubmittedCount++;
@@ -1961,8 +2138,12 @@ router.get(
 
       for (const order of returnedOrders) {
         // Get product name from items array or single productId
-        let productName = 'N/A';
-        if (order.items && order.items.length > 0 && order.items[0].productId?.name) {
+        let productName = "N/A";
+        if (
+          order.items &&
+          order.items.length > 0 &&
+          order.items[0].productId?.name
+        ) {
           productName = order.items[0].productId.name;
           if (order.items.length > 1) {
             productName += ` +${order.items.length - 1} more`;
@@ -1972,14 +2153,14 @@ router.get(
         }
 
         const orderDetail = {
-          invoiceNumber: order.invoiceNumber || 'N/A',
+          invoiceNumber: order.invoiceNumber || "N/A",
           productName: productName,
           submitted: order.returnSubmittedToCompany || false,
           verified: order.returnVerified || false,
-          amount: Number(order.collectedAmount || order.codAmount || 0)
+          amount: Number(order.collectedAmount || order.codAmount || 0),
         };
         returnedOrderDetails.push(orderDetail);
-        
+
         if (order.returnSubmittedToCompany) {
           returnedSubmittedAmount += orderDetail.amount;
           returnedSubmittedCount++;
@@ -1991,23 +2172,31 @@ router.get(
       }
 
       // Calculate commission
-      const commissionPerOrder = Number(driver.driverProfile?.commissionPerOrder || driver.commissionPerOrder || 0);
-      const totalCommission = Number(driver.driverProfile?.totalCommission || 0);
-      const currency = String(driver.driverProfile?.commissionCurrency || 'SAR').toUpperCase();
+      const commissionPerOrder = Number(
+        driver.driverProfile?.commissionPerOrder ||
+          driver.commissionPerOrder ||
+          0
+      );
+      const totalCommission = Number(
+        driver.driverProfile?.totalCommission || 0
+      );
+      const currency = String(
+        driver.driverProfile?.commissionCurrency || "SAR"
+      ).toUpperCase();
 
       // Get delivered order details
       const deliveredOrders = orders
-        .filter(o => o.shipmentStatus === 'delivered')
-        .map(o => ({
-          invoiceNumber: o.invoiceNumber || 'N/A',
-          customerName: o.customerName || 'N/A',
+        .filter((o) => o.shipmentStatus === "delivered")
+        .map((o) => ({
+          invoiceNumber: o.invoiceNumber || "N/A",
+          customerName: o.customerName || "N/A",
           deliveredAt: o.deliveredAt || o.updatedAt,
-          commission: commissionPerOrder
+          commission: commissionPerOrder,
         }));
 
       // Generate PDF
       const pdfData = {
-        driverName: `${driver.firstName || ''} ${driver.lastName || ''}`.trim(),
+        driverName: `${driver.firstName || ""} ${driver.lastName || ""}`.trim(),
         driverPhone: driver.phone,
         month: month,
         ordersAssigned,
@@ -2026,7 +2215,7 @@ router.get(
         returnedOrderDetails,
         totalCommission,
         currency,
-        deliveredOrders
+        deliveredOrders,
       };
 
       const pdfPath = await generateDriverMonthlyReportPDF(pdfData);
@@ -2036,22 +2225,26 @@ router.get(
         return res.status(500).json({ message: "PDF generation failed" });
       }
 
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="driver-monthly-report-${month}.pdf"`);
-      
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="driver-monthly-report-${month}.pdf"`
+      );
+
       const fileStream = fs.createReadStream(fullPath);
       fileStream.pipe(res);
 
       // Clean up file after sending
-      fileStream.on('end', () => {
+      fileStream.on("end", () => {
         try {
           fs.unlinkSync(fullPath);
         } catch {}
       });
-
     } catch (err) {
       console.error("Driver monthly report error:", err);
-      return res.status(500).json({ message: "Failed to generate monthly report" });
+      return res
+        .status(500)
+        .json({ message: "Failed to generate monthly report" });
     }
   }
 );
@@ -2064,36 +2257,44 @@ router.get(
   async (req, res) => {
     try {
       const { month } = req.query; // Expected format: YYYY-MM
-      
+
       if (!month || !/^\d{4}-\d{2}$/.test(month)) {
-        return res.status(400).json({ message: "Invalid month format. Use YYYY-MM" });
+        return res
+          .status(400)
+          .json({ message: "Invalid month format. Use YYYY-MM" });
       }
 
       const agent = await User.findById(req.user.id)
         .select("firstName lastName email phone")
         .lean();
-      
+
       if (!agent) {
         return res.status(404).json({ message: "Agent not found" });
       }
 
       // Parse month range
-      const startDate = new Date(month + '-01T00:00:00.000Z');
+      const startDate = new Date(month + "-01T00:00:00.000Z");
       const endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + 1);
 
       // Get orders for this month (agents create orders, so use createdBy)
       const orders = await Order.find({
         createdBy: req.user.id,
-        createdByRole: 'agent',
-        createdAt: { $gte: startDate, $lt: endDate }
+        createdByRole: "agent",
+        createdAt: { $gte: startDate, $lt: endDate },
       }).lean();
 
       // Calculate statistics
       const ordersSubmitted = orders.length;
-      const ordersDelivered = orders.filter(o => o.shipmentStatus === 'delivered').length;
-      const ordersCancelled = orders.filter(o => o.shipmentStatus === 'cancelled').length;
-      const ordersReturned = orders.filter(o => o.shipmentStatus === 'returned').length;
+      const ordersDelivered = orders.filter(
+        (o) => o.shipmentStatus === "delivered"
+      ).length;
+      const ordersCancelled = orders.filter(
+        (o) => o.shipmentStatus === "cancelled"
+      ).length;
+      const ordersReturned = orders.filter(
+        (o) => o.shipmentStatus === "returned"
+      ).length;
 
       // Calculate commission (12% of delivered orders)
       const commissionPct = 0.12;
@@ -2101,10 +2302,10 @@ router.get(
 
       // Get currency config
       const currencyCfg = await getCurrencyConfig();
-      
+
       // Helper to convert to AED
       const toAED = (amount, code) => {
-        const c = String(code || 'SAR').toUpperCase();
+        const c = String(code || "SAR").toUpperCase();
         const rate = currencyCfg.sarPerUnit[c];
         if (!rate) return amount;
         return (amount / rate) * currencyCfg.sarPerUnit.AED;
@@ -2116,9 +2317,9 @@ router.get(
       };
 
       for (const order of orders) {
-        if (order.shipmentStatus === 'delivered') {
+        if (order.shipmentStatus === "delivered") {
           const total = Number(order.total || 0);
-          const currency = order.orderCurrency || 'SAR';
+          const currency = order.orderCurrency || "SAR";
           const aed = toAED(total, currency);
           const pkr = aedToPKR(aed);
           totalCommission += pkr * commissionPct;
@@ -2127,25 +2328,25 @@ router.get(
 
       // Get delivered order details with commission
       const deliveredOrders = orders
-        .filter(o => o.shipmentStatus === 'delivered')
-        .map(o => {
+        .filter((o) => o.shipmentStatus === "delivered")
+        .map((o) => {
           const total = Number(o.total || 0);
-          const currency = o.orderCurrency || 'SAR';
+          const currency = o.orderCurrency || "SAR";
           const aed = toAED(total, currency);
           const pkr = aedToPKR(aed);
           const commission = pkr * commissionPct;
-          
+
           return {
-            invoiceNumber: o.invoiceNumber || 'N/A',
-            customerName: o.customerName || 'N/A',
+            invoiceNumber: o.invoiceNumber || "N/A",
+            customerName: o.customerName || "N/A",
             deliveredAt: o.deliveredAt || o.updatedAt,
-            commission
+            commission,
           };
         });
 
       // Generate PDF
       const pdfData = {
-        agentName: `${agent.firstName || ''} ${agent.lastName || ''}`.trim(),
+        agentName: `${agent.firstName || ""} ${agent.lastName || ""}`.trim(),
         agentEmail: agent.email,
         agentPhone: agent.phone,
         month: month,
@@ -2154,8 +2355,8 @@ router.get(
         ordersCancelled,
         ordersReturned,
         totalCommission: Math.round(totalCommission),
-        currency: 'PKR',
-        deliveredOrders
+        currency: "PKR",
+        deliveredOrders,
       };
 
       const pdfPath = await generateAgentMonthlyReportPDF(pdfData);
@@ -2165,22 +2366,26 @@ router.get(
         return res.status(500).json({ message: "PDF generation failed" });
       }
 
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="agent-monthly-report-${month}.pdf"`);
-      
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="agent-monthly-report-${month}.pdf"`
+      );
+
       const fileStream = fs.createReadStream(fullPath);
       fileStream.pipe(res);
 
       // Clean up file after sending
-      fileStream.on('end', () => {
+      fileStream.on("end", () => {
         try {
           fs.unlinkSync(fullPath);
         } catch {}
       });
-
     } catch (err) {
       console.error("Agent monthly report error:", err);
-      return res.status(500).json({ message: "Failed to generate monthly report" });
+      return res
+        .status(500)
+        .json({ message: "Failed to generate monthly report" });
     }
   }
 );
@@ -2213,11 +2418,27 @@ router.get(
         if (assigned.length) {
           const expandCountryVariations = (c) => {
             const normalized = c.toLowerCase();
-            if (normalized === "ksa" || normalized === "saudi arabia" || normalized === "saudi") {
-              return ["KSA", "Saudi Arabia", "ksa", "saudi arabia", "Saudi", "saudi"];
+            if (
+              normalized === "ksa" ||
+              normalized === "saudi arabia" ||
+              normalized === "saudi"
+            ) {
+              return [
+                "KSA",
+                "Saudi Arabia",
+                "ksa",
+                "saudi arabia",
+                "Saudi",
+                "saudi",
+              ];
             }
             if (normalized === "uae" || normalized === "united arab emirates") {
-              return ["UAE", "United Arab Emirates", "uae", "united arab emirates"];
+              return [
+                "UAE",
+                "United Arab Emirates",
+                "uae",
+                "united arab emirates",
+              ];
             }
             if (normalized === "oman" || normalized === "om") {
               return ["Oman", "OMAN", "oman", "OM", "Om"];
@@ -2234,7 +2455,12 @@ router.get(
             if (normalized === "india" || normalized === "in") {
               return ["India", "INDIA", "india", "IN", "In"];
             }
-            return [c, c.toUpperCase(), c.toLowerCase(), c.charAt(0).toUpperCase() + c.slice(1).toLowerCase()];
+            return [
+              c,
+              c.toUpperCase(),
+              c.toLowerCase(),
+              c.charAt(0).toUpperCase() + c.slice(1).toLowerCase(),
+            ];
           };
           const set = new Set();
           for (const c of assigned) {
@@ -2243,17 +2469,33 @@ router.get(
           driverCond.country = { $in: Array.from(set) };
         }
       }
-      
+
       // Apply country filter from query parameter if provided
       if (req.query.country) {
         const queryCountry = String(req.query.country).trim();
         const expandCountry = (c) => {
           const normalized = c.toLowerCase();
-          if (normalized === "ksa" || normalized === "saudi arabia" || normalized === "saudi") {
-            return ["KSA", "Saudi Arabia", "ksa", "saudi arabia", "Saudi", "saudi"];
+          if (
+            normalized === "ksa" ||
+            normalized === "saudi arabia" ||
+            normalized === "saudi"
+          ) {
+            return [
+              "KSA",
+              "Saudi Arabia",
+              "ksa",
+              "saudi arabia",
+              "Saudi",
+              "saudi",
+            ];
           }
           if (normalized === "uae" || normalized === "united arab emirates") {
-            return ["UAE", "United Arab Emirates", "uae", "united arab emirates"];
+            return [
+              "UAE",
+              "United Arab Emirates",
+              "uae",
+              "united arab emirates",
+            ];
           }
           if (normalized === "oman" || normalized === "om") {
             return ["Oman", "OMAN", "oman", "OM", "Om"];
@@ -2271,7 +2513,12 @@ router.get(
             return ["India", "INDIA", "india", "IN", "In"];
           }
           // Default: include original + uppercase + lowercase + title case
-          return [c, c.toUpperCase(), c.toLowerCase(), c.charAt(0).toUpperCase() + c.slice(1).toLowerCase()];
+          return [
+            c,
+            c.toUpperCase(),
+            c.toLowerCase(),
+            c.charAt(0).toUpperCase() + c.slice(1).toLowerCase(),
+          ];
         };
         driverCond.country = { $in: expandCountry(queryCountry) };
       }
@@ -2287,14 +2534,14 @@ router.get(
         .limit(limit)
         .lean();
 
-
       // Date filtering support - two formats:
       // 1. from/to ISO dates (dashboard month filter)
       // 2. month/year numbers (legacy)
       let dateFilter = {};
       if (req.query.from || req.query.to) {
         dateFilter.createdAt = {};
-        if (req.query.from) dateFilter.createdAt.$gte = new Date(req.query.from);
+        if (req.query.from)
+          dateFilter.createdAt.$gte = new Date(req.query.from);
         if (req.query.to) dateFilter.createdAt.$lte = new Date(req.query.to);
       } else if (req.query.month && req.query.year) {
         const monthNum = parseInt(req.query.month);
@@ -2311,20 +2558,29 @@ router.get(
       for (const d of drivers) {
         const currency = currencyFromCountry(d?.country || "") || "SAR";
         const matchBase = { deliveryBoy: d._id, ...dateFilter };
-        
+
         // Open orders: all non-final statuses
-        const openStatuses = ['pending', 'assigned', 'picked_up', 'in_transit', 'out_for_delivery', 'no_response', 'attempted', 'contacted'];
+        const openStatuses = [
+          "pending",
+          "assigned",
+          "picked_up",
+          "in_transit",
+          "out_for_delivery",
+          "no_response",
+          "attempted",
+          "contacted",
+        ];
         const open = await Order.countDocuments({
           ...matchBase,
-          shipmentStatus: { $in: openStatuses }
+          shipmentStatus: { $in: openStatuses },
         });
-        
+
         // Assigned: specifically orders with 'assigned' status
         const assigned = await Order.countDocuments({
           ...matchBase,
-          shipmentStatus: "assigned"
+          shipmentStatus: "assigned",
         });
-        
+
         const canceled = await Order.countDocuments({
           ...matchBase,
           shipmentStatus: "cancelled",
@@ -2365,9 +2621,9 @@ router.get(
         // Delivered to company comes from accepted and manager_accepted remittances
         const remitRows = await Remittance.aggregate([
           {
-            $match: { 
-              driver: new M.Types.ObjectId(d._id), 
-              status: { $in: ["accepted", "manager_accepted"] }
+            $match: {
+              driver: new M.Types.ObjectId(d._id),
+              status: { $in: ["accepted", "manager_accepted"] },
             },
           },
           {
@@ -2382,42 +2638,61 @@ router.get(
         const commissionPerOrder = Number(
           d.driverProfile?.commissionPerOrder ?? 0
         );
-        
+
         // Get actual commissions from all delivered orders
-        const deliveredOrdersWithCommission = await Order.find({ deliveryBoy: d._id, shipmentStatus: 'delivered', ...dateFilter }).select('driverCommission').lean();
-        
+        const deliveredOrdersWithCommission = await Order.find({
+          deliveryBoy: d._id,
+          shipmentStatus: "delivered",
+          ...dateFilter,
+        })
+          .select("driverCommission")
+          .lean();
+
         // Calculate total actual commission from orders
         // If order has driverCommission set, use it; otherwise use default rate
-        const actualTotalCommission = deliveredOrdersWithCommission.reduce((sum, o) => {
-          const orderComm = Number(o.driverCommission) || 0
-          // Use order's commission if set, otherwise use driver's default rate
-          return sum + (orderComm > 0 ? orderComm : commissionPerOrder)
-        }, 0);
-        
+        const actualTotalCommission = deliveredOrdersWithCommission.reduce(
+          (sum, o) => {
+            const orderComm = Number(o.driverCommission) || 0;
+            // Use order's commission if set, otherwise use driver's default rate
+            return sum + (orderComm > 0 ? orderComm : commissionPerOrder);
+          },
+          0
+        );
+
         // Base commission (default rate × delivered count)
         const baseCommission = deliveredCount * commissionPerOrder;
-        
+
         // Extra commission (difference between actual and base)
-        const extraCommission = Math.max(0, actualTotalCommission - baseCommission);
-        
+        const extraCommission = Math.max(
+          0,
+          actualTotalCommission - baseCommission
+        );
+
         // Total commission is the actual commission from orders
         const driverCommission = Math.round(actualTotalCommission);
 
         // Calculate paid commission from remittances in the same date period
         const paidRemitRows = await Remittance.aggregate([
           {
-            $match: { 
-              driver: new M.Types.ObjectId(d._id), 
+            $match: {
+              driver: new M.Types.ObjectId(d._id),
               status: { $in: ["accepted", "manager_accepted"] },
-              ...(dateFilter.createdAt ? { acceptedAt: dateFilter.createdAt } : {})
+              ...(dateFilter.createdAt
+                ? { acceptedAt: dateFilter.createdAt }
+                : {}),
             },
           },
           {
-            $group: { _id: null, totalPaid: { $sum: { $ifNull: ["$driverCommission", 0] } } },
+            $group: {
+              _id: null,
+              totalPaid: { $sum: { $ifNull: ["$driverCommission", 0] } },
+            },
           },
         ]);
         const withdrawnCommission = Math.round(
-          paidRemitRows && paidRemitRows[0] ? Number(paidRemitRows[0].totalPaid || 0) : 0
+          paidRemitRows && paidRemitRows[0]
+            ? Number(paidRemitRows[0].totalPaid || 0)
+            : 0
         );
 
         // Pending commission: earned commission minus withdrawn
@@ -2472,7 +2747,7 @@ router.post(
       const amt = Number(amount);
       const rate = Number(commissionRate);
       const delCount = Number(deliveredCount || 0);
-      
+
       if (Number.isNaN(amt) || amt <= 0)
         return res.status(400).json({ message: "Invalid amount" });
 
@@ -2488,12 +2763,15 @@ router.post(
       // Manager payments go to pending, owner payments are accepted directly
       const isManager = req.user.role === "manager";
       const status = isManager ? "pending" : "accepted";
-      
+
       // Create a remittance record marking commission payment to driver
-      const noteText = rate > 0 && delCount > 0 
-        ? `Commission payment (${delCount} orders × ${rate.toFixed(2)} = ${amt.toFixed(2)})`
-        : "Commission payment";
-      
+      const noteText =
+        rate > 0 && delCount > 0
+          ? `Commission payment (${delCount} orders × ${rate.toFixed(
+              2
+            )} = ${amt.toFixed(2)})`
+          : "Commission payment";
+
       const remit = new Remittance({
         driver: id,
         owner: req.user.role === "user" ? req.user.id : driver.createdBy,
@@ -2514,25 +2792,25 @@ router.post(
         if (!driver.driverProfile) driver.driverProfile = {};
         const currentPaid = Number(driver.driverProfile.paidCommission || 0);
         driver.driverProfile.paidCommission = currentPaid + amt;
-        
+
         // Update commission rate if a custom rate was provided
         if (rate > 0 && rate !== driver.driverProfile.commissionPerOrder) {
           driver.driverProfile.commissionPerOrder = rate;
         }
-        
-        driver.markModified('driverProfile');
+
+        driver.markModified("driverProfile");
         await driver.save();
-        
+
         // Notify driver
         try {
           const io = getIO();
           io.to(`user:${id}`).emit("commission.paid", { amount: amt });
           // Also emit to owner workspace
           const ownerId = String(driver.createdBy || req.user.id);
-          io.to(`workspace:${ownerId}`).emit("driver.commission.paid", { 
+          io.to(`workspace:${ownerId}`).emit("driver.commission.paid", {
             driverId: String(id),
             amount: amt,
-            totalPaid: driver.driverProfile.paidCommission
+            totalPaid: driver.driverProfile.paidCommission,
           });
         } catch {}
       } else {
@@ -2540,17 +2818,19 @@ router.post(
         try {
           const io = getIO();
           const ownerId = String(driver.createdBy);
-          io.to(`workspace:${ownerId}`).emit("driver.commission.pending", { 
+          io.to(`workspace:${ownerId}`).emit("driver.commission.pending", {
             driverId: String(id),
             managerId: String(req.user.id),
-            amount: amt
+            amount: amt,
           });
         } catch {}
       }
 
-      return res.json({ 
-        ok: true, 
-        message: isManager ? "Commission payment sent for approval" : "Commission paid successfully" 
+      return res.json({
+        ok: true,
+        message: isManager
+          ? "Commission payment sent for approval"
+          : "Commission paid successfully",
       });
     } catch (err) {
       console.error("Pay commission error:", err);
@@ -2569,7 +2849,7 @@ router.get(
       const { id } = req.params;
       const driver = await User.findOne({ _id: id, role: "driver" });
       if (!driver) return res.status(404).json({ message: "Driver not found" });
-      
+
       // Check authorization
       if (
         req.user.role !== "admin" &&
@@ -2581,19 +2861,23 @@ router.get(
       // Get all commission payment remittances for this driver
       const remittances = await Remittance.find({
         driver: id,
-        note: "Commission payment"
+        note: "Commission payment",
       })
-      .sort({ createdAt: -1 })
-      .populate("manager", "firstName lastName email")
-      .lean();
+        .sort({ createdAt: -1 })
+        .populate("manager", "firstName lastName email")
+        .lean();
 
       // Get driver's country for currency
       const country = driver.driverProfile?.country || "Saudi Arabia";
-      const currency = country.toLowerCase().includes("uae") ? "AED" : 
-                      country.toLowerCase().includes("oman") ? "OMR" :
-                      country.toLowerCase().includes("bahrain") ? "BHD" : "SAR";
+      const currency = country.toLowerCase().includes("uae")
+        ? "AED"
+        : country.toLowerCase().includes("oman")
+        ? "OMR"
+        : country.toLowerCase().includes("bahrain")
+        ? "BHD"
+        : "SAR";
 
-      const history = remittances.map(r => ({
+      const history = remittances.map((r) => ({
         _id: r._id,
         amount: r.amount || r.driverCommission || 0,
         currency: r.currency || currency,
@@ -2602,13 +2886,15 @@ router.get(
         createdAt: r.createdAt,
         manager: r.manager,
         method: r.method,
-        note: r.note
+        note: r.note,
       }));
 
       return res.json({ history });
     } catch (err) {
       console.error("Commission history error:", err);
-      return res.status(500).json({ message: "Failed to load commission history" });
+      return res
+        .status(500)
+        .json({ message: "Failed to load commission history" });
     }
   }
 );
@@ -2622,67 +2908,81 @@ router.get(
     try {
       const driverId = req.user.id;
       const driver = await User.findById(driverId);
-      if (!driver || driver.role !== 'driver') {
-        return res.status(404).json({ message: 'Driver not found' });
+      if (!driver || driver.role !== "driver") {
+        return res.status(404).json({ message: "Driver not found" });
       }
 
       // Get delivered orders
       const deliveredOrders = await Order.find({
         deliveryBoy: driverId,
-        shipmentStatus: 'delivered'
+        shipmentStatus: "delivered",
       })
-        .select('invoiceNumber deliveredAt driverCommission')
+        .select("invoiceNumber deliveredAt driverCommission")
         .sort({ deliveredAt: -1 })
         .lean();
 
       // Calculate commission data
       const defaultRate = Number(driver.driverProfile?.commissionPerOrder || 0);
-      const totalCommission = Number(driver.driverProfile?.totalCommission || 0);
+      const totalCommission = Number(
+        driver.driverProfile?.totalCommission || 0
+      );
       const paidCommission = Number(driver.driverProfile?.paidCommission || 0);
       const pendingCommission = Math.max(0, totalCommission - paidCommission);
-      const currency = driver.driverProfile?.commissionCurrency || 'SAR';
+      const currency = driver.driverProfile?.commissionCurrency || "SAR";
 
       // Prepare PDF data
       const pdfData = {
-        driverName: `${driver.firstName || ''} ${driver.lastName || ''}`.trim() || 'Driver',
-        driverPhone: driver.phone || '',
+        driverName:
+          `${driver.firstName || ""} ${driver.lastName || ""}`.trim() ||
+          "Driver",
+        driverPhone: driver.phone || "",
         totalDeliveredOrders: deliveredOrders.length,
-        totalCommissionPaid: paidCommission > 0 ? paidCommission : totalCommission,
+        totalCommissionPaid:
+          paidCommission > 0 ? paidCommission : totalCommission,
         currency: currency,
-        orders: deliveredOrders.map(order => ({
+        orders: deliveredOrders.map((order) => ({
           orderId: order.invoiceNumber || String(order._id).slice(-6),
           deliveryDate: order.deliveredAt,
-          commission: Number(order.driverCommission) > 0 ? Number(order.driverCommission) : defaultRate
-        }))
+          commission:
+            Number(order.driverCommission) > 0
+              ? Number(order.driverCommission)
+              : defaultRate,
+        })),
       };
 
       // Generate PDF
-      const { generateCommissionPayoutPDF } = await import('../../utils/generateCommissionPayoutPDF.js');
+      const { generateCommissionPayoutPDF } = await import(
+        "../../utils/generateCommissionPayoutPDF.js"
+      );
       const pdfPath = await generateCommissionPayoutPDF(pdfData);
-      
+
       // Send PDF file
-      const fs = await import('fs');
-      const path = await import('path');
+      const fs = await import("fs");
+      const path = await import("path");
       const fullPath = path.join(process.cwd(), pdfPath);
-      
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="commission-statement.pdf"`);
-      
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="commission-statement.pdf"`
+      );
+
       const fileStream = fs.createReadStream(fullPath);
       fileStream.pipe(res);
-      
+
       // Clean up file after sending
-      fileStream.on('end', () => {
+      fileStream.on("end", () => {
         try {
           fs.unlinkSync(fullPath);
         } catch (err) {
-          console.error('Failed to delete temp PDF:', err);
+          console.error("Failed to delete temp PDF:", err);
         }
       });
-
     } catch (err) {
-      console.error('Generate driver PDF error:', err);
-      return res.status(500).json({ message: 'Failed to generate commission PDF' });
+      console.error("Generate driver PDF error:", err);
+      return res
+        .status(500)
+        .json({ message: "Failed to generate commission PDF" });
     }
   }
 );
@@ -2836,11 +3136,12 @@ router.post(
       // Check if manager already has a pending remittance
       const existingPending = await ManagerRemittance.findOne({
         manager: req.user.id,
-        status: "pending"
+        status: "pending",
       });
       if (existingPending) {
-        return res.status(400).json({ 
-          message: "You already have a pending remittance awaiting approval. Please wait for it to be processed before submitting a new one." 
+        return res.status(400).json({
+          message:
+            "You already have a pending remittance awaiting approval. Please wait for it to be processed before submitting a new one.",
         });
       }
 
@@ -2848,7 +3149,10 @@ router.post(
       let country = reqCountry ? String(reqCountry).trim() : "";
       if (!country) {
         // Try assignedCountries array first, then assignedCountry, then country
-        if (Array.isArray(me.assignedCountries) && me.assignedCountries.length > 0) {
+        if (
+          Array.isArray(me.assignedCountries) &&
+          me.assignedCountries.length > 0
+        ) {
           country = String(me.assignedCountries[0]).trim();
         } else if (me.assignedCountry) {
           country = String(me.assignedCountry).trim();
@@ -3040,12 +3344,10 @@ router.get(
       return res.json({ totalSent, totalAccepted, totalPending, currency });
     } catch (err) {
       console.error("Manager remittance summary error:", err);
-      return res
-        .status(500)
-        .json({
-          message: "Failed to get manager remittance summary",
-          error: err.message,
-        });
+      return res.status(500).json({
+        message: "Failed to get manager remittance summary",
+        error: err.message,
+      });
     }
   }
 );
@@ -3053,206 +3355,280 @@ router.get(
 // ====== INVESTOR REMITTANCES ======
 
 // Create investor remittance (investor requests payment)
-router.post("/investor-remittances", auth, allowRoles("investor"), async (req, res) => {
-  try {
-    const { amount, note = "", productId = "", country = "" } = req.body || {};
-    if (amount == null) return res.status(400).json({ message: "amount is required" });
-    const amt = Number(amount);
-    if (Number.isNaN(amt) || amt <= 0) return res.status(400).json({ message: "Invalid amount" });
-
-    const me = await User.findById(req.user.id).select("createdBy investorProfile").lean();
-    if (!me) return res.status(404).json({ message: "Investor not found" });
-    const ownerId = String(me.createdBy || "");
-    if (!ownerId) return res.status(400).json({ message: "Investor has no owner" });
-
-    const currency = me.investorProfile?.currency || "SAR";
-
-    const doc = new InvestorRemittance({
-      investor: req.user.id,
-      owner: ownerId,
-      amount: amt,
-      currency,
-      product: productId || null,
-      country: country || "",
-      note,
-      status: "pending",
-    });
-    await doc.save();
-
+router.post(
+  "/investor-remittances",
+  auth,
+  allowRoles("investor"),
+  async (req, res) => {
     try {
-      const io = getIO();
-      io.to(`user:${ownerId}`).emit("investor-remittance.created", { id: String(doc._id) });
-    } catch {}
-    return res.status(201).json({ message: "Payment request created", remittance: doc });
-  } catch (err) {
-    console.error("Create investor remittance error:", err);
-    return res.status(500).json({ message: "Failed to create payment request" });
+      const {
+        amount,
+        note = "",
+        productId = "",
+        country = "",
+      } = req.body || {};
+      if (amount == null)
+        return res.status(400).json({ message: "amount is required" });
+      const amt = Number(amount);
+      if (Number.isNaN(amt) || amt <= 0)
+        return res.status(400).json({ message: "Invalid amount" });
+
+      const me = await User.findById(req.user.id)
+        .select("createdBy investorProfile")
+        .lean();
+      if (!me) return res.status(404).json({ message: "Investor not found" });
+      const ownerId = String(me.createdBy || "");
+      if (!ownerId)
+        return res.status(400).json({ message: "Investor has no owner" });
+
+      const currency = me.investorProfile?.currency || "SAR";
+
+      const doc = new InvestorRemittance({
+        investor: req.user.id,
+        owner: ownerId,
+        amount: amt,
+        currency,
+        product: productId || null,
+        country: country || "",
+        note,
+        status: "pending",
+      });
+      await doc.save();
+
+      try {
+        const io = getIO();
+        io.to(`user:${ownerId}`).emit("investor-remittance.created", {
+          id: String(doc._id),
+        });
+      } catch {}
+      return res
+        .status(201)
+        .json({ message: "Payment request created", remittance: doc });
+    } catch (err) {
+      console.error("Create investor remittance error:", err);
+      return res
+        .status(500)
+        .json({ message: "Failed to create payment request" });
+    }
   }
-});
+);
 
 // List investor remittances (for user/owner)
-router.get("/investor-remittances", auth, allowRoles("admin", "user", "investor"), async (req, res) => {
-  try {
-    let match = {};
-    if (req.user.role === "investor") {
-      match.investor = req.user.id;
-    } else {
-      match.owner = req.user.id;
+router.get(
+  "/investor-remittances",
+  auth,
+  allowRoles("admin", "user", "investor"),
+  async (req, res) => {
+    try {
+      let match = {};
+      if (req.user.role === "investor") {
+        match.investor = req.user.id;
+      } else {
+        match.owner = req.user.id;
+      }
+      const remittances = await InvestorRemittance.find(match)
+        .populate("investor", "firstName lastName email investorProfile")
+        .populate("product", "name image price")
+        .sort({ createdAt: -1 })
+        .lean();
+      return res.json({ remittances });
+    } catch (err) {
+      return res
+        .status(500)
+        .json({ message: "Failed to load investor remittances" });
     }
-    const remittances = await InvestorRemittance.find(match)
-      .populate("investor", "firstName lastName email investorProfile")
-      .populate("product", "name image price")
-      .sort({ createdAt: -1 })
-      .lean();
-    return res.json({ remittances });
-  } catch (err) {
-    return res.status(500).json({ message: "Failed to load investor remittances" });
   }
-});
+);
 
 // Approve investor remittance
-router.post("/investor-remittances/:id/approve", auth, allowRoles("user"), async (req, res) => {
-  try {
-    const r = await InvestorRemittance.findById(req.params.id);
-    if (!r) return res.status(404).json({ message: "Remittance not found" });
-    if (String(r.owner) !== String(req.user.id)) return res.status(403).json({ message: "Forbidden" });
-    if (r.status !== "pending") return res.status(400).json({ message: "Already processed" });
-
-    r.status = "approved";
-    r.approvedAt = new Date();
-    r.approvedBy = req.user.id;
-    await r.save();
-
+router.post(
+  "/investor-remittances/:id/approve",
+  auth,
+  allowRoles("user"),
+  async (req, res) => {
     try {
-      const io = getIO();
-      io.to(`user:${String(r.investor)}`).emit("investor-remittance.approved", { id: String(r._id) });
-    } catch {}
-    return res.json({ message: "Remittance approved", remittance: r });
-  } catch (err) {
-    return res.status(500).json({ message: "Failed to approve remittance" });
+      const r = await InvestorRemittance.findById(req.params.id);
+      if (!r) return res.status(404).json({ message: "Remittance not found" });
+      if (String(r.owner) !== String(req.user.id))
+        return res.status(403).json({ message: "Forbidden" });
+      if (r.status !== "pending")
+        return res.status(400).json({ message: "Already processed" });
+
+      r.status = "approved";
+      r.approvedAt = new Date();
+      r.approvedBy = req.user.id;
+      await r.save();
+
+      try {
+        const io = getIO();
+        io.to(`user:${String(r.investor)}`).emit(
+          "investor-remittance.approved",
+          { id: String(r._id) }
+        );
+      } catch {}
+      return res.json({ message: "Remittance approved", remittance: r });
+    } catch (err) {
+      return res.status(500).json({ message: "Failed to approve remittance" });
+    }
   }
-});
+);
 
 // Mark as sent
-router.post("/investor-remittances/:id/send", auth, allowRoles("user"), async (req, res) => {
-  try {
-    const r = await InvestorRemittance.findById(req.params.id);
-    if (!r) return res.status(404).json({ message: "Remittance not found" });
-    if (String(r.owner) !== String(req.user.id)) return res.status(403).json({ message: "Forbidden" });
-    if (r.status !== "approved") return res.status(400).json({ message: "Must be approved first" });
-
-    r.status = "sent";
-    r.sentAt = new Date();
-    r.sentBy = req.user.id;
-    await r.save();
-
+router.post(
+  "/investor-remittances/:id/send",
+  auth,
+  allowRoles("user"),
+  async (req, res) => {
     try {
-      const io = getIO();
-      io.to(`user:${String(r.investor)}`).emit("investor-remittance.sent", { id: String(r._id) });
-    } catch {}
-    return res.json({ message: "Remittance marked as sent", remittance: r });
-  } catch (err) {
-    return res.status(500).json({ message: "Failed to send remittance" });
+      const r = await InvestorRemittance.findById(req.params.id);
+      if (!r) return res.status(404).json({ message: "Remittance not found" });
+      if (String(r.owner) !== String(req.user.id))
+        return res.status(403).json({ message: "Forbidden" });
+      if (r.status !== "approved")
+        return res.status(400).json({ message: "Must be approved first" });
+
+      r.status = "sent";
+      r.sentAt = new Date();
+      r.sentBy = req.user.id;
+      await r.save();
+
+      try {
+        const io = getIO();
+        io.to(`user:${String(r.investor)}`).emit("investor-remittance.sent", {
+          id: String(r._id),
+        });
+      } catch {}
+      return res.json({ message: "Remittance marked as sent", remittance: r });
+    } catch (err) {
+      return res.status(500).json({ message: "Failed to send remittance" });
+    }
   }
-});
+);
 
 // Investor dashboard stats
-router.get("/investor/dashboard", auth, allowRoles("investor"), async (req, res) => {
-  try {
-    const me = await User.findById(req.user.id)
-      .select("investorProfile createdBy")
-      .populate("investorProfile.assignedProducts.product", "name image description price")
-      .lean();
-    
-    if (!me) return res.status(404).json({ message: "Investor not found" });
+router.get(
+  "/investor/dashboard",
+  auth,
+  allowRoles("investor"),
+  async (req, res) => {
+    try {
+      const me = await User.findById(req.user.id)
+        .select("investorProfile createdBy")
+        .populate(
+          "investorProfile.assignedProducts.product",
+          "name image description price"
+        )
+        .lean();
 
-    const assignedProducts = me.investorProfile?.assignedProducts || [];
-    const totalInvestment = me.investorProfile?.investmentAmount || 0;
-    const currency = me.investorProfile?.currency || "SAR";
+      if (!me) return res.status(404).json({ message: "Investor not found" });
 
-    // Get sales data for each product
-    const productStats = [];
-    for (const ap of assignedProducts) {
-      if (!ap.product) continue;
-      
-      const productId = ap.product._id;
-      const country = ap.country || "";
-      const profitPerUnit = ap.profitPerUnit || 0;
+      const assignedProducts = me.investorProfile?.assignedProducts || [];
+      const totalInvestment = me.investorProfile?.investmentAmount || 0;
+      const currency = me.investorProfile?.currency || "SAR";
 
-      // Get orders for this product in this country
-      const match = {
-        productId: productId,
-        shipmentStatus: { $in: ["delivered", "in_transit", "picked_up", "pending"] }
-      };
-      if (country) match.orderCountry = country;
+      // Get sales data for each product
+      const productStats = [];
+      for (const ap of assignedProducts) {
+        if (!ap.product) continue;
 
-      const orders = await Order.find(match).select("quantity shipmentStatus total").lean();
-      
-      let totalUnits = 0;
-      let deliveredUnits = 0;
-      let totalRevenue = 0;
-      let totalProfit = 0;
+        const productId = ap.product._id;
+        const country = ap.country || "";
+        const profitPerUnit = ap.profitPerUnit || 0;
 
-      for (const order of orders) {
-        const qty = Number(order.quantity || 1);
-        totalUnits += qty;
-        if (order.shipmentStatus === "delivered") {
-          deliveredUnits += qty;
-          totalProfit += qty * profitPerUnit;
+        // Get orders for this product in this country
+        const match = {
+          productId: productId,
+          shipmentStatus: {
+            $in: ["delivered", "in_transit", "picked_up", "pending"],
+          },
+        };
+        if (country) match.orderCountry = country;
+
+        const orders = await Order.find(match)
+          .select("quantity shipmentStatus total")
+          .lean();
+
+        let totalUnits = 0;
+        let deliveredUnits = 0;
+        let totalRevenue = 0;
+        let totalProfit = 0;
+
+        for (const order of orders) {
+          const qty = Number(order.quantity || 1);
+          totalUnits += qty;
+          if (order.shipmentStatus === "delivered") {
+            deliveredUnits += qty;
+            totalProfit += qty * profitPerUnit;
+          }
+          totalRevenue += Number(order.total || 0);
         }
-        totalRevenue += Number(order.total || 0);
+
+        // Get product stock
+        const product = await Product.findById(productId)
+          .select("stock stockByCountry name image description price")
+          .lean();
+
+        if (!product) continue; // Skip if product not found
+
+        // Get country-specific stock
+        let stock = 0;
+        if (
+          country &&
+          product.stockByCountry &&
+          Object.keys(product.stockByCountry).length > 0
+        ) {
+          // Use country-specific stock if available
+          stock = product.stockByCountry[country] || 0;
+        } else {
+          // Fallback to total stock if stockByCountry not populated
+          stock = product.stock || 0;
+        }
+
+        console.log(
+          `Investor Dashboard - Product: ${product.name}, Country: ${country}, Stock: ${stock}, Total Stock: ${product.stock}, stockByCountry:`,
+          product.stockByCountry
+        );
+
+        productStats.push({
+          product: {
+            _id: product._id,
+            name: product.name,
+            image: product.image,
+            description: product.description,
+            price: product.price,
+          },
+          country: country || "All",
+          stock: stock,
+          profitPerUnit,
+          totalUnits,
+          deliveredUnits,
+          totalRevenue,
+          totalProfit,
+        });
       }
 
-      // Get product stock
-      const product = await Product.findById(productId).select("stock stockByCountry name image description price").lean();
-      
-      if (!product) continue; // Skip if product not found
-      
-      // Get country-specific stock
-      let stock = 0;
-      if (country && product.stockByCountry && Object.keys(product.stockByCountry).length > 0) {
-        // Use country-specific stock if available
-        stock = product.stockByCountry[country] || 0;
-      } else {
-        // Fallback to total stock if stockByCountry not populated
-        stock = product.stock || 0;
-      }
-      
-      console.log(`Investor Dashboard - Product: ${product.name}, Country: ${country}, Stock: ${stock}, Total Stock: ${product.stock}, stockByCountry:`, product.stockByCountry);
-      
-      productStats.push({
-        product: {
-          _id: product._id,
-          name: product.name,
-          image: product.image,
-          description: product.description,
-          price: product.price
-        },
-        country: country || "All",
-        stock: stock,
-        profitPerUnit,
+      // Calculate summary
+      const totalProfit = productStats.reduce(
+        (sum, p) => sum + p.totalProfit,
+        0
+      );
+      const totalDeliveredUnits = productStats.reduce(
+        (sum, p) => sum + p.deliveredUnits,
+        0
+      );
+      const totalUnits = productStats.reduce((sum, p) => sum + p.totalUnits, 0);
+
+      return res.json({
+        totalInvestment,
+        currency,
+        totalProfit,
+        totalDeliveredUnits,
         totalUnits,
-        deliveredUnits,
-        totalRevenue,
-        totalProfit
+        products: productStats,
       });
+    } catch (err) {
+      console.error("Investor dashboard error:", err);
+      return res.status(500).json({ message: "Failed to load dashboard data" });
     }
-
-    // Calculate summary
-    const totalProfit = productStats.reduce((sum, p) => sum + p.totalProfit, 0);
-    const totalDeliveredUnits = productStats.reduce((sum, p) => sum + p.deliveredUnits, 0);
-    const totalUnits = productStats.reduce((sum, p) => sum + p.totalUnits, 0);
-
-    return res.json({
-      totalInvestment,
-      currency,
-      totalProfit,
-      totalDeliveredUnits,
-      totalUnits,
-      products: productStats
-    });
-  } catch (err) {
-    console.error("Investor dashboard error:", err);
-    return res.status(500).json({ message: "Failed to load dashboard data" });
   }
-});
+);

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../ui/Toast.jsx'
 import Modal from '../../components/Modal.jsx'
 
-export default function AgentAmounts(){
+export default function AgentAmounts() {
   const navigate = useNavigate()
   const toast = useToast()
   const [agents, setAgents] = useState([])
@@ -35,8 +35,8 @@ export default function AgentAmounts(){
         if (alive) setLoading(false)
       }
     }, 10)
-    
-    return () => { 
+
+    return () => {
       alive = false
       clearTimeout(timeoutId)
     }
@@ -50,28 +50,50 @@ export default function AgentAmounts(){
     return () => clearTimeout(timeoutId)
   }, [searchTerm])
 
-  function num(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }
+  function num(n) {
+    return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
+  }
 
-  const filteredAgents = useMemo(()=>{
+  const filteredAgents = useMemo(() => {
     if (!debouncedSearch) return agents
     const term = debouncedSearch.toLowerCase()
-    return agents.filter(a => 
-      String(a.name||'').toLowerCase().includes(term) ||
-      String(a.phone||'').toLowerCase().includes(term)
+    return agents.filter(
+      (a) =>
+        String(a.name || '')
+          .toLowerCase()
+          .includes(term) ||
+        String(a.phone || '')
+          .toLowerCase()
+          .includes(term)
     )
   }, [agents, debouncedSearch])
 
-  const totals = useMemo(()=>{
-    let deliveredCommission = 0, upcomingCommission = 0, withdrawn = 0, pending = 0, ordersSubmitted = 0, totalOrderValueAED = 0
-    for (const a of filteredAgents){
-      deliveredCommission += Number(a.deliveredCommissionPKR||0)
-      upcomingCommission += Number(a.upcomingCommissionPKR||0)
-      withdrawn += Number(a.withdrawnPKR||0)
-      pending += Number(a.pendingPKR||0)
-      ordersSubmitted += Number(a.ordersSubmitted||0)
-      totalOrderValueAED += Number(a.totalOrderValueAED||0)
+  const totals = useMemo(() => {
+    let deliveredCommission = 0,
+      upcomingCommission = 0,
+      withdrawn = 0,
+      pending = 0,
+      ordersSubmitted = 0,
+      ordersDelivered = 0,
+      totalOrderValueAED = 0
+    for (const a of filteredAgents) {
+      deliveredCommission += Number(a.deliveredCommissionPKR || 0)
+      upcomingCommission += Number(a.upcomingCommissionPKR || 0)
+      withdrawn += Number(a.withdrawnPKR || 0)
+      pending += Number(a.pendingPKR || 0)
+      ordersSubmitted += Number(a.ordersSubmitted || 0)
+      ordersDelivered += Number(a.ordersDelivered || 0)
+      totalOrderValueAED += Number(a.totalOrderValueAED || 0)
     }
-    return { deliveredCommission, upcomingCommission, withdrawn, pending, ordersSubmitted, totalOrderValueAED }
+    return {
+      deliveredCommission,
+      upcomingCommission,
+      withdrawn,
+      pending,
+      ordersSubmitted,
+      ordersDelivered,
+      totalOrderValueAED,
+    }
   }, [filteredAgents])
 
   return (
@@ -88,153 +110,461 @@ export default function AgentAmounts(){
       <div className="card" style={{ display: 'grid', gap: 10 }}>
         <div className="card-header">
           <div className="card-title">Search & Filter</div>
-          {loading && <div className="helper" style={{fontSize:12}}>Loading agents...</div>}
+          {loading && (
+            <div className="helper" style={{ fontSize: 12 }}>
+              Loading agents...
+            </div>
+          )}
         </div>
-        <input 
-          className="input" 
-          type="text" 
-          placeholder="Search by agent name or phone..." 
-          value={searchTerm} 
-          onChange={(e)=> setSearchTerm(e.target.value)} 
+        <input
+          className="input"
+          type="text"
+          placeholder="Search by agent name or phone..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
           disabled={loading}
           autoComplete="off"
         />
       </div>
 
       {/* Summary Cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:12 }}>
-        <div className="card" style={{background:'linear-gradient(135deg, #10b981 0%, #059669 100%)', color:'#fff'}}>
-          <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Delivered Commission</div>
-            <div style={{fontSize:28, fontWeight:800}}>PKR {num(totals.deliveredCommission)}</div>
-            <div style={{fontSize:12, opacity:0.8, marginTop:4}}>From delivered orders</div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))',
+          gap: 12,
+        }}
+      >
+        <div
+          className="card"
+          style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff' }}
+        >
+          <div style={{ padding: '16px' }}>
+            <div style={{ fontSize: 14, opacity: 0.9 }}>Delivered Commission</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>
+              PKR {num(totals.deliveredCommission)}
+            </div>
+            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>From delivered orders</div>
           </div>
         </div>
-        <div className="card" style={{background:'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color:'#fff'}}>
-          <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Upcoming Commission</div>
-            <div style={{fontSize:28, fontWeight:800}}>PKR {num(totals.upcomingCommission)}</div>
-            <div style={{fontSize:12, opacity:0.8, marginTop:4}}>From pending orders</div>
+        <div
+          className="card"
+          style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: '#fff' }}
+        >
+          <div style={{ padding: '16px' }}>
+            <div style={{ fontSize: 14, opacity: 0.9 }}>Upcoming Commission</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>
+              PKR {num(totals.upcomingCommission)}
+            </div>
+            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>From pending orders</div>
           </div>
         </div>
-        <div className="card" style={{background:'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color:'#fff'}}>
-          <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Total Withdrawn</div>
-            <div style={{fontSize:28, fontWeight:800}}>PKR {num(totals.withdrawn)}</div>
-            <div style={{fontSize:12, opacity:0.8, marginTop:4}}>Already paid out</div>
+        <div
+          className="card"
+          style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color: '#fff' }}
+        >
+          <div style={{ padding: '16px' }}>
+            <div style={{ fontSize: 14, opacity: 0.9 }}>Total Withdrawn</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>PKR {num(totals.withdrawn)}</div>
+            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>Already paid out</div>
           </div>
         </div>
-        <div className="card" style={{background:'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color:'#fff'}}>
-          <div style={{padding:'16px'}}>
-            <div style={{fontSize:14, opacity:0.9}}>Pending Requests</div>
-            <div style={{fontSize:28, fontWeight:800}}>PKR {num(totals.pending)}</div>
-            <div style={{fontSize:12, opacity:0.8, marginTop:4}}>Awaiting approval</div>
+        <div
+          className="card"
+          style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#fff' }}
+        >
+          <div style={{ padding: '16px' }}>
+            <div style={{ fontSize: 14, opacity: 0.9 }}>Pending Requests</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>PKR {num(totals.pending)}</div>
+            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>Awaiting approval</div>
+          </div>
+        </div>
+        <div
+          className="card"
+          style={{ background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', color: '#fff' }}
+        >
+          <div style={{ padding: '16px' }}>
+            <div style={{ fontSize: 14, opacity: 0.9 }}>Orders Delivered</div>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{num(totals.ordersDelivered)}</div>
+            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
+              Out of {num(totals.ordersSubmitted)} submitted orders
+            </div>
           </div>
         </div>
       </div>
 
       {/* Agents Table */}
       <div className="card">
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+          }}
+        >
           <div style={{ fontWeight: 700 }}>Agent Commission Summary</div>
-          <div className="helper">{filteredAgents.length} agent{filteredAgents.length !== 1 ? 's' : ''}</div>
+          <div className="helper">
+            {filteredAgents.length} agent{filteredAgents.length !== 1 ? 's' : ''}
+          </div>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+          <table
+            style={{
+              width: '100%',
+              borderCollapse: 'separate',
+              borderSpacing: 0,
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              overflow: 'hidden',
+            }}
+          >
             <thead>
               <tr>
-                <th style={{ padding: '10px 12px', textAlign:'left', borderRight:'1px solid var(--border)', color:'#8b5cf6' }}>Agent</th>
-                <th style={{ padding: '10px 12px', textAlign:'center', borderRight:'1px solid var(--border)', color:'#6366f1' }}>Orders Submitted</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#06b6d4' }}>Total Value (AED)</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#10b981' }}>Delivered Comm.</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#3b82f6' }}>Upcoming Comm.</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#8b5cf6' }}>Withdrawn</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#f59e0b' }}>Pending</th>
-                <th style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)', color:'#ef4444' }}>Balance</th>
-                <th style={{ padding: '10px 12px', textAlign:'center', color:'#8b5cf6' }}>Actions</th>
+                <th
+                  style={{
+                    padding: '10px 12px',
+                    textAlign: 'left',
+                    borderRight: '1px solid var(--border)',
+                    color: '#8b5cf6',
+                  }}
+                >
+                  Agent
+                </th>
+                <th
+                  style={{
+                    padding: '10px 12px',
+                    textAlign: 'center',
+                    borderRight: '1px solid var(--border)',
+                    color: '#6366f1',
+                  }}
+                >
+                  Orders Submitted
+                </th>
+                <th
+                  style={{
+                    padding: '10px 12px',
+                    textAlign: 'center',
+                    borderRight: '1px solid var(--border)',
+                    color: '#22c55e',
+                  }}
+                >
+                  Orders Delivered
+                </th>
+                <th
+                  style={{
+                    padding: '10px 12px',
+                    textAlign: 'right',
+                    borderRight: '1px solid var(--border)',
+                    color: '#06b6d4',
+                  }}
+                >
+                  Total Value (AED)
+                </th>
+                <th
+                  style={{
+                    padding: '10px 12px',
+                    textAlign: 'right',
+                    borderRight: '1px solid var(--border)',
+                    color: '#10b981',
+                  }}
+                >
+                  Delivered Comm.
+                </th>
+                <th
+                  style={{
+                    padding: '10px 12px',
+                    textAlign: 'right',
+                    borderRight: '1px solid var(--border)',
+                    color: '#3b82f6',
+                  }}
+                >
+                  Upcoming Comm.
+                </th>
+                <th
+                  style={{
+                    padding: '10px 12px',
+                    textAlign: 'right',
+                    borderRight: '1px solid var(--border)',
+                    color: '#8b5cf6',
+                  }}
+                >
+                  Withdrawn
+                </th>
+                <th
+                  style={{
+                    padding: '10px 12px',
+                    textAlign: 'right',
+                    borderRight: '1px solid var(--border)',
+                    color: '#f59e0b',
+                  }}
+                >
+                  Pending
+                </th>
+                <th
+                  style={{
+                    padding: '10px 12px',
+                    textAlign: 'right',
+                    borderRight: '1px solid var(--border)',
+                    color: '#ef4444',
+                  }}
+                >
+                  Balance
+                </th>
+                <th style={{ padding: '10px 12px', textAlign: 'center', color: '#8b5cf6' }}>
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                Array.from({length:3}).map((_,i)=> (
+                Array.from({ length: 3 }).map((_, i) => (
                   <tr key={`sk${i}`}>
-                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
-                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite', marginBottom:4 }} />
-                      <div style={{ height:10, width:'60%', background:'var(--panel-2)', borderRadius:4, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    <td style={{ padding: '10px 12px', borderRight: '1px solid var(--border)' }}>
+                      <div
+                        style={{
+                          height: 14,
+                          background: 'var(--panel-2)',
+                          borderRadius: 6,
+                          animation: 'pulse 1.2s ease-in-out infinite',
+                          marginBottom: 4,
+                        }}
+                      />
+                      <div
+                        style={{
+                          height: 10,
+                          width: '60%',
+                          background: 'var(--panel-2)',
+                          borderRadius: 4,
+                          animation: 'pulse 1.2s ease-in-out infinite',
+                        }}
+                      />
                     </td>
-                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
-                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    <td style={{ padding: '10px 12px', borderRight: '1px solid var(--border)' }}>
+                      <div
+                        style={{
+                          height: 14,
+                          background: 'var(--panel-2)',
+                          borderRadius: 6,
+                          animation: 'pulse 1.2s ease-in-out infinite',
+                        }}
+                      />
                     </td>
-                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
-                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    <td style={{ padding: '10px 12px', borderRight: '1px solid var(--border)' }}>
+                      <div
+                        style={{
+                          height: 14,
+                          background: 'var(--panel-2)',
+                          borderRadius: 6,
+                          animation: 'pulse 1.2s ease-in-out infinite',
+                        }}
+                      />
                     </td>
-                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
-                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    <td style={{ padding: '10px 12px', borderRight: '1px solid var(--border)' }}>
+                      <div
+                        style={{
+                          height: 14,
+                          background: 'var(--panel-2)',
+                          borderRadius: 6,
+                          animation: 'pulse 1.2s ease-in-out infinite',
+                        }}
+                      />
                     </td>
-                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
-                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    <td style={{ padding: '10px 12px', borderRight: '1px solid var(--border)' }}>
+                      <div
+                        style={{
+                          height: 14,
+                          background: 'var(--panel-2)',
+                          borderRadius: 6,
+                          animation: 'pulse 1.2s ease-in-out infinite',
+                        }}
+                      />
                     </td>
-                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
-                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    <td style={{ padding: '10px 12px', borderRight: '1px solid var(--border)' }}>
+                      <div
+                        style={{
+                          height: 14,
+                          background: 'var(--panel-2)',
+                          borderRadius: 6,
+                          animation: 'pulse 1.2s ease-in-out infinite',
+                        }}
+                      />
                     </td>
-                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
-                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    <td style={{ padding: '10px 12px', borderRight: '1px solid var(--border)' }}>
+                      <div
+                        style={{
+                          height: 14,
+                          background: 'var(--panel-2)',
+                          borderRadius: 6,
+                          animation: 'pulse 1.2s ease-in-out infinite',
+                        }}
+                      />
                     </td>
-                    <td style={{ padding:'10px 12px', borderRight:'1px solid var(--border)' }}>
-                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    <td style={{ padding: '10px 12px', borderRight: '1px solid var(--border)' }}>
+                      <div
+                        style={{
+                          height: 14,
+                          background: 'var(--panel-2)',
+                          borderRadius: 6,
+                          animation: 'pulse 1.2s ease-in-out infinite',
+                        }}
+                      />
                     </td>
-                    <td style={{ padding:'10px 12px' }}>
-                      <div style={{ height:14, background:'var(--panel-2)', borderRadius:6, animation:'pulse 1.2s ease-in-out infinite' }} />
+                    <td style={{ padding: '10px 12px' }}>
+                      <div
+                        style={{
+                          height: 14,
+                          background: 'var(--panel-2)',
+                          borderRadius: 6,
+                          animation: 'pulse 1.2s ease-in-out infinite',
+                        }}
+                      />
                     </td>
                   </tr>
                 ))
               ) : filteredAgents.length === 0 ? (
-                <tr><td colSpan={9} style={{ padding: '20px 12px', opacity: 0.7, textAlign:'center' }}>
-                  {searchTerm ? 'No agents match your search' : 'No agents found. Agents will appear here once they submit orders.'}
-                </td></tr>
+                <tr>
+                  <td
+                    colSpan={10}
+                    style={{ padding: '20px 12px', opacity: 0.7, textAlign: 'center' }}
+                  >
+                    {searchTerm
+                      ? 'No agents match your search'
+                      : 'No agents found. Agents will appear here once they submit orders.'}
+                  </td>
+                </tr>
               ) : (
                 filteredAgents.map((a, idx) => {
-                  const balance = Number(a.deliveredCommissionPKR||0) - Number(a.withdrawnPKR||0) - Number(a.pendingPKR||0)
+                  const rawBalance =
+                    Number(a.deliveredCommissionPKR || 0) -
+                    Number(a.withdrawnPKR || 0) -
+                    Number(a.pendingPKR || 0)
+                  const balance = Math.max(0, rawBalance)
                   return (
-                    <tr key={String(a.id)} style={{ borderTop: '1px solid var(--border)', background: idx % 2 ? 'transparent' : 'var(--panel)' }}>
-                      <td style={{ padding: '10px 12px', borderRight:'1px solid var(--border)' }}>
-                        <div style={{fontWeight:700, color:'#8b5cf6'}}>{a.name || 'Unnamed'}</div>
+                    <tr
+                      key={String(a.id)}
+                      style={{
+                        borderTop: '1px solid var(--border)',
+                        background: idx % 2 ? 'transparent' : 'var(--panel)',
+                      }}
+                    >
+                      <td style={{ padding: '10px 12px', borderRight: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 700, color: '#8b5cf6' }}>
+                          {a.name || 'Unnamed'}
+                        </div>
                         <div className="helper">{a.phone || ''}</div>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'center', borderRight:'1px solid var(--border)' }}>
-                        <span style={{color:'#6366f1', fontWeight:700}}>{num(a.ordersSubmitted||0)}</span>
+                      <td
+                        style={{
+                          padding: '10px 12px',
+                          textAlign: 'center',
+                          borderRight: '1px solid var(--border)',
+                        }}
+                      >
+                        <span style={{ color: '#6366f1', fontWeight: 700 }}>
+                          {num(a.ordersSubmitted || 0)}
+                        </span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <span style={{color:'#06b6d4', fontWeight:800}}>AED {num(a.totalOrderValueAED||0)}</span>
+                      <td
+                        style={{
+                          padding: '10px 12px',
+                          textAlign: 'center',
+                          borderRight: '1px solid var(--border)',
+                        }}
+                      >
+                        <span style={{ color: '#22c55e', fontWeight: 700 }}>
+                          {num(a.ordersDelivered || 0)}
+                        </span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <span style={{color:'#10b981', fontWeight:800}}>PKR {num(a.deliveredCommissionPKR)}</span>
+                      <td
+                        style={{
+                          padding: '10px 12px',
+                          textAlign: 'right',
+                          borderRight: '1px solid var(--border)',
+                        }}
+                      >
+                        <span style={{ color: '#06b6d4', fontWeight: 800 }}>
+                          AED {num(a.totalOrderValueAED || 0)}
+                        </span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <span style={{color:'#3b82f6', fontWeight:800}}>PKR {num(a.upcomingCommissionPKR)}</span>
+                      <td
+                        style={{
+                          padding: '10px 12px',
+                          textAlign: 'right',
+                          borderRight: '1px solid var(--border)',
+                        }}
+                      >
+                        <span style={{ color: '#10b981', fontWeight: 800 }}>
+                          PKR {num(a.deliveredCommissionPKR)}
+                        </span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <span style={{color:'#8b5cf6', fontWeight:800}}>PKR {num(a.withdrawnPKR)}</span>
+                      <td
+                        style={{
+                          padding: '10px 12px',
+                          textAlign: 'right',
+                          borderRight: '1px solid var(--border)',
+                        }}
+                      >
+                        <span style={{ color: '#3b82f6', fontWeight: 800 }}>
+                          PKR {num(a.upcomingCommissionPKR)}
+                        </span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <span style={{color:'#f59e0b', fontWeight:800}}>PKR {num(a.pendingPKR)}</span>
+                      <td
+                        style={{
+                          padding: '10px 12px',
+                          textAlign: 'right',
+                          borderRight: '1px solid var(--border)',
+                        }}
+                      >
+                        <span style={{ color: '#8b5cf6', fontWeight: 800 }}>
+                          PKR {num(a.withdrawnPKR)}
+                        </span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'right', borderRight:'1px solid var(--border)' }}>
-                        <span style={{color: balance < 0 ? '#ef4444' : '#10b981', fontWeight:800}}>PKR {num(balance)}</span>
+                      <td
+                        style={{
+                          padding: '10px 12px',
+                          textAlign: 'right',
+                          borderRight: '1px solid var(--border)',
+                        }}
+                      >
+                        <span style={{ color: '#f59e0b', fontWeight: 800 }}>
+                          PKR {num(a.pendingPKR)}
+                        </span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign:'center' }}>
+                      <td
+                        style={{
+                          padding: '10px 12px',
+                          textAlign: 'right',
+                          borderRight: '1px solid var(--border)',
+                        }}
+                      >
+                        <span
+                          style={{
+                            color: balance > 0 ? '#10b981' : 'var(--text-muted)',
+                            fontWeight: 800,
+                          }}
+                        >
+                          PKR {num(balance)}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                         {balance > 0 ? (
-                          <button 
-                            className="btn success" 
-                            style={{fontSize:12, padding:'6px 12px'}}
+                          <button
+                            className="btn success"
+                            style={{ fontSize: 12, padding: '6px 12px' }}
                             disabled={payingAgent === a.id}
-                            onClick={()=> { 
+                            onClick={() => {
                               const totalOrderValueAED = a.totalOrderValueAED || 0
                               const pkrRate = 76
                               const totalInPKR = totalOrderValueAED * pkrRate
                               const defaultCommission = (totalInPKR * 12) / 100
-                              
-                              setPayModal({ agent: a, balance, totalOrderValueAED, deliveredCommission: a.deliveredCommissionPKR || 0 })
+
+                              setPayModal({
+                                agent: a,
+                                balance,
+                                totalOrderValueAED,
+                                deliveredCommission: a.deliveredCommissionPKR || 0,
+                              })
                               setCommissionRate(null)
                               setCalculatedAmount(defaultCommission)
                             }}
@@ -242,7 +572,9 @@ export default function AgentAmounts(){
                             Pay Commission
                           </button>
                         ) : (
-                          <span style={{color:'var(--text-muted)', fontSize:12}}>No balance</span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                            No balance
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -258,29 +590,35 @@ export default function AgentAmounts(){
       <Modal
         title="Pay Agent Commission"
         open={!!payModal}
-        onClose={()=> { 
+        onClose={() => {
           setPayModal(null)
           setCommissionRate(null)
           setCalculatedAmount(0)
         }}
         footer={
           <>
-            <button className="btn secondary" onClick={()=> setPayModal(null)} disabled={!!payingAgent}>Cancel</button>
-            <button 
-              className="btn success" 
+            <button
+              className="btn secondary"
+              onClick={() => setPayModal(null)}
               disabled={!!payingAgent}
-              onClick={async()=>{
+            >
+              Cancel
+            </button>
+            <button
+              className="btn success"
+              disabled={!!payingAgent}
+              onClick={async () => {
                 const finalRate = commissionRate || 12
                 if (calculatedAmount <= 0) {
                   toast.error('Payment amount must be greater than 0')
                   return
                 }
                 setPayingAgent(payModal.agent.id)
-                try{
-                  await apiPost(`/api/finance/agents/${payModal.agent.id}/pay-commission`, { 
+                try {
+                  await apiPost(`/api/finance/agents/${payModal.agent.id}/pay-commission`, {
                     amount: calculatedAmount,
                     commissionRate: finalRate,
-                    totalOrderValueAED: payModal.totalOrderValueAED
+                    totalOrderValueAED: payModal.totalOrderValueAED,
                   })
                   toast.success(`Commission payment sent successfully (${finalRate}% rate)`)
                   setPayModal(null)
@@ -289,9 +627,9 @@ export default function AgentAmounts(){
                   // Refresh data
                   const r = await apiGet('/api/finance/agents/commission?limit=100')
                   setAgents(Array.isArray(r?.agents) ? r.agents : [])
-                }catch(e){
+                } catch (e) {
                   toast.error(e?.message || 'Failed to send payment')
-                }finally{
+                } finally {
                   setPayingAgent(null)
                 }
               }}
@@ -304,21 +642,34 @@ export default function AgentAmounts(){
         {payModal && (
           <div style={{ padding: '16px 0' }}>
             <div style={{ fontSize: 16, marginBottom: 24, textAlign: 'center' }}>
-              Send <strong style={{ color: '#10b981', fontSize: 20 }}>PKR {num(calculatedAmount)}</strong> commission to <strong style={{ color: '#8b5cf6' }}>{payModal.agent.name}</strong>?
+              Send{' '}
+              <strong style={{ color: '#10b981', fontSize: 20 }}>
+                PKR {num(calculatedAmount)}
+              </strong>{' '}
+              commission to <strong style={{ color: '#8b5cf6' }}>{payModal.agent.name}</strong>?
             </div>
-            
+
             {/* Commission Rate Selector */}
-            <div style={{ marginBottom: 20, padding: 16, background: 'var(--panel)', borderRadius: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div
+              style={{ marginBottom: 20, padding: 16, background: 'var(--panel)', borderRadius: 8 }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 12,
+                }}
+              >
                 <label style={{ fontWeight: 600, fontSize: 14 }}>Commission Rate:</label>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input 
-                    type="number" 
-                    min="0" 
-                    max="100" 
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
                     step="0.5"
                     value={commissionRate !== null ? commissionRate : 12}
-                    onChange={(e)=> {
+                    onChange={(e) => {
                       const val = Number(e.target.value) || 0
                       setCommissionRate(val)
                       // Calculate: AED to PKR, then apply commission rate
@@ -326,16 +677,22 @@ export default function AgentAmounts(){
                       const totalInPKR = payModal.totalOrderValueAED * pkrRate
                       setCalculatedAmount((totalInPKR * val) / 100)
                     }}
-                    style={{ width: 70, padding: '8px', textAlign: 'right', fontWeight: 700, fontSize: 16 }}
+                    style={{
+                      width: 70,
+                      padding: '8px',
+                      textAlign: 'right',
+                      fontWeight: 700,
+                      fontSize: 16,
+                    }}
                     className="input"
                   />
                   <span style={{ fontSize: 18, fontWeight: 700 }}>%</span>
                 </div>
               </div>
-              
+
               {/* Quick Rate Buttons */}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                {[8, 10, 12, 15, 18, 20, 25].map(rate => (
+                {[8, 10, 12, 15, 18, 20, 25].map((rate) => (
                   <button
                     key={rate}
                     className="btn"
@@ -343,7 +700,7 @@ export default function AgentAmounts(){
                       fontSize: 12,
                       padding: '6px 12px',
                       background: (commissionRate || 12) === rate ? '#8b5cf6' : 'var(--panel-2)',
-                      color: (commissionRate || 12) === rate ? '#fff' : 'inherit'
+                      color: (commissionRate || 12) === rate ? '#fff' : 'inherit',
                     }}
                     onClick={() => {
                       setCommissionRate(rate)
@@ -370,7 +727,10 @@ export default function AgentAmounts(){
               </div>
 
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-                Total Orders: AED {num(payModal.totalOrderValueAED)} → PKR {num(payModal.totalOrderValueAED * 76)} | Commission: {commissionRate !== null ? commissionRate : 12}% of PKR {num(payModal.totalOrderValueAED * 76)} = PKR {num(calculatedAmount)}
+                Total Orders: AED {num(payModal.totalOrderValueAED)} → PKR{' '}
+                {num(payModal.totalOrderValueAED * 76)} | Commission:{' '}
+                {commissionRate !== null ? commissionRate : 12}% of PKR{' '}
+                {num(payModal.totalOrderValueAED * 76)} = PKR {num(calculatedAmount)}
               </div>
             </div>
 
@@ -389,11 +749,22 @@ export default function AgentAmounts(){
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ opacity: 0.7 }}>Commission Rate:</span>
-                <strong style={{ color: '#8b5cf6', fontSize: 16 }}>{commissionRate !== null ? commissionRate : 12}%</strong>
+                <strong style={{ color: '#8b5cf6', fontSize: 16 }}>
+                  {commissionRate !== null ? commissionRate : 12}%
+                </strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  paddingTop: 8,
+                  borderTop: '1px solid var(--border)',
+                }}
+              >
                 <span style={{ opacity: 0.7, fontWeight: 600 }}>Total Amount:</span>
-                <strong style={{ color: '#10b981', fontSize: 18 }}>PKR {num(calculatedAmount)}</strong>
+                <strong style={{ color: '#10b981', fontSize: 18 }}>
+                  PKR {num(calculatedAmount)}
+                </strong>
               </div>
             </div>
           </div>
