@@ -1592,23 +1592,14 @@ router.get(
           totalOrderValueAED += valInAED;
           if (isDelivered) deliveredOrderValueAED += valInAED;
           else upcomingOrderValueAED += valInAED;
-          let pkr = 0;
-          // For delivered orders, always use stored commission if available
-          if (
-            isDelivered &&
-            o?.agentCommissionPKR &&
-            Number(o.agentCommissionPKR) > 0
-          ) {
-            pkr = Number(o.agentCommissionPKR);
-          } else {
-            // For non-delivered or orders without stored commission, calculate with same hardcoded rates
-            pkr = Math.round(totalVal * 0.12 * curRate);
-          }
-          if (isDelivered) deliveredCommissionPKR += pkr;
-          else upcomingCommissionPKR += pkr;
         }
-        deliveredCommissionPKR = Math.round(deliveredCommissionPKR);
-        upcomingCommissionPKR = Math.round(upcomingCommissionPKR);
+        // Commission: 12% of AED value, converted to PKR using AED rate
+        deliveredCommissionPKR = Math.round(
+          deliveredOrderValueAED * 0.12 * aedRate
+        );
+        upcomingCommissionPKR = Math.round(
+          upcomingOrderValueAED * 0.12 * aedRate
+        );
         totalOrderValueAED = Math.round(totalOrderValueAED);
         deliveredOrderValueAED = Math.round(deliveredOrderValueAED);
         upcomingOrderValueAED = Math.round(upcomingOrderValueAED);
