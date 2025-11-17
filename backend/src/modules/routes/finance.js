@@ -603,11 +603,9 @@ router.post(
         expense.createdBy?.role !== "manager" ||
         String(expense.createdBy?.createdBy) !== String(req.user.id)
       ) {
-        return res
-          .status(403)
-          .json({
-            message: "You can only approve expenses from your managers",
-          });
+        return res.status(403).json({
+          message: "You can only approve expenses from your managers",
+        });
       }
 
       if (expense.status !== "pending") {
@@ -1556,6 +1554,8 @@ router.get(
         let ordersSubmitted = 0;
         let ordersDelivered = 0;
         let totalOrderValueAED = 0;
+        let deliveredOrderValueAED = 0;
+        let upcomingOrderValueAED = 0;
         const aedRate = FX_PKR["AED"] || 76;
         for (const o of orders) {
           const isDelivered =
@@ -1590,6 +1590,8 @@ router.get(
           const valInPKR = totalVal * curRate;
           const valInAED = aedRate > 0 ? valInPKR / aedRate : 0;
           totalOrderValueAED += valInAED;
+          if (isDelivered) deliveredOrderValueAED += valInAED;
+          else upcomingOrderValueAED += valInAED;
           let pkr = 0;
           // For delivered orders, always use stored commission if available
           if (
@@ -1608,6 +1610,8 @@ router.get(
         deliveredCommissionPKR = Math.round(deliveredCommissionPKR);
         upcomingCommissionPKR = Math.round(upcomingCommissionPKR);
         totalOrderValueAED = Math.round(totalOrderValueAED);
+        deliveredOrderValueAED = Math.round(deliveredOrderValueAED);
+        upcomingOrderValueAED = Math.round(upcomingOrderValueAED);
         // Sent (withdrawn)
         const sentRows = await AgentRemit.aggregate([
           {
@@ -1658,6 +1662,8 @@ router.get(
           ordersSubmitted,
           ordersDelivered,
           totalOrderValueAED,
+          deliveredOrderValueAED,
+          upcomingOrderValueAED,
           deliveredCommissionPKR,
           upcomingCommissionPKR,
           withdrawnPKR,

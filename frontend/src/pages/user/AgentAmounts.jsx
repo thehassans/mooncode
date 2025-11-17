@@ -259,7 +259,7 @@ export default function AgentAmounts() {
                     color: '#06b6d4',
                   }}
                 >
-                  Total Value (AED)
+                  Delivered Value (AED)
                 </th>
                 <th
                   style={{
@@ -484,7 +484,7 @@ export default function AgentAmounts() {
                         }}
                       >
                         <span style={{ color: '#06b6d4', fontWeight: 800 }}>
-                          AED {num(a.totalOrderValueAED || 0)}
+                          AED {num(a.deliveredOrderValueAED || a.totalOrderValueAED || 0)}
                         </span>
                       </td>
                       <td
@@ -554,7 +554,8 @@ export default function AgentAmounts() {
                             style={{ fontSize: 12, padding: '6px 12px' }}
                             disabled={payingAgent === a.id}
                             onClick={() => {
-                              const totalOrderValueAED = a.totalOrderValueAED || 0
+                              const totalOrderValueAED =
+                                a.deliveredOrderValueAED || a.totalOrderValueAED || 0
                               const pkrRate = 76
                               const totalInPKR = totalOrderValueAED * pkrRate
                               const defaultCommission = (totalInPKR * 12) / 100
