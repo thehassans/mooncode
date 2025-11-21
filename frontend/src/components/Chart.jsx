@@ -119,7 +119,7 @@ export default function Chart({ analytics }) {
           return (
             <div
               key={k}
-              className="group flex items-center gap-2 rounded-xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 px-4 py-2 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
+              className="group flex items-center gap-2 rounded-xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 px-4 py-2 shadow-sm shadow-slate-200/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:shadow-slate-200/50 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none"
             >
               <span
                 className="h-3 w-3 rounded-full shadow-lg transition-all duration-300 group-hover:scale-125"
@@ -133,7 +133,7 @@ export default function Chart({ analytics }) {
       </div>
 
       {/* Chart */}
-      <div className="relative w-full overflow-x-auto rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg backdrop-blur-sm dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black">
+      <div className="relative w-full overflow-x-auto rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg shadow-slate-200/50 backdrop-blur-sm dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none">
         <svg
           width={width}
           height={height}

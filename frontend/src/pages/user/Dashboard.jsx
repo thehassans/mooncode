@@ -11,7 +11,7 @@ import { getCurrencyConfig, toAEDByCode, convert } from '../../util/currency'
 
 const GlassCard = ({ children, className = '', title, subtitle, loading = false, delay = 0 }) => (
   <div
-    className={`group overflow-hidden rounded-3xl border border-white/20 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl dark:border-neutral-800/50 dark:bg-neutral-900/80 ${className}`}
+    className={`group overflow-hidden rounded-3xl border border-white/20 bg-white/80 p-8 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-slate-200/50 dark:border-neutral-800/50 dark:bg-neutral-900/80 dark:shadow-none ${className}`}
     style={{ animationDelay: `${delay}ms` }}
   >
     {(title || subtitle) && (
@@ -78,7 +78,7 @@ const PremiumStatCard = ({
   if (to && !loading) {
     return (
       <NavLink to={to} className="group block h-full" style={{ animationDelay: `${delay}ms` }}>
-        <div className="h-full rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 hover:border-slate-300 hover:shadow-2xl dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:hover:border-neutral-700">
+        <div className="h-full rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg shadow-slate-200/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 hover:border-slate-300 hover:shadow-2xl hover:shadow-slate-200/50 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none dark:hover:border-neutral-700">
           <Content />
         </div>
       </NavLink>
@@ -87,7 +87,7 @@ const PremiumStatCard = ({
 
   return (
     <div
-      className="h-full rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
+      className="h-full rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg shadow-slate-200/50 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none"
       style={{ animationDelay: `${delay}ms` }}
     >
       <Content />
@@ -185,7 +185,7 @@ const PremiumPieChart = ({ statusTotals, loading }) => {
         {data.map((item, idx) => (
           <div
             key={idx}
-            className={`group flex items-center gap-4 rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 px-5 py-3 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black ${item.ring}`}
+            className={`group flex items-center gap-4 rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 px-5 py-3 shadow-sm shadow-slate-200/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-slate-200/50 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none ${item.ring}`}
           >
             <div className={`h-4 w-4 rounded-full bg-gradient-to-br shadow-lg ${item.bg}`} />
             <div className="flex flex-col">

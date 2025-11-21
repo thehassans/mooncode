@@ -836,15 +836,34 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
         { $match: { owner: ownerId, status: "sent", ...dateMatch } },
         { $group: { _id: null, totalAgentExpense: { $sum: "$amount" } } },
       ]),
-      // 3. Driver Expenses
+      // 3. Driver Expenses (Grouped by Country for conversion)
       Remittance.aggregate([
         { $match: { owner: ownerId, status: "accepted", ...dateMatch } },
-        { $group: { _id: null, totalDriverExpense: { $sum: "$amount" } } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "driver",
+            foreignField: "_id",
+            as: "driverInfo",
+          },
+        },
+        { $unwind: { path: "$driverInfo", preserveNullAndEmptyArrays: true } },
+        {
+          $group: {
+            _id: { $ifNull: ["$driverInfo.country", "UAE"] },
+            total: { $sum: "$amount" },
+          },
+        },
       ]),
-      // 4. Advertisement Expenses (New)
+      // 4. Advertisement Expenses (Grouped by Currency)
       Expense.aggregate([
         { $match: { createdBy: ownerId, type: "advertisement", ...dateMatch } },
-        { $group: { _id: null, totalAdExpense: { $sum: "$amount" } } },
+        {
+          $group: {
+            _id: { $ifNull: ["$currency", "AED"] },
+            total: { $sum: "$amount" },
+          },
+        },
       ]),
       // 5. Investor Commissions (New - simplified approximation based on User model if needed, or calculated from orders)
       // Assuming investor commissions are tracked in User profile or separate collection.
@@ -1366,11 +1385,51 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
       return acc;
     }, initialOrderStats);
 
+    // Helper: Convert any currency to AED using dynamic rates
+    const toAED = (amount, currency) => {
+      if (!amount) return 0;
+      const cur = String(currency || "AED").toUpperCase();
+      // Get rate: How many PKR is 1 unit of 'cur'?
+      const ratePKR = pkrPerUnit[cur] || pkrPerUnit.AED || 76;
+      // Convert 'amount' to PKR then to AED
+      // Amount(PKR) = Amount(Cur) * Rate(PKR/Cur)
+      // Amount(AED) = Amount(PKR) / Rate(PKR/AED)
+      return (amount * ratePKR) / pkrToAEDRate;
+    };
+
     const totalProductsInHouse = productStats[0]?.totalProductsInHouse || 0;
+
+    // Agent Expense (Already in PKR, convert to AED)
     const totalAgentExpensePKR = agentExpenseStats[0]?.totalAgentExpense || 0;
-    const totalAgentExpense = totalAgentExpensePKR / pkrToAEDRate; // Convert to AED
-    const totalDriverExpense = driverExpenseStats[0]?.totalDriverExpense || 0;
-    const totalAdExpense = adExpenseStats[0]?.totalAdExpense || 0;
+    const totalAgentExpense = totalAgentExpensePKR / pkrToAEDRate;
+
+    // Driver Expense (Sum of converted amounts)
+    const totalDriverExpense = driverExpenseStats.reduce((sum, item) => {
+      // item._id is country name (e.g., "KSA", "UAE")
+      // Map country to currency
+      const country = item._id;
+      const cur =
+        country === "KSA" || country === "Saudi Arabia"
+          ? "SAR"
+          : country === "Oman"
+          ? "OMR"
+          : country === "Bahrain"
+          ? "BHD"
+          : country === "Kuwait"
+          ? "KWD"
+          : country === "Qatar"
+          ? "QAR"
+          : country === "India"
+          ? "INR"
+          : "AED";
+      return sum + toAED(item.total, cur);
+    }, 0);
+
+    // Ad Expense
+    const totalAdExpense = adExpenseStats.reduce((sum, item) => {
+      return sum + toAED(item.total, item._id);
+    }, 0);
+
     const totalInvestorComm = investorStats[0]?.totalInvestorComm || 0;
     const totalExpense =
       totalAgentExpense +
@@ -1648,23 +1707,6 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
     };
 
     // --- PROFIT/LOSS CALCULATION ---
-    // We need to calculate total purchase cost in AED.
-    // Iterate through products again to sum up delivered * purchasePrice * exchangeRate
-    // Since we don't have live exchange rates here, we'll use fixed rates or 1 for now if not available.
-    // The frontend has `toAEDByCode` but backend might not.
-    // Let's define simple rates.
-    const rates = {
-      AED: 1,
-      SAR: 1,
-      OMR: 9.5,
-      BHD: 9.7,
-      KWD: 12,
-      QAR: 1,
-      INR: 0.044,
-      USD: 3.67,
-    };
-    const toAED = (amt, cur) => (amt || 0) * (rates[cur] || 1);
-
     let totalPurchaseCostAED = 0;
     for (const p of products) {
       const baseCur = normalizeCur(p.baseCurrency || "SAR");
