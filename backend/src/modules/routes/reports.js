@@ -841,7 +841,12 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
             ...dateMatch,
           },
         },
-        { $group: { _id: null, totalAgentExpense: { $sum: "$amount" } } },
+        {
+          $group: {
+            _id: { $ifNull: ["$currency", "PKR"] },
+            total: { $sum: "$amount" },
+          },
+        },
       ]),
       // 3. Driver Stats (Delivered orders by driver for commission calc)
       Order.aggregate([
@@ -1411,9 +1416,11 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
 
     const totalProductsInHouse = productStats[0]?.totalProductsInHouse || 0;
 
-    // Agent Expense (Already in PKR, convert to AED)
-    const totalAgentExpensePKR = agentExpenseStats[0]?.totalAgentExpense || 0;
-    const totalAgentExpense = totalAgentExpensePKR / pkrToAEDRate;
+    // Agent Expense (Sum of converted amounts)
+    const totalAgentExpense = agentExpenseStats.reduce((sum, item) => {
+      const cur = item._id || "PKR";
+      return sum + toAED(item.total, cur);
+    }, 0);
 
     // Driver Expense (Calculated from delivered orders * commission)
     const driverMap = new Map();

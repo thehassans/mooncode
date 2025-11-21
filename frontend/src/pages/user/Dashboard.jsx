@@ -11,11 +11,11 @@ import { getCurrencyConfig, toAEDByCode, convert } from '../../util/currency'
 
 const GlassCard = ({ children, className = '', title, subtitle, loading = false, delay = 0 }) => (
   <div
-    className={`group overflow-hidden rounded-3xl border border-white/20 bg-white/80 p-8 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:shadow-slate-200/50 dark:border-neutral-800/50 dark:bg-neutral-900/80 dark:shadow-none ${className}`}
+    className={`group hover:shadow-3xl overflow-hidden rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white/95 via-white/90 to-slate-50/80 p-8 shadow-2xl shadow-slate-300/40 backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:border-slate-300/80 hover:shadow-slate-300/50 dark:border-neutral-800/50 dark:bg-neutral-900/80 dark:from-neutral-900/80 dark:via-neutral-900/80 dark:to-neutral-950/80 dark:shadow-none ${className}`}
     style={{ animationDelay: `${delay}ms` }}
   >
     {(title || subtitle) && (
-      <div className="mb-8 border-b border-slate-100 pb-4 dark:border-neutral-800">
+      <div className="mb-8 border-b border-slate-200/60 pb-4 dark:border-neutral-800">
         {loading ? (
           <>
             <div className="mb-2 h-7 w-56 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-neutral-800 dark:to-neutral-900" />
@@ -26,12 +26,12 @@ const GlassCard = ({ children, className = '', title, subtitle, loading = false,
         ) : (
           <>
             {title && (
-              <h3 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-2xl font-black tracking-tight text-transparent dark:from-white dark:to-neutral-400">
+              <h3 className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-2xl font-black tracking-tight text-transparent dark:from-white dark:to-neutral-400">
                 {title}
               </h3>
             )}
             {subtitle && (
-              <p className="mt-2 text-sm font-medium text-slate-500 dark:text-neutral-400">
+              <p className="mt-2 text-sm font-semibold text-slate-600 dark:text-neutral-400">
                 {subtitle}
               </p>
             )}
@@ -57,7 +57,7 @@ const PremiumStatCard = ({
       <div className="absolute -top-3 -right-3 opacity-10 transition-all duration-500 group-hover:scale-110 group-hover:opacity-20">
         {icon && React.createElement(icon, { className: 'w-24 h-24' })}
       </div>
-      <p className="relative z-10 mb-3 text-sm font-bold tracking-widest text-slate-500 uppercase dark:text-neutral-400">
+      <p className="relative z-10 mb-3 text-xs font-black tracking-widest text-slate-600 uppercase dark:text-neutral-400">
         {title}
       </p>
       {loading ? (
@@ -67,7 +67,7 @@ const PremiumStatCard = ({
         />
       ) : (
         <h3
-          className={`relative z-10 text-4xl font-black tracking-tighter transition-all duration-300 group-hover:scale-105 ${colorClass}`}
+          className={`relative z-10 text-3xl font-black tracking-tighter transition-all duration-300 group-hover:scale-105 sm:text-4xl ${colorClass}`}
         >
           {value}
         </h3>
@@ -78,7 +78,7 @@ const PremiumStatCard = ({
   if (to && !loading) {
     return (
       <NavLink to={to} className="group block h-full" style={{ animationDelay: `${delay}ms` }}>
-        <div className="h-full rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg shadow-slate-200/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 hover:border-slate-300 hover:shadow-2xl hover:shadow-slate-200/50 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none dark:hover:border-neutral-700">
+        <div className="h-full rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white via-slate-50/50 to-white p-6 shadow-xl shadow-slate-300/30 backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 hover:border-slate-300/90 hover:from-white hover:via-white hover:to-slate-50 hover:shadow-2xl hover:shadow-slate-400/40 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none dark:hover:border-neutral-700">
           <Content />
         </div>
       </NavLink>
@@ -87,7 +87,7 @@ const PremiumStatCard = ({
 
   return (
     <div
-      className="h-full rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg shadow-slate-200/50 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none"
+      className="h-full rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white via-slate-50/50 to-white p-6 shadow-xl shadow-slate-300/30 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none"
       style={{ animationDelay: `${delay}ms` }}
     >
       <Content />
@@ -185,14 +185,14 @@ const PremiumPieChart = ({ statusTotals, loading }) => {
         {data.map((item, idx) => (
           <div
             key={idx}
-            className={`group flex items-center gap-4 rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 px-5 py-3 shadow-sm shadow-slate-200/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-slate-200/50 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none ${item.ring}`}
+            className={`group flex items-center gap-4 rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white via-slate-50/40 to-white px-5 py-3.5 shadow-lg shadow-slate-300/30 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300/90 hover:shadow-xl hover:shadow-slate-400/40 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none ${item.ring}`}
           >
-            <div className={`h-4 w-4 rounded-full bg-gradient-to-br shadow-lg ${item.bg}`} />
+            <div className={`h-5 w-5 rounded-full bg-gradient-to-br shadow-lg ${item.bg}`} />
             <div className="flex flex-col">
-              <span className="text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
+              <span className="text-xs font-black tracking-wider text-slate-600 uppercase dark:text-neutral-400">
                 {item.label}
               </span>
-              <span className={`text-2xl font-black ${item.text}`}>{item.value}</span>
+              <span className={`text-2xl font-black sm:text-3xl ${item.text}`}>{item.value}</span>
             </div>
           </div>
         ))}
@@ -611,7 +611,7 @@ export default function UserDashboard() {
                 <h4 className="mb-6 text-xl font-black text-slate-900 dark:text-white">
                   Geographic Performance
                 </h4>
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {['KSA', 'UAE', 'Oman', 'Bahrain', 'India', 'Kuwait', 'Qatar'].map((c, idx) => {
                     const profitData = metrics.profitLoss.byCountry?.[c]
                     if (!profitData) return null
@@ -622,10 +622,10 @@ export default function UserDashboard() {
                     return (
                       <div
                         key={c}
-                        className={`group relative overflow-hidden rounded-2xl border p-6 shadow-lg transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl ${
+                        className={`group relative overflow-hidden rounded-2xl border p-6 shadow-xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl ${
                           isProfit
-                            ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:border-emerald-900/30 dark:from-emerald-950/50 dark:to-emerald-900/20'
-                            : 'border-rose-200 bg-gradient-to-br from-rose-50 to-rose-100/50 dark:border-rose-900/30 dark:from-rose-950/50 dark:to-rose-900/20'
+                            ? 'border-emerald-200/80 bg-gradient-to-br from-emerald-50/80 via-emerald-100/50 to-white shadow-emerald-200/30 hover:shadow-emerald-300/40 dark:border-emerald-900/30 dark:from-emerald-950/50 dark:to-emerald-900/20 dark:shadow-none'
+                            : 'border-rose-200/80 bg-gradient-to-br from-rose-50/80 via-rose-100/50 to-white shadow-rose-200/30 hover:shadow-rose-300/40 dark:border-rose-900/30 dark:from-rose-950/50 dark:to-rose-900/20 dark:shadow-none'
                         }`}
                         style={{ animationDelay: `${idx * 50}ms` }}
                       >
@@ -659,7 +659,7 @@ export default function UserDashboard() {
                           ].map((r, i) => (
                             <div
                               key={i}
-                              className="flex items-center justify-between rounded-xl border border-slate-200/50 bg-white/50 px-4 py-2 backdrop-blur-sm dark:border-neutral-700/50 dark:bg-neutral-800/30"
+                              className="flex items-center justify-between rounded-xl border border-slate-200/70 bg-white/70 px-4 py-2.5 shadow-sm shadow-slate-200/30 backdrop-blur-sm transition-all hover:bg-white hover:shadow-md hover:shadow-slate-300/40 dark:border-neutral-700/50 dark:bg-neutral-800/30 dark:shadow-none"
                             >
                               <span className="flex items-center gap-2 font-bold text-slate-600 dark:text-neutral-300">
                                 <span>{r.icon}</span>
