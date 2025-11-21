@@ -435,7 +435,7 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 px-4 py-6 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
+    <div className="min-h-screen bg-white px-4 py-6 dark:bg-black">
       <div className="mx-auto max-w-[1800px] space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -830,14 +830,12 @@ export default function Dashboard() {
                           },
                           {
                             label: 'Delivered',
-                            value: fmtNum((m?.deliveredQty ?? m?.delivered) || 0),
+                            value: fmtNum(m?.delivered ?? m?.deliveredOrders ?? 0),
                             to: `/user/orders?country=${qs}&ship=delivered`,
                           },
                           {
                             label: 'Del Amt',
-                            value: formatCurrency(m?.amountDeliveredLocal ?? m?.amountDelivered, c)
-                              .replace(cur, '')
-                              .trim(),
+                            value: formatCurrency(m?.amountDelivered, c).replace(cur, '').trim(),
                           },
                           {
                             label: 'Open',
