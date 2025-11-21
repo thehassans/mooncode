@@ -435,14 +435,7 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 px-4 py-6 dark:bg-gradient-to-br dark:from-neutral-950 dark:via-black dark:to-neutral-950">
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-tab-content { animation: fadeIn 0.4s ease-out; }
-      `}</style>
+    <div className="min-h-screen bg-white px-4 py-6 dark:bg-black">
       <div className="mx-auto max-w-[1800px] space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -666,242 +659,232 @@ export default function Dashboard() {
         <GlassCard>
           <TabsComponent tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
 
-          <div className="mt-6" key={activeTab}>
-            <div className="animate-tab-content">
-              {activeTab === 'orders' && (
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-                  {[
-                    {
-                      title: 'Total Amount',
-                      value: <LiveNumber value={sumAmountAED('amountTotalOrders')} prefix="AED " />,
-                      to: '/user/orders',
-                      color: 'text-emerald-600 dark:text-emerald-400',
-                    },
-                    {
-                      title: 'Delivered Amt',
-                      value: <LiveNumber value={sumAmountAED('amountDelivered')} prefix="AED " />,
-                      to: '/user/orders?ship=delivered',
-                      color: 'text-emerald-600 dark:text-emerald-400',
-                    },
-                    {
-                      title: 'Open Amount',
-                      value: <LiveNumber value={sumAmountAED('amountPending')} prefix="AED " />,
-                      to: '/user/orders?ship=open',
-                      color: 'text-orange-500 dark:text-orange-400',
-                    },
-                    {
-                      title: 'Assigned',
-                      value: (
-                        <LiveNumber value={statusTotals?.assigned || 0} maximumFractionDigits={0} />
-                      ),
-                      to: '/user/orders?ship=assigned',
-                      color: 'text-blue-600 dark:text-blue-400',
-                    },
-                    {
-                      title: 'In Transit',
-                      value: (
-                        <LiveNumber
-                          value={statusTotals?.in_transit || 0}
-                          maximumFractionDigits={0}
-                        />
-                      ),
-                      to: '/user/orders?ship=in_transit',
-                      color: 'text-cyan-600 dark:text-cyan-400',
-                    },
-                    {
-                      title: 'Cancelled',
-                      value: (
-                        <LiveNumber
-                          value={statusTotals?.cancelled || 0}
-                          maximumFractionDigits={0}
-                        />
-                      ),
-                      to: '/user/orders?ship=cancelled',
-                      color: 'text-rose-600 dark:text-rose-400',
-                    },
-                  ].map((stat, i) => (
-                    <CompactStatCard key={i} {...stat} loading={loading} />
-                  ))}
-                </div>
-              )}
+          <div className="mt-6 transition-all duration-700 ease-in-out">
+            {activeTab === 'orders' && (
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+                {[
+                  {
+                    title: 'Total Amount',
+                    value: <LiveNumber value={sumAmountAED('amountTotalOrders')} prefix="AED " />,
+                    to: '/user/orders',
+                    color: 'text-emerald-600 dark:text-emerald-400',
+                    delay: 0,
+                  },
+                  {
+                    title: 'Delivered Amt',
+                    value: <LiveNumber value={sumAmountAED('amountDelivered')} prefix="AED " />,
+                    to: '/user/orders?ship=delivered',
+                    color: 'text-emerald-600 dark:text-emerald-400',
+                  },
+                  {
+                    title: 'Open Amount',
+                    value: <LiveNumber value={sumAmountAED('amountPending')} prefix="AED " />,
+                    to: '/user/orders?ship=open',
+                    color: 'text-orange-500 dark:text-orange-400',
+                  },
+                  {
+                    title: 'Assigned',
+                    value: (
+                      <LiveNumber value={statusTotals?.assigned || 0} maximumFractionDigits={0} />
+                    ),
+                    to: '/user/orders?ship=assigned',
+                    color: 'text-blue-600 dark:text-blue-400',
+                  },
+                  {
+                    title: 'In Transit',
+                    value: (
+                      <LiveNumber value={statusTotals?.in_transit || 0} maximumFractionDigits={0} />
+                    ),
+                    to: '/user/orders?ship=in_transit',
+                    color: 'text-cyan-600 dark:text-cyan-400',
+                  },
+                  {
+                    title: 'Cancelled',
+                    value: (
+                      <LiveNumber value={statusTotals?.cancelled || 0} maximumFractionDigits={0} />
+                    ),
+                    to: '/user/orders?ship=cancelled',
+                    color: 'text-rose-600 dark:text-rose-400',
+                  },
+                ].map((stat, i) => (
+                  <CompactStatCard key={i} {...stat} loading={loading} />
+                ))}
+              </div>
+            )}
 
-              {activeTab === 'products' && (
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-                  {[
-                    {
-                      title: 'Total Value',
-                      value: (
-                        <LiveNumber
-                          value={sumCurrencyMapAED(
-                            metrics?.productMetrics?.global?.totalPurchaseValueByCurrency
-                          )}
-                          prefix="AED "
-                        />
-                      ),
-                      to: '/user/inhouse-products',
-                      color: 'text-violet-600 dark:text-violet-400',
-                    },
-                    {
-                      title: 'Inventory',
-                      value: (
-                        <LiveNumber
-                          value={sumCurrencyMapAED(
-                            metrics?.productMetrics?.global?.purchaseValueByCurrency
-                          )}
-                          prefix="AED "
-                        />
-                      ),
-                      to: '/user/warehouses',
-                      color: 'text-sky-600 dark:text-sky-400',
-                    },
-                    {
-                      title: 'Delivered',
-                      value: (
-                        <LiveNumber
-                          value={sumCurrencyMapAED(
-                            metrics?.productMetrics?.global?.deliveredValueByCurrency
-                          )}
-                          prefix="AED "
-                        />
-                      ),
-                      to: '/user/orders?ship=delivered',
-                      color: 'text-emerald-600 dark:text-emerald-400',
-                    },
-                    {
-                      title: 'Purchased Qty',
-                      value: (
-                        <LiveNumber
-                          value={metrics?.productMetrics?.global?.stockPurchasedQty || 0}
-                          maximumFractionDigits={0}
-                        />
-                      ),
-                      to: '/user/inhouse-products',
-                      color: 'text-sky-600 dark:text-sky-400',
-                    },
-                    {
-                      title: 'Delivered Qty',
-                      value: (
-                        <LiveNumber
-                          value={metrics?.productMetrics?.global?.stockDeliveredQty || 0}
-                          maximumFractionDigits={0}
-                        />
-                      ),
-                      to: '/user/orders?ship=delivered',
-                      color: 'text-emerald-600 dark:text-emerald-400',
-                    },
-                    {
-                      title: 'Stock Left',
-                      value: (
-                        <LiveNumber
-                          value={metrics?.productMetrics?.global?.stockLeftQty || 0}
-                          maximumFractionDigits={0}
-                        />
-                      ),
-                      to: '/user/warehouses',
-                      color: 'text-amber-500 dark:text-amber-400',
-                    },
-                  ].map((stat, i) => (
-                    <CompactStatCard key={i} {...stat} loading={loading} />
-                  ))}
-                </div>
-              )}
+            {activeTab === 'products' && (
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+                {[
+                  {
+                    title: 'Total Value',
+                    value: (
+                      <LiveNumber
+                        value={sumCurrencyMapAED(
+                          metrics?.productMetrics?.global?.totalPurchaseValueByCurrency
+                        )}
+                        prefix="AED "
+                      />
+                    ),
+                    to: '/user/inhouse-products',
+                    color: 'text-violet-600 dark:text-violet-400',
+                    delay: 0,
+                  },
+                  {
+                    title: 'Inventory',
+                    value: (
+                      <LiveNumber
+                        value={sumCurrencyMapAED(
+                          metrics?.productMetrics?.global?.purchaseValueByCurrency
+                        )}
+                        prefix="AED "
+                      />
+                    ),
+                    to: '/user/warehouses',
+                    color: 'text-sky-600 dark:text-sky-400',
+                  },
+                  {
+                    title: 'Delivered',
+                    value: (
+                      <LiveNumber
+                        value={sumCurrencyMapAED(
+                          metrics?.productMetrics?.global?.deliveredValueByCurrency
+                        )}
+                        prefix="AED "
+                      />
+                    ),
+                    to: '/user/orders?ship=delivered',
+                    color: 'text-emerald-600 dark:text-emerald-400',
+                  },
+                  {
+                    title: 'Purchased Qty',
+                    value: (
+                      <LiveNumber
+                        value={metrics?.productMetrics?.global?.stockPurchasedQty || 0}
+                        maximumFractionDigits={0}
+                      />
+                    ),
+                    to: '/user/inhouse-products',
+                    color: 'text-sky-600 dark:text-sky-400',
+                  },
+                  {
+                    title: 'Delivered Qty',
+                    value: (
+                      <LiveNumber
+                        value={metrics?.productMetrics?.global?.stockDeliveredQty || 0}
+                        maximumFractionDigits={0}
+                      />
+                    ),
+                    to: '/user/orders?ship=delivered',
+                    color: 'text-emerald-600 dark:text-emerald-400',
+                  },
+                  {
+                    title: 'Stock Left',
+                    value: (
+                      <LiveNumber
+                        value={metrics?.productMetrics?.global?.stockLeftQty || 0}
+                        maximumFractionDigits={0}
+                      />
+                    ),
+                    to: '/user/warehouses',
+                    color: 'text-amber-500 dark:text-amber-400',
+                  },
+                ].map((stat, i) => (
+                  <CompactStatCard key={i} {...stat} loading={loading} />
+                ))}
+              </div>
+            )}
 
-              {activeTab === 'countries' && (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {COUNTRY_LIST.map((c) => {
-                    const m = countryMetrics(c)
-                    const flag = COUNTRY_INFO[c]?.flag || ''
-                    const qs = encodeURIComponent(c)
-                    const cur = COUNTRY_INFO[c]?.cur || 'AED'
+            {activeTab === 'countries' && (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {COUNTRY_LIST.map((c) => {
+                  const m = countryMetrics(c)
+                  const flag = COUNTRY_INFO[c]?.flag || ''
+                  const qs = encodeURIComponent(c)
+                  const cur = COUNTRY_INFO[c]?.cur || 'AED'
 
-                    return (
-                      <div
-                        key={c}
-                        className="relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-5 transition-all hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
-                      >
-                        {/* Large Flag Background */}
-                        <div className="pointer-events-none absolute -top-8 -right-8 text-[180px] opacity-[0.03] dark:opacity-[0.02]">
-                          {flag}
+                  return (
+                    <div
+                      key={c}
+                      className="relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-5 transition-all hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
+                    >
+                      <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3 dark:border-neutral-800">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{flag}</span>
+                          <span className="font-black text-slate-900 dark:text-white">
+                            {c === 'KSA' ? 'Saudi Arabia' : c}
+                          </span>
                         </div>
-
-                        <div className="relative mb-4 flex items-center justify-between border-b border-slate-100 pb-3 dark:border-neutral-800">
-                          <div className="flex items-center gap-2">
-                            <span className="text-2xl">{flag}</span>
-                            <span className="font-black text-slate-900 dark:text-white">
-                              {c === 'KSA' ? 'Saudi Arabia' : c}
-                            </span>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-5xl opacity-40">{flag}</span>
                           <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-black dark:bg-neutral-800">
                             {cur}
                           </span>
                         </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          {[
-                            {
-                              label: 'Orders',
-                              value: fmtNum(m?.orders || 0),
-                              to: `/user/orders?country=${qs}`,
-                            },
-                            {
-                              label: 'Amount',
-                              value: formatCurrency(m?.amountTotalOrders, c)
-                                .replace(cur, '')
-                                .trim(),
-                            },
-                            {
-                              label: 'Delivered',
-                              value: fmtNum(m?.delivered ?? m?.deliveredOrders ?? 0),
-                              to: `/user/orders?country=${qs}&ship=delivered`,
-                            },
-                            {
-                              label: 'Del Amt',
-                              value: formatCurrency(m?.amountDelivered, c).replace(cur, '').trim(),
-                            },
-                            {
-                              label: 'Open',
-                              value: fmtNum(m?.pending || 0),
-                              to: `/user/orders?country=${qs}&ship=open`,
-                            },
-                            {
-                              label: 'Open Amt',
-                              value: formatCurrency(m?.amountPending, c).replace(cur, '').trim(),
-                            },
-                          ].map((stat, i) =>
-                            stat.to ? (
-                              <NavLink
-                                key={i}
-                                to={stat.to}
-                                className="rounded-lg border border-slate-200/30 bg-white/50 p-2 text-center hover:bg-white dark:border-neutral-800/30 dark:bg-neutral-900/50 dark:hover:bg-neutral-800/50"
-                              >
-                                <p className="text-[10px] font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
-                                  {stat.label}
-                                </p>
-                                <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">
-                                  {stat.value}
-                                </p>
-                              </NavLink>
-                            ) : (
-                              <div
-                                key={i}
-                                className="rounded-lg border border-slate-200/30 bg-white/50 p-2 text-center dark:border-neutral-800/30 dark:bg-neutral-900/50"
-                              >
-                                <p className="text-[10px] font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
-                                  {stat.label}
-                                </p>
-                                <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">
-                                  {stat.value}
-                                </p>
-                              </div>
-                            )
-                          )}
-                        </div>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          {
+                            label: 'Orders',
+                            value: fmtNum(m?.orders || 0),
+                            to: `/user/orders?country=${qs}`,
+                          },
+                          {
+                            label: 'Amount',
+                            value: formatCurrency(m?.amountTotalOrders, c).replace(cur, '').trim(),
+                          },
+                          {
+                            label: 'Delivered',
+                            value: fmtNum(m?.delivered ?? m?.deliveredOrders ?? 0),
+                            to: `/user/orders?country=${qs}&ship=delivered`,
+                          },
+                          {
+                            label: 'Del Amt',
+                            value: formatCurrency(m?.amountDelivered, c).replace(cur, '').trim(),
+                          },
+                          {
+                            label: 'Open',
+                            value: fmtNum(m?.pending || 0),
+                            to: `/user/orders?country=${qs}&ship=open`,
+                          },
+                          {
+                            label: 'Open Amt',
+                            value: formatCurrency(m?.amountPending, c).replace(cur, '').trim(),
+                          },
+                        ].map((stat, i) =>
+                          stat.to ? (
+                            <NavLink
+                              key={i}
+                              to={stat.to}
+                              className="rounded-lg border border-slate-200/30 bg-white/50 p-2 text-center hover:bg-white dark:border-neutral-800/30 dark:bg-neutral-900/50 dark:hover:bg-neutral-800/50"
+                            >
+                              <p className="text-[10px] font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
+                                {stat.label}
+                              </p>
+                              <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">
+                                {stat.value}
+                              </p>
+                            </NavLink>
+                          ) : (
+                            <div
+                              key={i}
+                              className="rounded-lg border border-slate-200/30 bg-white/50 p-2 text-center dark:border-neutral-800/30 dark:bg-neutral-900/50"
+                            >
+                              <p className="text-[10px] font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
+                                {stat.label}
+                              </p>
+                              <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">
+                                {stat.value}
+                              </p>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </GlassCard>
       </div>

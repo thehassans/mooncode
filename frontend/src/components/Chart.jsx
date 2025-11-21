@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 
 export default function Chart({ analytics }) {
   const [hoveredIndex, setHoveredIndex] = useState(null)
+  const [selectedCountry, setSelectedCountry] = useState(null)
 
   const days = Array.isArray(analytics?.days) ? analytics.days : []
   const MONTHS = [
@@ -119,7 +120,12 @@ export default function Chart({ analytics }) {
           return (
             <div
               key={k}
-              className="group flex items-center gap-3 rounded-xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 px-5 py-3 shadow-sm shadow-slate-200/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:shadow-slate-200/50 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none"
+              onClick={() => setSelectedCountry(selectedCountry === k ? null : k)}
+              className={`group flex cursor-pointer items-center gap-3 rounded-xl border px-5 py-3 shadow-sm backdrop-blur-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-md ${
+                selectedCountry === k
+                  ? 'border-slate-400 bg-gradient-to-br from-slate-100 to-white shadow-lg dark:border-neutral-600 dark:from-neutral-800 dark:to-neutral-900'
+                  : 'border-slate-200/50 bg-gradient-to-br from-white to-slate-50 shadow-slate-200/50 hover:shadow-slate-200/50 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none'
+              }`}
             >
               <span
                 className="h-4 w-4 rounded-full shadow-lg transition-all duration-300 group-hover:scale-125"
@@ -190,23 +196,37 @@ export default function Chart({ analytics }) {
 
           {/* Area Fills (subtle) */}
           {seriesKeys.map((k) => {
-            const points = dataByKey[k]
-              .map((v, i) => {
-                const x =
-                  padding + i * ((width - 2 * padding) / Math.max(1, dataByKey[k].length - 1))
-                const y = height - padding - (v / max) * (height - 2 * padding)
-                return `${x},${y}`
-              })
-              .join(' ')
+            const areaPointsArray = dataByKey[k].map((v, i) => {
+              const x = padding + i * ((width - 2 * padding) / Math.max(1, dataByKey[k].length - 1))
+              const y = height - padding - (v / max) * (height - 2 * padding)
+              return { x, y }
+            })
 
-            const areaPoints = `${padding},${height - padding} ${points} ${width - padding},${height - padding}`
+            let areaPathD = `M ${padding},${height - padding}` // Start at bottom-left
+            if (areaPointsArray.length > 0) {
+              // Add the curve path
+              areaPathD += ` L ${areaPointsArray[0].x},${areaPointsArray[0].y}`
+              for (let i = 0; i < areaPointsArray.length - 1; i++) {
+                const current = areaPointsArray[i]
+                const next = areaPointsArray[i + 1]
+                const controlX = (current.x + next.x) / 2
+                areaPathD += ` Q ${controlX},${current.y} ${(current.x + next.x) / 2},${(current.y + next.y) / 2}`
+                areaPathD += ` Q ${controlX},${next.y} ${next.x},${next.y}`
+              }
+              // Close the path back to the bottom-right and then bottom-left
+              areaPathD += ` L ${width - padding},${height - padding} Z`
+            } else {
+              areaPathD += ` L ${width - padding},${height - padding} Z` // Just a rectangle if no data
+            }
 
             return (
-              <polygon
+              <path
                 key={`area-${k}`}
-                points={areaPoints}
+                d={areaPathD}
                 fill={`url(#gradient-${k})`}
-                opacity="0.3"
+                opacity={selectedCountry === k ? 0.4 : hoveredIndex !== null ? 0.1 : 0.15}
+                className="cursor-pointer transition-all duration-500 hover:opacity-30"
+                onClick={() => setSelectedCountry(selectedCountry === k ? null : k)}
               />
             )
           })}
@@ -274,6 +294,12 @@ export default function Chart({ analytics }) {
                           fill={colors[k].line}
                           stroke="white"
                           strokeWidth="4"
+                          className="cursor-pointer transition-all duration-500"
+                          style={{
+                            filter: selectedCountry === k ? colors[k].shadow : 'none',
+                            strokeWidth: selectedCountry === k ? '5' : '4',
+                          }}
+                          onClick={() => setSelectedCountry(selectedCountry === k ? null : k)}
                           filter={`url(#glow-${k})`}
                         />
                       </>
