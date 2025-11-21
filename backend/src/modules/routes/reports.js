@@ -825,6 +825,7 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
       countryMetrics,
       deliveredPerProdCountry,
       currencySetting,
+      driversList,
     ] = await Promise.all([
       // 1. Products In House
       Product.aggregate([
@@ -836,24 +837,16 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
         { $match: { owner: ownerId, status: "sent", ...dateMatch } },
         { $group: { _id: null, totalAgentExpense: { $sum: "$amount" } } },
       ]),
-      // 3. Driver Expenses (Grouped by Country for conversion)
-      Remittance.aggregate([
-        { $match: { owner: ownerId, status: "accepted", ...dateMatch } },
+      // 3. Driver Stats (Delivered orders by driver for commission calc)
+      Order.aggregate([
         {
-          $lookup: {
-            from: "users",
-            localField: "driver",
-            foreignField: "_id",
-            as: "driverInfo",
+          $match: {
+            createdBy: { $in: creatorIds },
+            shipmentStatus: "delivered",
+            ...dateMatch,
           },
         },
-        { $unwind: { path: "$driverInfo", preserveNullAndEmptyArrays: true } },
-        {
-          $group: {
-            _id: { $ifNull: ["$driverInfo.country", "UAE"] },
-            total: { $sum: "$amount" },
-          },
-        },
+        { $group: { _id: "$deliveryBoy", count: { $sum: 1 } } },
       ]),
       // 4. Advertisement Expenses (Grouped by Currency)
       Expense.aggregate([
@@ -1337,6 +1330,10 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
         },
       ]),
       Setting.findOne({ key: "currency" }).lean(),
+      // 9. Drivers List (for commission rates)
+      User.find({ role: "driver", createdBy: { $in: creatorIds } })
+        .select("_id driverProfile country")
+        .lean(),
     ]);
 
     // Currency Config Logic
@@ -1403,26 +1400,27 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
     const totalAgentExpensePKR = agentExpenseStats[0]?.totalAgentExpense || 0;
     const totalAgentExpense = totalAgentExpensePKR / pkrToAEDRate;
 
-    // Driver Expense (Sum of converted amounts)
+    // Driver Expense (Calculated from delivered orders * commission)
+    const driverMap = new Map();
+    (driversList || []).forEach((d) => {
+      driverMap.set(String(d._id), {
+        commission: d.driverProfile?.commissionPerOrder || 0,
+        currency: d.driverProfile?.commissionCurrency || "AED",
+        country: d.country || "UAE",
+      });
+    });
+
     const totalDriverExpense = driverExpenseStats.reduce((sum, item) => {
-      // item._id is country name (e.g., "KSA", "UAE")
-      // Map country to currency
-      const country = item._id;
-      const cur =
-        country === "KSA" || country === "Saudi Arabia"
-          ? "SAR"
-          : country === "Oman"
-          ? "OMR"
-          : country === "Bahrain"
-          ? "BHD"
-          : country === "Kuwait"
-          ? "KWD"
-          : country === "Qatar"
-          ? "QAR"
-          : country === "India"
-          ? "INR"
-          : "AED";
-      return sum + toAED(item.total, cur);
+      const driverId = String(item._id || "");
+      const count = item.count || 0;
+      const info = driverMap.get(driverId);
+      if (!info) return sum; // Skip if driver not found (or deleted)
+
+      const commAmount = count * info.commission;
+      // Convert commission currency to AED
+      // If commissionCurrency is set, use it. Otherwise infer from country?
+      // driverProfile has commissionCurrency.
+      return sum + toAED(commAmount, info.currency);
     }, 0);
 
     // Ad Expense
@@ -1677,7 +1675,7 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
           amountPending: cm.amountPending,
           amountOpen: cm.amountOpen,
           amountDiscountDelivered: cm.amountDiscountDelivered,
-          totalOrders: cm.totalOrders,
+          orders: cm.totalOrders,
           pendingOrders: cm.pendingOrders,
           openOrders: cm.openOrders,
           assignedOrders: cm.assignedOrders,
