@@ -119,23 +119,21 @@ export default function Chart({ analytics }) {
           return (
             <div
               key={k}
-              className="group flex items-center gap-2 rounded-xl border border-slate-200/70 bg-gradient-to-br from-white via-slate-50/40 to-white px-4 py-2.5 shadow-lg shadow-slate-300/30 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300/90 hover:shadow-xl hover:shadow-slate-400/40 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none"
+              className="group flex items-center gap-2 rounded-xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 px-4 py-2 shadow-sm shadow-slate-200/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:shadow-slate-200/50 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none"
             >
               <span
                 className="h-3 w-3 rounded-full shadow-lg transition-all duration-300 group-hover:scale-125"
                 style={{ background: colors[k].line, boxShadow: colors[k].shadow }}
               />
               <span className="text-xs font-black text-slate-700 dark:text-neutral-300">{k}</span>
-              <span className="text-xs font-bold text-slate-500 dark:text-neutral-400">
-                ({total})
-              </span>
+              <span className="text-xs font-bold text-slate-400">({total})</span>
             </div>
           )
         })}
       </div>
 
       {/* Chart */}
-      <div className="relative w-full overflow-x-auto rounded-2xl border border-slate-200/60 bg-gradient-to-br from-white/95 via-white/90 to-slate-50/80 p-6 shadow-2xl shadow-slate-300/40 backdrop-blur-sm dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none">
+      <div className="relative w-full overflow-x-auto rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg shadow-slate-200/50 backdrop-blur-sm dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none">
         <svg
           width={width}
           height={height}
