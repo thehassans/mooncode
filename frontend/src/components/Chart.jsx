@@ -3,6 +3,8 @@ import React, { useState } from 'react'
 export default function Chart({ analytics }) {
   const [hoveredIndex, setHoveredIndex] = useState(null)
   const [selectedCountry, setSelectedCountry] = useState(null)
+  const [tooltipData, setTooltipData] = useState(null)
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
 
   const days = Array.isArray(analytics?.days) ? analytics.days : []
   const MONTHS = [
@@ -282,6 +284,19 @@ export default function Chart({ analytics }) {
                       fill="transparent"
                       onMouseEnter={() => setHoveredIndex(i)}
                       onMouseLeave={() => setHoveredIndex(null)}
+                      onClick={(e) => {
+                        const rect = e.currentTarget.ownerSVGElement.getBoundingClientRect()
+                        const breakdown = {}
+                        seriesKeys.forEach((key) => {
+                          breakdown[key] = dataByKey[key][i] || 0
+                        })
+                        setTooltipData({
+                          date: parsed[i].full,
+                          breakdown,
+                          total: Object.values(breakdown).reduce((a, b) => a + b, 0),
+                        })
+                        setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+                      }}
                       className="cursor-pointer"
                     />
                     {isHovered && (
@@ -358,6 +373,62 @@ export default function Chart({ analytics }) {
             )
           })}
         </svg>
+
+        {/* Premium Tooltip */}
+        {tooltipData && (
+          <>
+            {/* Backdrop to close tooltip */}
+            <div className="fixed inset-0 z-40" onClick={() => setTooltipData(null)} />
+
+            {/* Tooltip Content */}
+            <div
+              className="animate-in fade-in slide-in-from-bottom-2 absolute z-50 w-64 duration-300"
+              style={{
+                left: `${Math.min(tooltipPos.x, width - 270)}px`,
+                top: `${Math.max(20, tooltipPos.y - 100)}px`,
+              }}
+            >
+              <div className="rounded-2xl border border-slate-200/50 bg-white/95 p-4 shadow-2xl backdrop-blur-xl dark:border-neutral-700/50 dark:bg-neutral-900/95">
+                {/* Header */}
+                <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2 dark:border-neutral-800">
+                  <span className="text-sm font-bold text-slate-600 dark:text-neutral-400">
+                    {tooltipData.date}
+                  </span>
+                  <button
+                    onClick={() => setTooltipData(null)}
+                    className="text-slate-400 transition-colors hover:text-slate-600 dark:text-neutral-500 dark:hover:text-neutral-300"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Country Breakdown */}
+                <div className="space-y-2">
+                  {seriesKeys.map((country) => {
+                    const value = tooltipData.breakdown[country] || 0
+                    if (value === 0) return null
+                    return (
+                      <div key={country} className="flex items-center gap-2">
+                        <div
+                          className="h-6 flex-1 rounded-lg px-2 text-xs font-bold text-white shadow-sm transition-all hover:scale-105"
+                          style={{
+                            backgroundColor: colors[country].line,
+                            minWidth: '80px',
+                          }}
+                        >
+                          <div className="flex h-full items-center justify-between">
+                            <span>{country}</span>
+                            <span>{value}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
