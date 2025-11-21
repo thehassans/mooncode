@@ -7,35 +7,63 @@ import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
 import { getCurrencyConfig, toAEDByCode, convert } from '../../util/currency'
 
-// --- Premium UI Components ---
+// --- Premium Tab Component ---
+const TabsComponent = ({ tabs, activeTab, setActiveTab }) => (
+  <div className="flex gap-2 overflow-x-auto rounded-2xl bg-slate-100/50 p-1.5 dark:bg-neutral-900/50">
+    {tabs.map((tab) => (
+      <button
+        key={tab.id}
+        onClick={() => setActiveTab(tab.id)}
+        className={`rounded-xl px-6 py-3 text-sm font-black tracking-wide whitespace-nowrap uppercase transition-all duration-300 ${
+          activeTab === tab.id
+            ? 'bg-gradient-to-br from-white to-slate-50 text-slate-900 shadow-lg dark:from-neutral-800 dark:to-neutral-900 dark:text-white'
+            : 'text-slate-500 hover:text-slate-900 dark:text-neutral-400 dark:hover:text-white'
+        }`}
+      >
+        {tab.label}
+      </button>
+    ))}
+  </div>
+)
 
-const GlassCard = ({ children, className = '', title, subtitle, loading = false, delay = 0 }) => (
+// --- Compact Metric Badge ---
+const MetricBadge = ({ icon, label, value, prefix = '', className = '', loading = false }) => (
   <div
-    className={`group hover:shadow-3xl overflow-hidden rounded-3xl border border-slate-200/60 bg-gradient-to-br from-white/95 via-white/90 to-slate-50/80 p-8 shadow-2xl shadow-slate-300/40 backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:border-slate-300/80 hover:shadow-slate-300/50 dark:border-neutral-800/50 dark:bg-neutral-900/80 dark:from-neutral-900/80 dark:via-neutral-900/80 dark:to-neutral-950/80 dark:shadow-none ${className}`}
-    style={{ animationDelay: `${delay}ms` }}
+    className={`group relative overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/20 dark:border-neutral-700/30 dark:bg-neutral-800/20 dark:hover:bg-neutral-700/30 ${className}`}
+  >
+    <div className="absolute -top-2 -right-2 text-4xl opacity-5 transition-transform group-hover:scale-110 group-hover:opacity-10">
+      {icon}
+    </div>
+    <p className="text-[10px] font-black tracking-widest text-slate-600 uppercase dark:text-neutral-400">
+      {label}
+    </p>
+    {loading ? (
+      <div className="mt-2 h-6 w-20 animate-pulse rounded bg-slate-300 dark:bg-neutral-700" />
+    ) : (
+      <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">
+        {prefix && <span className="mr-1 text-sm opacity-60">{prefix}</span>}
+        {value}
+      </p>
+    )}
+  </div>
+)
+
+// --- Glass Card Container ---
+const GlassCard = ({ children, className = '', title, subtitle }) => (
+  <div
+    className={`overflow-hidden rounded-3xl border border-slate-200/50 bg-white/80 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl dark:border-neutral-800/50 dark:bg-neutral-900/80 dark:shadow-none ${className}`}
   >
     {(title || subtitle) && (
-      <div className="mb-8 border-b border-slate-200/60 pb-4 dark:border-neutral-800">
-        {loading ? (
-          <>
-            <div className="mb-2 h-7 w-56 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-neutral-800 dark:to-neutral-900" />
-            {subtitle && (
-              <div className="h-4 w-40 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-neutral-800 dark:to-neutral-900" />
-            )}
-          </>
-        ) : (
-          <>
-            {title && (
-              <h3 className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-2xl font-black tracking-tight text-transparent dark:from-white dark:to-neutral-400">
-                {title}
-              </h3>
-            )}
-            {subtitle && (
-              <p className="mt-2 text-sm font-semibold text-slate-600 dark:text-neutral-400">
-                {subtitle}
-              </p>
-            )}
-          </>
+      <div className="mb-6 border-b border-slate-100 pb-4 dark:border-neutral-800">
+        {title && (
+          <h3 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-xl font-black tracking-tight text-transparent dark:from-white dark:to-neutral-400">
+            {title}
+          </h3>
+        )}
+        {subtitle && (
+          <p className="mt-1 text-sm font-medium text-slate-500 dark:text-neutral-400">
+            {subtitle}
+          </p>
         )}
       </div>
     )}
@@ -43,259 +71,204 @@ const GlassCard = ({ children, className = '', title, subtitle, loading = false,
   </div>
 )
 
-const PremiumStatCard = ({
+// --- Compact Stat Card ---
+const CompactStatCard = ({
   title,
   value,
   to,
-  colorClass = 'text-slate-900 dark:text-white',
-  icon,
-  loading = false,
-  delay = 0,
+  color = 'text-slate-900 dark:text-white',
+  loading,
 }) => {
-  const Content = () => (
-    <div className="relative flex h-full flex-col justify-between">
-      <div className="absolute -top-3 -right-3 opacity-10 transition-all duration-500 group-hover:scale-110 group-hover:opacity-20">
-        {icon && React.createElement(icon, { className: 'w-24 h-24' })}
-      </div>
-      <p className="relative z-10 mb-3 text-xs font-black tracking-widest text-slate-600 uppercase dark:text-neutral-400">
+  const Content = (
+    <div className="flex items-center justify-between">
+      <p className="text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
         {title}
       </p>
       {loading ? (
-        <div
-          className="h-10 w-32 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-800"
-          style={{ animation: 'shimmer 2s infinite' }}
-        />
+        <div className="h-7 w-20 animate-pulse rounded bg-slate-200 dark:bg-neutral-800" />
       ) : (
-        <h3
-          className={`relative z-10 text-3xl font-black tracking-tighter transition-all duration-300 group-hover:scale-105 sm:text-4xl ${colorClass}`}
-        >
-          {value}
-        </h3>
+        <p className={`text-2xl font-black ${color}`}>{value}</p>
       )}
     </div>
   )
 
   if (to && !loading) {
     return (
-      <NavLink to={to} className="group block h-full" style={{ animationDelay: `${delay}ms` }}>
-        <div className="h-full rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white via-slate-50/50 to-white p-6 shadow-xl shadow-slate-300/30 backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 hover:border-slate-300/90 hover:from-white hover:via-white hover:to-slate-50 hover:shadow-2xl hover:shadow-slate-400/40 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none dark:hover:border-neutral-700">
-          <Content />
-        </div>
+      <NavLink
+        to={to}
+        className="block rounded-xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
+      >
+        {Content}
       </NavLink>
     )
   }
 
   return (
-    <div
-      className="h-full rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white via-slate-50/50 to-white p-6 shadow-xl shadow-slate-300/30 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <Content />
+    <div className="rounded-xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-4 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black">
+      {Content}
     </div>
   )
 }
 
+// --- Pie Chart Component ---
 const PremiumPieChart = ({ statusTotals, loading }) => {
-  if (loading) {
+  if (loading || !statusTotals) {
     return (
-      <div className="flex flex-col items-center justify-center gap-10 py-8 md:flex-row">
-        <div className="h-64 w-64 animate-pulse rounded-full bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-800" />
-        <div className="grid grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="h-8 w-40 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-neutral-800 dark:to-neutral-900"
-            />
-          ))}
-        </div>
-      </div>
+      <div className="h-64 w-full animate-pulse rounded-2xl bg-slate-200 dark:bg-neutral-800" />
     )
   }
 
-  const st = statusTotals || { pending: 0, picked_up: 0, delivered: 0, cancelled: 0 }
-  const data = [
-    {
-      label: 'Open',
-      value: st.pending,
-      color: '#F59E0B',
-      bg: 'from-amber-400 to-amber-600',
-      text: 'text-amber-600 dark:text-amber-400',
-      ring: 'ring-amber-500/20',
-    },
-    {
-      label: 'Picked Up',
-      value: st.picked_up,
-      color: '#3B82F6',
-      bg: 'from-blue-400 to-blue-600',
-      text: 'text-blue-600 dark:text-blue-400',
-      ring: 'ring-blue-500/20',
-    },
-    {
-      label: 'Delivered',
-      value: st.delivered,
-      color: '#10B981',
-      bg: 'from-emerald-400 to-emerald-600',
-      text: 'text-emerald-600 dark:text-emerald-400',
-      ring: 'ring-emerald-500/20',
-    },
-    {
-      label: 'Cancelled',
-      value: st.cancelled,
-      color: '#EF4444',
-      bg: 'from-rose-400 to-rose-600',
-      text: 'text-rose-600 dark:text-rose-400',
-      ring: 'ring-rose-500/20',
-    },
+  const statuses = [
+    { key: 'pending', label: 'Open', color: '#f59e0b' },
+    { key: 'assigned', label: 'Assigned', color: '#3b82f6' },
+    { key: 'picked_up', label: 'Picked Up', color: '#6366f1' },
+    { key: 'in_transit', label: 'In Transit', color: '#06b6d4' },
+    { key: 'out_for_delivery', label: 'Out Delivery', color: '#f97316' },
+    { key: 'delivered', label: 'Delivered', color: '#10b981' },
+    { key: 'cancelled', label: 'Cancelled', color: '#ef4444' },
+    { key: 'returned', label: 'Returned', color: '#64748b' },
+    { key: 'no_response', label: 'No Response', color: '#dc2626' },
   ]
-  const total = data.reduce((sum, item) => sum + item.value, 0)
 
-  if (total === 0)
-    return <div className="py-16 text-center text-slate-400">No orders to display</div>
-
-  let cumulative = 0
-  const gradient = data
-    .map((item) => {
-      const percentage = (item.value / total) * 360
-      const start = cumulative
-      cumulative += percentage
-      return `${item.color} ${start}deg ${cumulative}deg`
-    })
-    .join(', ')
+  const total = statuses.reduce((sum, s) => sum + (statusTotals[s.key] || 0), 0)
+  let cumulativePercent = 0
 
   return (
-    <div className="flex flex-col items-center justify-center gap-12 py-8 md:flex-row">
-      <div className="group relative">
-        <div className="absolute -inset-4 animate-pulse rounded-full bg-gradient-to-r from-violet-600/20 to-indigo-600/20 opacity-0 blur-2xl transition-opacity duration-1000 group-hover:opacity-100" />
-        <div
-          className="relative h-64 w-64 rounded-full shadow-2xl transition-transform duration-700 group-hover:scale-105"
-          style={{ background: `conic-gradient(${gradient})` }}
-        />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex h-44 w-44 flex-col items-center justify-center rounded-full bg-white shadow-inner backdrop-blur-xl dark:bg-neutral-900">
-            <span className="bg-gradient-to-br from-slate-900 to-slate-700 bg-clip-text text-5xl font-black text-transparent dark:from-white dark:to-neutral-400">
-              {total}
-            </span>
-            <span className="mt-1 text-xs font-bold tracking-widest text-slate-400 uppercase">
-              Total
-            </span>
-          </div>
+    <div className="space-y-4">
+      <div className="relative mx-auto aspect-square w-full max-w-[200px]">
+        <svg viewBox="0 0 100 100" className="rotate-[-90deg]">
+          {statuses.map((status, i) => {
+            const value = statusTotals[status.key] || 0
+            const percent = total > 0 ? (value / total) * 100 : 0
+            const offset = cumulativePercent
+            cumulativePercent += percent
+
+            if (percent === 0) return null
+
+            const circumference = 2 * Math.PI * 40
+            const strokeDasharray = `${(percent / 100) * circumference} ${circumference}`
+            const strokeDashoffset = -(offset / 100) * circumference
+
+            return (
+              <circle
+                key={i}
+                cx="50"
+                cy="50"
+                r="40"
+                fill="none"
+                stroke={status.color}
+                strokeWidth="20"
+                strokeDasharray={strokeDasharray}
+                strokeDashoffset={strokeDashoffset}
+                className="transition-all duration-500"
+              />
+            )
+          })}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <p className="text-xs font-bold text-slate-500 uppercase dark:text-neutral-400">Total</p>
+          <p className="text-2xl font-black text-slate-900 dark:text-white">
+            {total.toLocaleString()}
+          </p>
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {data.map((item, idx) => (
-          <div
-            key={idx}
-            className={`group flex items-center gap-4 rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white via-slate-50/40 to-white px-5 py-3.5 shadow-lg shadow-slate-300/30 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300/90 hover:shadow-xl hover:shadow-slate-400/40 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none ${item.ring}`}
-          >
-            <div className={`h-5 w-5 rounded-full bg-gradient-to-br shadow-lg ${item.bg}`} />
-            <div className="flex flex-col">
-              <span className="text-xs font-black tracking-wider text-slate-600 uppercase dark:text-neutral-400">
-                {item.label}
+
+      <div className="grid grid-cols-2 gap-2">
+        {statuses.map((status) => {
+          const value = statusTotals[status.key] || 0
+          if (value === 0) return null
+          return (
+            <div key={status.key} className="flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: status.color }} />
+              <span className="text-xs font-bold text-slate-700 dark:text-neutral-300">
+                {status.label}: {value}
               </span>
-              <span className={`text-2xl font-black sm:text-3xl ${item.text}`}>{item.value}</span>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
 }
 
-// --- Cache Logic ---
-const __dashCache = new Map()
-const DASH_TTL = 60 * 1000
-function cacheKey(name, params) {
-  return `${name}:${params}`
-}
-function cacheSet(name, params, data) {
-  try {
-    __dashCache.set(cacheKey(name, params), { ts: Date.now(), data })
-  } catch {}
-}
-function cacheGet(name, params) {
-  try {
-    const it = __dashCache.get(cacheKey(name, params))
-    if (!it) return null
-    if (Date.now() - (it.ts || 0) > DASH_TTL) return null
-    return it.data
-  } catch {
-    return null
-  }
-}
-
-export default function UserDashboard() {
-  const toast = useToast()
-  const loadSeqRef = useRef(0)
-  const reloadTimerRef = useRef(null)
-  const [loading, setLoading] = useState(true)
-  const [hydrated, setHydrated] = useState(false)
-  const loadAbortRef = useRef(null)
-  const monthDebounceRef = useRef(null)
-
-  const now = new Date()
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
-
-  const [currencyCfg, setCurrencyCfg] = useState(null)
+export default function Dashboard() {
   const [metrics, setMetrics] = useState(null)
   const [analytics, setAnalytics] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [hydrated, setHydrated] = useState(false)
+  const [currencyCfg, setCurrencyCfg] = useState(null)
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [activeTab, setActiveTab] = useState('orders')
 
-  const COUNTRY_INFO = useMemo(
-    () => ({
-      KSA: { flag: '🇸🇦', cur: 'SAR', alias: ['Saudi Arabia'] },
-      UAE: { flag: '🇦🇪', cur: 'AED' },
-      Oman: { flag: '🇴🇲', cur: 'OMR' },
-      Bahrain: { flag: '🇧🇭', cur: 'BHD' },
-      India: { flag: '🇮🇳', cur: 'INR' },
-      Kuwait: { flag: '🇰🇼', cur: 'KWD' },
-      Qatar: { flag: '🇶🇦', cur: 'QAR' },
-      Other: { cur: 'AED' },
-    }),
-    []
-  )
+  const toast = useToast()
+  const loadSeqRef = useRef(0)
+  const loadAbortRef = useRef(null)
+  const monthDebounceRef = useRef(null)
+  const reloadTimerRef = useRef(null)
 
-  const COUNTRY_LIST = useMemo(
-    () => ['KSA', 'UAE', 'Oman', 'Bahrain', 'India', 'Kuwait', 'Qatar', 'Other'],
-    []
-  )
-
-  function countryMetrics(c) {
-    const base = metrics?.countries || {}
-    if (base[c]) return base[c]
-    const alias = COUNTRY_INFO[c]?.alias || []
-    for (const a of alias) {
-      if (base[a]) return base[a]
-    }
-    return {}
-  }
-
-  function fmtAmt(n) {
-    return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
-  }
-
-  function fmtNum(n) {
-    return Number(n || 0).toLocaleString()
-  }
-
-  function toAED(amount, country) {
+  // Cache utilities
+  const cacheKey = (type, params) => `dashboard_${type}_${params}`
+  const cacheGet = (type, params) => {
     try {
-      const code = COUNTRY_INFO[country]?.cur || 'AED'
-      return toAEDByCode(Number(amount || 0), code, currencyCfg)
+      const cached = sessionStorage.getItem(cacheKey(type, params))
+      return cached ? JSON.parse(cached) : null
     } catch {
-      return Number(amount || 0)
+      return null
     }
   }
-
-  function toAEDByCurrency(amount, currency) {
+  const cacheSet = (type, params, data) => {
     try {
-      const code = String(currency || 'AED')
-      return toAEDByCode(Number(amount || 0), code, currencyCfg)
-    } catch {
-      return Number(amount || 0)
+      sessionStorage.setItem(cacheKey(type, params), JSON.stringify(data))
+    } catch (e) {
+      console.warn('Cache storage failed:', e)
     }
   }
 
-  function sumCurrencyMapAED(map) {
+  // Constants
+  const COUNTRY_LIST = ['KSA', 'UAE', 'Oman', 'Bahrain', 'India', 'Kuwait', 'Qatar']
+  const COUNTRY_INFO = {
+    KSA: { flag: '🇸🇦', cur: 'SAR' },
+    UAE: { flag: '🇦🇪', cur: 'AED' },
+    Oman: { flag: '🇴🇲', cur: 'OMR' },
+    Bahrain: { flag: '🇧🇭', cur: 'BHD' },
+    India: { flag: '🇮🇳', cur: 'INR' },
+    Kuwait: { flag: '🇰🇼', cur: 'KWD' },
+    Qatar: { flag: '🇶🇦', cur: 'QAR' },
+  }
+
+  const monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ]
+
+  const fmtNum = (n) => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })
+  const fmtAmt = (n) => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })
+
+  const countryMetrics = (c) => {
+    if (!metrics?.countries || !metrics.countries[c]) return {}
+    return metrics.countries[c]
+  }
+
+  const toAED = (amount, countryCode) => {
+    try {
+      return toAEDByCode(Number(amount || 0), String(countryCode || 'AED'), currencyCfg)
+    } catch {
+      return 0
+    }
+  }
+
+  const sumCurrencyMapAED = (map) => {
     try {
       return Object.entries(map || {}).reduce(
         (s, [code, val]) => s + toAEDByCode(Number(val || 0), String(code || 'AED'), currencyCfg),
@@ -306,7 +279,7 @@ export default function UserDashboard() {
     }
   }
 
-  function sumAmountAED(key) {
+  const sumAmountAED = (key) => {
     try {
       return COUNTRY_LIST.reduce((s, c) => s + toAED(countryMetrics(c)[key] || 0, c), 0)
     } catch {
@@ -314,13 +287,13 @@ export default function UserDashboard() {
     }
   }
 
-  function formatCurrency(amount, country) {
+  const formatCurrency = (amount, country) => {
     const cur = COUNTRY_INFO[country]?.cur || 'AED'
     return `${cur} ${fmtAmt(amount || 0)}`
   }
 
   const statusTotals = useMemo(() => {
-    if (metrics && metrics.statusTotals) return metrics.statusTotals
+    if (metrics?.statusTotals) return metrics.statusTotals
     return COUNTRY_LIST.reduce(
       (acc, c) => {
         const m = countryMetrics(c)
@@ -351,21 +324,6 @@ export default function UserDashboard() {
     )
   }, [metrics, COUNTRY_LIST])
 
-  const monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ]
-
   const getMonthDateRange = () => {
     const UAE_OFFSET_HOURS = 4
     const startDate = new Date(
@@ -383,7 +341,7 @@ export default function UserDashboard() {
 
     const seq = (loadSeqRef.current = loadSeqRef.current + 1)
     try {
-      loadAbortRef.current && loadAbortRef.current.abort()
+      loadAbortRef.current?.abort()
     } catch {}
     const controller = new AbortController()
     loadAbortRef.current = controller
@@ -455,14 +413,14 @@ export default function UserDashboard() {
         if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
         reloadTimerRef.current = setTimeout(load, 450)
       }
-      socket.on('orders.changed', () => scheduleLoad())
+      socket.on('orders.changed', scheduleLoad)
       socket.on('reports.userMetrics.updated', scheduleLoad)
       socket.on('orders.analytics.updated', scheduleLoad)
       socket.on('finance.drivers.updated', scheduleLoad)
     } catch {}
     return () => {
       try {
-        socket && socket.disconnect()
+        socket?.disconnect()
       } catch {}
     }
   }, [toast])
@@ -470,23 +428,22 @@ export default function UserDashboard() {
   const currentYear = new Date().getFullYear()
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-white px-4 py-8 font-sans sm:px-6 lg:px-8 dark:from-neutral-900 dark:via-neutral-950 dark:to-black">
-      <style>{`
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-      `}</style>
+  const tabs = [
+    { id: 'orders', label: 'Orders' },
+    { id: 'products', label: 'Products' },
+    { id: 'countries', label: 'Countries' },
+  ]
 
-      <div className="mx-auto max-w-[1600px] space-y-8">
-        {/* Premium Header */}
-        <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 px-4 py-6 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
+      <div className="mx-auto max-w-[1800px] space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-5xl font-black tracking-tighter text-transparent dark:from-white dark:via-neutral-200 dark:to-neutral-400">
+            <h1 className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-4xl font-black tracking-tighter text-transparent dark:from-white dark:via-neutral-200 dark:to-neutral-400">
               Dashboard
             </h1>
-            <p className="mt-2 text-base font-bold text-slate-500 dark:text-neutral-400">
+            <p className="mt-1 text-sm font-bold text-slate-500 dark:text-neutral-400">
               Your Business Command Center
             </p>
           </div>
@@ -518,128 +475,113 @@ export default function UserDashboard() {
           </div>
         </div>
 
-        {/* Profit/Loss Hero */}
-        <GlassCard
-          title="Profit / Loss Overview"
-          subtitle="Delivered orders performance analysis"
-          loading={loading}
-        >
-          {loading ? (
-            <div className="space-y-10">
-              <div className="h-32 animate-pulse rounded-2xl bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-800" />
-              <div className="grid grid-cols-2 gap-6 md:grid-cols-6">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div
-                    key={i}
-                    className="h-24 animate-pulse rounded-xl bg-gradient-to-r from-slate-200 to-slate-100 dark:from-neutral-800 dark:to-neutral-900"
+        {/* Compact Hero - Profit/Loss */}
+        {loading ? (
+          <div className="h-32 animate-pulse rounded-3xl bg-slate-200 dark:bg-neutral-800" />
+        ) : metrics?.profitLoss ? (
+          <div
+            className={`relative overflow-hidden rounded-[2rem] p-8 shadow-2xl transition-all duration-500 ${
+              metrics.profitLoss.isProfit
+                ? 'bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-800 shadow-emerald-500/20 dark:from-emerald-600 dark:via-teal-700 dark:to-emerald-900'
+                : 'bg-gradient-to-br from-rose-500 via-red-600 to-rose-800 shadow-rose-500/20 dark:from-rose-600 dark:via-red-700 dark:to-rose-900'
+            }`}
+          >
+            <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-black/10 blur-3xl" />
+
+            <div className="relative flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-center">
+              <div className="flex-1">
+                <div className="mb-2 inline-block rounded-full bg-white/20 px-3 py-1 text-xs font-black tracking-widest text-white uppercase backdrop-blur-md">
+                  {metrics.profitLoss.isProfit ? 'Net Profit' : 'Net Loss'}
+                </div>
+                <div className="mb-1 flex items-baseline gap-2">
+                  <span className="text-xl font-black text-white/80">AED</span>
+                  <span className="text-5xl font-black tracking-tighter text-white drop-shadow-2xl md:text-6xl">
+                    {metrics.profitLoss.isProfit ? '+' : '-'}
+                    <LiveNumber
+                      value={Math.abs(metrics.profitLoss.profit || 0)}
+                      maximumFractionDigits={2}
+                    />
+                  </span>
+                </div>
+                <p className="text-sm font-bold text-white/80">
+                  {monthNames[selectedMonth - 1]} {selectedYear}
+                </p>
+              </div>
+
+              <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:w-auto lg:grid-cols-6">
+                {[
+                  { label: 'Revenue', val: metrics.profitLoss.revenue, icon: '💰' },
+                  { label: 'Cost', val: metrics.profitLoss.purchaseCost, icon: '📦' },
+                  { label: 'Driver', val: metrics.profitLoss.driverCommission, icon: '🚚' },
+                  { label: 'Agent', val: metrics.profitLoss.agentCommission, icon: '🤝' },
+                  { label: 'Investor', val: metrics.profitLoss.investorCommission, icon: '📈' },
+                  { label: 'Ads', val: metrics.profitLoss.advertisementExpense, icon: '📢' },
+                ].map((item) => (
+                  <MetricBadge
+                    key={item.label}
+                    icon={item.icon}
+                    label={item.label}
+                    value={<LiveNumber value={item.val || 0} maximumFractionDigits={0} />}
+                    prefix="AED"
+                    loading={loading}
                   />
                 ))}
               </div>
             </div>
-          ) : metrics?.profitLoss ? (
-            <div className="space-y-10">
-              {/* Main Profit Display */}
-              <div
-                className={`relative overflow-hidden rounded-[2.5rem] p-10 shadow-2xl transition-all duration-500 hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)] ${
-                  metrics.profitLoss.isProfit
-                    ? 'bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-800 shadow-emerald-500/20 dark:from-emerald-600 dark:via-teal-700 dark:to-emerald-900 dark:shadow-emerald-900/30'
-                    : 'bg-gradient-to-br from-rose-500 via-red-600 to-rose-800 shadow-rose-500/20 dark:from-rose-600 dark:via-red-700 dark:to-rose-900 dark:shadow-rose-900/30'
-                }`}
-              >
-                {/* Abstract Background Shapes */}
-                <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
-                <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-black/10 blur-3xl" />
-                <div className="absolute top-1/2 left-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
+          </div>
+        ) : null}
 
-                <div className="relative flex flex-col items-center justify-between gap-10 lg:flex-row">
-                  {/* Main Number */}
-                  <div className="text-center lg:text-left">
-                    <div className="mb-4 flex items-center justify-center gap-2 lg:justify-start">
-                      <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-black tracking-widest text-white uppercase backdrop-blur-md">
-                        {metrics.profitLoss.isProfit ? 'Net Profit' : 'Net Loss'}
-                      </span>
-                    </div>
-                    <div className="flex flex-col items-center lg:items-start">
-                      <span className="text-2xl font-black text-white/80">AED</span>
-                      <div className="text-7xl font-black tracking-tighter text-white drop-shadow-2xl sm:text-8xl lg:text-9xl">
-                        <span className="mr-2 opacity-50">
-                          {metrics.profitLoss.isProfit ? '+' : '-'}
-                        </span>
-                        <LiveNumber
-                          value={Math.abs(metrics.profitLoss.profit || 0)}
-                          maximumFractionDigits={2}
-                        />
-                      </div>
-                    </div>
-                    <p className="mt-4 text-lg font-bold text-white/80">
-                      {monthNames[selectedMonth - 1]} {selectedYear} Performance
-                    </p>
-                  </div>
-
-                  {/* Breakdown Grid */}
-                  <div className="grid w-full grid-cols-2 gap-4 sm:grid-cols-3 lg:w-auto lg:grid-cols-6">
-                    {[
-                      { label: 'Revenue', val: metrics.profitLoss.revenue, icon: '💰' },
-                      { label: 'Cost', val: metrics.profitLoss.purchaseCost, icon: '📦' },
-                      { label: 'Driver', val: metrics.profitLoss.driverCommission, icon: '🚚' },
-                      { label: 'Agent', val: metrics.profitLoss.agentCommission, icon: '🤝' },
-                      { label: 'Investor', val: metrics.profitLoss.investorCommission, icon: '📈' },
-                      { label: 'Ads', val: metrics.profitLoss.advertisementExpense, icon: '📢' },
-                    ].map((item, i) => (
-                      <div
-                        key={i}
-                        className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/10 hover:shadow-xl"
-                      >
-                        <div className="absolute -top-4 -right-4 text-4xl opacity-5 transition-transform group-hover:scale-110 group-hover:opacity-10">
-                          {item.icon}
-                        </div>
-                        <p className="text-[10px] font-black tracking-widest text-white/60 uppercase">
-                          {item.label}
-                        </p>
-                        <p className="mt-2 text-lg font-black text-white">
-                          <span className="mr-1 text-sm font-bold opacity-60">AED</span>
-                          <LiveNumber value={item.val || 0} maximumFractionDigits={0} />
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Left Column - Charts */}
+          <div className="space-y-6 lg:col-span-2">
+            {/* Sales Trend */}
+            <GlassCard title="Sales Trend" subtitle="Last 7 days performance">
+              <div className="h-[300px] w-full">
+                {!hydrated || loading ? (
+                  <div className="h-full w-full animate-pulse rounded-2xl bg-slate-200 dark:bg-neutral-800" />
+                ) : (
+                  <Chart analytics={analytics} />
+                )}
               </div>
+            </GlassCard>
 
-              {/* Geographic Breakdown */}
-              <div>
-                <h4 className="mb-6 text-xl font-black text-slate-900 dark:text-white">
-                  Geographic Performance
-                </h4>
-                <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {['KSA', 'UAE', 'Oman', 'Bahrain', 'India', 'Kuwait', 'Qatar'].map((c, idx) => {
-                    const profitData = metrics.profitLoss.byCountry?.[c]
+            {/* Geographic Performance */}
+            <GlassCard title="Geographic Performance" subtitle="Country-wise breakdown">
+              {loading ? (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className="h-32 animate-pulse rounded-xl bg-slate-200 dark:bg-neutral-800"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {['KSA', 'UAE', 'Oman', 'Bahrain'].map((c) => {
+                    const profitData = metrics?.profitLoss?.byCountry?.[c]
                     if (!profitData) return null
                     const isProfit = (profitData.profit || 0) >= 0
                     const flag = COUNTRY_INFO[c]?.flag || ''
-                    const currency = profitData.currency || 'AED'
 
                     return (
                       <div
                         key={c}
-                        className={`group relative overflow-hidden rounded-2xl border p-6 shadow-xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl ${
+                        className={`rounded-2xl border p-5 transition-all hover:-translate-y-1 hover:shadow-lg ${
                           isProfit
-                            ? 'border-emerald-200/80 bg-gradient-to-br from-emerald-50/80 via-emerald-100/50 to-white shadow-emerald-200/30 hover:shadow-emerald-300/40 dark:border-emerald-900/30 dark:from-emerald-950/50 dark:to-emerald-900/20 dark:shadow-none'
-                            : 'border-rose-200/80 bg-gradient-to-br from-rose-50/80 via-rose-100/50 to-white shadow-rose-200/30 hover:shadow-rose-300/40 dark:border-rose-900/30 dark:from-rose-950/50 dark:to-rose-900/20 dark:shadow-none'
+                            ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white dark:border-emerald-900/30 dark:from-emerald-950/50 dark:to-neutral-900'
+                            : 'border-rose-200 bg-gradient-to-br from-rose-50 to-white dark:border-rose-900/30 dark:from-rose-950/50 dark:to-neutral-900'
                         }`}
-                        style={{ animationDelay: `${idx * 50}ms` }}
                       >
-                        <div className="absolute -top-6 -right-6 text-6xl opacity-10">{flag}</div>
-
-                        <div className="relative mb-6 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <span className="text-3xl drop-shadow-lg">{flag}</span>
-                            <span className="font-black text-slate-900 dark:text-white">
-                              {c === 'KSA' ? 'KSA' : c}
-                            </span>
+                        <div className="mb-4 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">{flag}</span>
+                            <span className="font-black text-slate-900 dark:text-white">{c}</span>
                           </div>
-                          <div
-                            className={`text-2xl font-black ${
+                          <span
+                            className={`text-xl font-black ${
                               isProfit
                                 ? 'text-emerald-600 dark:text-emerald-400'
                                 : 'text-rose-600 dark:text-rose-400'
@@ -647,413 +589,299 @@ export default function UserDashboard() {
                           >
                             {isProfit ? '+' : '-'}
                             {fmtAmt(Math.abs(profitData.profit || 0))}
-                          </div>
+                          </span>
                         </div>
-
-                        <div className="relative space-y-3 text-sm">
-                          {[
-                            { l: 'Revenue', v: profitData.revenue, icon: '💰' },
-                            { l: 'Cost', v: profitData.purchaseCost, icon: '📦' },
-                            { l: 'Driver', v: profitData.driverCommission, icon: '🚚' },
-                            { l: 'Ads', v: profitData.advertisementExpense, icon: '📢' },
-                          ].map((r, i) => (
-                            <div
-                              key={i}
-                              className="flex items-center justify-between rounded-xl border border-slate-200/70 bg-white/70 px-4 py-2.5 shadow-sm shadow-slate-200/30 backdrop-blur-sm transition-all hover:bg-white hover:shadow-md hover:shadow-slate-300/40 dark:border-neutral-700/50 dark:bg-neutral-800/30 dark:shadow-none"
-                            >
-                              <span className="flex items-center gap-2 font-bold text-slate-600 dark:text-neutral-300">
-                                <span>{r.icon}</span>
-                                {r.l}
-                              </span>
-                              <span className="font-black text-slate-900 dark:text-white">
-                                {currency} {fmtAmt(r.v)}
-                              </span>
-                            </div>
-                          ))}
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <p className="font-bold text-slate-500 dark:text-neutral-400">
+                              Revenue
+                            </p>
+                            <p className="font-black text-slate-900 dark:text-white">
+                              {fmtAmt(profitData.revenue)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-500 dark:text-neutral-400">Cost</p>
+                            <p className="font-black text-slate-900 dark:text-white">
+                              {fmtAmt(profitData.purchaseCost)}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     )
                   })}
                 </div>
-              </div>
-            </div>
-          ) : null}
-        </GlassCard>
-
-        {/* Orders Summary */}
-        <GlassCard title="Orders Summary" subtitle="Global metrics in AED" loading={loading}>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            {[
-              {
-                title: 'Total Orders',
-                value: <LiveNumber value={metrics?.totalOrders || 0} maximumFractionDigits={0} />,
-                to: '/user/orders',
-                color: 'text-sky-600 dark:text-sky-400',
-                delay: 0,
-              },
-              {
-                title: 'Total Amount',
-                value: <LiveNumber value={sumAmountAED('amountTotalOrders')} prefix="AED " />,
-                to: '/user/orders',
-                color: 'text-emerald-600 dark:text-emerald-400',
-                delay: 50,
-              },
-              {
-                title: 'Delivered Qty',
-                value: (
-                  <LiveNumber
-                    value={metrics?.productMetrics?.global?.stockDeliveredQty || 0}
-                    maximumFractionDigits={0}
-                  />
-                ),
-                to: '/user/orders?ship=delivered',
-                color: 'text-emerald-600 dark:text-emerald-400',
-                delay: 100,
-              },
-              {
-                title: 'Delivered Amt',
-                value: <LiveNumber value={sumAmountAED('amountDelivered')} prefix="AED " />,
-                to: '/user/orders?ship=delivered',
-                color: 'text-emerald-600 dark:text-emerald-400',
-                delay: 150,
-              },
-              {
-                title: 'Open Orders',
-                value: <LiveNumber value={statusTotals?.pending || 0} maximumFractionDigits={0} />,
-                to: '/user/orders?ship=open',
-                color: 'text-amber-500 dark:text-amber-400',
-                delay: 200,
-              },
-              {
-                title: 'Open Amount',
-                value: <LiveNumber value={sumAmountAED('amountPending')} prefix="AED " />,
-                to: '/user/orders?ship=open',
-                color: 'text-orange-500 dark:text-orange-400',
-                delay: 250,
-              },
-            ].map((stat, i) => (
-              <PremiumStatCard key={i} {...stat} loading={loading} />
-            ))}
-          </div>
-        </GlassCard>
-
-        {/* Product Metrics */}
-        <GlassCard title="Product Metrics" subtitle="Inventory & stock analytics" loading={loading}>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            {[
-              {
-                title: 'Total Purchase',
-                value: (
-                  <LiveNumber
-                    value={sumCurrencyMapAED(
-                      metrics?.productMetrics?.global?.totalPurchaseValueByCurrency
-                    )}
-                    prefix="AED "
-                  />
-                ),
-                to: '/user/inhouse-products',
-                color: 'text-violet-600 dark:text-violet-400',
-                delay: 0,
-              },
-              {
-                title: 'Inventory Value',
-                value: (
-                  <LiveNumber
-                    value={sumCurrencyMapAED(
-                      metrics?.productMetrics?.global?.purchaseValueByCurrency
-                    )}
-                    prefix="AED "
-                  />
-                ),
-                to: '/user/warehouses',
-                color: 'text-sky-600 dark:text-sky-400',
-                delay: 50,
-              },
-              {
-                title: 'Delivered Value',
-                value: (
-                  <LiveNumber
-                    value={sumCurrencyMapAED(
-                      metrics?.productMetrics?.global?.deliveredValueByCurrency
-                    )}
-                    prefix="AED "
-                  />
-                ),
-                to: '/user/orders?ship=delivered',
-                color: 'text-emerald-600 dark:text-emerald-400',
-                delay: 100,
-              },
-              {
-                title: 'Stock Purchased',
-                value: (
-                  <LiveNumber
-                    value={metrics?.productMetrics?.global?.stockPurchasedQty || 0}
-                    maximumFractionDigits={0}
-                  />
-                ),
-                to: '/user/inhouse-products',
-                color: 'text-sky-600 dark:text-sky-400',
-                delay: 150,
-              },
-              {
-                title: 'Stock Delivered',
-                value: (
-                  <LiveNumber
-                    value={metrics?.productMetrics?.global?.stockDeliveredQty || 0}
-                    maximumFractionDigits={0}
-                  />
-                ),
-                to: '/user/orders?ship=delivered',
-                color: 'text-emerald-600 dark:text-emerald-400',
-                delay: 200,
-              },
-              {
-                title: 'Pending Stock',
-                value: (
-                  <LiveNumber
-                    value={metrics?.productMetrics?.global?.stockLeftQty || 0}
-                    maximumFractionDigits={0}
-                  />
-                ),
-                to: '/user/warehouses',
-                color: 'text-amber-500 dark:text-amber-400',
-                delay: 250,
-              },
-            ].map((stat, i) => (
-              <PremiumStatCard key={i} {...stat} loading={loading} />
-            ))}
-          </div>
-        </GlassCard>
-
-        {/* Charts & Status */}
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="space-y-8 lg:col-span-2">
-            <GlassCard title="Sales Trend" subtitle="Last 7 days performance" loading={loading}>
-              <div className="h-[320px] w-full">
-                {!hydrated || loading ? (
-                  <div className="h-full w-full animate-pulse rounded-2xl bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-800 dark:to-slate-700" />
-                ) : (
-                  <Chart analytics={analytics} />
-                )}
-              </div>
+              )}
             </GlassCard>
+          </div>
 
-            <GlassCard title="Order Status Distribution" loading={loading}>
+          {/* Right Column - Status & Quick Stats */}
+          <div className="space-y-6">
+            {/* Order Status Distribution */}
+            <GlassCard title="Order Status" subtitle="Distribution overview">
               <PremiumPieChart statusTotals={statusTotals} loading={loading} />
             </GlassCard>
-          </div>
 
-          <div>
-            <GlassCard title="Status Summary" subtitle="All order statuses" loading={loading}>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  {
-                    t: 'Total',
-                    v: statusTotals?.total,
-                    c: 'from-sky-400 to-sky-600',
-                    tc: 'text-sky-600 dark:text-sky-400',
-                    to: '/user/orders',
-                  },
-                  {
-                    t: 'Open',
-                    v: statusTotals?.pending,
-                    c: 'from-amber-400 to-amber-600',
-                    tc: 'text-amber-600 dark:text-amber-400',
-                    to: '/user/orders?ship=open',
-                  },
-                  {
-                    t: 'Assigned',
-                    v: statusTotals?.assigned,
-                    c: 'from-blue-400 to-blue-600',
-                    tc: 'text-blue-600 dark:text-blue-400',
-                    to: '/user/orders?ship=assigned',
-                  },
-                  {
-                    t: 'Picked Up',
-                    v: statusTotals?.picked_up,
-                    c: 'from-indigo-400 to-indigo-600',
-                    tc: 'text-indigo-600 dark:text-indigo-400',
-                    to: '/user/orders?ship=picked_up',
-                  },
-                  {
-                    t: 'In Transit',
-                    v: statusTotals?.in_transit,
-                    c: 'from-cyan-400 to-cyan-600',
-                    tc: 'text-cyan-600 dark:text-cyan-400',
-                    to: '/user/orders?ship=in_transit',
-                  },
-                  {
-                    t: 'Out Delivery',
-                    v: statusTotals?.out_for_delivery,
-                    c: 'from-orange-400 to-orange-600',
-                    tc: 'text-orange-600 dark:text-orange-400',
-                    to: '/user/orders?ship=out_for_delivery',
-                  },
-                  {
-                    t: 'Delivered',
-                    v: statusTotals?.delivered,
-                    c: 'from-emerald-400 to-emerald-600',
-                    tc: 'text-emerald-600 dark:text-emerald-400',
-                    to: '/user/orders?ship=delivered',
-                  },
-                  {
-                    t: 'Cancelled',
-                    v: statusTotals?.cancelled,
-                    c: 'from-rose-400 to-rose-600',
-                    tc: 'text-rose-600 dark:text-rose-400',
-                    to: '/user/orders?ship=cancelled',
-                  },
-                  {
-                    t: 'Returned',
-                    v: statusTotals?.returned,
-                    c: 'from-slate-400 to-slate-600',
-                    tc: 'text-slate-600 dark:text-slate-400',
-                    to: '/user/orders?ship=returned',
-                  },
-                  {
-                    t: 'No Response',
-                    v: statusTotals?.no_response,
-                    c: 'from-rose-300 to-rose-500',
-                    tc: 'text-rose-500 dark:text-rose-300',
-                    to: '/user/orders?ship=no_response',
-                  },
-                ].map((item, i) => (
-                  <NavLink
-                    key={i}
-                    to={item.to}
-                    className="group relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
-                  >
-                    {loading ? (
-                      <div className="h-16 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-neutral-800 dark:to-neutral-900" />
-                    ) : (
-                      <>
-                        <div
-                          className={`absolute -top-2 -right-2 h-16 w-16 rounded-full bg-gradient-to-br opacity-10 blur-xl ${item.c}`}
-                        />
-                        <div className="relative">
-                          <div className="mb-2 text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
-                            {item.t}
-                          </div>
-                          <div
-                            className={`text-2xl font-black transition-transform group-hover:scale-110 ${item.tc}`}
-                          >
-                            <LiveNumber value={item.v || 0} maximumFractionDigits={0} />
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </NavLink>
-                ))}
+            {/* Quick Stats */}
+            <GlassCard title="Quick Stats" subtitle="Key metrics">
+              <div className="space-y-3">
+                <CompactStatCard
+                  title="Total Orders"
+                  value={<LiveNumber value={statusTotals?.total || 0} maximumFractionDigits={0} />}
+                  to="/user/orders"
+                  color="text-sky-600 dark:text-sky-400"
+                  loading={loading}
+                />
+                <CompactStatCard
+                  title="Delivered"
+                  value={
+                    <LiveNumber value={statusTotals?.delivered || 0} maximumFractionDigits={0} />
+                  }
+                  to="/user/orders?ship=delivered"
+                  color="text-emerald-600 dark:text-emerald-400"
+                  loading={loading}
+                />
+                <CompactStatCard
+                  title="Open Orders"
+                  value={
+                    <LiveNumber value={statusTotals?.pending || 0} maximumFractionDigits={0} />
+                  }
+                  to="/user/orders?ship=open"
+                  color="text-amber-500 dark:text-amber-400"
+                  loading={loading}
+                />
               </div>
             </GlassCard>
           </div>
         </div>
 
-        {/* Per-Country Performance */}
-        <GlassCard
-          title="Per-Country Performance"
-          subtitle="Detailed metrics in local currency"
-          loading={loading}
-        >
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {COUNTRY_LIST.map((c, idx) => {
-              const m = countryMetrics(c)
-              const flag = COUNTRY_INFO[c]?.flag || ''
-              const qs = encodeURIComponent(c)
-              const cur = COUNTRY_INFO[c]?.cur || 'AED'
+        {/* Tabbed Metrics Section */}
+        <GlassCard>
+          <TabsComponent tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
 
-              return (
-                <div
-                  key={c}
-                  className="group relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
-                  style={{ animationDelay: `${idx * 50}ms` }}
-                >
-                  <div className="absolute -top-10 -right-10 text-8xl opacity-5">{flag}</div>
+          <div className="mt-6">
+            {activeTab === 'orders' && (
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+                {[
+                  {
+                    title: 'Total Amount',
+                    value: <LiveNumber value={sumAmountAED('amountTotalOrders')} prefix="AED " />,
+                    to: '/user/orders',
+                    color: 'text-emerald-600 dark:text-emerald-400',
+                  },
+                  {
+                    title: 'Delivered Amt',
+                    value: <LiveNumber value={sumAmountAED('amountDelivered')} prefix="AED " />,
+                    to: '/user/orders?ship=delivered',
+                    color: 'text-emerald-600 dark:text-emerald-400',
+                  },
+                  {
+                    title: 'Open Amount',
+                    value: <LiveNumber value={sumAmountAED('amountPending')} prefix="AED " />,
+                    to: '/user/orders?ship=open',
+                    color: 'text-orange-500 dark:text-orange-400',
+                  },
+                  {
+                    title: 'Assigned',
+                    value: (
+                      <LiveNumber value={statusTotals?.assigned || 0} maximumFractionDigits={0} />
+                    ),
+                    to: '/user/orders?ship=assigned',
+                    color: 'text-blue-600 dark:text-blue-400',
+                  },
+                  {
+                    title: 'In Transit',
+                    value: (
+                      <LiveNumber value={statusTotals?.in_transit || 0} maximumFractionDigits={0} />
+                    ),
+                    to: '/user/orders?ship=in_transit',
+                    color: 'text-cyan-600 dark:text-cyan-400',
+                  },
+                  {
+                    title: 'Cancelled',
+                    value: (
+                      <LiveNumber value={statusTotals?.cancelled || 0} maximumFractionDigits={0} />
+                    ),
+                    to: '/user/orders?ship=cancelled',
+                    color: 'text-rose-600 dark:text-rose-400',
+                  },
+                ].map((stat, i) => (
+                  <CompactStatCard key={i} {...stat} loading={loading} />
+                ))}
+              </div>
+            )}
 
-                  <div className="relative mb-6 flex items-center gap-4 border-b border-slate-200 pb-4 dark:border-neutral-800">
-                    <span className="text-3xl drop-shadow-lg">{flag}</span>
-                    <span className="flex-1 text-xl font-black text-slate-900 dark:text-white">
-                      {c === 'KSA' ? 'Saudi Arabia' : c}
-                    </span>
-                    <span className="rounded-full bg-gradient-to-br from-slate-100 to-slate-200 px-3 py-1 text-xs font-black text-slate-700 shadow-inner dark:from-neutral-800 dark:to-neutral-900 dark:text-neutral-300">
-                      {cur}
-                    </span>
-                  </div>
+            {activeTab === 'products' && (
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+                {[
+                  {
+                    title: 'Total Value',
+                    value: (
+                      <LiveNumber
+                        value={sumCurrencyMapAED(
+                          metrics?.productMetrics?.global?.totalPurchaseValueByCurrency
+                        )}
+                        prefix="AED "
+                      />
+                    ),
+                    to: '/user/inhouse-products',
+                    color: 'text-violet-600 dark:text-violet-400',
+                  },
+                  {
+                    title: 'Inventory',
+                    value: (
+                      <LiveNumber
+                        value={sumCurrencyMapAED(
+                          metrics?.productMetrics?.global?.purchaseValueByCurrency
+                        )}
+                        prefix="AED "
+                      />
+                    ),
+                    to: '/user/warehouses',
+                    color: 'text-sky-600 dark:text-sky-400',
+                  },
+                  {
+                    title: 'Delivered',
+                    value: (
+                      <LiveNumber
+                        value={sumCurrencyMapAED(
+                          metrics?.productMetrics?.global?.deliveredValueByCurrency
+                        )}
+                        prefix="AED "
+                      />
+                    ),
+                    to: '/user/orders?ship=delivered',
+                    color: 'text-emerald-600 dark:text-emerald-400',
+                  },
+                  {
+                    title: 'Purchased Qty',
+                    value: (
+                      <LiveNumber
+                        value={metrics?.productMetrics?.global?.stockPurchasedQty || 0}
+                        maximumFractionDigits={0}
+                      />
+                    ),
+                    to: '/user/inhouse-products',
+                    color: 'text-sky-600 dark:text-sky-400',
+                  },
+                  {
+                    title: 'Delivered Qty',
+                    value: (
+                      <LiveNumber
+                        value={metrics?.productMetrics?.global?.stockDeliveredQty || 0}
+                        maximumFractionDigits={0}
+                      />
+                    ),
+                    to: '/user/orders?ship=delivered',
+                    color: 'text-emerald-600 dark:text-emerald-400',
+                  },
+                  {
+                    title: 'Stock Left',
+                    value: (
+                      <LiveNumber
+                        value={metrics?.productMetrics?.global?.stockLeftQty || 0}
+                        maximumFractionDigits={0}
+                      />
+                    ),
+                    to: '/user/warehouses',
+                    color: 'text-amber-500 dark:text-amber-400',
+                  },
+                ].map((stat, i) => (
+                  <CompactStatCard key={i} {...stat} loading={loading} />
+                ))}
+              </div>
+            )}
 
-                  {loading ? (
-                    <div className="grid grid-cols-2 gap-4">
-                      {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <div
-                          key={i}
-                          className="h-14 animate-pulse rounded-xl bg-gradient-to-r from-slate-200 to-slate-100 dark:from-neutral-800 dark:to-neutral-900"
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="relative grid grid-cols-2 gap-4">
-                      {[
-                        {
-                          label: 'Total Orders',
-                          value: fmtNum(m?.orders || 0),
-                          to: `/user/orders?country=${qs}`,
-                          color: 'text-sky-600 dark:text-sky-400',
-                        },
-                        {
-                          label: 'Total Amount',
-                          value: formatCurrency(m?.amountTotalOrders, c).replace(cur, '').trim(),
-                          color: 'text-emerald-600 dark:text-emerald-400',
-                        },
-                        {
-                          label: 'Delivered',
-                          value: fmtNum((m?.deliveredQty ?? m?.delivered) || 0),
-                          to: `/user/orders?country=${qs}&ship=delivered`,
-                          color: 'text-emerald-600 dark:text-emerald-400',
-                        },
-                        {
-                          label: 'Delivered Amt',
-                          value: formatCurrency(m?.amountDeliveredLocal ?? m?.amountDelivered, c)
-                            .replace(cur, '')
-                            .trim(),
-                          color: 'text-emerald-600 dark:text-emerald-400',
-                        },
-                        {
-                          label: 'Open',
-                          value: fmtNum(m?.pending || 0),
-                          to: `/user/orders?country=${qs}&ship=open`,
-                          color: 'text-amber-500 dark:text-amber-400',
-                        },
-                        {
-                          label: 'Open Amt',
-                          value: formatCurrency(m?.amountPending, c).replace(cur, '').trim(),
-                          color: 'text-orange-500 dark:text-orange-400',
-                        },
-                      ].map((stat, i) => (
-                        <div
-                          key={i}
-                          className="rounded-xl border border-slate-200/30 bg-white/30 p-3 backdrop-blur-sm transition-all hover:bg-white/50 dark:border-neutral-800/30 dark:bg-neutral-900/30 dark:hover:bg-neutral-800/50"
-                        >
-                          <div className="text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
-                            {stat.label}
-                          </div>
-                          {stat.to ? (
+            {activeTab === 'countries' && (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {COUNTRY_LIST.map((c) => {
+                  const m = countryMetrics(c)
+                  const flag = COUNTRY_INFO[c]?.flag || ''
+                  const qs = encodeURIComponent(c)
+                  const cur = COUNTRY_INFO[c]?.cur || 'AED'
+
+                  return (
+                    <div
+                      key={c}
+                      className="rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-5 transition-all hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
+                    >
+                      <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3 dark:border-neutral-800">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{flag}</span>
+                          <span className="font-black text-slate-900 dark:text-white">
+                            {c === 'KSA' ? 'Saudi Arabia' : c}
+                          </span>
+                        </div>
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-black dark:bg-neutral-800">
+                          {cur}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          {
+                            label: 'Orders',
+                            value: fmtNum(m?.orders || 0),
+                            to: `/user/orders?country=${qs}`,
+                          },
+                          {
+                            label: 'Amount',
+                            value: formatCurrency(m?.amountTotalOrders, c).replace(cur, '').trim(),
+                          },
+                          {
+                            label: 'Delivered',
+                            value: fmtNum((m?.deliveredQty ?? m?.delivered) || 0),
+                            to: `/user/orders?country=${qs}&ship=delivered`,
+                          },
+                          {
+                            label: 'Del Amt',
+                            value: formatCurrency(m?.amountDeliveredLocal ?? m?.amountDelivered, c)
+                              .replace(cur, '')
+                              .trim(),
+                          },
+                          {
+                            label: 'Open',
+                            value: fmtNum(m?.pending || 0),
+                            to: `/user/orders?country=${qs}&ship=open`,
+                          },
+                          {
+                            label: 'Open Amt',
+                            value: formatCurrency(m?.amountPending, c).replace(cur, '').trim(),
+                          },
+                        ].map((stat, i) =>
+                          stat.to ? (
                             <NavLink
+                              key={i}
                               to={stat.to}
-                              className={`mt-1 block text-lg font-black hover:underline ${stat.color}`}
+                              className="rounded-lg border border-slate-200/30 bg-white/50 p-2 text-center hover:bg-white dark:border-neutral-800/30 dark:bg-neutral-900/50 dark:hover:bg-neutral-800/50"
                             >
-                              {stat.value}
+                              <p className="text-[10px] font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
+                                {stat.label}
+                              </p>
+                              <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">
+                                {stat.value}
+                              </p>
                             </NavLink>
                           ) : (
-                            <div className={`mt-1 text-lg font-black ${stat.color}`}>
-                              {stat.value}
+                            <div
+                              key={i}
+                              className="rounded-lg border border-slate-200/30 bg-white/50 p-2 text-center dark:border-neutral-800/30 dark:bg-neutral-900/50"
+                            >
+                              <p className="text-[10px] font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
+                                {stat.label}
+                              </p>
+                              <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">
+                                {stat.value}
+                              </p>
                             </div>
-                          )}
-                        </div>
-                      ))}
+                          )
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-              )
-            })}
+                  )
+                })}
+              </div>
+            )}
           </div>
         </GlassCard>
       </div>
