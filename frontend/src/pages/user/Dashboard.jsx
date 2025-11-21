@@ -540,55 +540,65 @@ export default function UserDashboard() {
             <div className="space-y-10">
               {/* Main Profit Display */}
               <div
-                className={`relative overflow-hidden rounded-3xl p-10 shadow-2xl ${
+                className={`relative overflow-hidden rounded-[2.5rem] p-10 shadow-2xl transition-all duration-500 hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)] ${
                   metrics.profitLoss.isProfit
-                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 dark:from-emerald-600 dark:via-emerald-700 dark:to-emerald-900'
-                    : 'bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700 dark:from-rose-600 dark:via-rose-700 dark:to-rose-900'
+                    ? 'bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-800 shadow-emerald-500/20 dark:from-emerald-600 dark:via-teal-700 dark:to-emerald-900 dark:shadow-emerald-900/30'
+                    : 'bg-gradient-to-br from-rose-500 via-red-600 to-rose-800 shadow-rose-500/20 dark:from-rose-600 dark:via-red-700 dark:to-rose-900 dark:shadow-rose-900/30'
                 }`}
               >
-                <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-                <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-black/10 blur-3xl" />
+                {/* Abstract Background Shapes */}
+                <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
+                <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-black/10 blur-3xl" />
+                <div className="absolute top-1/2 left-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
 
-                <div className="relative flex flex-col items-center justify-between gap-8 lg:flex-row">
+                <div className="relative flex flex-col items-center justify-between gap-10 lg:flex-row">
+                  {/* Main Number */}
                   <div className="text-center lg:text-left">
-                    <div className="mb-3 text-sm font-black tracking-widest text-white/80 uppercase">
-                      {metrics.profitLoss.isProfit ? 'Net Profit' : 'Net Loss'}
+                    <div className="mb-4 flex items-center justify-center gap-2 lg:justify-start">
+                      <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-black tracking-widest text-white uppercase backdrop-blur-md">
+                        {metrics.profitLoss.isProfit ? 'Net Profit' : 'Net Loss'}
+                      </span>
                     </div>
-                    <div className="text-7xl font-black tracking-tighter text-white drop-shadow-2xl">
-                      {metrics.profitLoss.isProfit ? '+' : '-'}
-                      <LiveNumber
-                        value={Math.abs(metrics.profitLoss.profit || 0)}
-                        prefix="AED "
-                        maximumFractionDigits={2}
-                      />
+                    <div className="flex flex-col items-center lg:items-start">
+                      <span className="text-2xl font-black text-white/80">AED</span>
+                      <div className="text-7xl font-black tracking-tighter text-white drop-shadow-2xl sm:text-8xl lg:text-9xl">
+                        <span className="mr-2 opacity-50">
+                          {metrics.profitLoss.isProfit ? '+' : '-'}
+                        </span>
+                        <LiveNumber
+                          value={Math.abs(metrics.profitLoss.profit || 0)}
+                          maximumFractionDigits={2}
+                        />
+                      </div>
                     </div>
-                    <p className="mt-3 text-base font-bold text-white/90">
-                      {monthNames[selectedMonth - 1]} {selectedYear}
+                    <p className="mt-4 text-lg font-bold text-white/80">
+                      {monthNames[selectedMonth - 1]} {selectedYear} Performance
                     </p>
                   </div>
 
+                  {/* Breakdown Grid */}
                   <div className="grid w-full grid-cols-2 gap-4 sm:grid-cols-3 lg:w-auto lg:grid-cols-6">
                     {[
-                      { label: 'Revenue', val: metrics.profitLoss.revenue },
-                      { label: 'Cost', val: metrics.profitLoss.purchaseCost },
-                      { label: 'Driver', val: metrics.profitLoss.driverCommission },
-                      { label: 'Agent', val: metrics.profitLoss.agentCommission },
-                      { label: 'Investor', val: metrics.profitLoss.investorCommission },
-                      { label: 'Ads', val: metrics.profitLoss.advertisementExpense },
+                      { label: 'Revenue', val: metrics.profitLoss.revenue, icon: '💰' },
+                      { label: 'Cost', val: metrics.profitLoss.purchaseCost, icon: '📦' },
+                      { label: 'Driver', val: metrics.profitLoss.driverCommission, icon: '🚚' },
+                      { label: 'Agent', val: metrics.profitLoss.agentCommission, icon: '🤝' },
+                      { label: 'Investor', val: metrics.profitLoss.investorCommission, icon: '📈' },
+                      { label: 'Ads', val: metrics.profitLoss.advertisementExpense, icon: '📢' },
                     ].map((item, i) => (
                       <div
                         key={i}
-                        className="rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:bg-white/20"
+                        className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/10 hover:shadow-xl"
                       >
-                        <p className="text-xs font-black tracking-wide text-white/70 uppercase">
+                        <div className="absolute -top-4 -right-4 text-4xl opacity-5 transition-transform group-hover:scale-110 group-hover:opacity-10">
+                          {item.icon}
+                        </div>
+                        <p className="text-[10px] font-black tracking-widest text-white/60 uppercase">
                           {item.label}
                         </p>
                         <p className="mt-2 text-lg font-black text-white">
-                          <LiveNumber
-                            value={item.val || 0}
-                            prefix="AED "
-                            maximumFractionDigits={0}
-                          />
+                          <span className="mr-1 text-sm font-bold opacity-60">AED</span>
+                          <LiveNumber value={item.val || 0} maximumFractionDigits={0} />
                         </p>
                       </div>
                     ))}
