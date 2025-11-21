@@ -119,13 +119,13 @@ export default function Chart({ analytics }) {
           return (
             <div
               key={k}
-              className="group flex items-center gap-2 rounded-xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 px-4 py-2 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:border-slate-700/50 dark:from-slate-800 dark:to-slate-900"
+              className="group flex items-center gap-2 rounded-xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 px-4 py-2 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
             >
               <span
                 className="h-3 w-3 rounded-full shadow-lg transition-all duration-300 group-hover:scale-125"
                 style={{ background: colors[k].line, boxShadow: colors[k].shadow }}
               />
-              <span className="text-xs font-black text-slate-700 dark:text-slate-300">{k}</span>
+              <span className="text-xs font-black text-slate-700 dark:text-neutral-300">{k}</span>
               <span className="text-xs font-bold text-slate-400">({total})</span>
             </div>
           )
@@ -133,7 +133,7 @@ export default function Chart({ analytics }) {
       </div>
 
       {/* Chart */}
-      <div className="relative w-full overflow-x-auto rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg backdrop-blur-sm dark:border-slate-700/50 dark:from-slate-800 dark:to-slate-900">
+      <div className="relative w-full overflow-x-auto rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg backdrop-blur-sm dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black">
         <svg
           width={width}
           height={height}
@@ -160,7 +160,7 @@ export default function Chart({ analytics }) {
           </defs>
 
           {/* Grid Lines */}
-          <g className="stroke-slate-200 dark:stroke-slate-700" strokeWidth="1" opacity="0.5">
+          <g className="stroke-slate-200 dark:stroke-neutral-800" strokeWidth="1" opacity="0.5">
             {yTicks.map((v, i) => {
               const y = height - padding - (v / max) * (height - 2 * padding)
               return (
@@ -177,7 +177,7 @@ export default function Chart({ analytics }) {
           </g>
 
           {/* Y-Axis Labels */}
-          <g className="fill-slate-500 text-xs font-bold dark:fill-slate-400">
+          <g className="fill-slate-500 text-xs font-bold dark:fill-neutral-400">
             {yTicks.map((v, i) => {
               const y = height - padding - (v / max) * (height - 2 * padding)
               return (
@@ -238,7 +238,7 @@ export default function Chart({ analytics }) {
               y2={height - padding}
               stroke="currentColor"
               strokeWidth="2"
-              className="text-slate-300 dark:text-slate-600"
+              className="text-slate-300 dark:text-neutral-600"
               strokeDasharray="6 6"
               opacity="0.5"
             />
@@ -325,7 +325,7 @@ export default function Chart({ analytics }) {
                 x={x}
                 y={y}
                 textAnchor="middle"
-                className="fill-slate-500 text-xs font-bold dark:fill-slate-400"
+                className="fill-slate-500 text-xs font-bold dark:fill-neutral-400"
               >
                 {it.full}
               </text>

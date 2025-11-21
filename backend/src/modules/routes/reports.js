@@ -1335,9 +1335,14 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
       totalCollected: 0,
       pendingOrders: 0,
       openOrders: 0,
+      assignedOrders: 0,
       pickedUpOrders: 0,
+      inTransitOrders: 0,
+      outForDeliveryOrders: 0,
       deliveredOrders: 0,
       cancelledOrders: 0,
+      noResponseOrders: 0,
+      returnedOrders: 0,
       totalProductsOrdered: 0,
     };
 
@@ -1349,9 +1354,14 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
       acc.totalCollected += curr.totalCollected || 0;
       acc.pendingOrders += curr.pendingOrders || 0;
       acc.openOrders += curr.openOrders || 0;
+      acc.assignedOrders += curr.assignedOrders || 0;
       acc.pickedUpOrders += curr.pickedUpOrders || 0;
+      acc.inTransitOrders += curr.inTransitOrders || 0;
+      acc.outForDeliveryOrders += curr.outForDeliveryOrders || 0;
       acc.deliveredOrders += curr.deliveredOrders || 0;
       acc.cancelledOrders += curr.cancelledOrders || 0;
+      acc.noResponseOrders += curr.noResponseOrders || 0;
+      acc.returnedOrders += curr.returnedOrders || 0;
       acc.totalProductsOrdered += curr.totalProductsOrdered || 0;
       return acc;
     }, initialOrderStats);

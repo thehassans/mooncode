@@ -11,27 +11,27 @@ import { getCurrencyConfig, toAEDByCode, convert } from '../../util/currency'
 
 const GlassCard = ({ children, className = '', title, subtitle, loading = false, delay = 0 }) => (
   <div
-    className={`group overflow-hidden rounded-3xl border border-white/20 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl dark:border-slate-700/50 dark:bg-slate-900/80 ${className}`}
+    className={`group overflow-hidden rounded-3xl border border-white/20 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl dark:border-neutral-800/50 dark:bg-neutral-900/80 ${className}`}
     style={{ animationDelay: `${delay}ms` }}
   >
     {(title || subtitle) && (
-      <div className="mb-8 border-b border-slate-100 pb-4 dark:border-slate-700">
+      <div className="mb-8 border-b border-slate-100 pb-4 dark:border-neutral-800">
         {loading ? (
           <>
-            <div className="mb-2 h-7 w-56 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800" />
+            <div className="mb-2 h-7 w-56 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-neutral-800 dark:to-neutral-900" />
             {subtitle && (
-              <div className="h-4 w-40 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800" />
+              <div className="h-4 w-40 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-neutral-800 dark:to-neutral-900" />
             )}
           </>
         ) : (
           <>
             {title && (
-              <h3 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-2xl font-black tracking-tight text-transparent dark:from-white dark:to-slate-300">
+              <h3 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-2xl font-black tracking-tight text-transparent dark:from-white dark:to-neutral-400">
                 {title}
               </h3>
             )}
             {subtitle && (
-              <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+              <p className="mt-2 text-sm font-medium text-slate-500 dark:text-neutral-400">
                 {subtitle}
               </p>
             )}
@@ -57,12 +57,12 @@ const PremiumStatCard = ({
       <div className="absolute -top-3 -right-3 opacity-10 transition-all duration-500 group-hover:scale-110 group-hover:opacity-20">
         {icon && React.createElement(icon, { className: 'w-24 h-24' })}
       </div>
-      <p className="relative z-10 mb-3 text-sm font-bold tracking-widest text-slate-500 uppercase dark:text-slate-400">
+      <p className="relative z-10 mb-3 text-sm font-bold tracking-widest text-slate-500 uppercase dark:text-neutral-400">
         {title}
       </p>
       {loading ? (
         <div
-          className="h-10 w-32 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] dark:from-slate-700 dark:via-slate-800 dark:to-slate-700"
+          className="h-10 w-32 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-800"
           style={{ animation: 'shimmer 2s infinite' }}
         />
       ) : (
@@ -78,7 +78,7 @@ const PremiumStatCard = ({
   if (to && !loading) {
     return (
       <NavLink to={to} className="group block h-full" style={{ animationDelay: `${delay}ms` }}>
-        <div className="h-full rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 hover:border-slate-300 hover:shadow-2xl dark:border-slate-700/50 dark:from-slate-800 dark:to-slate-900 dark:hover:border-slate-600">
+        <div className="h-full rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 hover:border-slate-300 hover:shadow-2xl dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:hover:border-neutral-700">
           <Content />
         </div>
       </NavLink>
@@ -87,7 +87,7 @@ const PremiumStatCard = ({
 
   return (
     <div
-      className="h-full rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg dark:border-slate-700/50 dark:from-slate-800 dark:to-slate-900"
+      className="h-full rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
       style={{ animationDelay: `${delay}ms` }}
     >
       <Content />
@@ -99,12 +99,12 @@ const PremiumPieChart = ({ statusTotals, loading }) => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center gap-10 py-8 md:flex-row">
-        <div className="h-64 w-64 animate-pulse rounded-full bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-800 dark:to-slate-700" />
+        <div className="h-64 w-64 animate-pulse rounded-full bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-800" />
         <div className="grid grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="h-8 w-40 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800"
+              className="h-8 w-40 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-neutral-800 dark:to-neutral-900"
             />
           ))}
         </div>
@@ -171,8 +171,8 @@ const PremiumPieChart = ({ statusTotals, loading }) => {
           style={{ background: `conic-gradient(${gradient})` }}
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex h-44 w-44 flex-col items-center justify-center rounded-full bg-white shadow-inner backdrop-blur-xl dark:bg-slate-900">
-            <span className="bg-gradient-to-br from-slate-900 to-slate-700 bg-clip-text text-5xl font-black text-transparent dark:from-white dark:to-slate-300">
+          <div className="flex h-44 w-44 flex-col items-center justify-center rounded-full bg-white shadow-inner backdrop-blur-xl dark:bg-neutral-900">
+            <span className="bg-gradient-to-br from-slate-900 to-slate-700 bg-clip-text text-5xl font-black text-transparent dark:from-white dark:to-neutral-400">
               {total}
             </span>
             <span className="mt-1 text-xs font-bold tracking-widest text-slate-400 uppercase">
@@ -185,11 +185,11 @@ const PremiumPieChart = ({ statusTotals, loading }) => {
         {data.map((item, idx) => (
           <div
             key={idx}
-            className={`group flex items-center gap-4 rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 px-5 py-3 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-slate-700/50 dark:from-slate-800 dark:to-slate-900 ${item.ring}`}
+            className={`group flex items-center gap-4 rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 px-5 py-3 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black ${item.ring}`}
           >
             <div className={`h-4 w-4 rounded-full bg-gradient-to-br shadow-lg ${item.bg}`} />
             <div className="flex flex-col">
-              <span className="text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+              <span className="text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
                 {item.label}
               </span>
               <span className={`text-2xl font-black ${item.text}`}>{item.value}</span>
@@ -471,7 +471,7 @@ export default function UserDashboard() {
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 px-4 py-8 font-sans sm:px-6 lg:px-8 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-white px-4 py-8 font-sans sm:px-6 lg:px-8 dark:from-neutral-900 dark:via-neutral-950 dark:to-black">
       <style>{`
         @keyframes shimmer {
           0% { background-position: -200% 0; }
@@ -483,17 +483,17 @@ export default function UserDashboard() {
         {/* Premium Header */}
         <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
           <div>
-            <h1 className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-5xl font-black tracking-tighter text-transparent dark:from-white dark:via-slate-100 dark:to-slate-300">
+            <h1 className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-5xl font-black tracking-tighter text-transparent dark:from-white dark:via-neutral-200 dark:to-neutral-400">
               Dashboard
             </h1>
-            <p className="mt-2 text-base font-bold text-slate-500 dark:text-slate-400">
+            <p className="mt-2 text-base font-bold text-slate-500 dark:text-neutral-400">
               Your Business Command Center
             </p>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200/50 bg-white/80 p-2 shadow-lg backdrop-blur-xl dark:border-slate-700/50 dark:bg-slate-900/80">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200/50 bg-white/80 p-2 shadow-lg backdrop-blur-xl dark:border-neutral-800/50 dark:bg-neutral-900/80">
             <select
-              className="cursor-pointer rounded-xl border-none bg-gradient-to-br from-slate-50 to-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:from-slate-800 dark:to-slate-900 dark:text-white"
+              className="cursor-pointer rounded-xl border-none bg-gradient-to-br from-slate-50 to-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:from-neutral-800 dark:to-neutral-900 dark:text-white"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
             >
@@ -503,9 +503,9 @@ export default function UserDashboard() {
                 </option>
               ))}
             </select>
-            <div className="h-8 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent dark:via-slate-700" />
+            <div className="h-8 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent dark:via-neutral-700" />
             <select
-              className="cursor-pointer rounded-xl border-none bg-gradient-to-br from-slate-50 to-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:from-slate-800 dark:to-slate-900 dark:text-white"
+              className="cursor-pointer rounded-xl border-none bg-gradient-to-br from-slate-50 to-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:from-neutral-800 dark:to-neutral-900 dark:text-white"
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
             >
@@ -526,12 +526,12 @@ export default function UserDashboard() {
         >
           {loading ? (
             <div className="space-y-10">
-              <div className="h-32 animate-pulse rounded-2xl bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-800 dark:to-slate-700" />
+              <div className="h-32 animate-pulse rounded-2xl bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-800" />
               <div className="grid grid-cols-2 gap-6 md:grid-cols-6">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <div
                     key={i}
-                    className="h-24 animate-pulse rounded-xl bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800"
+                    className="h-24 animate-pulse rounded-xl bg-gradient-to-r from-slate-200 to-slate-100 dark:from-neutral-800 dark:to-neutral-900"
                   />
                 ))}
               </div>
@@ -649,9 +649,9 @@ export default function UserDashboard() {
                           ].map((r, i) => (
                             <div
                               key={i}
-                              className="flex items-center justify-between rounded-xl border border-slate-200/50 bg-white/50 px-4 py-2 backdrop-blur-sm dark:border-slate-700/50 dark:bg-slate-800/30"
+                              className="flex items-center justify-between rounded-xl border border-slate-200/50 bg-white/50 px-4 py-2 backdrop-blur-sm dark:border-neutral-700/50 dark:bg-neutral-800/30"
                             >
-                              <span className="flex items-center gap-2 font-bold text-slate-600 dark:text-slate-300">
+                              <span className="flex items-center gap-2 font-bold text-slate-600 dark:text-neutral-300">
                                 <span>{r.icon}</span>
                                 {r.l}
                               </span>
@@ -911,17 +911,17 @@ export default function UserDashboard() {
                   <NavLink
                     key={i}
                     to={item.to}
-                    className="group relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-slate-700/50 dark:from-slate-800 dark:to-slate-900"
+                    className="group relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
                   >
                     {loading ? (
-                      <div className="h-16 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800" />
+                      <div className="h-16 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-neutral-800 dark:to-neutral-900" />
                     ) : (
                       <>
                         <div
                           className={`absolute -top-2 -right-2 h-16 w-16 rounded-full bg-gradient-to-br opacity-10 blur-xl ${item.c}`}
                         />
                         <div className="relative">
-                          <div className="mb-2 text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+                          <div className="mb-2 text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
                             {item.t}
                           </div>
                           <div
@@ -955,17 +955,17 @@ export default function UserDashboard() {
               return (
                 <div
                   key={c}
-                  className="group relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-slate-700/50 dark:from-slate-800 dark:to-slate-900"
+                  className="group relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
                   style={{ animationDelay: `${idx * 50}ms` }}
                 >
                   <div className="absolute -top-10 -right-10 text-8xl opacity-5">{flag}</div>
 
-                  <div className="relative mb-6 flex items-center gap-4 border-b border-slate-200 pb-4 dark:border-slate-700">
+                  <div className="relative mb-6 flex items-center gap-4 border-b border-slate-200 pb-4 dark:border-neutral-800">
                     <span className="text-3xl drop-shadow-lg">{flag}</span>
                     <span className="flex-1 text-xl font-black text-slate-900 dark:text-white">
                       {c === 'KSA' ? 'Saudi Arabia' : c}
                     </span>
-                    <span className="rounded-full bg-gradient-to-br from-slate-100 to-slate-200 px-3 py-1 text-xs font-black text-slate-700 shadow-inner dark:from-slate-700 dark:to-slate-800 dark:text-slate-300">
+                    <span className="rounded-full bg-gradient-to-br from-slate-100 to-slate-200 px-3 py-1 text-xs font-black text-slate-700 shadow-inner dark:from-neutral-800 dark:to-neutral-900 dark:text-neutral-300">
                       {cur}
                     </span>
                   </div>
@@ -975,7 +975,7 @@ export default function UserDashboard() {
                       {[1, 2, 3, 4, 5, 6].map((i) => (
                         <div
                           key={i}
-                          className="h-14 animate-pulse rounded-xl bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800"
+                          className="h-14 animate-pulse rounded-xl bg-gradient-to-r from-slate-200 to-slate-100 dark:from-neutral-800 dark:to-neutral-900"
                         />
                       ))}
                     </div>
@@ -1020,9 +1020,9 @@ export default function UserDashboard() {
                       ].map((stat, i) => (
                         <div
                           key={i}
-                          className="rounded-xl border border-slate-200/30 bg-white/30 p-3 backdrop-blur-sm transition-all hover:bg-white/50 dark:border-slate-700/30 dark:bg-slate-800/30 dark:hover:bg-slate-700/50"
+                          className="rounded-xl border border-slate-200/30 bg-white/30 p-3 backdrop-blur-sm transition-all hover:bg-white/50 dark:border-neutral-800/30 dark:bg-neutral-900/30 dark:hover:bg-neutral-800/50"
                         >
-                          <div className="text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+                          <div className="text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
                             {stat.label}
                           </div>
                           {stat.to ? (
