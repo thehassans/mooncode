@@ -834,7 +834,13 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
       ]),
       // 2. Agent Expenses
       AgentRemit.aggregate([
-        { $match: { owner: ownerId, status: "sent", ...dateMatch } },
+        {
+          $match: {
+            owner: ownerId,
+            status: { $in: ["sent", "approved"] },
+            ...dateMatch,
+          },
+        },
         { $group: { _id: null, totalAgentExpense: { $sum: "$amount" } } },
       ]),
       // 3. Driver Stats (Delivered orders by driver for commission calc)
@@ -850,7 +856,13 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
       ]),
       // 4. Advertisement Expenses (Grouped by Currency)
       Expense.aggregate([
-        { $match: { createdBy: ownerId, type: "advertisement", ...dateMatch } },
+        {
+          $match: {
+            createdBy: { $in: creatorIds },
+            type: "advertisement",
+            ...dateMatch,
+          },
+        },
         {
           $group: {
             _id: { $ifNull: ["$currency", "AED"] },
