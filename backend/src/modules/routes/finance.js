@@ -1527,12 +1527,18 @@ router.get(
       // Find agents under this owner (or all if admin)
       let agentCond = { role: "agent" };
       if (req.user.role !== "admin") agentCond.createdBy = req.user.id;
+
+      // Get agents (limit handled by query params if needed, but currently fetching all matching)
       const agents = await User.find(
         agentCond,
         "firstName lastName phone _id payoutProfile"
       ).lean();
+
+      if (!agents.length) return res.json([]);
+
+      const agentIds = agents.map((a) => a._id);
       const cfg = await getCurrencyConfig();
-      const fx = cfg.pkrPerUnit || {};
+
       // Use same hardcoded rates as order delivery for consistency
       const FX_PKR = {
         AED: 76,
@@ -1543,124 +1549,185 @@ router.get(
         QAR: 79,
         INR: 3.3,
       };
-      const out = [];
-      for (const a of agents) {
-        const orders = await Order.find({ createdBy: a._id }).populate(
-          "productId",
-          "price baseCurrency quantity"
+      const aedRate = FX_PKR["AED"] || 76;
+
+      // 1. Aggregate Orders
+      const orderStats = await Order.aggregate([
+        {
+          $match: {
+            createdBy: { $in: agentIds },
+            shipmentStatus: { $nin: ["cancelled", "returned"] },
+          },
+        },
+        {
+          $lookup: {
+            from: "products",
+            localField: "productId",
+            foreignField: "_id",
+            as: "product",
+          },
+        },
+        { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
+        {
+          $addFields: {
+            // Determine currency
+            baseCurrency: {
+              $cond: {
+                if: {
+                  $in: [
+                    { $toString: "$product.baseCurrency" },
+                    [
+                      "AED",
+                      "OMR",
+                      "SAR",
+                      "BHD",
+                      "KWD",
+                      "QAR",
+                      "INR",
+                      "USD",
+                      "CNY",
+                    ],
+                  ],
+                },
+                then: "$product.baseCurrency",
+                else: "SAR",
+              },
+            },
+            // Determine total value
+            calcTotal: {
+              $cond: {
+                if: { $ne: ["$total", null] },
+                then: { $toDouble: "$total" },
+                else: {
+                  $multiply: [
+                    { $ifNull: ["$product.price", 0] },
+                    { $max: [1, { $ifNull: ["$quantity", 1] }] },
+                  ],
+                },
+              },
+            },
+            isDelivered: {
+              $eq: [{ $toLower: "$shipmentStatus" }, "delivered"],
+            },
+          },
+        },
+        {
+          $addFields: {
+            // Get exchange rate
+            exchRate: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ["$baseCurrency", "AED"] }, then: FX_PKR.AED },
+                  { case: { $eq: ["$baseCurrency", "OMR"] }, then: FX_PKR.OMR },
+                  { case: { $eq: ["$baseCurrency", "SAR"] }, then: FX_PKR.SAR },
+                  { case: { $eq: ["$baseCurrency", "BHD"] }, then: FX_PKR.BHD },
+                  { case: { $eq: ["$baseCurrency", "KWD"] }, then: FX_PKR.KWD },
+                  { case: { $eq: ["$baseCurrency", "QAR"] }, then: FX_PKR.QAR },
+                  { case: { $eq: ["$baseCurrency", "INR"] }, then: FX_PKR.INR },
+                ],
+                default: FX_PKR.SAR, // Fallback to SAR rate (72)
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            valInPKR: { $multiply: ["$calcTotal", "$exchRate"] },
+          },
+        },
+        {
+          $addFields: {
+            valInAED: { $divide: ["$valInPKR", aedRate] },
+          },
+        },
+        {
+          $group: {
+            _id: "$createdBy",
+            ordersSubmitted: { $sum: 1 },
+            ordersDelivered: { $sum: { $cond: ["$isDelivered", 1, 0] } },
+            totalOrderValueAED: { $sum: "$valInAED" },
+            deliveredOrderValueAED: {
+              $sum: { $cond: ["$isDelivered", "$valInAED", 0] },
+            },
+            upcomingOrderValueAED: {
+              $sum: { $cond: ["$isDelivered", 0, "$valInAED"] },
+            },
+          },
+        },
+      ]);
+
+      // 2. Aggregate Remittances (Withdrawn/Pending)
+      const remitStats = await AgentRemit.aggregate([
+        {
+          $match: {
+            agent: { $in: agentIds },
+          },
+        },
+        {
+          $group: {
+            _id: { agent: "$agent", status: "$status" },
+            totalPKR: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$currency", "PKR"] },
+                  "$amount",
+                  0, // Assuming all agent remits are in PKR as per original code logic
+                ],
+              },
+            },
+          },
+        },
+      ]);
+
+      // Map stats for easy lookup
+      const orderMap = {};
+      orderStats.forEach((s) => (orderMap[String(s._id)] = s));
+
+      const remitMap = {};
+      remitStats.forEach((r) => {
+        const agentId = String(r._id.agent);
+        if (!remitMap[agentId])
+          remitMap[agentId] = { withdrawn: 0, pending: 0 };
+        if (r._id.status === "sent") remitMap[agentId].withdrawn += r.totalPKR;
+        if (r._id.status === "pending") remitMap[agentId].pending += r.totalPKR;
+      });
+
+      const out = agents.map((a) => {
+        const aid = String(a._id);
+        const oStats = orderMap[aid] || {};
+        const rStats = remitMap[aid] || { withdrawn: 0, pending: 0 };
+
+        const totalOrderValueAED = Math.round(oStats.totalOrderValueAED || 0);
+        const deliveredOrderValueAED = Math.round(
+          oStats.deliveredOrderValueAED || 0
         );
-        let deliveredCommissionPKR = 0;
-        let upcomingCommissionPKR = 0;
-        let ordersSubmitted = 0;
-        let ordersDelivered = 0;
-        let totalOrderValueAED = 0;
-        let deliveredOrderValueAED = 0;
-        let upcomingOrderValueAED = 0;
-        const aedRate = FX_PKR["AED"] || 76;
-        for (const o of orders) {
-          const isDelivered =
-            String(o?.shipmentStatus || "").toLowerCase() === "delivered";
-          const isCancelled = ["cancelled", "returned"].includes(
-            String(o?.shipmentStatus || "").toLowerCase()
-          );
-          if (isCancelled) continue;
-          ordersSubmitted++;
-          if (isDelivered) ordersDelivered++;
-          // Calculate order value in AED
-          const totalVal =
-            o.total != null
-              ? Number(o.total)
-              : Number(o?.productId?.price || 0) *
-                Math.max(1, Number(o?.quantity || 1));
-          const cur = [
-            "AED",
-            "OMR",
-            "SAR",
-            "BHD",
-            "KWD",
-            "QAR",
-            "INR",
-            "USD",
-            "CNY",
-          ].includes(String(o?.productId?.baseCurrency))
-            ? o.productId.baseCurrency
-            : "SAR";
-          const curRate = FX_PKR[cur] || FX_PKR["SAR"] || 72;
-          // Convert to PKR then to AED
-          const valInPKR = totalVal * curRate;
-          const valInAED = aedRate > 0 ? valInPKR / aedRate : 0;
-          totalOrderValueAED += valInAED;
-          if (isDelivered) deliveredOrderValueAED += valInAED;
-          else upcomingOrderValueAED += valInAED;
-        }
-        // Commission: 12% of AED value, converted to PKR using AED rate
-        deliveredCommissionPKR = Math.round(
+        const upcomingOrderValueAED = Math.round(
+          oStats.upcomingOrderValueAED || 0
+        );
+
+        const deliveredCommissionPKR = Math.round(
           deliveredOrderValueAED * 0.12 * aedRate
         );
-        upcomingCommissionPKR = Math.round(
+        const upcomingCommissionPKR = Math.round(
           upcomingOrderValueAED * 0.12 * aedRate
         );
-        totalOrderValueAED = Math.round(totalOrderValueAED);
-        deliveredOrderValueAED = Math.round(deliveredOrderValueAED);
-        upcomingOrderValueAED = Math.round(upcomingOrderValueAED);
-        // Sent (withdrawn)
-        const sentRows = await AgentRemit.aggregate([
-          {
-            $match: {
-              agent: new (
-                await import("mongoose")
-              ).default.Types.ObjectId(a._id),
-              status: "sent",
-            },
-          },
-          {
-            $group: {
-              _id: "$currency",
-              total: { $sum: { $ifNull: ["$amount", 0] } },
-            },
-          },
-        ]);
-        const withdrawnPKR = sentRows.reduce(
-          (s, r) => s + (r?._id === "PKR" ? Number(r.total || 0) : 0),
-          0
-        );
-        // Pending requests amount
-        const pendRows = await AgentRemit.aggregate([
-          {
-            $match: {
-              agent: new (
-                await import("mongoose")
-              ).default.Types.ObjectId(a._id),
-              status: "pending",
-            },
-          },
-          {
-            $group: {
-              _id: "$currency",
-              total: { $sum: { $ifNull: ["$amount", 0] } },
-            },
-          },
-        ]);
-        const pendingPKR = pendRows.reduce(
-          (s, r) => s + (r?._id === "PKR" ? Number(r.total || 0) : 0),
-          0
-        );
-        out.push({
-          id: String(a._id),
+
+        return {
+          id: aid,
           name: `${a.firstName || ""} ${a.lastName || ""}`.trim(),
           phone: a.phone || "",
           payoutProfile: a.payoutProfile || {},
-          ordersSubmitted,
-          ordersDelivered,
+          ordersSubmitted: oStats.ordersSubmitted || 0,
+          ordersDelivered: oStats.ordersDelivered || 0,
           totalOrderValueAED,
           deliveredOrderValueAED,
           upcomingOrderValueAED,
           deliveredCommissionPKR,
           upcomingCommissionPKR,
-          withdrawnPKR,
-          pendingPKR,
-        });
-      }
+          withdrawnPKR: rStats.withdrawn,
+          pendingPKR: rStats.pending,
+        };
+      });
       return res.json({ agents: out });
     } catch (err) {
       return res.status(500).json({ message: "Failed to compute commission" });
@@ -2549,179 +2616,263 @@ router.get(
           dateFilter = { createdAt: { $gte: startDate, $lte: endDate } };
         }
       }
-      // Aggregate basic stats from orders and remittances per driver in their local currency
-      const out = [];
+      // Use aggregation pipeline to get all driver stats efficiently
       const M = (await import("mongoose")).default;
-      for (const d of drivers) {
-        const currency = currencyFromCountry(d?.country || "") || "SAR";
-        const matchBase = { deliveryBoy: d._id, ...dateFilter };
+      const driverIds = drivers.map((d) => d._id);
 
-        // Open orders: all non-final statuses
-        const openStatuses = [
-          "pending",
-          "assigned",
-          "picked_up",
-          "in_transit",
-          "out_for_delivery",
-          "no_response",
-          "attempted",
-          "contacted",
-        ];
-        const open = await Order.countDocuments({
-          ...matchBase,
-          shipmentStatus: { $in: openStatuses },
-        });
+      // Build match condition for orders based on date filter
+      const orderDateMatch = dateFilter.createdAt
+        ? { createdAt: dateFilter.createdAt }
+        : {};
 
-        // Assigned: specifically orders with 'assigned' status
-        const assigned = await Order.countDocuments({
-          ...matchBase,
-          shipmentStatus: "assigned",
-        });
-
-        const canceled = await Order.countDocuments({
-          ...matchBase,
-          shipmentStatus: "cancelled",
-        });
-        const deliveredCount = await Order.countDocuments({
-          ...matchBase,
-          shipmentStatus: "delivered",
-        });
-        // Delivered total value (not collectedAmount)
-        const deliveredOrders3 = await Order.find({
-          ...matchBase,
-          shipmentStatus: "delivered",
-        })
-          .select("collectedAmount total productId quantity items")
-          .populate("productId", "price")
-          .populate("items.productId", "price");
-        const collected = deliveredOrders3.reduce((sum, o) => {
-          let val = 0;
-          if (o?.collectedAmount != null && Number(o.collectedAmount) > 0) {
-            val = Number(o.collectedAmount) || 0;
-          } else if (o?.total != null) {
-            val = Number(o.total) || 0;
-          } else if (Array.isArray(o?.items) && o.items.length) {
-            val = o.items.reduce(
-              (s, it) =>
-                s +
-                Number(it?.productId?.price || 0) *
-                  Math.max(1, Number(it?.quantity || 1)),
-              0
-            );
-          } else {
-            const unit = Number(o?.productId?.price || 0);
-            const qty = Math.max(1, Number(o?.quantity || 1));
-            val = unit * qty;
-          }
-          return sum + val;
-        }, 0);
-        // Delivered to company comes from accepted and manager_accepted remittances
-        const remitRows = await Remittance.aggregate([
-          {
-            $match: {
-              driver: new M.Types.ObjectId(d._id),
-              status: { $in: ["accepted", "manager_accepted"] },
+      // Aggregation pipeline to get all driver statistics in one query
+      const driverStats = await User.aggregate([
+        { $match: { _id: { $in: driverIds } } },
+        // Lookup all orders for each driver
+        {
+          $lookup: {
+            from: "orders",
+            let: { driverId: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ["$deliveryBoy", "$$driverId"] },
+                  ...orderDateMatch,
+                },
+              },
+            ],
+            as: "orders",
+          },
+        },
+        // Lookup remittances (accepted and manager_accepted)
+        {
+          $lookup: {
+            from: "remittances",
+            let: { driverId: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ["$driver", "$$driverId"] },
+                  status: { $in: ["accepted", "manager_accepted"] },
+                },
+              },
+            ],
+            as: "acceptedRemittances",
+          },
+        },
+        // Lookup paid commission remittances (with date filter if applicable)
+        {
+          $lookup: {
+            from: "remittances",
+            let: { driverId: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ["$driver", "$$driverId"] },
+                  status: { $in: ["accepted", "manager_accepted"] },
+                  ...(dateFilter.createdAt
+                    ? { acceptedAt: dateFilter.createdAt }
+                    : {}),
+                },
+              },
+            ],
+            as: "paidCommissionRemittances",
+          },
+        },
+        // Calculate statistics
+        {
+          $addFields: {
+            // Order status counts
+            openCount: {
+              $size: {
+                $filter: {
+                  input: "$orders",
+                  cond: {
+                    $in: [
+                      "$$this.shipmentStatus",
+                      [
+                        "pending",
+                        "assigned",
+                        "picked_up",
+                        "in_transit",
+                        "out_for_delivery",
+                        "no_response",
+                        "attempted",
+                        "contacted",
+                      ],
+                    ],
+                  },
+                },
+              },
+            },
+            assignedCount: {
+              $size: {
+                $filter: {
+                  input: "$orders",
+                  cond: { $eq: ["$$this.shipmentStatus", "assigned"] },
+                },
+              },
+            },
+            canceledCount: {
+              $size: {
+                $filter: {
+                  input: "$orders",
+                  cond: { $eq: ["$$this.shipmentStatus", "cancelled"] },
+                },
+              },
+            },
+            deliveredOrders: {
+              $filter: {
+                input: "$orders",
+                cond: { $eq: ["$$this.shipmentStatus", "delivered"] },
+              },
+            },
+            // Remittance totals
+            deliveredToCompany: {
+              $sum: {
+                $map: {
+                  input: "$acceptedRemittances",
+                  as: "remit",
+                  in: { $ifNull: ["$$remit.amount", 0] },
+                },
+              },
+            },
+            withdrawnCommission: {
+              $sum: {
+                $map: {
+                  input: "$paidCommissionRemittances",
+                  as: "remit",
+                  in: { $ifNull: ["$$remit.driverCommission", 0] },
+                },
+              },
             },
           },
-          {
-            $group: { _id: null, total: { $sum: { $ifNull: ["$amount", 0] } } },
-          },
-        ]);
-        const deliveredToCompany =
-          remitRows && remitRows[0] ? Number(remitRows[0].total || 0) : 0;
-        const pendingToCompany = Math.max(0, collected - deliveredToCompany);
-
-        // Driver commission calculation
-        const commissionPerOrder = Number(
-          d.driverProfile?.commissionPerOrder ?? 0
-        );
-
-        // Get actual commissions from all delivered orders
-        const deliveredOrdersWithCommission = await Order.find({
-          deliveryBoy: d._id,
-          shipmentStatus: "delivered",
-          ...dateFilter,
-        })
-          .select("driverCommission")
-          .lean();
-
-        // Calculate total actual commission from orders
-        // If order has driverCommission set, use it; otherwise use default rate
-        const actualTotalCommission = deliveredOrdersWithCommission.reduce(
-          (sum, o) => {
-            const orderComm = Number(o.driverCommission) || 0;
-            // Use order's commission if set, otherwise use driver's default rate
-            return sum + (orderComm > 0 ? orderComm : commissionPerOrder);
-          },
-          0
-        );
-
-        // Base commission (default rate × delivered count)
-        const baseCommission = deliveredCount * commissionPerOrder;
-
-        // Extra commission (difference between actual and base)
-        const extraCommission = Math.max(
-          0,
-          actualTotalCommission - baseCommission
-        );
-
-        // Total commission is the actual commission from orders
-        const driverCommission = Math.round(actualTotalCommission);
-
-        // Calculate paid commission from remittances in the same date period
-        const paidRemitRows = await Remittance.aggregate([
-          {
-            $match: {
-              driver: new M.Types.ObjectId(d._id),
-              status: { $in: ["accepted", "manager_accepted"] },
-              ...(dateFilter.createdAt
-                ? { acceptedAt: dateFilter.createdAt }
-                : {}),
+        },
+        {
+          $addFields: {
+            deliveredCount: { $size: "$deliveredOrders" },
+            // Calculate collected amount from delivered orders
+            collected: {
+              $sum: {
+                $map: {
+                  input: "$deliveredOrders",
+                  as: "order",
+                  in: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: ["$$order.collectedAmount", null] },
+                          { $gt: ["$$order.collectedAmount", 0] },
+                        ],
+                      },
+                      { $ifNull: ["$$order.collectedAmount", 0] },
+                      { $ifNull: ["$$order.total", 0] },
+                    ],
+                  },
+                },
+              },
+            },
+            // Calculate commission from delivered orders
+            actualTotalCommission: {
+              $sum: {
+                $map: {
+                  input: "$deliveredOrders",
+                  as: "order",
+                  in: {
+                    $cond: [
+                      {
+                        $gt: [{ $ifNull: ["$$order.driverCommission", 0] }, 0],
+                      },
+                      { $ifNull: ["$$order.driverCommission", 0] },
+                      { $ifNull: ["$driverProfile.commissionPerOrder", 0] },
+                    ],
+                  },
+                },
+              },
             },
           },
-          {
-            $group: {
-              _id: null,
-              totalPaid: { $sum: { $ifNull: ["$driverCommission", 0] } },
+        },
+        {
+          $addFields: {
+            commissionPerOrder: {
+              $ifNull: ["$driverProfile.commissionPerOrder", 0],
+            },
+            baseCommission: {
+              $multiply: [
+                "$deliveredCount",
+                { $ifNull: ["$driverProfile.commissionPerOrder", 0] },
+              ],
+            },
+            pendingToCompany: {
+              $max: [0, { $subtract: ["$collected", "$deliveredToCompany"] }],
             },
           },
-        ]);
-        const withdrawnCommission = Math.round(
-          paidRemitRows && paidRemitRows[0]
-            ? Number(paidRemitRows[0].totalPaid || 0)
-            : 0
-        );
+        },
+        {
+          $addFields: {
+            extraCommission: {
+              $max: [
+                0,
+                { $subtract: ["$actualTotalCommission", "$baseCommission"] },
+              ],
+            },
+            pendingCommission: {
+              $max: [
+                0,
+                {
+                  $subtract: ["$actualTotalCommission", "$withdrawnCommission"],
+                },
+              ],
+            },
+          },
+        },
+        {
+          $project: {
+            id: { $toString: "$_id" },
+            name: {
+              $trim: {
+                input: {
+                  $concat: [
+                    { $ifNull: ["$firstName", ""] },
+                    " ",
+                    { $ifNull: ["$lastName", ""] },
+                  ],
+                },
+              },
+            },
+            phone: { $ifNull: ["$phone", ""] },
+            country: { $ifNull: ["$country", ""] },
+            commissionRate: { $ifNull: ["$driverProfile.commissionRate", 8] },
+            commissionPerOrder: "$commissionPerOrder",
+            commissionCurrency: {
+              $ifNull: ["$driverProfile.commissionCurrency", ""],
+            },
+            open: "$openCount",
+            assigned: "$assignedCount",
+            canceled: "$canceledCount",
+            deliveredCount: "$deliveredCount",
+            collected: { $round: "$collected" },
+            deliveredToCompany: { $round: "$deliveredToCompany" },
+            pendingToCompany: { $round: "$pendingToCompany" },
+            baseCommission: { $round: "$baseCommission" },
+            extraCommission: { $round: "$extraCommission" },
+            driverCommission: { $round: "$actualTotalCommission" },
+            withdrawnCommission: { $round: "$withdrawnCommission" },
+            paidCommission: { $round: "$withdrawnCommission" },
+            pendingCommission: { $round: "$pendingCommission" },
+          },
+        },
+      ]);
 
-        // Pending commission: earned commission minus withdrawn
-        const pendingCommission = Math.max(
-          0,
-          driverCommission - withdrawnCommission
-        );
-
-        out.push({
-          id: String(d._id),
-          name: `${d.firstName || ""} ${d.lastName || ""}`.trim(),
-          phone: d.phone || "",
-          country: d.country || "",
+      // Post-process to add currency based on country
+      const out = driverStats.map((stat) => {
+        const currency = currencyFromCountry(stat.country) || "SAR";
+        return {
+          ...stat,
           currency,
-          commissionRate: Number(d.driverProfile?.commissionRate ?? 8),
-          commissionPerOrder: Number(d.driverProfile?.commissionPerOrder ?? 0),
-          commissionCurrency: d.driverProfile?.commissionCurrency || currency,
-          open,
-          assigned,
-          canceled,
-          deliveredCount,
-          collected: Math.round(collected),
-          deliveredToCompany: Math.round(deliveredToCompany),
-          pendingToCompany: Math.round(pendingToCompany),
-          baseCommission: Math.round(baseCommission),
-          extraCommission: Math.round(extraCommission),
-          driverCommission: Math.round(driverCommission),
-          withdrawnCommission: Math.round(withdrawnCommission),
-          paidCommission: Math.round(withdrawnCommission), // Alias for frontend compatibility
-          pendingCommission: Math.round(pendingCommission),
-        });
-      }
+          commissionCurrency: stat.commissionCurrency || currency,
+        };
+      });
       const hasMore = skip + drivers.length < total;
       return res.json({ drivers: out, page, limit, total, hasMore });
     } catch (err) {
