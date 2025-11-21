@@ -4,21 +4,21 @@ import LiveNumber from '../../components/LiveNumber.jsx'
 import { API_BASE, apiGet } from '../../api.js'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
-import { getCurrencyConfig, toAEDByCode, convert } from '../../util/currency'
+import { getCurrencyConfig } from '../../util/currency'
 
 // ===========================
 // PREMIUM UI COMPONENTS
 // ===========================
 
 const Shimmer = () => (
-  <div className="animate-shimmer absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent dark:via-white/10" />
+  <div className="animate-shimmer absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent dark:via-white/5" />
 )
 
 const DashboardCard = ({ children, className = '', title, subtitle, isLoading = false }) => (
   <div
-    className={`group relative overflow-hidden rounded-3xl border border-white/20 bg-white/60 p-6 shadow-xl backdrop-blur-xl transition-all duration-500 hover:shadow-2xl dark:border-slate-700/30 dark:bg-slate-900/60 dark:shadow-slate-900/20 ${className}`}
+    className={`group relative overflow-hidden rounded-3xl border border-white/20 bg-white/60 p-6 shadow-xl backdrop-blur-xl transition-all duration-500 hover:shadow-2xl dark:border-slate-700/40 dark:bg-slate-900/60 dark:shadow-slate-900/50 ${className}`}
   >
-    <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 dark:from-slate-800/40" />
+    <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 dark:from-slate-800/20" />
     <div className="relative z-10">
       {(title || subtitle) && (
         <div className="mb-6 flex flex-col gap-1 border-b border-slate-100/50 pb-4 dark:border-slate-700/30">
@@ -89,7 +89,7 @@ const StatTile = memo(
       </div>
     )
 
-    const containerClasses = `group relative overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br ${gradientFrom} ${gradientTo} p-5 shadow-lg backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-slate-700/30 dark:from-slate-800/80 dark:to-slate-900/80`
+    const containerClasses = `group relative overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br ${gradientFrom} ${gradientTo} p-5 shadow-lg backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-slate-700/30 dark:from-slate-800/40 dark:to-slate-900/40`
 
     if (to) {
       return (
@@ -224,6 +224,7 @@ export default function UserDashboard() {
     totalRevenue: 0,
     countries: {},
     productMetrics: { global: {}, countries: {} },
+    profitLoss: null, // Ensure this is initialized
   })
 
   const [analytics, setAnalytics] = useState(null)
@@ -422,7 +423,7 @@ export default function UserDashboard() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] transition-colors duration-500 dark:bg-[#0F172A]">
+    <div className="min-h-screen bg-[#F8FAFC] transition-colors duration-500 dark:bg-[#0B1120]">
       {/* Decorative Background Elements */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="absolute -top-[20%] -left-[10%] h-[50%] w-[50%] rounded-full bg-blue-500/5 blur-[120px] dark:bg-blue-500/10" />
