@@ -436,6 +436,28 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-white px-4 py-6 dark:bg-black">
+      <style>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fadeInUp {
+          animation: fadeInUp 0.8s ease-out forwards;
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.6s ease-out forwards;
+        }
+      `}</style>
       <div className="mx-auto max-w-[1800px] space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -659,7 +681,7 @@ export default function Dashboard() {
         <GlassCard>
           <TabsComponent tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
 
-          <div className="mt-6 transition-all duration-700 ease-in-out">
+          <div className="mt-6">
             {activeTab === 'orders' && (
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
                 {[
@@ -707,7 +729,13 @@ export default function Dashboard() {
                     color: 'text-rose-600 dark:text-rose-400',
                   },
                 ].map((stat, i) => (
-                  <CompactStatCard key={i} {...stat} loading={loading} />
+                  <div
+                    key={i}
+                    className="animate-fadeInUp"
+                    style={{ animationDelay: `${i * 50}ms` }}
+                  >
+                    <CompactStatCard {...stat} loading={loading} />
+                  </div>
                 ))}
               </div>
             )}
@@ -789,14 +817,20 @@ export default function Dashboard() {
                     color: 'text-amber-500 dark:text-amber-400',
                   },
                 ].map((stat, i) => (
-                  <CompactStatCard key={i} {...stat} loading={loading} />
+                  <div
+                    key={i}
+                    className="animate-fadeInUp"
+                    style={{ animationDelay: `${i * 50}ms` }}
+                  >
+                    <CompactStatCard {...stat} loading={loading} />
+                  </div>
                 ))}
               </div>
             )}
 
             {activeTab === 'countries' && (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {COUNTRY_LIST.map((c) => {
+                {COUNTRY_LIST.map((c, index) => {
                   const m = countryMetrics(c)
                   const flag = COUNTRY_INFO[c]?.flag || ''
                   const qs = encodeURIComponent(c)
@@ -805,7 +839,8 @@ export default function Dashboard() {
                   return (
                     <div
                       key={c}
-                      className="relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-5 transition-all hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
+                      className="animate-fadeInUp relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-5 transition-all hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
+                      style={{ animationDelay: `${index * 80}ms` }}
                     >
                       <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3 dark:border-neutral-800">
                         <div className="flex items-center gap-2">
