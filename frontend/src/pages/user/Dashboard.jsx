@@ -5,65 +5,80 @@ import LiveNumber from '../../components/LiveNumber.jsx'
 import { API_BASE, apiGet } from '../../api.js'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
-import { getCurrencyConfig, toAEDByCode } from '../../util/currency'
+import { getCurrencyConfig, toAEDByCode, convert } from '../../util/currency'
 
-// --- UI Components ---
+// --- Premium UI Components ---
 
-const Skeleton = ({ className = '' }) => (
-  <div className={`animate-pulse rounded bg-slate-200 dark:bg-slate-700 ${className}`} />
-)
-
-const Card = ({ children, className = '', title, subtitle, loading = false }) => (
+const GlassCard = ({ children, className = '', title, subtitle, loading = false, delay = 0 }) => (
   <div
-    className={`overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-md dark:border-slate-800 dark:bg-[#1E293B] ${className}`}
+    className={`group overflow-hidden rounded-3xl border border-white/20 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl dark:border-slate-700/50 dark:bg-slate-900/80 ${className}`}
+    style={{ animationDelay: `${delay}ms` }}
   >
-    <div className="p-6">
-      {(title || subtitle) && (
-        <div className="mb-6">
-          {loading ? (
-            <>
-              <Skeleton className="mb-2 h-6 w-48" />
-              {subtitle && <Skeleton className="h-4 w-32" />}
-            </>
-          ) : (
-            <>
-              {title && (
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h3>
-              )}
-              {subtitle && (
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
-              )}
-            </>
-          )}
-        </div>
-      )}
-      {children}
-    </div>
+    {(title || subtitle) && (
+      <div className="mb-8 border-b border-slate-100 pb-4 dark:border-slate-700">
+        {loading ? (
+          <>
+            <div className="mb-2 h-7 w-56 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800" />
+            {subtitle && (
+              <div className="h-4 w-40 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800" />
+            )}
+          </>
+        ) : (
+          <>
+            {title && (
+              <h3 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-2xl font-black tracking-tight text-transparent dark:from-white dark:to-slate-300">
+                {title}
+              </h3>
+            )}
+            {subtitle && (
+              <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+                {subtitle}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    )}
+    {children}
   </div>
 )
 
-const StatCard = ({
+const PremiumStatCard = ({
   title,
   value,
   to,
   colorClass = 'text-slate-900 dark:text-white',
+  icon,
   loading = false,
+  delay = 0,
 }) => {
   const Content = () => (
-    <div className="flex h-full flex-col justify-between">
-      <p className="mb-2 text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
+    <div className="relative flex h-full flex-col justify-between">
+      <div className="absolute -top-3 -right-3 opacity-10 transition-all duration-500 group-hover:scale-110 group-hover:opacity-20">
+        {icon && React.createElement(icon, { className: 'w-24 h-24' })}
+      </div>
+      <p className="relative z-10 mb-3 text-sm font-bold tracking-widest text-slate-500 uppercase dark:text-slate-400">
+        {title}
+      </p>
       {loading ? (
-        <Skeleton className="h-8 w-24" />
+        <div
+          className="h-10 w-32 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] dark:from-slate-700 dark:via-slate-800 dark:to-slate-700"
+          style={{ animation: 'shimmer 2s infinite' }}
+        />
       ) : (
-        <h3 className={`text-3xl font-black tracking-tight ${colorClass}`}>{value}</h3>
+        <h3
+          className={`relative z-10 text-4xl font-black tracking-tighter transition-all duration-300 group-hover:scale-105 ${colorClass}`}
+        >
+          {value}
+        </h3>
       )}
     </div>
   )
 
   if (to && !loading) {
     return (
-      <NavLink to={to} className="group block h-full transition-transform hover:-translate-y-1">
-        <div className="h-full rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-shadow group-hover:shadow-md dark:border-slate-800 dark:bg-[#1E293B]">
+      <NavLink to={to} className="group block h-full" style={{ animationDelay: `${delay}ms` }}>
+        <div className="h-full rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 hover:border-slate-300 hover:shadow-2xl dark:border-slate-700/50 dark:from-slate-800 dark:to-slate-900 dark:hover:border-slate-600">
           <Content />
         </div>
       </NavLink>
@@ -71,20 +86,26 @@ const StatCard = ({
   }
 
   return (
-    <div className="h-full rounded-xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1E293B]">
+    <div
+      className="h-full rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg dark:border-slate-700/50 dark:from-slate-800 dark:to-slate-900"
+      style={{ animationDelay: `${delay}ms` }}
+    >
       <Content />
     </div>
   )
 }
 
-const OrderStatusPie = ({ statusTotals, loading }) => {
+const PremiumPieChart = ({ statusTotals, loading }) => {
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-8 py-4 md:flex-row">
-        <Skeleton className="h-48 w-48 rounded-full" />
+      <div className="flex flex-col items-center justify-center gap-10 py-8 md:flex-row">
+        <div className="h-64 w-64 animate-pulse rounded-full bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-800 dark:to-slate-700" />
         <div className="grid grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-6 w-32" />
+            <div
+              key={i}
+              className="h-8 w-40 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800"
+            />
           ))}
         </div>
       </div>
@@ -97,35 +118,39 @@ const OrderStatusPie = ({ statusTotals, loading }) => {
       label: 'Open',
       value: st.pending,
       color: '#F59E0B',
-      bg: 'bg-amber-500',
+      bg: 'from-amber-400 to-amber-600',
       text: 'text-amber-600 dark:text-amber-400',
+      ring: 'ring-amber-500/20',
     },
     {
       label: 'Picked Up',
       value: st.picked_up,
       color: '#3B82F6',
-      bg: 'bg-blue-500',
+      bg: 'from-blue-400 to-blue-600',
       text: 'text-blue-600 dark:text-blue-400',
+      ring: 'ring-blue-500/20',
     },
     {
       label: 'Delivered',
       value: st.delivered,
       color: '#10B981',
-      bg: 'bg-emerald-500',
+      bg: 'from-emerald-400 to-emerald-600',
       text: 'text-emerald-600 dark:text-emerald-400',
+      ring: 'ring-emerald-500/20',
     },
     {
       label: 'Cancelled',
       value: st.cancelled,
       color: '#EF4444',
-      bg: 'bg-rose-500',
+      bg: 'from-rose-400 to-rose-600',
       text: 'text-rose-600 dark:text-rose-400',
+      ring: 'ring-rose-500/20',
     },
   ]
   const total = data.reduce((sum, item) => sum + item.value, 0)
 
   if (total === 0)
-    return <div className="py-12 text-center text-slate-400">No orders to display</div>
+    return <div className="py-16 text-center text-slate-400">No orders to display</div>
 
   let cumulative = 0
   const gradient = data
@@ -138,27 +163,37 @@ const OrderStatusPie = ({ statusTotals, loading }) => {
     .join(', ')
 
   return (
-    <div className="flex flex-col items-center justify-center gap-10 py-6 md:flex-row">
-      <div className="relative">
+    <div className="flex flex-col items-center justify-center gap-12 py-8 md:flex-row">
+      <div className="group relative">
+        <div className="absolute -inset-4 animate-pulse rounded-full bg-gradient-to-r from-violet-600/20 to-indigo-600/20 opacity-0 blur-2xl transition-opacity duration-1000 group-hover:opacity-100" />
         <div
-          className="h-56 w-56 rounded-full shadow-lg"
+          className="relative h-64 w-64 rounded-full shadow-2xl transition-transform duration-700 group-hover:scale-105"
           style={{ background: `conic-gradient(${gradient})` }}
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex h-40 w-40 flex-col items-center justify-center rounded-full bg-white dark:bg-[#1E293B]">
-            <span className="text-4xl font-black text-slate-900 dark:text-white">{total}</span>
-            <span className="text-xs font-bold text-slate-400 uppercase">Total Orders</span>
+          <div className="flex h-44 w-44 flex-col items-center justify-center rounded-full bg-white shadow-inner backdrop-blur-xl dark:bg-slate-900">
+            <span className="bg-gradient-to-br from-slate-900 to-slate-700 bg-clip-text text-5xl font-black text-transparent dark:from-white dark:to-slate-300">
+              {total}
+            </span>
+            <span className="mt-1 text-xs font-bold tracking-widest text-slate-400 uppercase">
+              Total
+            </span>
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {data.map((item, idx) => (
-          <div key={idx} className="flex items-center gap-3">
-            <div className={`h-3 w-3 rounded-full ${item.bg}`} />
-            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-              {item.label}
-            </span>
-            <span className={`text-sm font-bold ${item.text}`}>{item.value}</span>
+          <div
+            key={idx}
+            className={`group flex items-center gap-4 rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 px-5 py-3 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-slate-700/50 dark:from-slate-800 dark:to-slate-900 ${item.ring}`}
+          >
+            <div className={`h-4 w-4 rounded-full bg-gradient-to-br shadow-lg ${item.bg}`} />
+            <div className="flex flex-col">
+              <span className="text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+                {item.label}
+              </span>
+              <span className={`text-2xl font-black ${item.text}`}>{item.value}</span>
+            </div>
           </div>
         ))}
       </div>
@@ -204,7 +239,6 @@ export default function UserDashboard() {
   const [currencyCfg, setCurrencyCfg] = useState(null)
   const [metrics, setMetrics] = useState(null)
   const [analytics, setAnalytics] = useState(null)
-  const [salesByCountry, setSalesByCountry] = useState({})
 
   const COUNTRY_INFO = useMemo(
     () => ({
@@ -252,9 +286,10 @@ export default function UserDashboard() {
     }
   }
 
-  function toAEDByCodeHelper(amount, code) {
+  function toAEDByCurrency(amount, currency) {
     try {
-      return toAEDByCode(Number(amount || 0), String(code || 'AED'), currencyCfg)
+      const code = String(currency || 'AED')
+      return toAEDByCode(Number(amount || 0), code, currencyCfg)
     } catch {
       return Number(amount || 0)
     }
@@ -263,7 +298,7 @@ export default function UserDashboard() {
   function sumCurrencyMapAED(map) {
     try {
       return Object.entries(map || {}).reduce(
-        (s, [code, val]) => s + toAEDByCodeHelper(Number(val || 0), code),
+        (s, [code, val]) => s + toAEDByCode(Number(val || 0), String(code || 'AED'), currencyCfg),
         0
       )
     } catch {
@@ -353,7 +388,6 @@ export default function UserDashboard() {
     const controller = new AbortController()
     loadAbortRef.current = controller
 
-    // Show cached data immediately
     const cachedMetrics = cacheGet('metrics', dateParams)
     if (cachedMetrics) {
       setMetrics(cachedMetrics)
@@ -385,7 +419,6 @@ export default function UserDashboard() {
       setHydrated(true)
       setLoading(false)
 
-      // Background fetch
       apiGet(`/api/orders/analytics/last7days?${dateParams}`, { signal: controller.signal })
         .then((res) => {
           if (loadSeqRef.current !== seq) return
@@ -438,22 +471,29 @@ export default function UserDashboard() {
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] px-4 py-8 font-sans sm:px-6 lg:px-8 dark:bg-[#020617]">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 px-4 py-8 font-sans sm:px-6 lg:px-8 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+      `}</style>
+
       <div className="mx-auto max-w-[1600px] space-y-8">
-        {/* Header */}
+        {/* Premium Header */}
         <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+            <h1 className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-5xl font-black tracking-tighter text-transparent dark:from-white dark:via-slate-100 dark:to-slate-300">
               Dashboard
             </h1>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-              Performance Overview & Analytics
+            <p className="mt-2 text-base font-bold text-slate-500 dark:text-slate-400">
+              Your Business Command Center
             </p>
           </div>
 
-          <div className="flex items-center gap-2 rounded-full bg-white p-1 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200/50 bg-white/80 p-2 shadow-lg backdrop-blur-xl dark:border-slate-700/50 dark:bg-slate-900/80">
             <select
-              className="cursor-pointer rounded-full border-none bg-transparent py-2 pr-8 pl-4 text-sm font-bold text-slate-700 focus:ring-0 dark:text-white"
+              className="cursor-pointer rounded-xl border-none bg-gradient-to-br from-slate-50 to-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:from-slate-800 dark:to-slate-900 dark:text-white"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
             >
@@ -463,9 +503,9 @@ export default function UserDashboard() {
                 </option>
               ))}
             </select>
-            <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
+            <div className="h-8 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent dark:via-slate-700" />
             <select
-              className="cursor-pointer rounded-full border-none bg-transparent py-2 pr-8 pl-4 text-sm font-bold text-slate-700 focus:ring-0 dark:text-white"
+              className="cursor-pointer rounded-xl border-none bg-gradient-to-br from-slate-50 to-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:from-slate-800 dark:to-slate-900 dark:text-white"
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
             >
@@ -478,38 +518,43 @@ export default function UserDashboard() {
           </div>
         </div>
 
-        {/* Profit/Loss */}
-        <Card title="Profit / Loss Overview" subtitle="Delivered orders only" loading={loading}>
+        {/* Profit/Loss Hero */}
+        <GlassCard
+          title="Profit / Loss Overview"
+          subtitle="Delivered orders performance analysis"
+          loading={loading}
+        >
           {loading ? (
-            <div className="space-y-8">
-              <Skeleton className="h-24 w-full rounded-xl" />
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
+            <div className="space-y-10">
+              <div className="h-32 animate-pulse rounded-2xl bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-800 dark:to-slate-700" />
+              <div className="grid grid-cols-2 gap-6 md:grid-cols-6">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <Skeleton key={i} className="h-20 rounded-xl" />
+                  <div
+                    key={i}
+                    className="h-24 animate-pulse rounded-xl bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800"
+                  />
                 ))}
               </div>
             </div>
           ) : metrics?.profitLoss ? (
-            <div className="space-y-8">
+            <div className="space-y-10">
+              {/* Main Profit Display */}
               <div
-                className={`rounded-3xl p-8 ${
+                className={`relative overflow-hidden rounded-3xl p-10 shadow-2xl ${
                   metrics.profitLoss.isProfit
-                    ? 'bg-emerald-50 dark:bg-emerald-900/10'
-                    : 'bg-rose-50 dark:bg-rose-900/10'
+                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 dark:from-emerald-600 dark:via-emerald-700 dark:to-emerald-900'
+                    : 'bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700 dark:from-rose-600 dark:via-rose-700 dark:to-rose-900'
                 }`}
               >
-                <div className="flex flex-col items-center justify-between gap-10 lg:flex-row">
+                <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+                <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-black/10 blur-3xl" />
+
+                <div className="relative flex flex-col items-center justify-between gap-8 lg:flex-row">
                   <div className="text-center lg:text-left">
-                    <div className="mb-2 text-sm font-bold tracking-widest text-slate-500 uppercase dark:text-slate-400">
+                    <div className="mb-3 text-sm font-black tracking-widest text-white/80 uppercase">
                       {metrics.profitLoss.isProfit ? 'Net Profit' : 'Net Loss'}
                     </div>
-                    <div
-                      className={`text-6xl font-black tracking-tighter ${
-                        metrics.profitLoss.isProfit
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-rose-600 dark:text-rose-400'
-                      }`}
-                    >
+                    <div className="text-7xl font-black tracking-tighter text-white drop-shadow-2xl">
                       {metrics.profitLoss.isProfit ? '+' : '-'}
                       <LiveNumber
                         value={Math.abs(metrics.profitLoss.profit || 0)}
@@ -517,6 +562,9 @@ export default function UserDashboard() {
                         maximumFractionDigits={2}
                       />
                     </div>
+                    <p className="mt-3 text-base font-bold text-white/90">
+                      {monthNames[selectedMonth - 1]} {selectedYear}
+                    </p>
                   </div>
 
                   <div className="grid w-full grid-cols-2 gap-4 sm:grid-cols-3 lg:w-auto lg:grid-cols-6">
@@ -528,11 +576,14 @@ export default function UserDashboard() {
                       { label: 'Investor', val: metrics.profitLoss.investorCommission },
                       { label: 'Ads', val: metrics.profitLoss.advertisementExpense },
                     ].map((item, i) => (
-                      <div key={i} className="rounded-xl bg-white p-4 shadow-sm dark:bg-slate-800">
-                        <p className="text-xs font-bold text-slate-500 uppercase dark:text-slate-400">
+                      <div
+                        key={i}
+                        className="rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:bg-white/20"
+                      >
+                        <p className="text-xs font-black tracking-wide text-white/70 uppercase">
                           {item.label}
                         </p>
-                        <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+                        <p className="mt-2 text-lg font-black text-white">
                           <LiveNumber
                             value={item.val || 0}
                             prefix="AED "
@@ -545,13 +596,13 @@ export default function UserDashboard() {
                 </div>
               </div>
 
-              {/* Country Breakdown */}
+              {/* Geographic Breakdown */}
               <div>
-                <h4 className="mb-6 text-lg font-bold text-slate-900 dark:text-white">
-                  Geographic Breakdown
+                <h4 className="mb-6 text-xl font-black text-slate-900 dark:text-white">
+                  Geographic Performance
                 </h4>
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {['KSA', 'UAE', 'Oman', 'Bahrain', 'India', 'Kuwait', 'Qatar'].map((c) => {
+                  {['KSA', 'UAE', 'Oman', 'Bahrain', 'India', 'Kuwait', 'Qatar'].map((c, idx) => {
                     const profitData = metrics.profitLoss.byCountry?.[c]
                     if (!profitData) return null
                     const isProfit = (profitData.profit || 0) >= 0
@@ -561,44 +612,50 @@ export default function UserDashboard() {
                     return (
                       <div
                         key={c}
-                        className={`rounded-2xl border p-6 transition-shadow hover:shadow-lg ${
+                        className={`group relative overflow-hidden rounded-2xl border p-6 shadow-lg transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl ${
                           isProfit
-                            ? 'border-emerald-100 bg-emerald-50/30 dark:border-emerald-900/30 dark:bg-emerald-900/10'
-                            : 'border-rose-100 bg-rose-50/30 dark:border-rose-900/30 dark:bg-rose-900/10'
+                            ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:border-emerald-900/30 dark:from-emerald-950/50 dark:to-emerald-900/20'
+                            : 'border-rose-200 bg-gradient-to-br from-rose-50 to-rose-100/50 dark:border-rose-900/30 dark:from-rose-950/50 dark:to-rose-900/20'
                         }`}
+                        style={{ animationDelay: `${idx * 50}ms` }}
                       >
-                        <div className="mb-4 flex items-center justify-between">
-                          <div className="flex items-center gap-3 font-bold text-slate-900 dark:text-white">
-                            <span className="text-2xl">{flag}</span>
-                            {c === 'KSA' ? 'KSA' : c}
+                        <div className="absolute -top-6 -right-6 text-6xl opacity-10">{flag}</div>
+
+                        <div className="relative mb-6 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-3xl drop-shadow-lg">{flag}</span>
+                            <span className="font-black text-slate-900 dark:text-white">
+                              {c === 'KSA' ? 'KSA' : c}
+                            </span>
                           </div>
                           <div
-                            className={`text-xl font-black ${
+                            className={`text-2xl font-black ${
                               isProfit
                                 ? 'text-emerald-600 dark:text-emerald-400'
                                 : 'text-rose-600 dark:text-rose-400'
                             }`}
                           >
                             {isProfit ? '+' : '-'}
-                            {currency} {fmtAmt(Math.abs(profitData.profit || 0))}
+                            {fmtAmt(Math.abs(profitData.profit || 0))}
                           </div>
                         </div>
 
-                        <div className="space-y-3 text-sm">
+                        <div className="relative space-y-3 text-sm">
                           {[
-                            { l: 'Revenue', v: profitData.revenue },
-                            { l: 'Cost', v: profitData.purchaseCost },
-                            { l: 'Driver', v: profitData.driverCommission },
-                            { l: 'Ads', v: profitData.advertisementExpense },
-                          ].map((r, idx) => (
+                            { l: 'Revenue', v: profitData.revenue, icon: '💰' },
+                            { l: 'Cost', v: profitData.purchaseCost, icon: '📦' },
+                            { l: 'Driver', v: profitData.driverCommission, icon: '🚚' },
+                            { l: 'Ads', v: profitData.advertisementExpense, icon: '📢' },
+                          ].map((r, i) => (
                             <div
-                              key={idx}
-                              className="flex items-center justify-between border-b border-slate-100 pb-2 last:border-0 last:pb-0 dark:border-slate-700"
+                              key={i}
+                              className="flex items-center justify-between rounded-xl border border-slate-200/50 bg-white/50 px-4 py-2 backdrop-blur-sm dark:border-slate-700/50 dark:bg-slate-800/30"
                             >
-                              <span className="font-medium text-slate-500 dark:text-slate-400">
+                              <span className="flex items-center gap-2 font-bold text-slate-600 dark:text-slate-300">
+                                <span>{r.icon}</span>
                                 {r.l}
                               </span>
-                              <span className="font-bold text-slate-900 dark:text-white">
+                              <span className="font-black text-slate-900 dark:text-white">
                                 {currency} {fmtAmt(r.v)}
                               </span>
                             </div>
@@ -611,262 +668,285 @@ export default function UserDashboard() {
               </div>
             </div>
           ) : null}
-        </Card>
+        </GlassCard>
 
         {/* Orders Summary */}
-        <Card title="Orders Summary (Global)" subtitle="Totals in AED" loading={loading}>
+        <GlassCard title="Orders Summary" subtitle="Global metrics in AED" loading={loading}>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <StatCard
-              title="Total Orders"
-              value={<LiveNumber value={metrics?.totalOrders || 0} maximumFractionDigits={0} />}
-              to="/user/orders"
-              loading={loading}
-              colorClass="text-sky-600 dark:text-sky-400"
-            />
-            <StatCard
-              title="Total Amount"
-              value={<LiveNumber value={sumAmountAED('amountTotalOrders')} prefix="AED " />}
-              to="/user/orders"
-              loading={loading}
-              colorClass="text-emerald-600 dark:text-emerald-400"
-            />
-            <StatCard
-              title="Delivered Qty"
-              value={
-                <LiveNumber
-                  value={metrics?.productMetrics?.global?.stockDeliveredQty || 0}
-                  maximumFractionDigits={0}
-                />
-              }
-              to="/user/orders?ship=delivered"
-              loading={loading}
-              colorClass="text-emerald-600 dark:text-emerald-400"
-            />
-            <StatCard
-              title="Delivered Amt"
-              value={<LiveNumber value={sumAmountAED('amountDelivered')} prefix="AED " />}
-              to="/user/orders?ship=delivered"
-              loading={loading}
-              colorClass="text-emerald-600 dark:text-emerald-400"
-            />
-            <StatCard
-              title="Open Orders"
-              value={<LiveNumber value={statusTotals?.pending || 0} maximumFractionDigits={0} />}
-              to="/user/orders?ship=open"
-              loading={loading}
-              colorClass="text-amber-500 dark:text-amber-400"
-            />
-            <StatCard
-              title="Open Amount"
-              value={<LiveNumber value={sumAmountAED('amountPending')} prefix="AED " />}
-              to="/user/orders?ship=open"
-              loading={loading}
-              colorClass="text-orange-500 dark:text-orange-400"
-            />
+            {[
+              {
+                title: 'Total Orders',
+                value: <LiveNumber value={metrics?.totalOrders || 0} maximumFractionDigits={0} />,
+                to: '/user/orders',
+                color: 'text-sky-600 dark:text-sky-400',
+                delay: 0,
+              },
+              {
+                title: 'Total Amount',
+                value: <LiveNumber value={sumAmountAED('amountTotalOrders')} prefix="AED " />,
+                to: '/user/orders',
+                color: 'text-emerald-600 dark:text-emerald-400',
+                delay: 50,
+              },
+              {
+                title: 'Delivered Qty',
+                value: (
+                  <LiveNumber
+                    value={metrics?.productMetrics?.global?.stockDeliveredQty || 0}
+                    maximumFractionDigits={0}
+                  />
+                ),
+                to: '/user/orders?ship=delivered',
+                color: 'text-emerald-600 dark:text-emerald-400',
+                delay: 100,
+              },
+              {
+                title: 'Delivered Amt',
+                value: <LiveNumber value={sumAmountAED('amountDelivered')} prefix="AED " />,
+                to: '/user/orders?ship=delivered',
+                color: 'text-emerald-600 dark:text-emerald-400',
+                delay: 150,
+              },
+              {
+                title: 'Open Orders',
+                value: <LiveNumber value={statusTotals?.pending || 0} maximumFractionDigits={0} />,
+                to: '/user/orders?ship=open',
+                color: 'text-amber-500 dark:text-amber-400',
+                delay: 200,
+              },
+              {
+                title: 'Open Amount',
+                value: <LiveNumber value={sumAmountAED('amountPending')} prefix="AED " />,
+                to: '/user/orders?ship=open',
+                color: 'text-orange-500 dark:text-orange-400',
+                delay: 250,
+              },
+            ].map((stat, i) => (
+              <PremiumStatCard key={i} {...stat} loading={loading} />
+            ))}
           </div>
-        </Card>
+        </GlassCard>
 
         {/* Product Metrics */}
-        <Card title="Product Metrics" subtitle="Inventory & Stock Overview" loading={loading}>
+        <GlassCard title="Product Metrics" subtitle="Inventory & stock analytics" loading={loading}>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <StatCard
-              title="Total Purchase"
-              value={
-                <LiveNumber
-                  value={sumCurrencyMapAED(
-                    metrics?.productMetrics?.global?.totalPurchaseValueByCurrency
-                  )}
-                  prefix="AED "
-                />
-              }
-              to="/user/inhouse-products"
-              loading={loading}
-              colorClass="text-violet-600 dark:text-violet-400"
-            />
-            <StatCard
-              title="Inventory Value"
-              value={
-                <LiveNumber
-                  value={sumCurrencyMapAED(
-                    metrics?.productMetrics?.global?.purchaseValueByCurrency
-                  )}
-                  prefix="AED "
-                />
-              }
-              to="/user/warehouses"
-              loading={loading}
-              colorClass="text-sky-600 dark:text-sky-400"
-            />
-            <StatCard
-              title="Delivered Value"
-              value={
-                <LiveNumber
-                  value={sumCurrencyMapAED(
-                    metrics?.productMetrics?.global?.deliveredValueByCurrency
-                  )}
-                  prefix="AED "
-                />
-              }
-              to="/user/orders?ship=delivered"
-              loading={loading}
-              colorClass="text-emerald-600 dark:text-emerald-400"
-            />
-            <StatCard
-              title="Stock Purchased"
-              value={
-                <LiveNumber
-                  value={metrics?.productMetrics?.global?.stockPurchasedQty || 0}
-                  maximumFractionDigits={0}
-                />
-              }
-              to="/user/inhouse-products"
-              loading={loading}
-              colorClass="text-sky-600 dark:text-sky-400"
-            />
-            <StatCard
-              title="Stock Delivered"
-              value={
-                <LiveNumber
-                  value={metrics?.productMetrics?.global?.stockDeliveredQty || 0}
-                  maximumFractionDigits={0}
-                />
-              }
-              to="/user/orders?ship=delivered"
-              loading={loading}
-              colorClass="text-emerald-600 dark:text-emerald-400"
-            />
-            <StatCard
-              title="Pending Stock"
-              value={
-                <LiveNumber
-                  value={metrics?.productMetrics?.global?.stockLeftQty || 0}
-                  maximumFractionDigits={0}
-                />
-              }
-              to="/user/warehouses"
-              loading={loading}
-              colorClass="text-amber-500 dark:text-amber-400"
-            />
+            {[
+              {
+                title: 'Total Purchase',
+                value: (
+                  <LiveNumber
+                    value={sumCurrencyMapAED(
+                      metrics?.productMetrics?.global?.totalPurchaseValueByCurrency
+                    )}
+                    prefix="AED "
+                  />
+                ),
+                to: '/user/inhouse-products',
+                color: 'text-violet-600 dark:text-violet-400',
+                delay: 0,
+              },
+              {
+                title: 'Inventory Value',
+                value: (
+                  <LiveNumber
+                    value={sumCurrencyMapAED(
+                      metrics?.productMetrics?.global?.purchaseValueByCurrency
+                    )}
+                    prefix="AED "
+                  />
+                ),
+                to: '/user/warehouses',
+                color: 'text-sky-600 dark:text-sky-400',
+                delay: 50,
+              },
+              {
+                title: 'Delivered Value',
+                value: (
+                  <LiveNumber
+                    value={sumCurrencyMapAED(
+                      metrics?.productMetrics?.global?.deliveredValueByCurrency
+                    )}
+                    prefix="AED "
+                  />
+                ),
+                to: '/user/orders?ship=delivered',
+                color: 'text-emerald-600 dark:text-emerald-400',
+                delay: 100,
+              },
+              {
+                title: 'Stock Purchased',
+                value: (
+                  <LiveNumber
+                    value={metrics?.productMetrics?.global?.stockPurchasedQty || 0}
+                    maximumFractionDigits={0}
+                  />
+                ),
+                to: '/user/inhouse-products',
+                color: 'text-sky-600 dark:text-sky-400',
+                delay: 150,
+              },
+              {
+                title: 'Stock Delivered',
+                value: (
+                  <LiveNumber
+                    value={metrics?.productMetrics?.global?.stockDeliveredQty || 0}
+                    maximumFractionDigits={0}
+                  />
+                ),
+                to: '/user/orders?ship=delivered',
+                color: 'text-emerald-600 dark:text-emerald-400',
+                delay: 200,
+              },
+              {
+                title: 'Pending Stock',
+                value: (
+                  <LiveNumber
+                    value={metrics?.productMetrics?.global?.stockLeftQty || 0}
+                    maximumFractionDigits={0}
+                  />
+                ),
+                to: '/user/warehouses',
+                color: 'text-amber-500 dark:text-amber-400',
+                delay: 250,
+              },
+            ].map((stat, i) => (
+              <PremiumStatCard key={i} {...stat} loading={loading} />
+            ))}
           </div>
-        </Card>
+        </GlassCard>
 
         {/* Charts & Status */}
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="space-y-8 lg:col-span-2">
-            <Card title="Sales Trend" subtitle="Last 7 Days" loading={loading}>
-              <div className="h-[300px] w-full">
+            <GlassCard title="Sales Trend" subtitle="Last 7 days performance" loading={loading}>
+              <div className="h-[320px] w-full">
                 {!hydrated || loading ? (
-                  <Skeleton className="h-full w-full" />
+                  <div className="h-full w-full animate-pulse rounded-2xl bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-800 dark:to-slate-700" />
                 ) : (
                   <Chart analytics={analytics} />
                 )}
               </div>
-            </Card>
+            </GlassCard>
 
-            <Card title="Order Status Breakdown" loading={loading}>
-              <OrderStatusPie statusTotals={statusTotals} loading={loading} />
-            </Card>
+            <GlassCard title="Order Status Distribution" loading={loading}>
+              <PremiumPieChart statusTotals={statusTotals} loading={loading} />
+            </GlassCard>
           </div>
 
           <div>
-            <Card title="Status Summary" subtitle="Global Totals" loading={loading}>
+            <GlassCard title="Status Summary" subtitle="All order statuses" loading={loading}>
               <div className="grid grid-cols-2 gap-3">
                 {[
                   {
                     t: 'Total',
                     v: statusTotals?.total,
-                    c: 'text-sky-600 dark:text-sky-400',
+                    c: 'from-sky-400 to-sky-600',
+                    tc: 'text-sky-600 dark:text-sky-400',
                     to: '/user/orders',
                   },
                   {
                     t: 'Open',
                     v: statusTotals?.pending,
-                    c: 'text-amber-500 dark:text-amber-400',
+                    c: 'from-amber-400 to-amber-600',
+                    tc: 'text-amber-600 dark:text-amber-400',
                     to: '/user/orders?ship=open',
                   },
                   {
                     t: 'Assigned',
                     v: statusTotals?.assigned,
-                    c: 'text-blue-500 dark:text-blue-400',
+                    c: 'from-blue-400 to-blue-600',
+                    tc: 'text-blue-600 dark:text-blue-400',
                     to: '/user/orders?ship=assigned',
                   },
                   {
                     t: 'Picked Up',
                     v: statusTotals?.picked_up,
-                    c: 'text-indigo-500 dark:text-indigo-400',
+                    c: 'from-indigo-400 to-indigo-600',
+                    tc: 'text-indigo-600 dark:text-indigo-400',
                     to: '/user/orders?ship=picked_up',
                   },
                   {
                     t: 'In Transit',
                     v: statusTotals?.in_transit,
-                    c: 'text-cyan-600 dark:text-cyan-400',
+                    c: 'from-cyan-400 to-cyan-600',
+                    tc: 'text-cyan-600 dark:text-cyan-400',
                     to: '/user/orders?ship=in_transit',
                   },
                   {
-                    t: 'Out for Delivery',
+                    t: 'Out Delivery',
                     v: statusTotals?.out_for_delivery,
-                    c: 'text-orange-500 dark:text-orange-400',
+                    c: 'from-orange-400 to-orange-600',
+                    tc: 'text-orange-600 dark:text-orange-400',
                     to: '/user/orders?ship=out_for_delivery',
                   },
                   {
                     t: 'Delivered',
                     v: statusTotals?.delivered,
-                    c: 'text-emerald-600 dark:text-emerald-400',
+                    c: 'from-emerald-400 to-emerald-600',
+                    tc: 'text-emerald-600 dark:text-emerald-400',
                     to: '/user/orders?ship=delivered',
                   },
                   {
                     t: 'Cancelled',
                     v: statusTotals?.cancelled,
-                    c: 'text-rose-600 dark:text-rose-400',
+                    c: 'from-rose-400 to-rose-600',
+                    tc: 'text-rose-600 dark:text-rose-400',
                     to: '/user/orders?ship=cancelled',
                   },
                   {
                     t: 'Returned',
                     v: statusTotals?.returned,
-                    c: 'text-slate-500 dark:text-slate-400',
+                    c: 'from-slate-400 to-slate-600',
+                    tc: 'text-slate-600 dark:text-slate-400',
                     to: '/user/orders?ship=returned',
                   },
                   {
                     t: 'No Response',
                     v: statusTotals?.no_response,
-                    c: 'text-rose-400 dark:text-rose-300',
+                    c: 'from-rose-300 to-rose-500',
+                    tc: 'text-rose-500 dark:text-rose-300',
                     to: '/user/orders?ship=no_response',
                   },
                 ].map((item, i) => (
                   <NavLink
                     key={i}
                     to={item.to}
-                    className="group rounded-xl border border-slate-100 bg-slate-50 p-3 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700"
+                    className="group relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-slate-700/50 dark:from-slate-800 dark:to-slate-900"
                   >
                     {loading ? (
-                      <Skeleton className="h-14 w-full" />
+                      <div className="h-16 animate-pulse rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800" />
                     ) : (
                       <>
-                        <div className="mb-1 text-xs text-slate-500 dark:text-slate-400">
-                          {item.t}
-                        </div>
                         <div
-                          className={`text-lg font-bold transition-transform group-hover:scale-105 ${item.c}`}
-                        >
-                          <LiveNumber value={item.v || 0} maximumFractionDigits={0} />
+                          className={`absolute -top-2 -right-2 h-16 w-16 rounded-full bg-gradient-to-br opacity-10 blur-xl ${item.c}`}
+                        />
+                        <div className="relative">
+                          <div className="mb-2 text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+                            {item.t}
+                          </div>
+                          <div
+                            className={`text-2xl font-black transition-transform group-hover:scale-110 ${item.tc}`}
+                          >
+                            <LiveNumber value={item.v || 0} maximumFractionDigits={0} />
+                          </div>
                         </div>
                       </>
                     )}
                   </NavLink>
                 ))}
               </div>
-            </Card>
+            </GlassCard>
           </div>
         </div>
 
         {/* Per-Country Performance */}
-        <Card
+        <GlassCard
           title="Per-Country Performance"
-          subtitle="Orders & Financials (Local Currency)"
+          subtitle="Detailed metrics in local currency"
           loading={loading}
         >
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {COUNTRY_LIST.map((c) => {
+            {COUNTRY_LIST.map((c, idx) => {
               const m = countryMetrics(c)
               const flag = COUNTRY_INFO[c]?.flag || ''
               const qs = encodeURIComponent(c)
@@ -875,14 +955,17 @@ export default function UserDashboard() {
               return (
                 <div
                   key={c}
-                  className="rounded-xl border border-slate-200 bg-white p-5 transition-shadow hover:shadow-lg dark:border-slate-700 dark:bg-[#1E293B]"
+                  className="group relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-slate-700/50 dark:from-slate-800 dark:to-slate-900"
+                  style={{ animationDelay: `${idx * 50}ms` }}
                 >
-                  <div className="mb-4 flex items-center gap-3 border-b border-slate-100 pb-3 dark:border-slate-700">
-                    <span className="text-2xl">{flag}</span>
-                    <span className="font-bold text-slate-900 dark:text-white">
+                  <div className="absolute -top-10 -right-10 text-8xl opacity-5">{flag}</div>
+
+                  <div className="relative mb-6 flex items-center gap-4 border-b border-slate-200 pb-4 dark:border-slate-700">
+                    <span className="text-3xl drop-shadow-lg">{flag}</span>
+                    <span className="flex-1 text-xl font-black text-slate-900 dark:text-white">
                       {c === 'KSA' ? 'Saudi Arabia' : c}
                     </span>
-                    <span className="ml-auto rounded bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                    <span className="rounded-full bg-gradient-to-br from-slate-100 to-slate-200 px-3 py-1 text-xs font-black text-slate-700 shadow-inner dark:from-slate-700 dark:to-slate-800 dark:text-slate-300">
                       {cur}
                     </span>
                   </div>
@@ -890,71 +973,79 @@ export default function UserDashboard() {
                   {loading ? (
                     <div className="grid grid-cols-2 gap-4">
                       {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <Skeleton key={i} className="h-12 w-full" />
+                        <div
+                          key={i}
+                          className="h-14 animate-pulse rounded-xl bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800"
+                        />
                       ))}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          Total Orders
-                        </div>
-                        <NavLink
-                          to={`/user/orders?country=${qs}`}
-                          className="text-lg font-bold text-sky-600 hover:underline dark:text-sky-400"
-                        >
-                          {fmtNum(m?.orders || 0)}
-                        </NavLink>
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          Total Amount
-                        </div>
-                        <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                          {formatCurrency(m?.amountTotalOrders, c).replace(cur, '').trim()}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">Delivered</div>
-                        <NavLink
-                          to={`/user/orders?country=${qs}&ship=delivered`}
-                          className="text-lg font-bold text-emerald-600 hover:underline dark:text-emerald-400"
-                        >
-                          {fmtNum((m?.deliveredQty ?? m?.delivered) || 0)}
-                        </NavLink>
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          Delivered Amt
-                        </div>
-                        <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                          {formatCurrency(m?.amountDeliveredLocal ?? m?.amountDelivered, c)
+                    <div className="relative grid grid-cols-2 gap-4">
+                      {[
+                        {
+                          label: 'Total Orders',
+                          value: fmtNum(m?.orders || 0),
+                          to: `/user/orders?country=${qs}`,
+                          color: 'text-sky-600 dark:text-sky-400',
+                        },
+                        {
+                          label: 'Total Amount',
+                          value: formatCurrency(m?.amountTotalOrders, c).replace(cur, '').trim(),
+                          color: 'text-emerald-600 dark:text-emerald-400',
+                        },
+                        {
+                          label: 'Delivered',
+                          value: fmtNum((m?.deliveredQty ?? m?.delivered) || 0),
+                          to: `/user/orders?country=${qs}&ship=delivered`,
+                          color: 'text-emerald-600 dark:text-emerald-400',
+                        },
+                        {
+                          label: 'Delivered Amt',
+                          value: formatCurrency(m?.amountDeliveredLocal ?? m?.amountDelivered, c)
                             .replace(cur, '')
-                            .trim()}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">Open</div>
-                        <NavLink
-                          to={`/user/orders?country=${qs}&ship=open`}
-                          className="text-lg font-bold text-amber-500 hover:underline dark:text-amber-400"
+                            .trim(),
+                          color: 'text-emerald-600 dark:text-emerald-400',
+                        },
+                        {
+                          label: 'Open',
+                          value: fmtNum(m?.pending || 0),
+                          to: `/user/orders?country=${qs}&ship=open`,
+                          color: 'text-amber-500 dark:text-amber-400',
+                        },
+                        {
+                          label: 'Open Amt',
+                          value: formatCurrency(m?.amountPending, c).replace(cur, '').trim(),
+                          color: 'text-orange-500 dark:text-orange-400',
+                        },
+                      ].map((stat, i) => (
+                        <div
+                          key={i}
+                          className="rounded-xl border border-slate-200/30 bg-white/30 p-3 backdrop-blur-sm transition-all hover:bg-white/50 dark:border-slate-700/30 dark:bg-slate-800/30 dark:hover:bg-slate-700/50"
                         >
-                          {fmtNum(m?.pending || 0)}
-                        </NavLink>
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">Open Amt</div>
-                        <div className="text-lg font-bold text-orange-500 dark:text-orange-400">
-                          {formatCurrency(m?.amountPending, c).replace(cur, '').trim()}
+                          <div className="text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+                            {stat.label}
+                          </div>
+                          {stat.to ? (
+                            <NavLink
+                              to={stat.to}
+                              className={`mt-1 block text-lg font-black hover:underline ${stat.color}`}
+                            >
+                              {stat.value}
+                            </NavLink>
+                          ) : (
+                            <div className={`mt-1 text-lg font-black ${stat.color}`}>
+                              {stat.value}
+                            </div>
+                          )}
                         </div>
-                      </div>
+                      ))}
                     </div>
                   )}
                 </div>
               )
             })}
           </div>
-        </Card>
+        </GlassCard>
       </div>
     </div>
   )
