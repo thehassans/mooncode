@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 
 export default function LiveNumber({
   value = 0,
-  duration = 450,
+  duration = 800, // Slower, smoother duration
   prefix = '',
   suffix = '',
   locale = undefined,
@@ -11,8 +11,8 @@ export default function LiveNumber({
   showDelta = true,
 }) {
   const [display, setDisplay] = useState(Number(value) || 0)
-  const [flash, setFlash] = useState(false)
   const [delta, setDelta] = useState(0)
+  const [highlight, setHighlight] = useState(null) // 'up' | 'down' | null
   const rafRef = useRef(null)
   const startRef = useRef({ from: Number(value) || 0, to: Number(value) || 0, t0: 0 })
   const prevRef = useRef(Number(value) || 0)
@@ -21,28 +21,43 @@ export default function LiveNumber({
     const to = Number(value) || 0
     const from = display
     if (from === to) return
+
+    // Determine direction for highlight
+    const diff = to - prevRef.current
+    if (diff !== 0) {
+      setDelta(diff)
+      setHighlight(diff > 0 ? 'up' : 'down')
+      // Reset highlight after animation
+      setTimeout(() => setHighlight(null), duration + 200)
+    }
+
     startRef.current = { from, to, t0: performance.now() }
-    setFlash(true)
-    setDelta(to - prevRef.current)
     prevRef.current = to
+
     const step = (t) => {
       const { from, to, t0 } = startRef.current
-      const p = Math.min(1, (t - t0) / Math.max(120, duration))
-      const eased = 1 - Math.pow(1 - p, 3)
+      // Ease out quart
+      const p = Math.min(1, (t - t0) / duration)
+      const eased = 1 - Math.pow(1 - p, 4)
+
       const v = from + (to - from) * eased
       setDisplay(v)
-      if (p < 1) rafRef.current = requestAnimationFrame(step)
-      else rafRef.current = null
+
+      if (p < 1) {
+        rafRef.current = requestAnimationFrame(step)
+      } else {
+        rafRef.current = null
+        setDisplay(to) // Ensure exact final value
+      }
     }
+
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
     rafRef.current = requestAnimationFrame(step)
-    const tm = setTimeout(() => setFlash(false), Math.min(900, duration + 500))
+
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
-      clearTimeout(tm)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value])
+  }, [value, duration])
 
   const fmt = (n) => {
     try {
@@ -52,15 +67,29 @@ export default function LiveNumber({
     }
   }
 
+  const getColorClass = () => {
+    if (highlight === 'up') return 'text-emerald-500 transition-colors duration-300'
+    if (highlight === 'down') return 'text-rose-500 transition-colors duration-300'
+    return 'transition-colors duration-500'
+  }
+
   return (
-    <span className={(flash ? 'live-number changed ' : 'live-number ') + (className || '')}>
-      {prefix}
-      {fmt(display)}
-      {suffix}
-      {showDelta && delta !== 0 && (
-        <sup className={delta > 0 ? 'live-delta up' : 'live-delta down'} aria-hidden>
-          {delta > 0 ? '▲' : '▼'}
-        </sup>
+    <span className={`inline-flex items-center gap-1 ${getColorClass()} ${className}`}>
+      <span>
+        {prefix}
+        {fmt(display)}
+        {suffix}
+      </span>
+      {showDelta && delta !== 0 && highlight && (
+        <span
+          className={`animate-pulse rounded-full px-1.5 py-0.5 text-xs font-bold ${
+            highlight === 'up'
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
+              : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'
+          }`}
+        >
+          {highlight === 'up' ? '↑' : '↓'}
+        </span>
       )}
     </span>
   )
