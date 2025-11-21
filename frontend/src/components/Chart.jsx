@@ -119,13 +119,13 @@ export default function Chart({ analytics }) {
           return (
             <div
               key={k}
-              className="group flex items-center gap-2 rounded-xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 px-4 py-2 shadow-sm shadow-slate-200/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:shadow-slate-200/50 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none"
+              className="group flex items-center gap-3 rounded-xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 px-5 py-3 shadow-sm shadow-slate-200/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:shadow-slate-200/50 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none"
             >
               <span
-                className="h-3 w-3 rounded-full shadow-lg transition-all duration-300 group-hover:scale-125"
+                className="h-4 w-4 rounded-full shadow-lg transition-all duration-300 group-hover:scale-125"
                 style={{ background: colors[k].line, boxShadow: colors[k].shadow }}
               />
-              <span className="text-xs font-black text-slate-700 dark:text-neutral-300">{k}</span>
+              <span className="text-sm font-black text-slate-700 dark:text-neutral-200">{k}</span>
               <span className="text-xs font-bold text-slate-400">({total})</span>
             </div>
           )
@@ -273,7 +273,7 @@ export default function Chart({ analytics }) {
                           r={5}
                           fill={colors[k].line}
                           stroke="white"
-                          strokeWidth="2"
+                          strokeWidth="4"
                           filter={`url(#glow-${k})`}
                         />
                       </>
@@ -301,7 +301,7 @@ export default function Chart({ analytics }) {
                       y={yOffset}
                       width={120}
                       height={20}
-                      rx="6"
+                      r="8"
                       fill={colors[k].line}
                       opacity="0.95"
                     />

@@ -538,7 +538,7 @@ export default function Dashboard() {
           <div className="space-y-6 lg:col-span-2">
             {/* Sales Trend */}
             <GlassCard title="Sales Trend" subtitle="Last 7 days performance">
-              <div className="h-[300px] w-full">
+              <div className="h-[400px] w-full">
                 {!hydrated || loading ? (
                   <div className="h-full w-full animate-pulse rounded-2xl bg-slate-200 dark:bg-neutral-800" />
                 ) : (
@@ -803,8 +803,12 @@ export default function Dashboard() {
                   return (
                     <div
                       key={c}
-                      className="rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-5 transition-all hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
+                      className="relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-5 transition-all hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
                     >
+                      {/* Large Flag Background */}
+                      <div className="pointer-events-none absolute -top-8 -right-8 text-[180px] opacity-[0.03] dark:opacity-[0.02]">
+                        {flag}
+                      </div>
                       <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3 dark:border-neutral-800">
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">{flag}</span>
