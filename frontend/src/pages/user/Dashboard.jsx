@@ -1,172 +1,192 @@
-import React, { useEffect, useMemo, useRef, useState, memo } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import Chart from '../../components/Chart.jsx'
 import LiveNumber from '../../components/LiveNumber.jsx'
 import { API_BASE, apiGet } from '../../api.js'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
-import { getCurrencyConfig } from '../../util/currency'
+import { getCurrencyConfig, toAEDByCode, convert } from '../../util/currency'
 
-// ===========================
-// PREMIUM UI COMPONENTS
-// ===========================
+// --- UI Components ---
 
-const Shimmer = () => (
-  <div className="animate-shimmer absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent dark:via-white/5" />
+const Skeleton = ({ className = '' }) => (
+  <div className={`animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700 ${className}`} />
 )
 
-const DashboardCard = ({ children, className = '', title, subtitle, isLoading = false }) => (
+const DashboardCard = ({ children, className = '', title, subtitle, loading = false }) => (
   <div
-    className={`group relative overflow-hidden rounded-3xl border border-white/20 bg-white/60 p-6 shadow-xl backdrop-blur-xl transition-all duration-500 hover:shadow-2xl dark:border-slate-700/40 dark:bg-slate-900/60 dark:shadow-slate-900/50 ${className}`}
+    className={`group relative overflow-hidden rounded-3xl border border-white/20 bg-white/80 p-6 shadow-xl backdrop-blur-xl transition-all duration-500 hover:shadow-2xl dark:border-slate-700/50 dark:bg-slate-800/80 ${className}`}
   >
-    <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 dark:from-slate-800/20" />
-    <div className="relative z-10">
-      {(title || subtitle) && (
-        <div className="mb-6 flex flex-col gap-1 border-b border-slate-100/50 pb-4 dark:border-slate-700/30">
-          {title && (
-            <h3 className="bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-xl font-black tracking-tight text-transparent dark:from-white dark:to-slate-400">
-              {title}
-            </h3>
-          )}
-          {subtitle && (
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{subtitle}</p>
-          )}
-        </div>
-      )}
-      {isLoading ? (
-        <div className="space-y-4">
-          <div className="relative h-32 overflow-hidden rounded-2xl bg-slate-100/50 dark:bg-slate-800/50">
-            <Shimmer />
-          </div>
-        </div>
-      ) : (
-        children
-      )}
-    </div>
-  </div>
-)
+    <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 dark:from-slate-700/20" />
 
-const StatTile = memo(
-  ({
-    title,
-    value,
-    subValue,
-    colorClass = 'text-slate-900 dark:text-white',
-    gradientFrom = 'from-slate-50',
-    gradientTo = 'to-slate-100',
-    icon,
-    to,
-    isLoading = false,
-  }) => {
-    const Content = () => (
-      <div className="relative flex h-full flex-col justify-between overflow-hidden">
-        <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-gradient-to-br from-white/20 to-transparent blur-2xl transition-transform duration-500 group-hover:scale-150 dark:from-white/5" />
-
-        <div className="flex items-start justify-between">
-          <div className="text-xs font-bold tracking-widest text-slate-500 uppercase dark:text-slate-400">
-            {title}
-          </div>
-          {icon && <div className={`rounded-full p-2 ${colorClass} bg-opacity-10`}>{icon}</div>}
-        </div>
-
-        <div className="mt-4">
-          {isLoading ? (
-            <div className="relative h-8 w-24 overflow-hidden rounded-lg bg-slate-200/50 dark:bg-slate-700/50">
-              <Shimmer />
-            </div>
+    {(title || subtitle) && (
+      <div className="relative z-10 mb-6 flex items-start justify-between">
+        <div>
+          {loading ? (
+            <Skeleton className="mb-2 h-7 w-48" />
           ) : (
-            <>
-              <div className={`text-3xl font-black ${colorClass} tracking-tighter drop-shadow-sm`}>
-                {value}
-              </div>
-              {subValue && (
-                <div className="mt-1 flex items-center gap-1 text-xs font-medium text-slate-400 dark:text-slate-500">
-                  {subValue}
-                </div>
-              )}
-            </>
+            title && (
+              <h3 className="text-xl font-bold tracking-tight text-slate-800 dark:text-white">
+                {title}
+              </h3>
+            )
+          )}
+          {loading ? (
+            <Skeleton className="h-4 w-32" />
+          ) : (
+            subtitle && (
+              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                {subtitle}
+              </p>
+            )
           )}
         </div>
       </div>
-    )
+    )}
+    <div className="relative z-10">{children}</div>
+  </div>
+)
 
-    const containerClasses = `group relative overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br ${gradientFrom} ${gradientTo} p-5 shadow-lg backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-slate-700/30 dark:from-slate-800/40 dark:to-slate-900/40`
+const StatTile = ({
+  title,
+  value,
+  subValue,
+  icon,
+  colorClass = 'text-slate-800 dark:text-white',
+  bgClass = 'bg-slate-50 dark:bg-slate-700/30',
+  to,
+  loading = false,
+  delay = 0,
+}) => {
+  const Content = () => (
+    <div className="flex h-full flex-col justify-between">
+      {loading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-32" />
+        </div>
+      ) : (
+        <>
+          <div className="mb-2 text-sm font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+            {title}
+          </div>
+          <div className={`text-3xl font-black ${colorClass} tracking-tight`}>{value}</div>
+          {subValue && <div className="mt-2">{subValue}</div>}
+        </>
+      )}
+    </div>
+  )
 
-    if (to) {
-      return (
-        <NavLink to={to} className={containerClasses}>
-          <Content />
-        </NavLink>
-      )
-    }
+  const containerClasses = `relative overflow-hidden rounded-2xl border border-slate-100 p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-slate-700/50 ${bgClass}`
 
+  if (to && !loading) {
     return (
-      <div className={containerClasses}>
+      <NavLink to={to} className={containerClasses} style={{ animationDelay: `${delay}ms` }}>
         <Content />
+      </NavLink>
+    )
+  }
+
+  return (
+    <div className={containerClasses} style={{ animationDelay: `${delay}ms` }}>
+      <Content />
+    </div>
+  )
+}
+
+const OrderStatusPie = ({ statusTotals, loading }) => {
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-8 py-4 md:flex-row">
+        <Skeleton className="h-48 w-48 rounded-full" />
+        <div className="grid grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-6 w-32" />
+          ))}
+        </div>
       </div>
     )
   }
-)
 
-const CustomSelect = ({ value, onChange, options, icon }) => (
-  <div className="group relative">
-    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500 transition-colors group-hover:text-slate-800 dark:text-slate-400 dark:group-hover:text-white">
-      {icon}
-    </div>
-    <select
-      value={value}
-      onChange={onChange}
-      className="h-10 w-full appearance-none rounded-xl border border-slate-200/60 bg-white/50 pr-8 pl-10 text-sm font-bold text-slate-700 shadow-sm backdrop-blur-md transition-all outline-none hover:border-slate-300 hover:bg-white hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700/50 dark:bg-slate-800/50 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
-    >
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
-      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-    </div>
-  </div>
-)
+  const st = statusTotals || { pending: 0, picked_up: 0, delivered: 0, cancelled: 0 }
+  const data = [
+    {
+      label: 'Open',
+      value: st.pending,
+      color: '#F59E0B',
+      tailwindColor: 'bg-amber-500',
+      textColor: 'text-amber-500',
+    },
+    {
+      label: 'Picked Up',
+      value: st.picked_up,
+      color: '#3B82F6',
+      tailwindColor: 'bg-blue-500',
+      textColor: 'text-blue-500',
+    },
+    {
+      label: 'Delivered',
+      value: st.delivered,
+      color: '#10B981',
+      tailwindColor: 'bg-emerald-500',
+      textColor: 'text-emerald-500',
+    },
+    {
+      label: 'Cancelled',
+      value: st.cancelled,
+      color: '#EF4444',
+      tailwindColor: 'bg-rose-500',
+      textColor: 'text-rose-500',
+    },
+  ]
+  const total = data.reduce((sum, item) => sum + item.value, 0)
 
-// Skeleton Loaders
-const ProfitLossSkeleton = () => (
-  <DashboardCard>
-    <div className="space-y-8">
-      <div className="relative h-8 w-48 overflow-hidden rounded-lg bg-slate-200/50 dark:bg-slate-700/50">
-        <Shimmer />
-      </div>
-      <div className="rounded-3xl border border-slate-100 bg-slate-50/50 p-8 dark:border-slate-700/30 dark:bg-slate-800/30">
-        <div className="space-y-8">
-          <div className="relative h-8 w-32 overflow-hidden rounded-lg bg-slate-200/50 dark:bg-slate-700/50">
-            <Shimmer />
-          </div>
-          <div className="relative h-20 w-72 overflow-hidden rounded-xl bg-slate-300/50 dark:bg-slate-600/50">
-            <Shimmer />
-          </div>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-24 rounded-2xl bg-white/40 dark:bg-slate-700/30">
-                <div className="relative h-full w-full overflow-hidden rounded-2xl">
-                  <Shimmer />
-                </div>
-              </div>
-            ))}
+  if (total === 0)
+    return <div className="py-12 text-center font-medium text-slate-400">No orders to display</div>
+
+  let cumulative = 0
+  const gradient = data
+    .map((item) => {
+      const percentage = (item.value / total) * 360
+      const start = cumulative
+      cumulative += percentage
+      return `${item.color} ${start}deg ${cumulative}deg`
+    })
+    .join(', ')
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-10 py-6 md:flex-row">
+      <div className="group relative">
+        <div className="absolute inset-0 rounded-full bg-slate-200 blur-xl dark:bg-slate-700" />
+        <div
+          className="relative h-56 w-56 rounded-full shadow-2xl transition-transform duration-500 group-hover:scale-105"
+          style={{ background: `conic-gradient(${gradient})` }}
+        />
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="flex h-40 w-40 flex-col items-center justify-center rounded-full bg-white shadow-inner dark:bg-slate-800">
+            <span className="text-4xl font-black text-slate-800 dark:text-white">{total}</span>
+            <span className="text-xs font-bold text-slate-400 uppercase">Total Orders</span>
           </div>
         </div>
       </div>
+      <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+        {data.map((item, idx) => (
+          <div key={idx} className="flex items-center gap-3">
+            <div className={`h-3 w-3 rounded-full shadow-sm ${item.tailwindColor}`} />
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+              {item.label}
+            </span>
+            <span className={`text-sm font-bold ${item.textColor}`}>{item.value}</span>
+          </div>
+        ))}
+      </div>
     </div>
-  </DashboardCard>
-)
+  )
+}
 
-// ===========================
-// CACHE LOGIC
-// ===========================
-
+// --- Cache Logic ---
 const __dashCache = new Map()
-const DASH_TTL = 60 * 1000
+const DASH_TTL = 60 * 1000 // 60s
 function cacheKey(name, params) {
   return `${name}:${params}`
 }
@@ -186,51 +206,28 @@ function cacheGet(name, params) {
   }
 }
 
-// ===========================
-// MAIN DASHBOARD COMPONENT
-// ===========================
-
 export default function UserDashboard() {
   const toast = useToast()
   const loadSeqRef = useRef(0)
   const reloadTimerRef = useRef(null)
   const [hydrated, setHydrated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true) // General loading state
   const loadAbortRef = useRef(null)
   const bgAbortRef = useRef(null)
   const monthDebounceRef = useRef(null)
 
+  // Month/Year filtering
   const now = new Date()
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState(now.getFullYear())
 
   const [currencyCfg, setCurrencyCfg] = useState(null)
-  const [metrics, setMetrics] = useState({
-    totalSales: 0,
-    totalCOD: 0,
-    totalPrepaid: 0,
-    totalOrders: 0,
-    pendingOrders: 0,
-    pickedUpOrders: 0,
-    deliveredOrders: 0,
-    cancelledOrders: 0,
-    totalProductsInHouse: 0,
-    totalProductsOrdered: 0,
-    totalDeposit: 0,
-    totalWithdraw: 0,
-    totalExpense: 0,
-    totalAgentExpense: 0,
-    totalDriverExpense: 0,
-    totalRevenue: 0,
-    countries: {},
-    productMetrics: { global: {}, countries: {} },
-    profitLoss: null, // Ensure this is initialized
-  })
-
+  const [metrics, setMetrics] = useState(null)
   const [analytics, setAnalytics] = useState(null)
   const [salesByCountry, setSalesByCountry] = useState({})
   const [drivers, setDrivers] = useState([])
 
+  // --- Helpers ---
   const COUNTRY_INFO = useMemo(
     () => ({
       KSA: { flag: '🇸🇦', cur: 'SAR', alias: ['Saudi Arabia'] },
@@ -260,11 +257,44 @@ export default function UserDashboard() {
     return {}
   }
 
-  const fmtNum = (n) => (Number.isFinite(n) ? n.toLocaleString() : '0')
-  const fmtAmt = (n) =>
-    Number.isFinite(n)
-      ? n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-      : '0'
+  function fmtAmt(n) {
+    return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
+  }
+
+  // AED conversion helpers
+  function toAED(amount, country) {
+    try {
+      const code = COUNTRY_INFO[country]?.cur || 'AED'
+      return toAEDByCode(Number(amount || 0), code, currencyCfg)
+    } catch {
+      return Number(amount || 0)
+    }
+  }
+  function toAEDByCurrency(amount, currency) {
+    try {
+      const code = String(currency || 'AED')
+      return toAEDByCode(Number(amount || 0), code, currencyCfg)
+    } catch {
+      return Number(amount || 0)
+    }
+  }
+  function sumCurrencyMapAED(map) {
+    try {
+      return Object.entries(map || {}).reduce(
+        (s, [code, val]) => s + toAEDByCode(Number(val || 0), String(code || 'AED'), currencyCfg),
+        0
+      )
+    } catch {
+      return 0
+    }
+  }
+  function sumAmountAED(key) {
+    try {
+      return COUNTRY_LIST.reduce((s, c) => s + toAED(countryMetrics(c)[key] || 0, c), 0)
+    } catch {
+      return 0
+    }
+  }
 
   const statusTotals = useMemo(() => {
     if (metrics && metrics.statusTotals) return metrics.statusTotals
@@ -325,7 +355,7 @@ export default function UserDashboard() {
   }
 
   async function load() {
-    setIsLoading(true)
+    setLoading(true)
     const dateRange = getMonthDateRange()
     const dateParams = `from=${encodeURIComponent(dateRange.from)}&to=${encodeURIComponent(dateRange.to)}`
 
@@ -333,70 +363,67 @@ export default function UserDashboard() {
     try {
       loadAbortRef.current && loadAbortRef.current.abort()
     } catch {}
-    try {
-      bgAbortRef.current && bgAbortRef.current.abort()
-    } catch {}
     const controller = new AbortController()
     loadAbortRef.current = controller
 
+    // Check cache first
     const cachedAnalytics = cacheGet('analytics', dateParams)
     if (cachedAnalytics) setAnalytics(cachedAnalytics)
     const cachedMetrics = cacheGet('metrics', dateParams)
-    if (cachedMetrics) {
-      setMetrics(cachedMetrics)
-      setIsLoading(false)
-    }
+    if (cachedMetrics) setMetrics(cachedMetrics)
     const cachedSales = cacheGet('salesByCountry', dateParams)
     if (cachedSales) setSalesByCountry(cachedSales)
+
+    // If we have cached metrics, we can stop showing full loading state, but still fetch fresh data
+    if (cachedMetrics) setLoading(false)
 
     const cfgP = (currencyCfg ? Promise.resolve(currencyCfg) : getCurrencyConfig()).catch(
       () => null
     )
-    const analyticsP = apiGet(`/api/orders/analytics/last7days?${dateParams}`, {
-      signal: controller.signal,
-    }).catch(() => ({ days: [], totals: {} }))
+
+    // Fetch Metrics first as it's the most important
     const metricsP = apiGet(`/api/reports/user-metrics?${dateParams}`, {
       signal: controller.signal,
     }).catch(() => null)
-    const salesP = apiGet(`/api/reports/user-metrics/sales-by-country?${dateParams}`, {
-      signal: controller.signal,
-    }).catch(() => ({}))
-    const driversFirstP = apiGet(`/api/finance/drivers/summary?page=1&limit=100&${dateParams}`, {
-      signal: controller.signal,
-    }).catch((e) => null)
 
-    const [cfg, metricsRes, salesRes] = await Promise.all([cfgP, metricsP, salesP])
-    if (loadSeqRef.current !== seq) return
-
-    setCurrencyCfg(cfg)
-    if (metricsRes) {
-      setMetrics(metricsRes)
-      cacheSet('metrics', dateParams, metricsRes)
-    }
-    if (salesRes) {
-      setSalesByCountry(salesRes)
-      cacheSet('salesByCountry', dateParams, salesRes)
-    }
-    setHydrated(true)
-    setIsLoading(false)
-
-    analyticsP.then((res) => {
+    try {
+      const [cfg, metricsRes] = await Promise.all([cfgP, metricsP])
       if (loadSeqRef.current !== seq) return
-      if (res) {
-        setAnalytics(res)
-        cacheSet('analytics', dateParams, res)
-      }
-    })
 
-    driversFirstP.then((driversFirst) => {
-      if (loadSeqRef.current !== seq) return
-      if (driversFirst) {
-        const arr = Array.isArray(driversFirst?.drivers) ? driversFirst.drivers : []
-        setDrivers(arr)
-      } else {
-        setDrivers([])
+      setCurrencyCfg(cfg)
+      if (metricsRes) {
+        setMetrics(metricsRes)
+        cacheSet('metrics', dateParams, metricsRes)
       }
-    })
+      setHydrated(true)
+      setLoading(false) // Critical data loaded
+
+      // Load secondary data in background
+      apiGet(`/api/orders/analytics/last7days?${dateParams}`, { signal: controller.signal })
+        .then((res) => {
+          if (loadSeqRef.current !== seq) return
+          if (res) {
+            setAnalytics(res)
+            cacheSet('analytics', dateParams, res)
+          }
+        })
+        .catch(() => {})
+
+      apiGet(`/api/reports/user-metrics/sales-by-country?${dateParams}`, {
+        signal: controller.signal,
+      })
+        .then((res) => {
+          if (loadSeqRef.current !== seq) return
+          if (res) {
+            setSalesByCountry(res)
+            cacheSet('salesByCountry', dateParams, res)
+          }
+        })
+        .catch(() => {})
+    } catch (e) {
+      console.error(e)
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -405,170 +432,126 @@ export default function UserDashboard() {
     return () => clearTimeout(monthDebounceRef.current)
   }, [selectedMonth, selectedYear])
 
+  // Socket listener (kept same as backup)
   useEffect(() => {
     let socket
     try {
-      socket = io(API_BASE, { transports: ['websocket'], reconnection: true })
-      socket.on('new_order', () => {
-        if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
-        reloadTimerRef.current = setTimeout(load, 3000)
+      const token = localStorage.getItem('token') || ''
+      socket = io(API_BASE || undefined, {
+        path: '/socket.io',
+        transports: ['polling'],
+        upgrade: false,
+        auth: { token },
+        withCredentials: true,
       })
-    } catch (err) {
-      console.error('Socket error:', err)
-    }
+      const scheduleLoad = () => {
+        if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
+        reloadTimerRef.current = setTimeout(load, 450)
+      }
+      socket.on('orders.changed', (payload = {}) => {
+        scheduleLoad()
+        // Toast logic...
+      })
+      socket.on('reports.userMetrics.updated', scheduleLoad)
+      socket.on('orders.analytics.updated', scheduleLoad)
+      socket.on('finance.drivers.updated', scheduleLoad)
+    } catch {}
     return () => {
-      if (socket) socket.disconnect()
-      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
+      try {
+        socket && socket.disconnect()
+      } catch {}
     }
-  }, [])
+  }, [toast])
+
+  const currentYear = new Date().getFullYear()
+  const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] transition-colors duration-500 dark:bg-[#0B1120]">
-      {/* Decorative Background Elements */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute -top-[20%] -left-[10%] h-[50%] w-[50%] rounded-full bg-blue-500/5 blur-[120px] dark:bg-blue-500/10" />
-        <div className="absolute top-[20%] -right-[10%] h-[40%] w-[40%] rounded-full bg-purple-500/5 blur-[120px] dark:bg-purple-500/10" />
-        <div className="absolute -bottom-[10%] left-[20%] h-[40%] w-[40%] rounded-full bg-emerald-500/5 blur-[120px] dark:bg-emerald-500/10" />
-      </div>
+    <div className="container mx-auto max-w-[1600px] space-y-8 px-4 py-8 font-sans">
+      {/* Header & Filters */}
+      <div className="flex flex-col items-center justify-between gap-6 rounded-3xl border border-white/20 bg-white/60 p-6 shadow-lg backdrop-blur-xl md:flex-row dark:border-slate-700/50 dark:bg-slate-800/60">
+        <div>
+          <h1 className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-3xl font-black tracking-tight text-transparent dark:from-white dark:to-slate-400">
+            Dashboard
+          </h1>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            Performance Overview & Analytics
+          </p>
+        </div>
 
-      {/* Header */}
-      <div className="sticky top-0 z-20 border-b border-white/20 bg-white/70 backdrop-blur-2xl dark:border-slate-800/50 dark:bg-slate-900/70">
-        <div className="mx-auto max-w-[1920px] px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-                Dashboard
-              </h1>
-              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                Performance Overview & Analytics
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <CustomSelect
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                options={monthNames.map((name, idx) => ({ value: idx + 1, label: name }))}
-                icon={
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                }
-              />
-              <CustomSelect
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                options={[2023, 2024, 2025].map((year) => ({ value: year, label: year }))}
-                icon={
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                }
-              />
-            </div>
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <span className="pl-3 text-sm font-bold text-slate-500 dark:text-slate-400">Period:</span>
+          <div className="relative">
+            <select
+              className="cursor-pointer appearance-none rounded-xl bg-slate-50 py-2 pr-8 pl-3 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-100 focus:ring-0 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+            >
+              {monthNames.map((name, idx) => (
+                <option key={idx} value={idx + 1}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+          <div className="relative">
+            <select
+              className="cursor-pointer appearance-none rounded-xl bg-slate-50 py-2 pr-8 pl-3 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-100 focus:ring-0 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+            >
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="ml-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-indigo-500/30">
+            {monthNames[selectedMonth - 1]} {selectedYear}
           </div>
         </div>
       </div>
 
-      <div className="relative z-10 mx-auto max-w-[1920px] space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-        {/* Top Stats Grid */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-          <StatTile
-            title="TOTAL ORDERS"
-            value={<LiveNumber value={statusTotals?.total || 0} maximumFractionDigits={0} />}
-            colorClass="text-slate-800 dark:text-white"
-            gradientFrom="from-white"
-            gradientTo="to-slate-50"
-            to="/user/orders"
-            isLoading={isLoading}
-          />
-          <StatTile
-            title="OPEN"
-            value={<LiveNumber value={statusTotals?.pending || 0} maximumFractionDigits={0} />}
-            colorClass="text-amber-500 dark:text-amber-400"
-            gradientFrom="from-amber-50/50"
-            gradientTo="to-white"
-            to="/user/orders?ship=open"
-            isLoading={isLoading}
-          />
-          <StatTile
-            title="DELIVERED"
-            value={<LiveNumber value={statusTotals?.delivered || 0} maximumFractionDigits={0} />}
-            colorClass="text-emerald-500 dark:text-emerald-400"
-            gradientFrom="from-emerald-50/50"
-            gradientTo="to-white"
-            to="/user/orders?ship=delivered"
-            isLoading={isLoading}
-          />
-          <StatTile
-            title="PICKED UP"
-            value={<LiveNumber value={statusTotals?.picked_up || 0} maximumFractionDigits={0} />}
-            colorClass="text-blue-500 dark:text-blue-400"
-            gradientFrom="from-blue-50/50"
-            gradientTo="to-white"
-            to="/user/orders?ship=picked_up"
-            isLoading={isLoading}
-          />
-          <StatTile
-            title="IN TRANSIT"
-            value={<LiveNumber value={statusTotals?.in_transit || 0} maximumFractionDigits={0} />}
-            colorClass="text-cyan-500 dark:text-cyan-400"
-            gradientFrom="from-cyan-50/50"
-            gradientTo="to-white"
-            to="/user/orders?ship=in_transit"
-            isLoading={isLoading}
-          />
-          <StatTile
-            title="CANCELLED"
-            value={<LiveNumber value={statusTotals?.cancelled || 0} maximumFractionDigits={0} />}
-            colorClass="text-rose-500 dark:text-rose-400"
-            gradientFrom="from-rose-50/50"
-            gradientTo="to-white"
-            to="/user/orders?ship=cancelled"
-            isLoading={isLoading}
-          />
-        </div>
-
-        {/* Profit/Loss Section */}
-        {isLoading ? (
-          <ProfitLossSkeleton />
-        ) : (
-          metrics?.profitLoss && (
-            <DashboardCard>
-              <div className="space-y-8">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xl font-black text-slate-800 dark:text-slate-200">
-                    Financial Overview
-                  </h4>
-                  <div
-                    className={`rounded-full px-4 py-1 text-xs font-bold tracking-wider uppercase ${metrics.profitLoss.isProfit ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}
-                  >
-                    {metrics.profitLoss.isProfit ? 'Net Profit' : 'Net Loss'}
-                  </div>
-                </div>
-
-                {/* Main Profit Card */}
-                <div className="group relative overflow-hidden rounded-3xl border border-slate-200/50 bg-gradient-to-br from-slate-50 via-white to-slate-50 p-10 shadow-sm transition-all duration-500 hover:shadow-xl dark:border-slate-700/50 dark:from-slate-800/50 dark:via-slate-800/30 dark:to-slate-800/50">
-                  <div
-                    className={`absolute -top-20 -right-20 h-64 w-64 rounded-full opacity-20 blur-[80px] transition-colors duration-500 ${metrics.profitLoss.isProfit ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                  />
-
-                  <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <div className="text-sm font-bold tracking-widest text-slate-500 uppercase dark:text-slate-400">
-                        Net {metrics.profitLoss.isProfit ? 'Profit' : 'Loss'}
+      {/* Profit/Loss Section */}
+      <div className="space-y-6">
+        <DashboardCard
+          title="Profit / Loss Overview"
+          subtitle="Delivered orders only"
+          loading={loading}
+        >
+          {loading ? (
+            <div className="space-y-8">
+              <Skeleton className="h-40 w-full rounded-2xl" />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-32 rounded-xl" />
+                ))}
+              </div>
+            </div>
+          ) : (
+            metrics?.profitLoss && (
+              <>
+                {/* Global Profit/Loss */}
+                <div
+                  className={`relative mb-8 overflow-hidden rounded-3xl p-8 transition-all duration-500 ${
+                    metrics.profitLoss.isProfit
+                      ? 'border border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:border-emerald-900/50 dark:from-emerald-900/20 dark:to-emerald-800/20'
+                      : 'border border-rose-200 bg-gradient-to-br from-rose-50 to-rose-100/50 dark:border-rose-900/50 dark:from-rose-900/20 dark:to-rose-800/20'
+                  }`}
+                >
+                  <div className="relative z-10 flex flex-col items-center justify-between gap-10 lg:flex-row">
+                    <div className="text-center lg:text-left">
+                      <div className="mb-2 text-sm font-bold tracking-widest text-slate-500 uppercase dark:text-slate-400">
+                        {metrics.profitLoss.isProfit ? 'Net Profit' : 'Net Loss'}
                       </div>
                       <div
-                        className={`mt-2 text-6xl font-black tracking-tighter lg:text-7xl ${metrics.profitLoss.isProfit ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}
+                        className={`text-6xl font-black tracking-tighter ${
+                          metrics.profitLoss.isProfit
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-600 dark:text-rose-400'
+                        }`}
                       >
                         {metrics.profitLoss.isProfit ? '+' : '-'}
                         <LiveNumber
@@ -579,53 +562,47 @@ export default function UserDashboard() {
                       </div>
                     </div>
 
-                    <div className="grid w-full grid-cols-2 gap-4 md:grid-cols-3 lg:w-auto lg:grid-cols-3 xl:grid-cols-6">
+                    <div className="grid w-full grid-cols-2 gap-4 sm:grid-cols-3 lg:w-auto lg:grid-cols-6">
                       {[
                         {
                           label: 'Revenue',
                           val: metrics.profitLoss.revenue,
                           color: 'text-sky-600 dark:text-sky-400',
-                          bg: 'bg-sky-50 dark:bg-sky-500/10',
                         },
                         {
                           label: 'Cost',
                           val: metrics.profitLoss.purchaseCost,
                           color: 'text-violet-600 dark:text-violet-400',
-                          bg: 'bg-violet-50 dark:bg-violet-500/10',
                         },
                         {
                           label: 'Driver',
                           val: metrics.profitLoss.driverCommission,
                           color: 'text-amber-600 dark:text-amber-400',
-                          bg: 'bg-amber-50 dark:bg-amber-500/10',
                         },
                         {
                           label: 'Agent',
                           val: metrics.profitLoss.agentCommission,
-                          color: 'text-yellow-600 dark:text-yellow-400',
-                          bg: 'bg-yellow-50 dark:bg-yellow-500/10',
+                          color: 'text-amber-600 dark:text-amber-400',
                         },
                         {
                           label: 'Investor',
                           val: metrics.profitLoss.investorCommission,
-                          color: 'text-pink-600 dark:text-pink-400',
-                          bg: 'bg-pink-50 dark:bg-pink-500/10',
+                          color: 'text-amber-600 dark:text-amber-400',
                         },
                         {
                           label: 'Ads',
                           val: metrics.profitLoss.advertisementExpense,
                           color: 'text-rose-600 dark:text-rose-400',
-                          bg: 'bg-rose-50 dark:bg-rose-500/10',
                         },
                       ].map((item, i) => (
                         <div
                           key={i}
-                          className={`flex flex-col items-center justify-center rounded-2xl p-4 transition-transform hover:scale-105 ${item.bg}`}
+                          className="flex flex-col items-center justify-center rounded-2xl border border-white/50 bg-white/40 p-4 text-center shadow-sm backdrop-blur-sm transition-transform hover:scale-105 dark:border-white/5 dark:bg-white/5"
                         >
-                          <div className="text-xs font-bold tracking-wider text-slate-500 uppercase dark:text-slate-400">
+                          <div className="mb-1 text-xs font-bold text-slate-500 dark:text-slate-400">
                             {item.label}
                           </div>
-                          <div className={`mt-1 text-lg font-bold ${item.color}`}>
+                          <div className={`text-lg font-bold ${item.color}`}>
                             <LiveNumber
                               value={item.val || 0}
                               prefix="AED "
@@ -638,86 +615,335 @@ export default function UserDashboard() {
                   </div>
                 </div>
 
-                {/* Country Breakdown */}
-                <div>
-                  <h4 className="mb-6 text-lg font-bold text-slate-700 dark:text-slate-300">
-                    Regional Performance
-                  </h4>
-                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {['KSA', 'UAE', 'Oman', 'Bahrain', 'India', 'Kuwait', 'Qatar'].map((c) => {
-                      const profitData = metrics.profitLoss.byCountry?.[c]
-                      if (!profitData) return null
-                      const isProfit = (profitData.profit || 0) >= 0
-                      const flag = COUNTRY_INFO[c]?.flag || ''
-                      const currency = profitData.currency || 'AED'
+                {/* Country-wise Profit/Loss */}
+                <h4 className="mb-6 text-lg font-bold text-slate-700 dark:text-slate-300">
+                  Geographic Breakdown
+                </h4>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {['KSA', 'UAE', 'Oman', 'Bahrain', 'India', 'Kuwait', 'Qatar'].map((c, idx) => {
+                    const profitData = metrics.profitLoss.byCountry?.[c]
+                    if (!profitData) return null
+                    const isProfit = (profitData.profit || 0) >= 0
+                    const flag = COUNTRY_INFO[c]?.flag || ''
+                    const currency = profitData.currency || 'AED'
 
-                      return (
-                        <div
-                          key={c}
-                          className={`group relative overflow-hidden rounded-2xl border p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
-                            isProfit
-                              ? 'border-emerald-100 bg-gradient-to-br from-emerald-50/30 to-white hover:border-emerald-200 hover:shadow-emerald-500/10 dark:border-emerald-500/20 dark:from-emerald-900/10 dark:to-slate-800'
-                              : 'border-rose-100 bg-gradient-to-br from-rose-50/30 to-white hover:border-rose-200 hover:shadow-rose-500/10 dark:border-rose-500/20 dark:from-rose-900/10 dark:to-slate-800'
-                          }`}
-                        >
-                          <div className="mb-4 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <span className="text-3xl">{flag}</span>
-                              <span className="font-bold text-slate-800 dark:text-slate-200">
-                                {c === 'KSA' ? 'KSA' : c}
-                              </span>
-                            </div>
-                            <div
-                              className={`text-lg font-black ${isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}
-                            >
-                              {isProfit ? '+' : '-'}
-                              {currency} {fmtAmt(Math.abs(profitData.profit || 0))}
-                            </div>
+                    return (
+                      <div
+                        key={c}
+                        className={`group relative overflow-hidden rounded-2xl border p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+                          isProfit
+                            ? 'border-emerald-100 bg-emerald-50/30 hover:border-emerald-300 dark:border-emerald-900/30 dark:bg-emerald-900/10'
+                            : 'border-rose-100 bg-rose-50/30 hover:border-rose-300 dark:border-rose-900/30 dark:bg-rose-900/10'
+                        }`}
+                        style={{ animationDelay: `${idx * 50}ms` }}
+                      >
+                        <div className="mb-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3 font-bold text-slate-800 dark:text-white">
+                            <span className="text-2xl">{flag}</span>
+                            {c === 'KSA' ? 'KSA' : c}
                           </div>
-
-                          <div className="space-y-3">
-                            {[
-                              {
-                                l: 'Rev',
-                                v: profitData.revenue,
-                                c: 'text-sky-600 dark:text-sky-400',
-                              },
-                              {
-                                l: 'Cost',
-                                v: profitData.purchaseCost,
-                                c: 'text-violet-600 dark:text-violet-400',
-                              },
-                              {
-                                l: 'Driver',
-                                v: profitData.driverCommission,
-                                c: 'text-amber-600 dark:text-amber-400',
-                              },
-                              {
-                                l: 'Ads',
-                                v: profitData.advertisementExpense,
-                                c: 'text-rose-600 dark:text-rose-400',
-                              },
-                            ].map((r, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center justify-between rounded-lg bg-white/60 px-3 py-2 backdrop-blur-sm dark:bg-slate-800/40"
-                              >
-                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                                  {r.l}
-                                </span>
-                                <span className={`text-sm font-bold ${r.c}`}>{fmtAmt(r.v)}</span>
-                              </div>
-                            ))}
+                          <div
+                            className={`text-xl font-black ${isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}
+                          >
+                            {isProfit ? '+' : '-'}
+                            {currency} {fmtAmt(Math.abs(profitData.profit || 0))}
                           </div>
                         </div>
-                      )
-                    })}
-                  </div>
+
+                        <div className="space-y-3 text-sm">
+                          {[
+                            {
+                              l: 'Revenue',
+                              v: profitData.revenue,
+                              c: 'text-sky-600 dark:text-sky-400',
+                            },
+                            {
+                              l: 'Cost',
+                              v: profitData.purchaseCost,
+                              c: 'text-violet-600 dark:text-violet-400',
+                            },
+                            {
+                              l: 'Driver',
+                              v: profitData.driverCommission,
+                              c: 'text-amber-600 dark:text-amber-400',
+                            },
+                            {
+                              l: 'Ads',
+                              v: profitData.advertisementExpense,
+                              c: 'text-rose-600 dark:text-rose-400',
+                            },
+                          ].map((r, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between border-b border-slate-100/50 pb-2 last:border-0 last:pb-0 dark:border-slate-700/30"
+                            >
+                              <span className="font-medium text-slate-500 dark:text-slate-400">
+                                {r.l}
+                              </span>
+                              <span className={`font-bold ${r.c}`}>
+                                {currency} {fmtAmt(r.v)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              </div>
-            </DashboardCard>
-          )
-        )}
+              </>
+            )
+          )}
+        </DashboardCard>
+      </div>
+
+      {/* Orders Summary */}
+      <DashboardCard title="Orders Summary (Global)" subtitle="Totals in AED" loading={loading}>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <StatTile
+            title="Total Orders"
+            value={<LiveNumber value={metrics?.totalOrders || 0} maximumFractionDigits={0} />}
+            to="/user/orders"
+            colorClass="text-sky-600 dark:text-sky-400"
+            bgClass="bg-sky-50/50 dark:bg-sky-900/10"
+            loading={loading}
+            delay={0}
+          />
+          <StatTile
+            title="Total Amount"
+            value={<LiveNumber value={sumAmountAED('amountTotalOrders')} prefix="AED " />}
+            to="/user/orders"
+            colorClass="text-emerald-600 dark:text-emerald-400"
+            bgClass="bg-emerald-50/50 dark:bg-emerald-900/10"
+            loading={loading}
+            delay={50}
+          />
+          <StatTile
+            title="Delivered Qty"
+            value={
+              <LiveNumber
+                value={metrics?.productMetrics?.global?.stockDeliveredQty || 0}
+                maximumFractionDigits={0}
+              />
+            }
+            to="/user/orders?ship=delivered"
+            colorClass="text-emerald-600 dark:text-emerald-400"
+            bgClass="bg-emerald-50/50 dark:bg-emerald-900/10"
+            loading={loading}
+            delay={100}
+          />
+          <StatTile
+            title="Delivered Amt"
+            value={<LiveNumber value={sumAmountAED('amountDelivered')} prefix="AED " />}
+            to="/user/orders?ship=delivered"
+            colorClass="text-emerald-600 dark:text-emerald-400"
+            bgClass="bg-emerald-50/50 dark:bg-emerald-900/10"
+            loading={loading}
+            delay={150}
+          />
+          <StatTile
+            title="Open Orders"
+            value={<LiveNumber value={statusTotals?.pending || 0} maximumFractionDigits={0} />}
+            to="/user/orders?ship=open"
+            colorClass="text-amber-500 dark:text-amber-400"
+            bgClass="bg-amber-50/50 dark:bg-amber-900/10"
+            loading={loading}
+            delay={200}
+          />
+          <StatTile
+            title="Open Amount"
+            value={<LiveNumber value={sumAmountAED('amountPending')} prefix="AED " />}
+            to="/user/orders?ship=open"
+            colorClass="text-orange-500 dark:text-orange-400"
+            bgClass="bg-orange-50/50 dark:bg-orange-900/10"
+            loading={loading}
+            delay={250}
+          />
+        </div>
+      </DashboardCard>
+
+      {/* Product Metrics */}
+      <DashboardCard
+        title="Product Metrics"
+        subtitle="Inventory & Stock Overview"
+        loading={loading}
+      >
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <StatTile
+            title="Total Purchase"
+            value={
+              <LiveNumber
+                value={sumCurrencyMapAED(
+                  metrics?.productMetrics?.global?.totalPurchaseValueByCurrency
+                )}
+                prefix="AED "
+              />
+            }
+            to="/user/inhouse-products"
+            colorClass="text-violet-600 dark:text-violet-400"
+            bgClass="bg-violet-50/50 dark:bg-violet-900/10"
+            loading={loading}
+            delay={300}
+          />
+          <StatTile
+            title="Inventory Value"
+            value={
+              <LiveNumber
+                value={sumCurrencyMapAED(metrics?.productMetrics?.global?.purchaseValueByCurrency)}
+                prefix="AED "
+              />
+            }
+            to="/user/warehouses"
+            colorClass="text-sky-600 dark:text-sky-400"
+            bgClass="bg-sky-50/50 dark:bg-sky-900/10"
+            loading={loading}
+            delay={350}
+          />
+          <StatTile
+            title="Delivered Value"
+            value={
+              <LiveNumber
+                value={sumCurrencyMapAED(metrics?.productMetrics?.global?.deliveredValueByCurrency)}
+                prefix="AED "
+              />
+            }
+            to="/user/orders?ship=delivered"
+            colorClass="text-emerald-600 dark:text-emerald-400"
+            bgClass="bg-emerald-50/50 dark:bg-emerald-900/10"
+            loading={loading}
+            delay={400}
+          />
+          <StatTile
+            title="Stock Purchased"
+            value={
+              <LiveNumber
+                value={metrics?.productMetrics?.global?.stockPurchasedQty || 0}
+                maximumFractionDigits={0}
+              />
+            }
+            to="/user/inhouse-products"
+            colorClass="text-sky-600 dark:text-sky-400"
+            bgClass="bg-sky-50/50 dark:bg-sky-900/10"
+            loading={loading}
+            delay={450}
+          />
+          <StatTile
+            title="Stock Delivered"
+            value={
+              <LiveNumber
+                value={metrics?.productMetrics?.global?.stockDeliveredQty || 0}
+                maximumFractionDigits={0}
+              />
+            }
+            to="/user/orders?ship=delivered"
+            colorClass="text-emerald-600 dark:text-emerald-400"
+            bgClass="bg-emerald-50/50 dark:bg-emerald-900/10"
+            loading={loading}
+            delay={500}
+          />
+          <StatTile
+            title="Pending Stock"
+            value={
+              <LiveNumber
+                value={metrics?.productMetrics?.global?.stockLeftQty || 0}
+                maximumFractionDigits={0}
+              />
+            }
+            to="/user/warehouses"
+            colorClass="text-amber-500 dark:text-amber-400"
+            bgClass="bg-amber-50/50 dark:bg-amber-900/10"
+            loading={loading}
+            delay={550}
+          />
+        </div>
+      </DashboardCard>
+
+      {/* Status Summary */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="space-y-8 lg:col-span-2">
+          <DashboardCard title="Sales Trend" subtitle="Last 7 Days" loading={loading}>
+            <div className="h-[350px] w-full">
+              {loading ? (
+                <Skeleton className="h-full w-full rounded-xl" />
+              ) : (
+                <Chart analytics={analytics} />
+              )}
+            </div>
+          </DashboardCard>
+
+          <DashboardCard title="Order Status Breakdown" loading={loading}>
+            <OrderStatusPie statusTotals={statusTotals} loading={loading} />
+          </DashboardCard>
+        </div>
+
+        <div className="space-y-8">
+          <DashboardCard title="Status Summary" subtitle="Global Totals" loading={loading}>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                {
+                  t: 'Total',
+                  v: statusTotals?.total,
+                  c: 'text-sky-600 dark:text-sky-400',
+                  to: '/user/orders',
+                },
+                {
+                  t: 'Open',
+                  v: statusTotals?.pending,
+                  c: 'text-amber-500 dark:text-amber-400',
+                  to: '/user/orders?ship=open',
+                },
+                {
+                  t: 'Assigned',
+                  v: statusTotals?.assigned,
+                  c: 'text-blue-500 dark:text-blue-400',
+                  to: '/user/orders?ship=assigned',
+                },
+                {
+                  t: 'Picked Up',
+                  v: statusTotals?.picked_up,
+                  c: 'text-indigo-500 dark:text-indigo-400',
+                  to: '/user/orders?ship=picked_up',
+                },
+                {
+                  t: 'In Transit',
+                  v: statusTotals?.in_transit,
+                  c: 'text-cyan-600 dark:text-cyan-400',
+                  to: '/user/orders?ship=in_transit',
+                },
+                {
+                  t: 'Out for Delivery',
+                  v: statusTotals?.out_for_delivery,
+                  c: 'text-orange-500 dark:text-orange-400',
+                  to: '/user/orders?ship=out_for_delivery',
+                },
+                {
+                  t: 'Delivered',
+                  v: statusTotals?.delivered,
+                  c: 'text-emerald-600 dark:text-emerald-400',
+                  to: '/user/orders?ship=delivered',
+                },
+                {
+                  t: 'Cancelled',
+                  v: statusTotals?.cancelled,
+                  c: 'text-rose-500 dark:text-rose-400',
+                  to: '/user/orders?ship=cancelled',
+                },
+              ].map((item, i) => (
+                <NavLink
+                  key={i}
+                  to={item.to}
+                  className="group flex flex-col justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition-all hover:bg-white hover:shadow-md dark:border-slate-700/50 dark:bg-slate-800/50 dark:hover:bg-slate-700"
+                >
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    {item.t}
+                  </span>
+                  <span className={`text-2xl font-black ${item.c} mt-1`}>
+                    {loading ? <Skeleton className="h-6 w-16" /> : item.v}
+                  </span>
+                </NavLink>
+              ))}
+            </div>
+          </DashboardCard>
+        </div>
       </div>
     </div>
   )
