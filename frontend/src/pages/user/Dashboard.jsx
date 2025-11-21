@@ -440,22 +440,30 @@ export default function Dashboard() {
         @keyframes fadeInUp {
           from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(30px) scale(0.95);
+            filter: blur(10px);
           }
           to {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
+            filter: blur(0);
           }
         }
         @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
+          from { 
+            opacity: 0;
+            filter: blur(5px);
+          }
+          to { 
+            opacity: 1;
+            filter: blur(0);
+          }
         }
         .animate-fadeInUp {
-          animation: fadeInUp 0.8s ease-out forwards;
+          animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         .animate-fadeIn {
-          animation: fadeIn 0.6s ease-out forwards;
+          animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}</style>
       <div className="mx-auto max-w-[1800px] space-y-6">
@@ -519,7 +527,6 @@ export default function Dashboard() {
                 <div className="mb-1 flex items-baseline gap-2">
                   <span className="text-xl font-black text-white/80">AED</span>
                   <span className="text-5xl font-black tracking-tighter text-white drop-shadow-2xl md:text-6xl">
-                    {metrics.profitLoss.isProfit ? '+' : '-'}
                     <LiveNumber
                       value={Math.abs(metrics.profitLoss.profit || 0)}
                       maximumFractionDigits={2}
@@ -842,9 +849,17 @@ export default function Dashboard() {
                       className="animate-fadeInUp relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-5 transition-all hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
                       style={{ animationDelay: `${index * 80}ms` }}
                     >
-                      {/* Full Background Flag */}
+                      {/* Full Background Flag with Glow */}
                       <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
-                        <span className="text-[280px] opacity-[0.08] dark:opacity-[0.05]">
+                        <span
+                          className="text-[280px] opacity-[0.12] dark:opacity-[0.08]"
+                          style={{
+                            filter:
+                              'drop-shadow(0 0 40px rgba(255, 255, 255, 0.3)) drop-shadow(0 0 80px rgba(255, 255, 255, 0.2))',
+                            textShadow:
+                              '0 0 60px rgba(255, 255, 255, 0.5), 0 0 120px rgba(255, 255, 255, 0.3)',
+                          }}
+                        >
                           {flag}
                         </span>
                       </div>
