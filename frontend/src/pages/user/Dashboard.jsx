@@ -5,181 +5,106 @@ import LiveNumber from '../../components/LiveNumber.jsx'
 import { API_BASE, apiGet } from '../../api.js'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
-import { getCurrencyConfig, toAEDByCode, convert } from '../../util/currency'
+import { getCurrencyConfig, toAEDByCode } from '../../util/currency'
+import {
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  CurrencyDollarIcon,
+  ShoppingBagIcon,
+  TruckIcon,
+  ArchiveBoxIcon,
+} from '@heroicons/react/24/outline'
 
 // --- UI Components ---
 
 const Skeleton = ({ className = '' }) => (
-  <div className={`animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700 ${className}`} />
+  <div className={`animate-pulse rounded bg-slate-200 dark:bg-slate-700 ${className}`} />
 )
 
-const DashboardCard = ({ children, className = '', title, subtitle, loading = false }) => (
+const Card = ({ children, className = '', noPadding = false }) => (
   <div
-    className={`group relative overflow-hidden rounded-3xl border border-white/20 bg-white/80 p-6 shadow-xl backdrop-blur-xl transition-all duration-500 hover:shadow-2xl dark:border-slate-700/50 dark:bg-slate-800/80 ${className}`}
+    className={`overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:border-slate-800 dark:bg-[#1E293B] dark:shadow-none dark:hover:bg-[#253045] ${className}`}
   >
-    <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 dark:from-slate-700/20" />
-
-    {(title || subtitle) && (
-      <div className="relative z-10 mb-6 flex items-start justify-between">
-        <div>
-          {loading ? (
-            <Skeleton className="mb-2 h-7 w-48" />
-          ) : (
-            title && (
-              <h3 className="text-xl font-bold tracking-tight text-slate-800 dark:text-white">
-                {title}
-              </h3>
-            )
-          )}
-          {loading ? (
-            <Skeleton className="h-4 w-32" />
-          ) : (
-            subtitle && (
-              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                {subtitle}
-              </p>
-            )
-          )}
-        </div>
-      </div>
-    )}
-    <div className="relative z-10">{children}</div>
+    <div className={noPadding ? '' : 'p-6'}>{children}</div>
   </div>
 )
 
-const StatTile = ({
+const StatCard = ({
   title,
   value,
   subValue,
-  icon,
-  colorClass = 'text-slate-800 dark:text-white',
-  bgClass = 'bg-slate-50 dark:bg-slate-700/30',
+  icon: Icon,
+  trend,
+  trendValue,
+  loading,
   to,
-  loading = false,
   delay = 0,
 }) => {
   const Content = () => (
     <div className="flex h-full flex-col justify-between">
-      {loading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-8 w-32" />
-        </div>
-      ) : (
-        <>
-          <div className="mb-2 text-sm font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
-            {title}
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
+          <div className="mt-2 flex items-baseline gap-2">
+            {loading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <h3 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                {value}
+              </h3>
+            )}
           </div>
-          <div className={`text-3xl font-black ${colorClass} tracking-tight`}>{value}</div>
-          {subValue && <div className="mt-2">{subValue}</div>}
-        </>
+        </div>
+        {Icon && (
+          <div className="rounded-xl bg-slate-50 p-2.5 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+            <Icon className="h-6 w-6" />
+          </div>
+        )}
+      </div>
+
+      {(subValue || trend) && (
+        <div className="mt-4 flex items-center gap-2 text-sm">
+          {loading ? (
+            <Skeleton className="h-4 w-32" />
+          ) : (
+            <>
+              {trend && (
+                <span
+                  className={`flex items-center font-bold ${trend === 'up' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}
+                >
+                  {trend === 'up' ? (
+                    <ArrowTrendingUpIcon className="mr-1 h-4 w-4" />
+                  ) : (
+                    <ArrowTrendingDownIcon className="mr-1 h-4 w-4" />
+                  )}
+                  {trendValue}
+                </span>
+              )}
+              <span className="text-slate-400 dark:text-slate-500">{subValue}</span>
+            </>
+          )}
+        </div>
       )}
     </div>
   )
 
-  const containerClasses = `relative overflow-hidden rounded-2xl border border-slate-100 p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-slate-700/50 ${bgClass}`
+  const wrapperClass = 'relative h-full transition-transform duration-300 hover:-translate-y-1'
 
-  if (to && !loading) {
+  if (to) {
     return (
-      <NavLink to={to} className={containerClasses} style={{ animationDelay: `${delay}ms` }}>
-        <Content />
+      <NavLink to={to} className={wrapperClass}>
+        <Card className="h-full" noPadding={false}>
+          <Content />
+        </Card>
       </NavLink>
     )
   }
 
   return (
-    <div className={containerClasses} style={{ animationDelay: `${delay}ms` }}>
-      <Content />
-    </div>
-  )
-}
-
-const OrderStatusPie = ({ statusTotals, loading }) => {
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-8 py-4 md:flex-row">
-        <Skeleton className="h-48 w-48 rounded-full" />
-        <div className="grid grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-6 w-32" />
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  const st = statusTotals || { pending: 0, picked_up: 0, delivered: 0, cancelled: 0 }
-  const data = [
-    {
-      label: 'Open',
-      value: st.pending,
-      color: '#F59E0B',
-      tailwindColor: 'bg-amber-500',
-      textColor: 'text-amber-500',
-    },
-    {
-      label: 'Picked Up',
-      value: st.picked_up,
-      color: '#3B82F6',
-      tailwindColor: 'bg-blue-500',
-      textColor: 'text-blue-500',
-    },
-    {
-      label: 'Delivered',
-      value: st.delivered,
-      color: '#10B981',
-      tailwindColor: 'bg-emerald-500',
-      textColor: 'text-emerald-500',
-    },
-    {
-      label: 'Cancelled',
-      value: st.cancelled,
-      color: '#EF4444',
-      tailwindColor: 'bg-rose-500',
-      textColor: 'text-rose-500',
-    },
-  ]
-  const total = data.reduce((sum, item) => sum + item.value, 0)
-
-  if (total === 0)
-    return <div className="py-12 text-center font-medium text-slate-400">No orders to display</div>
-
-  let cumulative = 0
-  const gradient = data
-    .map((item) => {
-      const percentage = (item.value / total) * 360
-      const start = cumulative
-      cumulative += percentage
-      return `${item.color} ${start}deg ${cumulative}deg`
-    })
-    .join(', ')
-
-  return (
-    <div className="flex flex-col items-center justify-center gap-10 py-6 md:flex-row">
-      <div className="group relative">
-        <div className="absolute inset-0 rounded-full bg-slate-200 blur-xl dark:bg-slate-700" />
-        <div
-          className="relative h-56 w-56 rounded-full shadow-2xl transition-transform duration-500 group-hover:scale-105"
-          style={{ background: `conic-gradient(${gradient})` }}
-        />
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="flex h-40 w-40 flex-col items-center justify-center rounded-full bg-white shadow-inner dark:bg-slate-800">
-            <span className="text-4xl font-black text-slate-800 dark:text-white">{total}</span>
-            <span className="text-xs font-bold text-slate-400 uppercase">Total Orders</span>
-          </div>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-        {data.map((item, idx) => (
-          <div key={idx} className="flex items-center gap-3">
-            <div className={`h-3 w-3 rounded-full shadow-sm ${item.tailwindColor}`} />
-            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-              {item.label}
-            </span>
-            <span className={`text-sm font-bold ${item.textColor}`}>{item.value}</span>
-          </div>
-        ))}
-      </div>
+    <div className={wrapperClass}>
+      <Card className="h-full" noPadding={false}>
+        <Content />
+      </Card>
     </div>
   )
 }
@@ -210,10 +135,8 @@ export default function UserDashboard() {
   const toast = useToast()
   const loadSeqRef = useRef(0)
   const reloadTimerRef = useRef(null)
-  const [hydrated, setHydrated] = useState(false)
-  const [loading, setLoading] = useState(true) // General loading state
+  const [loading, setLoading] = useState(true)
   const loadAbortRef = useRef(null)
-  const bgAbortRef = useRef(null)
   const monthDebounceRef = useRef(null)
 
   // Month/Year filtering
@@ -225,7 +148,6 @@ export default function UserDashboard() {
   const [metrics, setMetrics] = useState(null)
   const [analytics, setAnalytics] = useState(null)
   const [salesByCountry, setSalesByCountry] = useState({})
-  const [drivers, setDrivers] = useState([])
 
   // --- Helpers ---
   const COUNTRY_INFO = useMemo(
@@ -270,10 +192,9 @@ export default function UserDashboard() {
       return Number(amount || 0)
     }
   }
-  function toAEDByCurrency(amount, currency) {
+  function toAEDByCodeHelper(amount, code) {
     try {
-      const code = String(currency || 'AED')
-      return toAEDByCode(Number(amount || 0), code, currencyCfg)
+      return toAEDByCode(Number(amount || 0), String(code || 'AED'), currencyCfg)
     } catch {
       return Number(amount || 0)
     }
@@ -281,7 +202,7 @@ export default function UserDashboard() {
   function sumCurrencyMapAED(map) {
     try {
       return Object.entries(map || {}).reduce(
-        (s, [code, val]) => s + toAEDByCode(Number(val || 0), String(code || 'AED'), currencyCfg),
+        (s, [code, val]) => s + toAEDByCodeHelper(Number(val || 0), code),
         0
       )
     } catch {
@@ -366,7 +287,7 @@ export default function UserDashboard() {
     const controller = new AbortController()
     loadAbortRef.current = controller
 
-    // Check cache first
+    // Check cache
     const cachedAnalytics = cacheGet('analytics', dateParams)
     if (cachedAnalytics) setAnalytics(cachedAnalytics)
     const cachedMetrics = cacheGet('metrics', dateParams)
@@ -374,14 +295,11 @@ export default function UserDashboard() {
     const cachedSales = cacheGet('salesByCountry', dateParams)
     if (cachedSales) setSalesByCountry(cachedSales)
 
-    // If we have cached metrics, we can stop showing full loading state, but still fetch fresh data
     if (cachedMetrics) setLoading(false)
 
     const cfgP = (currencyCfg ? Promise.resolve(currencyCfg) : getCurrencyConfig()).catch(
       () => null
     )
-
-    // Fetch Metrics first as it's the most important
     const metricsP = apiGet(`/api/reports/user-metrics?${dateParams}`, {
       signal: controller.signal,
     }).catch(() => null)
@@ -395,10 +313,9 @@ export default function UserDashboard() {
         setMetrics(metricsRes)
         cacheSet('metrics', dateParams, metricsRes)
       }
-      setHydrated(true)
-      setLoading(false) // Critical data loaded
+      setLoading(false)
 
-      // Load secondary data in background
+      // Background fetch
       apiGet(`/api/orders/analytics/last7days?${dateParams}`, { signal: controller.signal })
         .then((res) => {
           if (loadSeqRef.current !== seq) return
@@ -432,7 +349,7 @@ export default function UserDashboard() {
     return () => clearTimeout(monthDebounceRef.current)
   }, [selectedMonth, selectedYear])
 
-  // Socket listener (kept same as backup)
+  // Socket listener
   useEffect(() => {
     let socket
     try {
@@ -448,10 +365,7 @@ export default function UserDashboard() {
         if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
         reloadTimerRef.current = setTimeout(load, 450)
       }
-      socket.on('orders.changed', (payload = {}) => {
-        scheduleLoad()
-        // Toast logic...
-      })
+      socket.on('orders.changed', () => scheduleLoad())
       socket.on('reports.userMetrics.updated', scheduleLoad)
       socket.on('orders.analytics.updated', scheduleLoad)
       socket.on('finance.drivers.updated', scheduleLoad)
@@ -467,23 +381,22 @@ export default function UserDashboard() {
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
   return (
-    <div className="container mx-auto max-w-[1600px] space-y-8 px-4 py-8 font-sans">
-      {/* Header & Filters */}
-      <div className="flex flex-col items-center justify-between gap-6 rounded-3xl border border-white/20 bg-white/60 p-6 shadow-lg backdrop-blur-xl md:flex-row dark:border-slate-700/50 dark:bg-slate-800/60">
-        <div>
-          <h1 className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-3xl font-black tracking-tight text-transparent dark:from-white dark:to-slate-400">
-            Dashboard
-          </h1>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-            Performance Overview & Analytics
-          </p>
-        </div>
+    <div className="min-h-screen bg-[#F8FAFC] px-4 py-8 font-sans text-slate-900 sm:px-6 lg:px-8 dark:bg-[#020617] dark:text-white">
+      <div className="mx-auto max-w-[1600px] space-y-8">
+        {/* Header */}
+        <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+              Dashboard
+            </h1>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+              Overview of your business performance
+            </p>
+          </div>
 
-        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <span className="pl-3 text-sm font-bold text-slate-500 dark:text-slate-400">Period:</span>
-          <div className="relative">
+          <div className="flex items-center gap-2 rounded-full bg-white p-1 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
             <select
-              className="cursor-pointer appearance-none rounded-xl bg-slate-50 py-2 pr-8 pl-3 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-100 focus:ring-0 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
+              className="cursor-pointer rounded-full border-none bg-transparent py-2 pr-8 pl-4 text-sm font-bold text-slate-700 focus:ring-0 dark:text-white"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
             >
@@ -493,11 +406,9 @@ export default function UserDashboard() {
                 </option>
               ))}
             </select>
-          </div>
-          <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-          <div className="relative">
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
             <select
-              className="cursor-pointer appearance-none rounded-xl bg-slate-50 py-2 pr-8 pl-3 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-100 focus:ring-0 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
+              className="cursor-pointer rounded-full border-none bg-transparent py-2 pr-8 pl-4 text-sm font-bold text-slate-700 focus:ring-0 dark:text-white"
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
             >
@@ -508,283 +419,125 @@ export default function UserDashboard() {
               ))}
             </select>
           </div>
-          <div className="ml-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-indigo-500/30">
-            {monthNames[selectedMonth - 1]} {selectedYear}
-          </div>
         </div>
-      </div>
 
-      {/* Profit/Loss Section */}
-      <div className="space-y-6">
-        <DashboardCard
-          title="Profit / Loss Overview"
-          subtitle="Delivered orders only"
-          loading={loading}
-        >
+        {/* Profit / Loss Section */}
+        <Card className="relative overflow-hidden">
           {loading ? (
             <div className="space-y-8">
-              <Skeleton className="h-40 w-full rounded-2xl" />
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <Skeleton key={i} className="h-32 rounded-xl" />
+              <Skeleton className="h-24 w-full rounded-xl" />
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-6">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <Skeleton key={i} className="h-20 rounded-xl" />
                 ))}
               </div>
             </div>
-          ) : (
-            metrics?.profitLoss && (
-              <>
-                {/* Global Profit/Loss */}
+          ) : metrics?.profitLoss ? (
+            <div className="flex flex-col gap-10 lg:flex-row lg:items-center">
+              <div className="flex-1">
+                <div className="mb-2 flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold tracking-wide uppercase ${
+                      metrics.profitLoss.isProfit
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
+                        : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'
+                    }`}
+                  >
+                    {metrics.profitLoss.isProfit ? 'Net Profit' : 'Net Loss'}
+                  </span>
+                </div>
                 <div
-                  className={`relative mb-8 overflow-hidden rounded-3xl p-8 transition-all duration-500 ${
+                  className={`text-6xl font-black tracking-tighter ${
                     metrics.profitLoss.isProfit
-                      ? 'border border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:border-emerald-900/50 dark:from-emerald-900/20 dark:to-emerald-800/20'
-                      : 'border border-rose-200 bg-gradient-to-br from-rose-50 to-rose-100/50 dark:border-rose-900/50 dark:from-rose-900/20 dark:to-rose-800/20'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-rose-600 dark:text-rose-400'
                   }`}
                 >
-                  <div className="relative z-10 flex flex-col items-center justify-between gap-10 lg:flex-row">
-                    <div className="text-center lg:text-left">
-                      <div className="mb-2 text-sm font-bold tracking-widest text-slate-500 uppercase dark:text-slate-400">
-                        {metrics.profitLoss.isProfit ? 'Net Profit' : 'Net Loss'}
-                      </div>
-                      <div
-                        className={`text-6xl font-black tracking-tighter ${
-                          metrics.profitLoss.isProfit
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : 'text-rose-600 dark:text-rose-400'
-                        }`}
-                      >
-                        {metrics.profitLoss.isProfit ? '+' : '-'}
-                        <LiveNumber
-                          value={Math.abs(metrics.profitLoss.profit || 0)}
-                          prefix="AED "
-                          maximumFractionDigits={2}
-                        />
-                      </div>
-                    </div>
+                  {metrics.profitLoss.isProfit ? '+' : '-'}
+                  <LiveNumber value={Math.abs(metrics.profitLoss.profit || 0)} prefix="AED " />
+                </div>
+                <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Total earnings for {monthNames[selectedMonth - 1]} {selectedYear}
+                </p>
+              </div>
 
-                    <div className="grid w-full grid-cols-2 gap-4 sm:grid-cols-3 lg:w-auto lg:grid-cols-6">
-                      {[
-                        {
-                          label: 'Revenue',
-                          val: metrics.profitLoss.revenue,
-                          color: 'text-sky-600 dark:text-sky-400',
-                        },
-                        {
-                          label: 'Cost',
-                          val: metrics.profitLoss.purchaseCost,
-                          color: 'text-violet-600 dark:text-violet-400',
-                        },
-                        {
-                          label: 'Driver',
-                          val: metrics.profitLoss.driverCommission,
-                          color: 'text-amber-600 dark:text-amber-400',
-                        },
-                        {
-                          label: 'Agent',
-                          val: metrics.profitLoss.agentCommission,
-                          color: 'text-amber-600 dark:text-amber-400',
-                        },
-                        {
-                          label: 'Investor',
-                          val: metrics.profitLoss.investorCommission,
-                          color: 'text-amber-600 dark:text-amber-400',
-                        },
-                        {
-                          label: 'Ads',
-                          val: metrics.profitLoss.advertisementExpense,
-                          color: 'text-rose-600 dark:text-rose-400',
-                        },
-                      ].map((item, i) => (
-                        <div
-                          key={i}
-                          className="flex flex-col items-center justify-center rounded-2xl border border-white/50 bg-white/40 p-4 text-center shadow-sm backdrop-blur-sm transition-transform hover:scale-105 dark:border-white/5 dark:bg-white/5"
-                        >
-                          <div className="mb-1 text-xs font-bold text-slate-500 dark:text-slate-400">
-                            {item.label}
-                          </div>
-                          <div className={`text-lg font-bold ${item.color}`}>
-                            <LiveNumber
-                              value={item.val || 0}
-                              prefix="AED "
-                              maximumFractionDigits={0}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+              <div className="grid flex-[2] grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                {[
+                  {
+                    label: 'Revenue',
+                    val: metrics.profitLoss.revenue,
+                    color: 'text-slate-900 dark:text-white',
+                  },
+                  {
+                    label: 'Cost',
+                    val: metrics.profitLoss.purchaseCost,
+                    color: 'text-slate-600 dark:text-slate-400',
+                  },
+                  {
+                    label: 'Driver',
+                    val: metrics.profitLoss.driverCommission,
+                    color: 'text-slate-600 dark:text-slate-400',
+                  },
+                  {
+                    label: 'Agent',
+                    val: metrics.profitLoss.agentCommission,
+                    color: 'text-slate-600 dark:text-slate-400',
+                  },
+                  {
+                    label: 'Investor',
+                    val: metrics.profitLoss.investorCommission,
+                    color: 'text-slate-600 dark:text-slate-400',
+                  },
+                  {
+                    label: 'Ads',
+                    val: metrics.profitLoss.advertisementExpense,
+                    color: 'text-slate-600 dark:text-slate-400',
+                  },
+                ].map((item, i) => (
+                  <div key={i} className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/50">
+                    <p className="text-xs font-bold text-slate-500 uppercase dark:text-slate-500">
+                      {item.label}
+                    </p>
+                    <p className={`mt-1 text-lg font-bold ${item.color}`}>
+                      <LiveNumber value={item.val || 0} prefix="AED " maximumFractionDigits={0} />
+                    </p>
                   </div>
-                </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </Card>
 
-                {/* Country-wise Profit/Loss */}
-                <h4 className="mb-6 text-lg font-bold text-slate-700 dark:text-slate-300">
-                  Geographic Breakdown
-                </h4>
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {['KSA', 'UAE', 'Oman', 'Bahrain', 'India', 'Kuwait', 'Qatar'].map((c, idx) => {
-                    const profitData = metrics.profitLoss.byCountry?.[c]
-                    if (!profitData) return null
-                    const isProfit = (profitData.profit || 0) >= 0
-                    const flag = COUNTRY_INFO[c]?.flag || ''
-                    const currency = profitData.currency || 'AED'
-
-                    return (
-                      <div
-                        key={c}
-                        className={`group relative overflow-hidden rounded-2xl border p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
-                          isProfit
-                            ? 'border-emerald-100 bg-emerald-50/30 hover:border-emerald-300 dark:border-emerald-900/30 dark:bg-emerald-900/10'
-                            : 'border-rose-100 bg-rose-50/30 hover:border-rose-300 dark:border-rose-900/30 dark:bg-rose-900/10'
-                        }`}
-                        style={{ animationDelay: `${idx * 50}ms` }}
-                      >
-                        <div className="mb-4 flex items-center justify-between">
-                          <div className="flex items-center gap-3 font-bold text-slate-800 dark:text-white">
-                            <span className="text-2xl">{flag}</span>
-                            {c === 'KSA' ? 'KSA' : c}
-                          </div>
-                          <div
-                            className={`text-xl font-black ${isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}
-                          >
-                            {isProfit ? '+' : '-'}
-                            {currency} {fmtAmt(Math.abs(profitData.profit || 0))}
-                          </div>
-                        </div>
-
-                        <div className="space-y-3 text-sm">
-                          {[
-                            {
-                              l: 'Revenue',
-                              v: profitData.revenue,
-                              c: 'text-sky-600 dark:text-sky-400',
-                            },
-                            {
-                              l: 'Cost',
-                              v: profitData.purchaseCost,
-                              c: 'text-violet-600 dark:text-violet-400',
-                            },
-                            {
-                              l: 'Driver',
-                              v: profitData.driverCommission,
-                              c: 'text-amber-600 dark:text-amber-400',
-                            },
-                            {
-                              l: 'Ads',
-                              v: profitData.advertisementExpense,
-                              c: 'text-rose-600 dark:text-rose-400',
-                            },
-                          ].map((r, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between border-b border-slate-100/50 pb-2 last:border-0 last:pb-0 dark:border-slate-700/30"
-                            >
-                              <span className="font-medium text-slate-500 dark:text-slate-400">
-                                {r.l}
-                              </span>
-                              <span className={`font-bold ${r.c}`}>
-                                {currency} {fmtAmt(r.v)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </>
-            )
-          )}
-        </DashboardCard>
-      </div>
-
-      {/* Orders Summary */}
-      <DashboardCard title="Orders Summary (Global)" subtitle="Totals in AED" loading={loading}>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <StatTile
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
             title="Total Orders"
             value={<LiveNumber value={metrics?.totalOrders || 0} maximumFractionDigits={0} />}
-            to="/user/orders"
-            colorClass="text-sky-600 dark:text-sky-400"
-            bgClass="bg-sky-50/50 dark:bg-sky-900/10"
+            icon={ShoppingBagIcon}
             loading={loading}
-            delay={0}
+            to="/user/orders"
           />
-          <StatTile
-            title="Total Amount"
+          <StatCard
+            title="Total Revenue"
             value={<LiveNumber value={sumAmountAED('amountTotalOrders')} prefix="AED " />}
-            to="/user/orders"
-            colorClass="text-emerald-600 dark:text-emerald-400"
-            bgClass="bg-emerald-50/50 dark:bg-emerald-900/10"
+            icon={CurrencyDollarIcon}
             loading={loading}
-            delay={50}
+            to="/user/orders"
           />
-          <StatTile
-            title="Delivered Qty"
+          <StatCard
+            title="Delivered"
             value={
               <LiveNumber
                 value={metrics?.productMetrics?.global?.stockDeliveredQty || 0}
                 maximumFractionDigits={0}
               />
             }
+            subValue="Items"
+            icon={TruckIcon}
+            loading={loading}
             to="/user/orders?ship=delivered"
-            colorClass="text-emerald-600 dark:text-emerald-400"
-            bgClass="bg-emerald-50/50 dark:bg-emerald-900/10"
-            loading={loading}
-            delay={100}
           />
-          <StatTile
-            title="Delivered Amt"
-            value={<LiveNumber value={sumAmountAED('amountDelivered')} prefix="AED " />}
-            to="/user/orders?ship=delivered"
-            colorClass="text-emerald-600 dark:text-emerald-400"
-            bgClass="bg-emerald-50/50 dark:bg-emerald-900/10"
-            loading={loading}
-            delay={150}
-          />
-          <StatTile
-            title="Open Orders"
-            value={<LiveNumber value={statusTotals?.pending || 0} maximumFractionDigits={0} />}
-            to="/user/orders?ship=open"
-            colorClass="text-amber-500 dark:text-amber-400"
-            bgClass="bg-amber-50/50 dark:bg-amber-900/10"
-            loading={loading}
-            delay={200}
-          />
-          <StatTile
-            title="Open Amount"
-            value={<LiveNumber value={sumAmountAED('amountPending')} prefix="AED " />}
-            to="/user/orders?ship=open"
-            colorClass="text-orange-500 dark:text-orange-400"
-            bgClass="bg-orange-50/50 dark:bg-orange-900/10"
-            loading={loading}
-            delay={250}
-          />
-        </div>
-      </DashboardCard>
-
-      {/* Product Metrics */}
-      <DashboardCard
-        title="Product Metrics"
-        subtitle="Inventory & Stock Overview"
-        loading={loading}
-      >
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <StatTile
-            title="Total Purchase"
-            value={
-              <LiveNumber
-                value={sumCurrencyMapAED(
-                  metrics?.productMetrics?.global?.totalPurchaseValueByCurrency
-                )}
-                prefix="AED "
-              />
-            }
-            to="/user/inhouse-products"
-            colorClass="text-violet-600 dark:text-violet-400"
-            bgClass="bg-violet-50/50 dark:bg-violet-900/10"
-            loading={loading}
-            delay={300}
-          />
-          <StatTile
+          <StatCard
             title="Inventory Value"
             value={
               <LiveNumber
@@ -792,157 +545,55 @@ export default function UserDashboard() {
                 prefix="AED "
               />
             }
+            icon={ArchiveBoxIcon}
+            loading={loading}
             to="/user/warehouses"
-            colorClass="text-sky-600 dark:text-sky-400"
-            bgClass="bg-sky-50/50 dark:bg-sky-900/10"
-            loading={loading}
-            delay={350}
-          />
-          <StatTile
-            title="Delivered Value"
-            value={
-              <LiveNumber
-                value={sumCurrencyMapAED(metrics?.productMetrics?.global?.deliveredValueByCurrency)}
-                prefix="AED "
-              />
-            }
-            to="/user/orders?ship=delivered"
-            colorClass="text-emerald-600 dark:text-emerald-400"
-            bgClass="bg-emerald-50/50 dark:bg-emerald-900/10"
-            loading={loading}
-            delay={400}
-          />
-          <StatTile
-            title="Stock Purchased"
-            value={
-              <LiveNumber
-                value={metrics?.productMetrics?.global?.stockPurchasedQty || 0}
-                maximumFractionDigits={0}
-              />
-            }
-            to="/user/inhouse-products"
-            colorClass="text-sky-600 dark:text-sky-400"
-            bgClass="bg-sky-50/50 dark:bg-sky-900/10"
-            loading={loading}
-            delay={450}
-          />
-          <StatTile
-            title="Stock Delivered"
-            value={
-              <LiveNumber
-                value={metrics?.productMetrics?.global?.stockDeliveredQty || 0}
-                maximumFractionDigits={0}
-              />
-            }
-            to="/user/orders?ship=delivered"
-            colorClass="text-emerald-600 dark:text-emerald-400"
-            bgClass="bg-emerald-50/50 dark:bg-emerald-900/10"
-            loading={loading}
-            delay={500}
-          />
-          <StatTile
-            title="Pending Stock"
-            value={
-              <LiveNumber
-                value={metrics?.productMetrics?.global?.stockLeftQty || 0}
-                maximumFractionDigits={0}
-              />
-            }
-            to="/user/warehouses"
-            colorClass="text-amber-500 dark:text-amber-400"
-            bgClass="bg-amber-50/50 dark:bg-amber-900/10"
-            loading={loading}
-            delay={550}
           />
         </div>
-      </DashboardCard>
 
-      {/* Status Summary */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="space-y-8 lg:col-span-2">
-          <DashboardCard title="Sales Trend" subtitle="Last 7 Days" loading={loading}>
-            <div className="h-[350px] w-full">
+        {/* Charts & Breakdown */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <Card className="h-full">
               {loading ? (
-                <Skeleton className="h-full w-full rounded-xl" />
+                <Skeleton className="h-[300px] w-full" />
               ) : (
                 <Chart analytics={analytics} />
               )}
-            </div>
-          </DashboardCard>
+            </Card>
+          </div>
 
-          <DashboardCard title="Order Status Breakdown" loading={loading}>
-            <OrderStatusPie statusTotals={statusTotals} loading={loading} />
-          </DashboardCard>
-        </div>
+          <div className="space-y-6">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Geographic Profit</h3>
+            <div className="space-y-4">
+              {['KSA', 'UAE', 'Oman', 'Bahrain', 'India', 'Kuwait', 'Qatar'].map((c) => {
+                const profitData = metrics?.profitLoss?.byCountry?.[c]
+                if (!profitData) return null
+                const isProfit = (profitData.profit || 0) >= 0
+                const flag = COUNTRY_INFO[c]?.flag || ''
 
-        <div className="space-y-8">
-          <DashboardCard title="Status Summary" subtitle="Global Totals" loading={loading}>
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                {
-                  t: 'Total',
-                  v: statusTotals?.total,
-                  c: 'text-sky-600 dark:text-sky-400',
-                  to: '/user/orders',
-                },
-                {
-                  t: 'Open',
-                  v: statusTotals?.pending,
-                  c: 'text-amber-500 dark:text-amber-400',
-                  to: '/user/orders?ship=open',
-                },
-                {
-                  t: 'Assigned',
-                  v: statusTotals?.assigned,
-                  c: 'text-blue-500 dark:text-blue-400',
-                  to: '/user/orders?ship=assigned',
-                },
-                {
-                  t: 'Picked Up',
-                  v: statusTotals?.picked_up,
-                  c: 'text-indigo-500 dark:text-indigo-400',
-                  to: '/user/orders?ship=picked_up',
-                },
-                {
-                  t: 'In Transit',
-                  v: statusTotals?.in_transit,
-                  c: 'text-cyan-600 dark:text-cyan-400',
-                  to: '/user/orders?ship=in_transit',
-                },
-                {
-                  t: 'Out for Delivery',
-                  v: statusTotals?.out_for_delivery,
-                  c: 'text-orange-500 dark:text-orange-400',
-                  to: '/user/orders?ship=out_for_delivery',
-                },
-                {
-                  t: 'Delivered',
-                  v: statusTotals?.delivered,
-                  c: 'text-emerald-600 dark:text-emerald-400',
-                  to: '/user/orders?ship=delivered',
-                },
-                {
-                  t: 'Cancelled',
-                  v: statusTotals?.cancelled,
-                  c: 'text-rose-500 dark:text-rose-400',
-                  to: '/user/orders?ship=cancelled',
-                },
-              ].map((item, i) => (
-                <NavLink
-                  key={i}
-                  to={item.to}
-                  className="group flex flex-col justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition-all hover:bg-white hover:shadow-md dark:border-slate-700/50 dark:bg-slate-800/50 dark:hover:bg-slate-700"
-                >
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                    {item.t}
-                  </span>
-                  <span className={`text-2xl font-black ${item.c} mt-1`}>
-                    {loading ? <Skeleton className="h-6 w-16" /> : item.v}
-                  </span>
-                </NavLink>
-              ))}
+                return (
+                  <div
+                    key={c}
+                    className="flex items-center justify-between rounded-xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#1E293B]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{flag}</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-200">
+                        {c === 'KSA' ? 'Saudi Arabia' : c}
+                      </span>
+                    </div>
+                    <div
+                      className={`font-black ${isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}
+                    >
+                      {isProfit ? '+' : '-'}
+                      {profitData.currency || 'AED'} {fmtAmt(Math.abs(profitData.profit || 0))}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          </DashboardCard>
+          </div>
         </div>
       </div>
     </div>

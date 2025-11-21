@@ -824,6 +824,7 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
       products,
       countryMetrics,
       deliveredPerProdCountry,
+      currencySetting,
     ] = await Promise.all([
       // 1. Products In House
       Product.aggregate([
@@ -1316,7 +1317,13 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
           },
         },
       ]),
+      Setting.findOne({ key: "currency" }).lean(),
     ]);
+
+    // Currency Config Logic
+    const currencyConfig = currencySetting?.value || {};
+    const pkrPerUnit = currencyConfig.pkrPerUnit || { AED: 76 };
+    const pkrToAEDRate = pkrPerUnit.AED || 76;
 
     // --- Process Results ---
 
@@ -1350,7 +1357,8 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
     }, initialOrderStats);
 
     const totalProductsInHouse = productStats[0]?.totalProductsInHouse || 0;
-    const totalAgentExpense = agentExpenseStats[0]?.totalAgentExpense || 0;
+    const totalAgentExpensePKR = agentExpenseStats[0]?.totalAgentExpense || 0;
+    const totalAgentExpense = totalAgentExpensePKR / pkrToAEDRate; // Convert to AED
     const totalDriverExpense = driverExpenseStats[0]?.totalDriverExpense || 0;
     const totalAdExpense = adExpenseStats[0]?.totalAdExpense || 0;
     const totalInvestorComm = investorStats[0]?.totalInvestorComm || 0;
