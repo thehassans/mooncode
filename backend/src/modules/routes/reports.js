@@ -832,13 +832,38 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
         { $match: { createdBy: ownerId } },
         { $group: { _id: null, totalProductsInHouse: { $sum: "$stockQty" } } },
       ]),
-      // 2. Agent Expenses
+      // 2. Agent Expenses (Filter by sentAt or approvedAt, not createdAt)
       AgentRemit.aggregate([
         {
           $match: {
             owner: ownerId,
-            status: { $in: ["sent", "approved", "pending"] },
-            ...dateMatch,
+            status: { $in: ["sent", "approved"] },
+            ...(req.query.from || req.query.to
+              ? {
+                  $or: [
+                    {
+                      sentAt: {
+                        ...(req.query.from
+                          ? { $gte: new Date(req.query.from) }
+                          : {}),
+                        ...(req.query.to
+                          ? { $lte: new Date(req.query.to) }
+                          : {}),
+                      },
+                    },
+                    {
+                      approvedAt: {
+                        ...(req.query.from
+                          ? { $gte: new Date(req.query.from) }
+                          : {}),
+                        ...(req.query.to
+                          ? { $lte: new Date(req.query.to) }
+                          : {}),
+                      },
+                    },
+                  ],
+                }
+              : {}),
           },
         },
         {

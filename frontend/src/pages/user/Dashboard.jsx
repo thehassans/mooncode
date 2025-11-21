@@ -681,7 +681,7 @@ export default function Dashboard() {
         <GlassCard>
           <TabsComponent tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
 
-          <div className="mt-6">
+          <div key={activeTab} className="mt-6">
             {activeTab === 'orders' && (
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
                 {[
@@ -842,7 +842,14 @@ export default function Dashboard() {
                       className="animate-fadeInUp relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-5 transition-all hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
                       style={{ animationDelay: `${index * 80}ms` }}
                     >
-                      <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3 dark:border-neutral-800">
+                      {/* Full Background Flag */}
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
+                        <span className="text-[280px] opacity-[0.08] dark:opacity-[0.05]">
+                          {flag}
+                        </span>
+                      </div>
+
+                      <div className="relative z-10 mb-4 flex items-center justify-between border-b border-slate-100 pb-3 dark:border-neutral-800">
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">{flag}</span>
                           <span className="font-black text-slate-900 dark:text-white">
@@ -850,14 +857,13 @@ export default function Dashboard() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-5xl opacity-40">{flag}</span>
                           <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-black dark:bg-neutral-800">
                             {cur}
                           </span>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="relative z-10 grid grid-cols-2 gap-3">
                         {[
                           {
                             label: 'Orders',
