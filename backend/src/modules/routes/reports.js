@@ -837,7 +837,7 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
         {
           $match: {
             owner: ownerId,
-            status: { $in: ["sent", "approved"] },
+            status: { $in: ["sent", "approved", "pending"] },
             ...dateMatch,
           },
         },
@@ -854,7 +854,7 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
         },
         { $group: { _id: "$deliveryBoy", count: { $sum: 1 } } },
       ]),
-      // 4. Advertisement Expenses (Grouped by Currency)
+      // 4. Advertisement Expenses (Grouped by Country & Currency)
       Expense.aggregate([
         {
           $match: {
@@ -865,7 +865,10 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
         },
         {
           $group: {
-            _id: { $ifNull: ["$currency", "AED"] },
+            _id: {
+              country: { $ifNull: ["$country", "Global"] },
+              currency: { $ifNull: ["$currency", "AED"] },
+            },
             total: { $sum: "$amount" },
           },
         },
@@ -1422,6 +1425,7 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
       });
     });
 
+    const driverCommissionByCountry = {};
     const totalDriverExpense = driverExpenseStats.reduce((sum, item) => {
       const driverId = String(item._id || "");
       const count = item.count || 0;
@@ -1429,15 +1433,26 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
       if (!info) return sum; // Skip if driver not found (or deleted)
 
       const commAmount = count * info.commission;
-      // Convert commission currency to AED
-      // If commissionCurrency is set, use it. Otherwise infer from country?
-      // driverProfile has commissionCurrency.
-      return sum + toAED(commAmount, info.currency);
+      const commAED = toAED(commAmount, info.currency);
+
+      // Aggregate by country
+      const country = info.country || "Other";
+      driverCommissionByCountry[country] =
+        (driverCommissionByCountry[country] || 0) + commAED;
+
+      return sum + commAED;
     }, 0);
 
-    // Ad Expense
+    // Ad Expense (Calculate total and per-country)
+    const adExpenseByCountry = {};
     const totalAdExpense = adExpenseStats.reduce((sum, item) => {
-      return sum + toAED(item.total, item._id);
+      const country = item._id?.country || "Global";
+      const currency = item._id?.currency || "AED";
+      const amountAED = toAED(item.total, currency);
+
+      adExpenseByCountry[country] =
+        (adExpenseByCountry[country] || 0) + amountAED;
+      return sum + amountAED;
     }, 0);
 
     const totalInvestorComm = investorStats[0]?.totalInvestorComm || 0;
@@ -1759,12 +1774,15 @@ router.get("/user-metrics", auth, allowRoles("user"), async (req, res) => {
         countryPurchaseCostAED += toAED(qty * price, baseCur);
       }
 
-      // Estimate expenses per country (pro-rated by sales? or just 0 for now)
-      // Let's just do Revenue - PurchaseCost for country breakdown
+      const driverExp = driverCommissionByCountry[country] || 0;
+      const adExp = adExpenseByCountry[country] || 0;
+
       profitByCountry[country] = {
         revenue: salesAED,
         purchaseCost: countryPurchaseCostAED,
-        profit: salesAED - countryPurchaseCostAED,
+        driverCommission: driverExp,
+        advertisementExpense: adExp,
+        profit: salesAED - countryPurchaseCostAED - driverExp - adExp,
         currency: "AED",
       };
     });
