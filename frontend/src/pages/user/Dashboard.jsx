@@ -489,8 +489,8 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-black text-neutral-400 dark:text-white">Dashboard</h1>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white">Dashboard</h1>
+            <p className="text-sm text-slate-600 dark:text-neutral-400">
               Your Business Command Center
             </p>
           </div>
