@@ -128,23 +128,23 @@ export default function Chart({ analytics }) {
               onClick={() => setSelectedCountry(selectedCountry === k ? null : k)}
               className={`group flex cursor-pointer items-center gap-3 rounded-xl border px-5 py-3 shadow-sm backdrop-blur-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-md ${
                 selectedCountry === k
-                  ? 'border-slate-300 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900'
-                  : 'border-slate-200 bg-white hover:shadow-md dark:border-black dark:bg-black'
+                  ? 'border-slate-300 bg-neutral-900 shadow-lg dark:border-neutral-700 dark:bg-neutral-900'
+                  : 'border-slate-200 bg-black hover:shadow-md dark:border-black dark:bg-black'
               }`}
             >
               <span
                 className="h-4 w-4 rounded-full shadow-lg transition-all duration-300 group-hover:scale-125"
                 style={{ background: colors[k].line, boxShadow: colors[k].shadow }}
               />
-              <span className="text-sm font-black text-slate-700 dark:text-neutral-200">{k}</span>
-              <span className="text-xs font-bold text-slate-400">({total})</span>
+              <span className="text-sm font-black text-white">{k}</span>
+              <span className="text-xs font-bold text-neutral-400">({total})</span>
             </div>
           )
         })}
       </div>
 
       {/* Chart */}
-      <div className="relative w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-lg backdrop-blur-sm dark:border-black dark:bg-black">
+      <div className="relative w-full overflow-x-auto rounded-2xl border border-slate-200 bg-black p-6 shadow-lg dark:border-black dark:bg-black">
         <svg
           width={width}
           height={height}
@@ -394,7 +394,7 @@ export default function Chart({ analytics }) {
               <div className="rounded-2xl border border-slate-200/50 bg-white/95 p-4 shadow-2xl backdrop-blur-xl dark:border-neutral-700/50 dark:bg-neutral-900/95">
                 {/* Header */}
                 <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2 dark:border-neutral-800">
-                  <span className="text-sm font-bold text-slate-600 dark:text-neutral-400">
+                  <span className="font-bold text-black dark:text-neutral-400">
                     {tooltipData.date}
                   </span>
                   <button

@@ -51,17 +51,15 @@ const MetricBadge = ({ icon, label, value, prefix = '', className = '', loading 
 // --- Premium Stat Card ---
 const PremiumStatCard = ({ icon: Icon, title, value, trend, to, loading }) => {
   const content = (
-    <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-black dark:bg-black">
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-black p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-black dark:bg-black">
       <div className="absolute -top-2 -right-2 text-4xl opacity-5 transition-transform group-hover:scale-110 group-hover:opacity-10">
         {Icon && <Icon className="h-10 w-10" />}
       </div>
-      <p className="text-[10px] font-black tracking-widest text-slate-600 uppercase dark:text-neutral-400">
-        {title}
-      </p>
+      <p className="text-[10px] font-black tracking-widest text-neutral-400 uppercase">{title}</p>
       {loading ? (
         <div className="mt-2 h-6 w-20 animate-pulse rounded bg-slate-300 dark:bg-neutral-700" />
       ) : (
-        <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">{value}</p>
+        <p className="mt-1 text-lg font-black text-white">{value}</p>
       )}
       {trend && (
         <p
@@ -81,19 +79,13 @@ const PremiumStatCard = ({ icon: Icon, title, value, trend, to, loading }) => {
 
 // --- Glass Card Container ---
 const GlassCard = ({ children, className = '', title, subtitle }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg backdrop-blur-sm dark:border-black dark:bg-black">
+  <div
+    className={`rounded-2xl border border-slate-200 bg-black p-6 shadow-lg dark:border-black dark:bg-black ${className}`}
+  >
     {(title || subtitle) && (
-      <div className="mb-6 border-b border-slate-100 pb-4 dark:border-neutral-800">
-        {title && (
-          <h3 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-xl font-black tracking-tight text-transparent dark:from-white dark:to-neutral-400">
-            {title}
-          </h3>
-        )}
-        {subtitle && (
-          <p className="mt-1 text-sm font-medium text-slate-500 dark:text-neutral-400">
-            {subtitle}
-          </p>
-        )}
+      <div className="mb-6 border-b border-neutral-800 pb-4">
+        {title && <h3 className="text-xl font-black tracking-tight text-white">{title}</h3>}
+        {subtitle && <p className="mt-1 text-sm font-medium text-neutral-400">{subtitle}</p>}
       </div>
     )}
     {children}
@@ -110,13 +102,11 @@ const CompactStatCard = ({
 }) => {
   const Content = (
     <div className="flex flex-col gap-1">
-      <p className="text-[10px] font-bold tracking-wider text-slate-500 uppercase dark:text-neutral-400">
-        {title}
-      </p>
+      <p className="text-[10px] font-bold tracking-wider text-neutral-400 uppercase">{title}</p>
       {loading ? (
         <div className="h-8 w-full animate-pulse rounded bg-slate-200 dark:bg-neutral-800" />
       ) : (
-        <p className={`text-2xl font-black ${color}`}>{value}</p>
+        <p className={`text-2xl font-black text-white`}>{value}</p>
       )}
     </div>
   )
@@ -125,7 +115,7 @@ const CompactStatCard = ({
     return (
       <NavLink
         to={to}
-        className="block rounded-xl border border-slate-200 bg-white p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-black dark:bg-black"
+        className="block rounded-xl border border-slate-200 bg-black p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-black dark:bg-black"
       >
         {Content}
       </NavLink>
@@ -133,7 +123,7 @@ const CompactStatCard = ({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-black dark:bg-black">
+    <div className="rounded-xl border border-slate-200 bg-black p-4 dark:border-black dark:bg-black">
       {Content}
     </div>
   )
@@ -499,15 +489,15 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 dark:text-white">Dashboard</h1>
-            <p className="text-sm text-slate-600 dark:text-neutral-400">
+            <h1 className="text-3xl font-black text-neutral-400 dark:text-white">Dashboard</h1>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
               Your Business Command Center
             </p>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg backdrop-blur-sm dark:border-black dark:bg-black">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-black p-2 dark:border-black dark:bg-black">
             <select
-              className="cursor-pointer rounded-xl border-none bg-gradient-to-br from-slate-50 to-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:from-neutral-800 dark:to-neutral-900 dark:text-white"
+              className="cursor-pointer rounded-xl border-none bg-gradient-to-br from-neutral-800 to-neutral-900 px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:from-neutral-800 dark:to-neutral-900 dark:text-white"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
             >
