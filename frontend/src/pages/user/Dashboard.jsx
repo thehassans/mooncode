@@ -27,6 +27,28 @@ const TabsComponent = ({ tabs, activeTab, setActiveTab }) => (
 )
 
 // --- Compact Metric Badge ---
+const MetricBadge = ({ icon, label, value, prefix = '', className = '', loading = false }) => (
+  <div
+    className={`group relative overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/20 dark:border-neutral-700/30 dark:bg-neutral-800/20 dark:hover:bg-neutral-700/30 ${className}`}
+  >
+    <div className="absolute -top-2 -right-2 text-4xl opacity-5 transition-transform group-hover:scale-110 group-hover:opacity-10">
+      {icon}
+    </div>
+    <p className="text-[10px] font-black tracking-widest text-slate-600 uppercase dark:text-neutral-400">
+      {label}
+    </p>
+    {loading ? (
+      <div className="mt-2 h-6 w-20 animate-pulse rounded bg-slate-300 dark:bg-neutral-700" />
+    ) : (
+      <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">
+        {prefix && <span className="mr-1 text-sm opacity-60">{prefix}</span>}
+        {value}
+      </p>
+    )}
+  </div>
+)
+
+// --- Premium Stat Card ---
 const PremiumStatCard = ({ icon: Icon, title, value, trend, to, loading }) => {
   const content = (
     <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-black dark:bg-black">
