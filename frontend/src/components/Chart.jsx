@@ -125,8 +125,8 @@ export default function Chart({ analytics }) {
               onClick={() => setSelectedCountry(selectedCountry === k ? null : k)}
               className={`group flex cursor-pointer items-center gap-3 rounded-xl border px-5 py-3 shadow-sm backdrop-blur-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-md ${
                 selectedCountry === k
-                  ? 'border-slate-400 bg-gradient-to-br from-slate-100 to-white shadow-lg dark:border-neutral-600 dark:from-neutral-800 dark:to-neutral-900'
-                  : 'border-slate-200/50 bg-gradient-to-br from-white to-slate-50 shadow-slate-200/50 hover:shadow-slate-200/50 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none'
+                  ? 'border-slate-300 bg-white shadow-lg dark:border-neutral-600 dark:bg-neutral-800'
+                  : 'border-slate-200 bg-white hover:shadow-md dark:border-neutral-800/50 dark:bg-neutral-900 dark:shadow-none'
               }`}
             >
               <span
@@ -141,7 +141,7 @@ export default function Chart({ analytics }) {
       </div>
 
       {/* Chart */}
-      <div className="relative w-full overflow-x-auto rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-6 shadow-lg shadow-slate-200/50 backdrop-blur-sm dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black dark:shadow-none">
+      <div className="relative w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-lg backdrop-blur-sm dark:border-neutral-800/50 dark:bg-neutral-900 dark:shadow-none">
         <svg
           width={width}
           height={height}

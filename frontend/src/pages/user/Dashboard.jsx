@@ -96,7 +96,7 @@ const CompactStatCard = ({
     return (
       <NavLink
         to={to}
-        className="block rounded-xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
+        className="block rounded-xl border border-slate-200 bg-white p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:bg-neutral-900"
       >
         {Content}
       </NavLink>
@@ -104,7 +104,7 @@ const CompactStatCard = ({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-4 dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-neutral-800/50 dark:bg-neutral-900">
       {Content}
     </div>
   )
@@ -435,7 +435,7 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-white px-4 py-6 dark:bg-black">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 px-4 py-6 dark:bg-black">
       <style>{`
         @keyframes fadeInUp {
           from {
@@ -470,10 +470,8 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-4xl font-black tracking-tighter text-transparent dark:from-white dark:via-neutral-200 dark:to-neutral-400">
-              Dashboard
-            </h1>
-            <p className="mt-1 text-sm font-bold text-slate-500 dark:text-neutral-400">
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white">Dashboard</h1>
+            <p className="text-sm text-slate-600 dark:text-neutral-400">
               Your Business Command Center
             </p>
           </div>
