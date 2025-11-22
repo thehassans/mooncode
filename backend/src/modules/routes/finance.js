@@ -1539,8 +1539,8 @@ router.get(
       const agentIds = agents.map((a) => a._id);
       const cfg = await getCurrencyConfig();
 
-      // Use same hardcoded rates as order delivery for consistency
-      const FX_PKR = {
+      // Use dynamic rates from config
+      const FX_PKR = cfg.pkrPerUnit || {
         AED: 76,
         OMR: 726,
         SAR: 72,
@@ -1548,6 +1548,8 @@ router.get(
         KWD: 880,
         QAR: 79,
         INR: 3.3,
+        USD: 278,
+        CNY: 39,
       };
       const aedRate = FX_PKR["AED"] || 76;
 
@@ -1624,8 +1626,10 @@ router.get(
                   { case: { $eq: ["$baseCurrency", "KWD"] }, then: FX_PKR.KWD },
                   { case: { $eq: ["$baseCurrency", "QAR"] }, then: FX_PKR.QAR },
                   { case: { $eq: ["$baseCurrency", "INR"] }, then: FX_PKR.INR },
+                  { case: { $eq: ["$baseCurrency", "USD"] }, then: FX_PKR.USD },
+                  { case: { $eq: ["$baseCurrency", "CNY"] }, then: FX_PKR.CNY },
                 ],
-                default: FX_PKR.SAR, // Fallback to SAR rate (72)
+                default: FX_PKR.SAR, // Fallback to SAR rate
               },
             },
           },
@@ -1731,6 +1735,37 @@ router.get(
       return res.json({ agents: out });
     } catch (err) {
       return res.status(500).json({ message: "Failed to compute commission" });
+    }
+  }
+);
+
+// Get commission history for an agent
+router.get(
+  "/agents/:id/commission-history",
+  auth,
+  allowRoles("admin", "user"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      // Verify access: if user, must be creator of agent
+      if (req.user.role === "user") {
+        const agent = await User.findById(id);
+        if (!agent || String(agent.createdBy) !== String(req.user.id)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      const history = await AgentRemit.find({
+        agent: id,
+        status: "sent", // Only show sent payments
+      })
+        .sort({ createdAt: -1 })
+        .populate("approver", "firstName lastName email")
+        .lean();
+
+      return res.json({ history });
+    } catch (err) {
+      return res.status(500).json({ message: "Failed to fetch history" });
     }
   }
 );

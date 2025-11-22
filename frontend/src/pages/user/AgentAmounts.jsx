@@ -16,6 +16,9 @@ export default function AgentAmounts() {
   const [payModal, setPayModal] = useState(null)
   const [commissionRate, setCommissionRate] = useState(null)
   const [calculatedAmount, setCalculatedAmount] = useState(0)
+  const [historyModal, setHistoryModal] = useState(null)
+  const [historyData, setHistoryData] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   // Load agents asynchronously to prevent blocking page render
   useEffect(() => {
@@ -52,6 +55,20 @@ export default function AgentAmounts() {
 
   function num(n) {
     return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
+  }
+
+  async function fetchHistory(agent) {
+    setHistoryModal(agent)
+    setLoadingHistory(true)
+    try {
+      const r = await apiGet(`/api/finance/agents/${agent.id}/commission-history`)
+      setHistoryData(Array.isArray(r?.history) ? r.history : [])
+    } catch (e) {
+      toast.error('Failed to load history')
+      setHistoryData([])
+    } finally {
+      setLoadingHistory(false)
+    }
   }
 
   const filteredAgents = useMemo(() => {
@@ -577,6 +594,13 @@ export default function AgentAmounts() {
                             No balance
                           </span>
                         )}
+                        <button
+                          className="btn secondary"
+                          style={{ fontSize: 12, padding: '6px 12px', marginLeft: 8 }}
+                          onClick={() => fetchHistory(a)}
+                        >
+                          History
+                        </button>
                       </td>
                     </tr>
                   )
@@ -770,6 +794,83 @@ export default function AgentAmounts() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* History Modal */}
+      <Modal
+        title={`Commission History: ${historyModal?.name || ''}`}
+        open={!!historyModal}
+        onClose={() => {
+          setHistoryModal(null)
+          setHistoryData([])
+        }}
+        footer={
+          <button className="btn secondary" onClick={() => setHistoryModal(null)}>
+            Close
+          </button>
+        }
+      >
+        <div style={{ minHeight: 200 }}>
+          {loadingHistory ? (
+            <div className="helper" style={{ textAlign: 'center', padding: 20 }}>
+              Loading history...
+            </div>
+          ) : historyData.length === 0 ? (
+            <div className="helper" style={{ textAlign: 'center', padding: 20 }}>
+              No payment history found.
+            </div>
+          ) : (
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: 14,
+              }}
+            >
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  <th style={{ textAlign: 'left', padding: 8, color: 'var(--text-muted)' }}>
+                    Date
+                  </th>
+                  <th style={{ textAlign: 'right', padding: 8, color: 'var(--text-muted)' }}>
+                    Amount
+                  </th>
+                  <th style={{ textAlign: 'center', padding: 8, color: 'var(--text-muted)' }}>
+                    Rate
+                  </th>
+                  <th style={{ textAlign: 'left', padding: 8, color: 'var(--text-muted)' }}>
+                    Paid By
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {historyData.map((h) => (
+                  <tr key={h._id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: 8 }}>
+                      {new Date(h.createdAt).toLocaleDateString()}{' '}
+                      <span className="helper" style={{ fontSize: 11 }}>
+                        {new Date(h.createdAt).toLocaleTimeString()}
+                      </span>
+                    </td>
+                    <td
+                      style={{ padding: 8, textAlign: 'right', fontWeight: 600, color: '#10b981' }}
+                    >
+                      {h.currency} {num(h.amount)}
+                    </td>
+                    <td style={{ padding: 8, textAlign: 'center' }}>
+                      {/* Try to infer rate if not stored directly, or just show - */}-
+                    </td>
+                    <td style={{ padding: 8 }}>
+                      {h.approver
+                        ? `${h.approver.firstName || ''} ${h.approver.lastName || ''}`
+                        : 'System'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </Modal>
     </div>
   )
