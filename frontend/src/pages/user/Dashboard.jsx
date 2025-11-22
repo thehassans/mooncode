@@ -80,10 +80,10 @@ const PremiumStatCard = ({ icon: Icon, title, value, trend, to, loading }) => {
 // --- Glass Card Container ---
 const GlassCard = ({ children, className = '', title, subtitle }) => (
   <div
-    className={`rounded-2xl border border-slate-200 bg-black p-6 shadow-lg dark:border-black dark:bg-black ${className}`}
+    className={`rounded-2xl border border-slate-200 bg-black p-5 shadow-lg dark:border-black dark:bg-black ${className}`}
   >
     {(title || subtitle) && (
-      <div className="mb-6 border-b border-neutral-800 pb-4">
+      <div className="mb-4 border-b border-neutral-800 pb-3">
         {title && <h3 className="text-xl font-black tracking-tight text-white">{title}</h3>}
         {subtitle && <p className="mt-1 text-sm font-medium text-neutral-400">{subtitle}</p>}
       </div>

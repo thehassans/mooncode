@@ -117,7 +117,7 @@ export default function Chart({ analytics }) {
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-4">
       {/* Legend */}
       <div className="flex flex-wrap items-center justify-center gap-3">
         {seriesKeys.map((k) => {
@@ -144,7 +144,7 @@ export default function Chart({ analytics }) {
       </div>
 
       {/* Chart */}
-      <div className="relative w-full overflow-x-auto rounded-2xl border-2 border-neutral-800 bg-black p-6 shadow-lg">
+      <div className="relative w-full overflow-x-auto rounded-2xl border-2 border-neutral-800 bg-black p-4 shadow-lg">
         <svg
           width={width}
           height={height}
