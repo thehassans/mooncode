@@ -1572,27 +1572,115 @@ router.get(
         { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
         {
           $addFields: {
-            // Determine currency
+            // Determine currency from orderCountry (primary) or product (fallback)
             baseCurrency: {
-              $cond: {
-                if: {
-                  $in: [
-                    { $toString: "$product.baseCurrency" },
-                    [
-                      "AED",
-                      "OMR",
-                      "SAR",
-                      "BHD",
-                      "KWD",
-                      "QAR",
-                      "INR",
-                      "USD",
-                      "CNY",
-                    ],
-                  ],
+              $switch: {
+                branches: [
+                  // Map country names to currencies
+                  {
+                    case: {
+                      $in: [
+                        { $toUpper: { $ifNull: ["$orderCountry", ""] } },
+                        ["UAE", "UNITED ARAB EMIRATES", "AE"],
+                      ],
+                    },
+                    then: "AED",
+                  },
+                  {
+                    case: {
+                      $in: [
+                        { $toUpper: { $ifNull: ["$orderCountry", ""] } },
+                        ["OMAN", "OM"],
+                      ],
+                    },
+                    then: "OMR",
+                  },
+                  {
+                    case: {
+                      $in: [
+                        { $toUpper: { $ifNull: ["$orderCountry", ""] } },
+                        ["KSA", "SAUDI ARABIA", "SA"],
+                      ],
+                    },
+                    then: "SAR",
+                  },
+                  {
+                    case: {
+                      $in: [
+                        { $toUpper: { $ifNull: ["$orderCountry", ""] } },
+                        ["BAHRAIN", "BH"],
+                      ],
+                    },
+                    then: "BHD",
+                  },
+                  {
+                    case: {
+                      $in: [
+                        { $toUpper: { $ifNull: ["$orderCountry", ""] } },
+                        ["KUWAIT", "KW"],
+                      ],
+                    },
+                    then: "KWD",
+                  },
+                  {
+                    case: {
+                      $in: [
+                        { $toUpper: { $ifNull: ["$orderCountry", ""] } },
+                        ["QATAR", "QA"],
+                      ],
+                    },
+                    then: "QAR",
+                  },
+                  {
+                    case: {
+                      $in: [
+                        { $toUpper: { $ifNull: ["$orderCountry", ""] } },
+                        ["INDIA", "IN"],
+                      ],
+                    },
+                    then: "INR",
+                  },
+                  {
+                    case: {
+                      $in: [
+                        { $toUpper: { $ifNull: ["$orderCountry", ""] } },
+                        ["USA", "UNITED STATES", "US"],
+                      ],
+                    },
+                    then: "USD",
+                  },
+                  {
+                    case: {
+                      $in: [
+                        { $toUpper: { $ifNull: ["$orderCountry", ""] } },
+                        ["CHINA", "CN"],
+                      ],
+                    },
+                    then: "CNY",
+                  },
+                ],
+                default: {
+                  $cond: {
+                    if: {
+                      $in: [
+                        { $toString: "$product.baseCurrency" },
+                        [
+                          "AED",
+                          "OMR",
+                          "SAR",
+                          "BHD",
+                          "KWD",
+                          "QAR",
+                          "INR",
+                          "USD",
+                          "CNY",
+                        ],
+                      ],
+                    },
+                    then: "$product.baseCurrency",
+                    else: "SAR",
+                  },
                 },
-                then: "$product.baseCurrency",
-                else: "SAR",
               },
             },
             // Determine total value
