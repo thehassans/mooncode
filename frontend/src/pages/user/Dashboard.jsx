@@ -489,8 +489,8 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 dark:text-white">Dashboard</h1>
-            <p className="text-sm text-slate-600 dark:text-neutral-400">
+            <h1 className="text-3xl font-black text-black dark:text-white">Dashboard</h1>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
               Your Business Command Center
             </p>
           </div>
@@ -527,23 +527,31 @@ export default function Dashboard() {
           <div className="h-32 animate-pulse rounded-3xl bg-slate-200 dark:bg-neutral-800" />
         ) : metrics?.profitLoss ? (
           <div
-            className={`relative overflow-hidden rounded-[2rem] p-8 shadow-2xl transition-all duration-500 ${
-              metrics.profitLoss.isProfit
-                ? 'bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-800 shadow-emerald-500/20 dark:from-emerald-600 dark:via-teal-700 dark:to-emerald-900'
-                : 'bg-gradient-to-br from-rose-500 via-red-600 to-rose-800 shadow-rose-500/20 dark:from-rose-600 dark:via-red-700 dark:to-rose-900'
+            className={`relative overflow-hidden rounded-[2rem] bg-neutral-900 p-8 shadow-2xl transition-all duration-500 ${
+              metrics.profitLoss.isProfit ? 'shadow-emerald-500/10' : 'shadow-rose-500/10'
             }`}
           >
-            <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-black/10 blur-3xl" />
+            <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-black/20 blur-3xl" />
 
             <div className="relative flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-center">
               <div className="flex-1">
-                <div className="mb-2 inline-block rounded-full bg-white/20 px-3 py-1 text-xs font-black tracking-widest text-white uppercase backdrop-blur-md">
+                <div className="mb-2 inline-block rounded-full bg-white/10 px-3 py-1 text-xs font-black tracking-widest text-white/60 uppercase backdrop-blur-md">
                   {metrics.profitLoss.isProfit ? 'Net Profit' : 'Net Loss'}
                 </div>
                 <div className="mb-1 flex items-baseline gap-2">
-                  <span className="text-xl font-black text-white/80">AED</span>
-                  <span className="text-5xl font-black tracking-tighter text-white drop-shadow-2xl md:text-6xl">
+                  <span
+                    className={`text-xl font-black ${
+                      metrics.profitLoss.isProfit ? 'text-emerald-500' : 'text-rose-500'
+                    }`}
+                  >
+                    AED
+                  </span>
+                  <span
+                    className={`text-5xl font-black tracking-tighter drop-shadow-2xl md:text-6xl ${
+                      metrics.profitLoss.isProfit ? 'text-emerald-500' : 'text-rose-500'
+                    }`}
+                  >
                     <LiveNumber
                       value={Math.abs(metrics.profitLoss.profit || 0)}
                       maximumFractionDigits={2}
