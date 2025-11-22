@@ -454,7 +454,7 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-white px-4 py-6 dark:bg-black">
+    <div className="min-h-screen px-4 py-6">
       <style>{`
         @keyframes fadeInUp {
           from {
