@@ -125,23 +125,24 @@ export default function Chart({ analytics }) {
               onClick={() => setSelectedCountry(selectedCountry === k ? null : k)}
               className={`group flex cursor-pointer items-center gap-3 rounded-xl border px-5 py-3 shadow-sm backdrop-blur-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-md ${
                 selectedCountry === k
-                  ? 'border-slate-300 bg-white shadow-lg dark:border-neutral-600 dark:bg-neutral-800'
-                  : 'border-slate-200 bg-white hover:shadow-md dark:border-neutral-800/50 dark:bg-neutral-900 dark:shadow-none'
+                  ? 'border-neutral-700 bg-neutral-800 shadow-lg dark:border-neutral-600 dark:bg-neutral-800'
+                  : 'border-neutral-800 bg-neutral-900 hover:shadow-md dark:border-neutral-800/50 dark:bg-neutral-900 dark:shadow-none'
               }`}
             >
               <span
                 className="h-4 w-4 rounded-full shadow-lg transition-all duration-300 group-hover:scale-125"
                 style={{ background: colors[k].line, boxShadow: colors[k].shadow }}
               />
-              <span className="text-sm font-black text-slate-700 dark:text-neutral-200">{k}</span>
-              <span className="text-xs font-bold text-slate-400">({total})</span>
+              <span className="text-sm font-black text-white dark:text-neutral-200">{k}</span>
+              <span className="text-xs font-bold text-neutral-500">({total})</span>
             </div>
           )
         })}
       </div>
 
       {/* Chart */}
-      <div className="relative w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-lg backdrop-blur-sm dark:border-neutral-800/50 dark:bg-neutral-900 dark:shadow-none">
+      {/* Chart */}
+      <div className="relative w-full overflow-x-auto rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg backdrop-blur-sm dark:border-neutral-800/50 dark:bg-neutral-900 dark:shadow-none">
         <svg
           width={width}
           height={height}
@@ -168,7 +169,7 @@ export default function Chart({ analytics }) {
           </defs>
 
           {/* Grid Lines */}
-          <g className="stroke-slate-200 dark:stroke-neutral-800" strokeWidth="1" opacity="0.5">
+          <g className="stroke-neutral-800 dark:stroke-neutral-800" strokeWidth="1" opacity="0.5">
             {yTicks.map((v, i) => {
               const y = height - padding - (v / max) * (height - 2 * padding)
               return (
@@ -185,7 +186,7 @@ export default function Chart({ analytics }) {
           </g>
 
           {/* Y-Axis Labels */}
-          <g className="fill-slate-500 text-xs font-bold dark:fill-neutral-400">
+          <g className="fill-neutral-500 text-xs font-bold dark:fill-neutral-400">
             {yTicks.map((v, i) => {
               const y = height - padding - (v / max) * (height - 2 * padding)
               return (
@@ -197,59 +198,64 @@ export default function Chart({ analytics }) {
           </g>
 
           {/* Area Fills (subtle) */}
-          {seriesKeys.map((k) => {
-            const areaPointsArray = dataByKey[k].map((v, i) => {
-              const x = padding + i * ((width - 2 * padding) / Math.max(1, dataByKey[k].length - 1))
-              const y = height - padding - (v / max) * (height - 2 * padding)
-              return { x, y }
-            })
+          {seriesKeys
+            .filter((k) => !selectedCountry || k === selectedCountry)
+            .map((k) => {
+              const areaPointsArray = dataByKey[k].map((v, i) => {
+                const x =
+                  padding + i * ((width - 2 * padding) / Math.max(1, dataByKey[k].length - 1))
+                const y = height - padding - (v / max) * (height - 2 * padding)
+                return { x, y }
+              })
 
-            let areaPathD = `M ${padding},${height - padding}` // Start at bottom-left
-            if (areaPointsArray.length > 0) {
-              // Add the curve path
-              areaPathD += ` L ${areaPointsArray[0].x},${areaPointsArray[0].y}`
-              for (let i = 0; i < areaPointsArray.length - 1; i++) {
-                const current = areaPointsArray[i]
-                const next = areaPointsArray[i + 1]
-                const controlX = (current.x + next.x) / 2
-                areaPathD += ` Q ${controlX},${current.y} ${(current.x + next.x) / 2},${(current.y + next.y) / 2}`
-                areaPathD += ` Q ${controlX},${next.y} ${next.x},${next.y}`
+              let areaPathD = `M ${padding},${height - padding}` // Start at bottom-left
+              if (areaPointsArray.length > 0) {
+                // Add the curve path
+                areaPathD += ` L ${areaPointsArray[0].x},${areaPointsArray[0].y}`
+                for (let i = 0; i < areaPointsArray.length - 1; i++) {
+                  const current = areaPointsArray[i]
+                  const next = areaPointsArray[i + 1]
+                  const controlX = (current.x + next.x) / 2
+                  areaPathD += ` Q ${controlX},${current.y} ${(current.x + next.x) / 2},${(current.y + next.y) / 2}`
+                  areaPathD += ` Q ${controlX},${next.y} ${next.x},${next.y}`
+                }
+                // Close the path back to the bottom-right and then bottom-left
+                areaPathD += ` L ${width - padding},${height - padding} Z`
+              } else {
+                areaPathD += ` L ${width - padding},${height - padding} Z` // Just a rectangle if no data
               }
-              // Close the path back to the bottom-right and then bottom-left
-              areaPathD += ` L ${width - padding},${height - padding} Z`
-            } else {
-              areaPathD += ` L ${width - padding},${height - padding} Z` // Just a rectangle if no data
-            }
 
-            return (
-              <path
-                key={`area-${k}`}
-                d={areaPathD}
-                fill={`url(#gradient-${k})`}
-                opacity={selectedCountry === k ? 0.4 : hoveredIndex !== null ? 0.1 : 0.15}
-                className="cursor-pointer transition-all duration-500 hover:opacity-30"
-                onClick={() => setSelectedCountry(selectedCountry === k ? null : k)}
-              />
-            )
-          })}
+              return (
+                <path
+                  key={`area-${k}`}
+                  d={areaPathD}
+                  fill={`url(#gradient-${k})`}
+                  opacity={selectedCountry === k ? 0.4 : hoveredIndex !== null ? 0.1 : 0.15}
+                  className="cursor-pointer transition-all duration-500 hover:opacity-30"
+                  onClick={() => setSelectedCountry(selectedCountry === k ? null : k)}
+                />
+              )
+            })}
 
           {/* Lines */}
-          {seriesKeys.map((k) => (
-            <path
-              key={k}
-              d={toPath(dataByKey[k])}
-              fill="none"
-              stroke={colors[k].line}
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="transition-all duration-500"
-              style={{
-                filter: hoveredIndex !== null ? 'none' : `url(#glow-${k})`,
-                opacity: hoveredIndex !== null ? 0.2 : 1,
-              }}
-            />
-          ))}
+          {seriesKeys
+            .filter((k) => !selectedCountry || k === selectedCountry)
+            .map((k) => (
+              <path
+                key={k}
+                d={toPath(dataByKey[k])}
+                fill="none"
+                stroke={colors[k].line}
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="transition-all duration-500"
+                style={{
+                  filter: hoveredIndex !== null ? 'none' : `url(#glow-${k})`,
+                  opacity: hoveredIndex !== null ? 0.2 : 1,
+                }}
+              />
+            ))}
 
           {/* Hover Line */}
           {hoveredIndex !== null && (
@@ -267,63 +273,65 @@ export default function Chart({ analytics }) {
           )}
 
           {/* Data Points */}
-          {seriesKeys.map((k) => (
-            <g key={`pts-${k}`}>
-              {dataByKey[k].map((v, i) => {
-                const x =
-                  padding + i * ((width - 2 * padding) / Math.max(1, dataByKey[k].length - 1))
-                const y = height - padding - (v / max) * (height - 2 * padding)
-                const isHovered = hoveredIndex === i
+          {seriesKeys
+            .filter((k) => !selectedCountry || k === selectedCountry)
+            .map((k) => (
+              <g key={`pts-${k}`}>
+                {dataByKey[k].map((v, i) => {
+                  const x =
+                    padding + i * ((width - 2 * padding) / Math.max(1, dataByKey[k].length - 1))
+                  const y = height - padding - (v / max) * (height - 2 * padding)
+                  const isHovered = hoveredIndex === i
 
-                return (
-                  <g key={i}>
-                    <circle
-                      cx={x}
-                      cy={y}
-                      r={20}
-                      fill="transparent"
-                      onMouseEnter={() => setHoveredIndex(i)}
-                      onMouseLeave={() => setHoveredIndex(null)}
-                      onClick={(e) => {
-                        const rect = e.currentTarget.ownerSVGElement.getBoundingClientRect()
-                        const breakdown = {}
-                        seriesKeys.forEach((key) => {
-                          breakdown[key] = dataByKey[key][i] || 0
-                        })
-                        setTooltipData({
-                          date: parsed[i].full,
-                          breakdown,
-                          total: Object.values(breakdown).reduce((a, b) => a + b, 0),
-                        })
-                        setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-                      }}
-                      className="cursor-pointer"
-                    />
-                    {isHovered && (
-                      <>
-                        <circle cx={x} cy={y} r={8} fill={colors[k].line} opacity="0.2" />
-                        <circle
-                          cx={x}
-                          cy={y}
-                          r={5}
-                          fill={colors[k].line}
-                          stroke="white"
-                          strokeWidth="4"
-                          className="cursor-pointer transition-all duration-500"
-                          style={{
-                            filter: selectedCountry === k ? colors[k].shadow : 'none',
-                            strokeWidth: selectedCountry === k ? '5' : '4',
-                          }}
-                          onClick={() => setSelectedCountry(selectedCountry === k ? null : k)}
-                          filter={`url(#glow-${k})`}
-                        />
-                      </>
-                    )}
-                  </g>
-                )
-              })}
-            </g>
-          ))}
+                  return (
+                    <g key={i}>
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={20}
+                        fill="transparent"
+                        onMouseEnter={() => setHoveredIndex(i)}
+                        onMouseLeave={() => setHoveredIndex(null)}
+                        onClick={(e) => {
+                          const rect = e.currentTarget.ownerSVGElement.getBoundingClientRect()
+                          const breakdown = {}
+                          seriesKeys.forEach((key) => {
+                            breakdown[key] = dataByKey[key][i] || 0
+                          })
+                          setTooltipData({
+                            date: parsed[i].full,
+                            breakdown,
+                            total: Object.values(breakdown).reduce((a, b) => a + b, 0),
+                          })
+                          setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+                        }}
+                        className="cursor-pointer"
+                      />
+                      {isHovered && (
+                        <>
+                          <circle cx={x} cy={y} r={8} fill={colors[k].line} opacity="0.2" />
+                          <circle
+                            cx={x}
+                            cy={y}
+                            r={5}
+                            fill={colors[k].line}
+                            stroke="white"
+                            strokeWidth="4"
+                            className="cursor-pointer transition-all duration-500"
+                            style={{
+                              filter: selectedCountry === k ? colors[k].shadow : 'none',
+                              strokeWidth: selectedCountry === k ? '5' : '4',
+                            }}
+                            onClick={() => setSelectedCountry(selectedCountry === k ? null : k)}
+                            filter={`url(#glow-${k})`}
+                          />
+                        </>
+                      )}
+                    </g>
+                  )
+                })}
+              </g>
+            ))}
 
           {/* Tooltip */}
           {hoveredIndex !== null && (
@@ -366,7 +374,7 @@ export default function Chart({ analytics }) {
                 x={x}
                 y={y}
                 textAnchor="middle"
-                className="fill-slate-500 text-xs font-bold dark:fill-neutral-400"
+                className="fill-neutral-500 text-xs font-bold dark:fill-neutral-400"
               >
                 {it.full}
               </text>
@@ -388,15 +396,15 @@ export default function Chart({ analytics }) {
                 top: `${Math.max(20, tooltipPos.y - 100)}px`,
               }}
             >
-              <div className="rounded-2xl border border-slate-200/50 bg-white/95 p-4 shadow-2xl backdrop-blur-xl dark:border-neutral-700/50 dark:bg-neutral-900/95">
+              <div className="rounded-2xl border border-neutral-800 bg-neutral-900/95 p-4 shadow-2xl backdrop-blur-xl dark:border-neutral-700/50 dark:bg-neutral-900/95">
                 {/* Header */}
-                <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2 dark:border-neutral-800">
-                  <span className="text-sm font-bold text-slate-600 dark:text-neutral-400">
+                <div className="mb-3 flex items-center justify-between border-b border-neutral-800 pb-2 dark:border-neutral-800">
+                  <span className="text-sm font-bold text-white dark:text-neutral-400">
                     {tooltipData.date}
                   </span>
                   <button
                     onClick={() => setTooltipData(null)}
-                    className="text-slate-400 transition-colors hover:text-slate-600 dark:text-neutral-500 dark:hover:text-neutral-300"
+                    className="text-neutral-400 transition-colors hover:text-white dark:text-neutral-500 dark:hover:text-neutral-300"
                   >
                     ✕
                   </button>
