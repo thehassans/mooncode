@@ -1977,12 +1977,12 @@ router.post(
                 `BuySial Commerce`
             );
 
-            // Clean up file after sending
-            setTimeout(() => {
-              try {
-                if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
-              } catch {}
-            }, 5000);
+            // Do not delete file, keep for history download
+            // setTimeout(() => {
+            //   try {
+            //     if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+            //   } catch {}
+            // }, 5000);
           }
         } catch (err) {
           console.error("Error sending commission receipt via WhatsApp:", err);
@@ -2014,6 +2014,7 @@ router.post(
         status: "sent",
         sentAt: new Date(),
         sentBy: req.user.id,
+        receiptPdf: pdfPath, // Save PDF path
       });
       await remit.save();
 

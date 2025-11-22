@@ -595,8 +595,16 @@ export default function AgentAmounts() {
                           </span>
                         )}
                         <button
-                          className="btn secondary"
-                          style={{ fontSize: 12, padding: '6px 12px', marginLeft: 8 }}
+                          className="btn"
+                          style={{
+                            fontSize: 12,
+                            padding: '6px 12px',
+                            marginLeft: 8,
+                            background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+                            color: 'white',
+                            border: 'none',
+                            boxShadow: '0 2px 4px rgba(6, 182, 212, 0.2)',
+                          }}
                           onClick={() => fetchHistory(a)}
                         >
                           History
@@ -841,6 +849,9 @@ export default function AgentAmounts() {
                   <th style={{ textAlign: 'left', padding: 8, color: 'var(--text-muted)' }}>
                     Paid By
                   </th>
+                  <th style={{ textAlign: 'right', padding: 8, color: 'var(--text-muted)' }}>
+                    Receipt
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -864,6 +875,25 @@ export default function AgentAmounts() {
                       {h.approver
                         ? `${h.approver.firstName || ''} ${h.approver.lastName || ''}`
                         : 'System'}
+                    </td>
+                    <td style={{ padding: 8, textAlign: 'right' }}>
+                      {h.receiptPdf ? (
+                        <a
+                          href={`${API_BASE}/${h.receiptPdf}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            color: '#3b82f6',
+                            textDecoration: 'none',
+                            fontSize: 12,
+                            fontWeight: 500,
+                          }}
+                        >
+                          Download PDF
+                        </a>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>-</span>
+                      )}
                     </td>
                   </tr>
                 ))}
