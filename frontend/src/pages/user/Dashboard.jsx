@@ -130,7 +130,7 @@ const PremiumPieChart = ({ data, total, loading }) => {
       <div className="relative mx-auto aspect-square w-full max-w-[200px]">
         <svg viewBox="0 0 100 100" className="rotate-[-90deg]">
           {statuses.map((status, i) => {
-            const value = data[status.key] || 0
+            const value = (data && data[status.key]) || 0
             const percent = total > 0 ? (value / total) * 100 : 0
             const offset = cumulativePercent
             cumulativePercent += percent
@@ -165,7 +165,7 @@ const PremiumPieChart = ({ data, total, loading }) => {
 
       <div className="grid grid-cols-2 gap-2">
         {statuses.map((status) => {
-          const value = data[status.key] || 0
+          const value = (data && data[status.key]) || 0
           if (value === 0) return null
           return (
             <div key={status.key} className="flex items-center gap-2">
@@ -286,7 +286,7 @@ export default function Dashboard() {
     if (metrics?.statusTotals) return metrics.statusTotals
     return COUNTRY_LIST.reduce(
       (acc, c) => {
-        const m = countryMetrics(c)
+        const m = countryMetrics(c) || {}
         acc.total += Number(m.orders || 0)
         acc.pending += Number(m.pending || 0)
         acc.assigned += Number(m.assigned || 0)
