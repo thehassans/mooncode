@@ -80,12 +80,12 @@ const CompactStatCard = ({
   loading,
 }) => {
   const Content = (
-    <div className="flex items-center justify-between">
-      <p className="text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
+    <div className="flex flex-col gap-1">
+      <p className="text-[10px] font-bold tracking-wider text-slate-500 uppercase dark:text-neutral-400">
         {title}
       </p>
       {loading ? (
-        <div className="h-7 w-20 animate-pulse rounded bg-slate-200 dark:bg-neutral-800" />
+        <div className="h-8 w-full animate-pulse rounded bg-slate-200 dark:bg-neutral-800" />
       ) : (
         <p className={`text-2xl font-black ${color}`}>{value}</p>
       )}
