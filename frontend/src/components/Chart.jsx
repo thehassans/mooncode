@@ -144,7 +144,7 @@ export default function Chart({ analytics }) {
       </div>
 
       {/* Chart */}
-      <div className="relative w-full overflow-x-auto rounded-2xl border border-slate-200 bg-black p-6 shadow-lg dark:border-black dark:bg-black">
+      <div className="relative w-full overflow-x-auto rounded-2xl border-2 border-neutral-800 bg-black p-6 shadow-lg">
         <svg
           width={width}
           height={height}
@@ -188,7 +188,10 @@ export default function Chart({ analytics }) {
           </g>
 
           {/* Y-Axis Labels */}
-          <g className="fill-slate-500 text-xs font-bold dark:fill-neutral-400">
+          <g
+            className="fill-white text-xs font-bold"
+            style={{ filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.5))' }}
+          >
             {yTicks.map((v, i) => {
               const y = height - padding - (v / max) * (height - 2 * padding)
               return (
@@ -369,7 +372,8 @@ export default function Chart({ analytics }) {
                 x={x}
                 y={y}
                 textAnchor="middle"
-                className="fill-slate-500 text-xs font-bold dark:fill-neutral-400"
+                className="fill-white text-xs font-bold"
+                style={{ filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.5))' }}
               >
                 {it.full}
               </text>
