@@ -29,41 +29,49 @@ const TabsComponent = ({ tabs, activeTab, setActiveTab }) => (
 // --- Compact Metric Badge ---
 const PremiumStatCard = ({ icon: Icon, title, value, trend, to, loading }) => {
   const content = (
-    <div className="group relative overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900 p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-neutral-800/50 dark:bg-neutral-900">
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-black dark:bg-black">
       <div className="absolute -top-2 -right-2 text-4xl opacity-5 transition-transform group-hover:scale-110 group-hover:opacity-10">
-        {Icon && <Icon className="h-10 w-10 text-white" />}
+        {Icon && <Icon className="h-10 w-10" />}
       </div>
-      <p className="text-[10px] font-black tracking-widest text-neutral-400 uppercase">{title}</p>
+      <p className="text-[10px] font-black tracking-widest text-slate-600 uppercase dark:text-neutral-400">
+        {title}
+      </p>
       {loading ? (
-        <div className="mt-2 h-6 w-20 animate-pulse rounded bg-neutral-700" />
+        <div className="mt-2 h-6 w-20 animate-pulse rounded bg-slate-300 dark:bg-neutral-700" />
       ) : (
-        <p className="mt-1 text-lg font-black text-white">{value}</p>
+        <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">{value}</p>
+      )}
+      {trend && (
+        <p
+          className={`mt-1 text-xs font-bold ${trend.isPositive ? 'text-emerald-500' : 'text-rose-500'}`}
+        >
+          {trend.isPositive ? '▲' : '▼'} {trend.value}%
+        </p>
       )}
     </div>
   )
 
   if (to && !loading) {
-    return (
-      <NavLink to={to} className="block">
-        {content}
-      </NavLink>
-    )
+    return <NavLink to={to}>{content}</NavLink>
   }
-
   return content
 }
 
 // --- Glass Card Container ---
 const GlassCard = ({ children, className = '', title, subtitle }) => (
-  <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg backdrop-blur-sm dark:border-neutral-800/50 dark:bg-neutral-900/50">
+  <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg backdrop-blur-sm dark:border-black dark:bg-black">
     {(title || subtitle) && (
-      <div className="mb-6 border-b border-neutral-800 pb-4">
+      <div className="mb-6 border-b border-slate-100 pb-4 dark:border-neutral-800">
         {title && (
-          <h3 className="bg-gradient-to-r from-white to-neutral-400 bg-clip-text text-xl font-black tracking-tight text-transparent">
+          <h3 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-xl font-black tracking-tight text-transparent dark:from-white dark:to-neutral-400">
             {title}
           </h3>
         )}
-        {subtitle && <p className="mt-1 text-sm font-medium text-neutral-400">{subtitle}</p>}
+        {subtitle && (
+          <p className="mt-1 text-sm font-medium text-slate-500 dark:text-neutral-400">
+            {subtitle}
+          </p>
+        )}
       </div>
     )}
     {children}
@@ -71,12 +79,20 @@ const GlassCard = ({ children, className = '', title, subtitle }) => (
 )
 
 // --- Compact Stat Card ---
-const CompactStatCard = ({ title, value, to, color = 'text-white', loading }) => {
+const CompactStatCard = ({
+  title,
+  value,
+  to,
+  color = 'text-slate-900 dark:text-white',
+  loading,
+}) => {
   const Content = (
     <div className="flex flex-col gap-1">
-      <p className="text-[10px] font-bold tracking-wider text-neutral-400 uppercase">{title}</p>
+      <p className="text-[10px] font-bold tracking-wider text-slate-500 uppercase dark:text-neutral-400">
+        {title}
+      </p>
       {loading ? (
-        <div className="h-8 w-full animate-pulse rounded bg-neutral-800" />
+        <div className="h-8 w-full animate-pulse rounded bg-slate-200 dark:bg-neutral-800" />
       ) : (
         <p className={`text-2xl font-black ${color}`}>{value}</p>
       )}
@@ -87,7 +103,7 @@ const CompactStatCard = ({ title, value, to, color = 'text-white', loading }) =>
     return (
       <NavLink
         to={to}
-        className="block rounded-xl border border-neutral-800 bg-neutral-900 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:bg-neutral-900"
+        className="block rounded-xl border border-slate-200 bg-white p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-black dark:bg-black"
       >
         {Content}
       </NavLink>
@@ -95,19 +111,17 @@ const CompactStatCard = ({ title, value, to, color = 'text-white', loading }) =>
   }
 
   return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4 dark:border-neutral-800/50 dark:bg-neutral-900">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-black dark:bg-black">
       {Content}
     </div>
   )
 }
 
 // --- Pie Chart Component ---
-const PremiumPieChart = ({ data, total, loading }) => {
-  if (loading) {
+const PremiumPieChart = ({ statusTotals, loading }) => {
+  if (loading || !statusTotals) {
     return (
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 dark:border-neutral-800/50 dark:bg-neutral-900">
-        <div className="h-64 w-full animate-pulse rounded-2xl bg-neutral-800" />
-      </div>
+      <div className="h-64 w-full animate-pulse rounded-2xl bg-slate-200 dark:bg-neutral-800" />
     )
   }
 
@@ -123,6 +137,7 @@ const PremiumPieChart = ({ data, total, loading }) => {
     { key: 'no_response', label: 'No Response', color: '#dc2626' },
   ]
 
+  const total = statuses.reduce((sum, s) => sum + (statusTotals[s.key] || 0), 0)
   let cumulativePercent = 0
 
   return (
@@ -130,7 +145,7 @@ const PremiumPieChart = ({ data, total, loading }) => {
       <div className="relative mx-auto aspect-square w-full max-w-[200px]">
         <svg viewBox="0 0 100 100" className="rotate-[-90deg]">
           {statuses.map((status, i) => {
-            const value = (data && data[status.key]) || 0
+            const value = statusTotals[status.key] || 0
             const percent = total > 0 ? (value / total) * 100 : 0
             const offset = cumulativePercent
             cumulativePercent += percent
@@ -158,19 +173,21 @@ const PremiumPieChart = ({ data, total, loading }) => {
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-xs font-bold text-neutral-400 uppercase">Total</p>
-          <p className="text-3xl font-black text-white">{total.toLocaleString()}</p>
+          <p className="text-xs font-bold text-slate-500 uppercase dark:text-neutral-400">Total</p>
+          <p className="text-2xl font-black text-slate-900 dark:text-white">
+            {total.toLocaleString()}
+          </p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         {statuses.map((status) => {
-          const value = (data && data[status.key]) || 0
+          const value = statusTotals[status.key] || 0
           if (value === 0) return null
           return (
             <div key={status.key} className="flex items-center gap-2">
               <div className="h-3 w-3 rounded-full" style={{ backgroundColor: status.color }} />
-              <span className="text-sm font-bold text-white">
+              <span className="text-xs font-bold text-slate-700 dark:text-neutral-300">
                 {status.label}: {value}
               </span>
             </div>
@@ -286,7 +303,7 @@ export default function Dashboard() {
     if (metrics?.statusTotals) return metrics.statusTotals
     return COUNTRY_LIST.reduce(
       (acc, c) => {
-        const m = countryMetrics(c) || {}
+        const m = countryMetrics(c)
         acc.total += Number(m.orders || 0)
         acc.pending += Number(m.pending || 0)
         acc.assigned += Number(m.assigned || 0)
@@ -425,7 +442,7 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-black px-4 py-6">
+    <div className="min-h-screen bg-white px-4 py-6 dark:bg-black">
       <style>{`
         @keyframes fadeInUp {
           from {
@@ -460,13 +477,15 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-black text-white">Dashboard</h1>
-            <p className="text-sm text-neutral-400">Your Business Command Center</p>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white">Dashboard</h1>
+            <p className="text-sm text-slate-600 dark:text-neutral-400">
+              Your Business Command Center
+            </p>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-2 shadow-lg backdrop-blur-xl dark:border-neutral-800/50 dark:bg-neutral-900/80">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg backdrop-blur-sm dark:border-black dark:bg-black">
             <select
-              className="cursor-pointer rounded-xl border-none bg-neutral-800 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500"
+              className="cursor-pointer rounded-xl border-none bg-gradient-to-br from-slate-50 to-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:from-neutral-800 dark:to-neutral-900 dark:text-white"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
             >
@@ -476,9 +495,9 @@ export default function Dashboard() {
                 </option>
               ))}
             </select>
-            <div className="h-8 w-px bg-gradient-to-b from-transparent via-neutral-700 to-transparent" />
+            <div className="h-8 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent dark:via-neutral-700" />
             <select
-              className="cursor-pointer rounded-xl border-none bg-neutral-800 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500"
+              className="cursor-pointer rounded-xl border-none bg-gradient-to-br from-slate-50 to-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:from-neutral-800 dark:to-neutral-900 dark:text-white"
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
             >
@@ -493,7 +512,7 @@ export default function Dashboard() {
 
         {/* Compact Hero - Profit/Loss */}
         {loading ? (
-          <div className="h-32 animate-pulse rounded-3xl bg-neutral-800" />
+          <div className="h-32 animate-pulse rounded-3xl bg-slate-200 dark:bg-neutral-800" />
         ) : metrics?.profitLoss ? (
           <div
             className={`relative overflow-hidden rounded-[2rem] p-8 shadow-2xl transition-all duration-500 ${
@@ -533,11 +552,12 @@ export default function Dashboard() {
                   { label: 'Investor', val: metrics.profitLoss.investorCommission, icon: '📈' },
                   { label: 'Ads', val: metrics.profitLoss.advertisementExpense, icon: '📢' },
                 ].map((item) => (
-                  <PremiumStatCard
+                  <MetricBadge
                     key={item.label}
-                    icon={() => <span className="text-white">{item.icon}</span>}
-                    title={item.label}
+                    icon={item.icon}
+                    label={item.label}
                     value={<LiveNumber value={item.val || 0} maximumFractionDigits={0} />}
+                    prefix="AED"
                     loading={loading}
                   />
                 ))}
@@ -554,7 +574,7 @@ export default function Dashboard() {
             <GlassCard title="Sales Trend" subtitle="Last 7 days performance">
               <div className="h-[400px] w-full">
                 {!hydrated || loading ? (
-                  <div className="h-full w-full animate-pulse rounded-2xl bg-neutral-800" />
+                  <div className="h-full w-full animate-pulse rounded-2xl bg-slate-200 dark:bg-neutral-800" />
                 ) : (
                   <Chart analytics={analytics} />
                 )}
@@ -566,7 +586,10 @@ export default function Dashboard() {
               {loading ? (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="h-32 animate-pulse rounded-xl bg-neutral-800" />
+                    <div
+                      key={i}
+                      className="h-32 animate-pulse rounded-xl bg-slate-200 dark:bg-neutral-800"
+                    />
                   ))}
                 </div>
               ) : (
@@ -582,14 +605,14 @@ export default function Dashboard() {
                         key={c}
                         className={`rounded-2xl border p-5 transition-all hover:-translate-y-1 hover:shadow-lg ${
                           isProfit
-                            ? 'border-emerald-900/30 bg-gradient-to-br from-emerald-950/50 to-neutral-900'
-                            : 'border-rose-900/30 bg-gradient-to-br from-rose-950/50 to-neutral-900'
+                            ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white dark:border-emerald-900/30 dark:from-emerald-950/50 dark:to-neutral-900'
+                            : 'border-rose-200 bg-gradient-to-br from-rose-50 to-white dark:border-rose-900/30 dark:from-rose-950/50 dark:to-neutral-900'
                         }`}
                       >
-                        <div className="mb-3 flex items-center justify-between">
+                        <div className="mb-4 flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="text-2xl">{flag}</span>
-                            <span className="font-black text-white">{c}</span>
+                            <span className="font-black text-slate-900 dark:text-white">{c}</span>
                           </div>
                           <span
                             className={`text-xl font-black ${
