@@ -564,51 +564,80 @@ export default function AgentAmounts() {
                           PKR {num(balance)}
                         </span>
                       </td>
-                      <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                        {balance > 0 ? (
-                          <button
-                            className="btn success"
-                            style={{ fontSize: 12, padding: '6px 12px' }}
-                            disabled={payingAgent === a.id}
-                            onClick={() => {
-                              const totalOrderValueAED =
-                                a.deliveredOrderValueAED || a.totalOrderValueAED || 0
-                              const pkrRate = 76
-                              const totalInPKR = totalOrderValueAED * pkrRate
-                              const defaultCommission = (totalInPKR * 12) / 100
-
-                              setPayModal({
-                                agent: a,
-                                balance,
-                                totalOrderValueAED,
-                                deliveredCommission: a.deliveredCommissionPKR || 0,
-                              })
-                              setCommissionRate(null)
-                              setCalculatedAmount(defaultCommission)
-                            }}
-                          >
-                            Pay Commission
-                          </button>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                            No balance
-                          </span>
-                        )}
-                        <button
-                          className="btn"
+                      <td style={{ padding: 12, textAlign: 'right' }}>
+                        <div
                           style={{
-                            fontSize: 12,
-                            padding: '6px 12px',
-                            marginLeft: 8,
-                            background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
-                            color: 'white',
-                            border: 'none',
-                            boxShadow: '0 2px 4px rgba(6, 182, 212, 0.2)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            gap: 8,
                           }}
-                          onClick={() => fetchHistory(a)}
                         >
-                          History
-                        </button>
+                          {balance > 0 ? (
+                            <button
+                              className="btn"
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 600,
+                                padding: '8px 16px',
+                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                boxShadow:
+                                  '0 4px 6px -1px rgba(16, 185, 129, 0.2), 0 2px 4px -1px rgba(16, 185, 129, 0.1)',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                              }}
+                              onClick={() => {
+                                setPayModal({
+                                  agent: a,
+                                  totalOrderValueAED: a.deliveredOrderValueAED,
+                                })
+                                setCommissionRate(12)
+                                setCalculatedAmount(
+                                  Math.round(a.deliveredOrderValueAED * 76 * 0.12)
+                                )
+                              }}
+                            >
+                              Pay Commission
+                            </button>
+                          ) : (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                color: 'var(--text-muted)',
+                                fontStyle: 'italic',
+                                padding: '8px 12px',
+                              }}
+                            >
+                              No balance
+                            </span>
+                          )}
+                          <button
+                            className="btn"
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              padding: '8px 16px',
+                              background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              boxShadow:
+                                '0 4px 6px -1px rgba(6, 182, 212, 0.2), 0 2px 4px -1px rgba(6, 182, 212, 0.1)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px',
+                            }}
+                            onClick={() => fetchHistory(a)}
+                          >
+                            History
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
