@@ -85,7 +85,9 @@ export default function ManagerFinances() {
     })()
   }, [])
 
-  // Load remittances (both driver→manager and manager→company)
+  const [totalCollectedFromBackend, setTotalCollectedFromBackend] = useState(0)
+
+  // Load remittances (both driver→manager and manager→company) and summary
   useEffect(() => {
     if (!country) return // Don't fetch if no country selected (unless no options available)
 
@@ -96,7 +98,7 @@ export default function ManagerFinances() {
         const dateRange = getMonthDateRange()
         const dateQuery = dateRange ? `&from=${dateRange.from}&to=${dateRange.to}` : ''
 
-        const [driverRemitsRes, managerRemitsRes, managersRes] = await Promise.all([
+        const [driverRemitsRes, managerRemitsRes, managersRes, summaryRes] = await Promise.all([
           apiGet(
             `/api/finance/remittances?limit=500&country=${encodeURIComponent(country)}${dateQuery}`
           ),
@@ -104,6 +106,9 @@ export default function ManagerFinances() {
             `/api/finance/manager-remittances?country=${encodeURIComponent(country)}${dateQuery}`
           ),
           apiGet('/api/users?role=manager'),
+          apiGet(
+            `/api/finance/remittances/summary?country=${encodeURIComponent(country)}${dateQuery}`
+          ),
         ])
         if (alive) {
           setDriverRemittances(
@@ -113,6 +118,7 @@ export default function ManagerFinances() {
             Array.isArray(managerRemitsRes?.remittances) ? managerRemitsRes.remittances : []
           )
           setManagers(Array.isArray(managersRes?.users) ? managersRes.users : [])
+          setTotalCollectedFromBackend(Number(summaryRes?.totalAmount || 0))
         }
         setErr('')
       } catch (e) {
@@ -180,12 +186,15 @@ export default function ManagerFinances() {
       const dateRange = getMonthDateRange()
       const dateQuery = dateRange ? `&from=${dateRange.from}&to=${dateRange.to}` : ''
 
-      const [driverRemitsRes, managerRemitsRes] = await Promise.all([
+      const [driverRemitsRes, managerRemitsRes, summaryRes] = await Promise.all([
         apiGet(
           `/api/finance/remittances?limit=500&country=${encodeURIComponent(country)}${dateQuery}`
         ),
         apiGet(
           `/api/finance/manager-remittances?country=${encodeURIComponent(country)}${dateQuery}`
+        ),
+        apiGet(
+          `/api/finance/remittances/summary?country=${encodeURIComponent(country)}${dateQuery}`
         ),
       ])
       setDriverRemittances(
@@ -194,6 +203,7 @@ export default function ManagerFinances() {
       setManagerRemittances(
         Array.isArray(managerRemitsRes?.remittances) ? managerRemitsRes.remittances : []
       )
+      setTotalCollectedFromBackend(Number(summaryRes?.totalAmount || 0))
     } catch {}
   }
 
@@ -281,12 +291,17 @@ export default function ManagerFinances() {
     let pendingApproval = 0 // Manager remittances pending owner approval
 
     // Calculate total collected from drivers (accepted driver remittances)
-    for (const r of filteredDriverRemittances) {
-      if (r.status === 'accepted' || r.status === 'manager_accepted') {
-        const amount = Number(r.amount || 0)
-        const currency = r.currency || 'SAR'
-        const converted = curCfg ? convert(amount, currency, summaryCurrency, curCfg) : amount
-        totalCollectedFromDrivers += converted
+    // Use backend value if available (fixes pagination issue), otherwise fallback to client calc
+    if (totalCollectedFromBackend > 0) {
+      totalCollectedFromDrivers = totalCollectedFromBackend
+    } else {
+      for (const r of filteredDriverRemittances) {
+        if (r.status === 'accepted' || r.status === 'manager_accepted') {
+          const amount = Number(r.amount || 0)
+          const currency = r.currency || 'SAR'
+          const converted = curCfg ? convert(amount, currency, summaryCurrency, curCfg) : amount
+          totalCollectedFromDrivers += converted
+        }
       }
     }
 

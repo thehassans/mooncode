@@ -820,6 +820,133 @@ function currencyFromCountry(country) {
   return map[key] || "";
 }
 
+// Summary of remittances (Driver -> Manager) to fix pagination issues
+router.get(
+  "/remittances/summary",
+  auth,
+  allowRoles("admin", "user", "manager", "driver"),
+  async (req, res) => {
+    try {
+      let match = {};
+      if (req.user.role === "admin") {
+        // no extra scoping
+      } else if (req.user.role === "user") {
+        match.owner = req.user.id;
+      } else if (req.user.role === "manager") {
+        // Option: when workspace=1, include all remittances in the manager's workspace (owner scope)
+        const wantWorkspace = String(req.query.workspace || "").toLowerCase();
+        if (
+          wantWorkspace === "1" ||
+          wantWorkspace === "true" ||
+          wantWorkspace === "yes"
+        ) {
+          try {
+            const me = await User.findById(req.user.id)
+              .select("createdBy")
+              .lean();
+            const ownerId = String(me?.createdBy || "");
+            if (ownerId) {
+              match.owner = ownerId;
+            } else {
+              match.manager = req.user.id;
+            }
+          } catch {
+            match.manager = req.user.id;
+          }
+        } else {
+          match.manager = req.user.id;
+        }
+      } else if (req.user.role === "driver") {
+        match.driver = req.user.id;
+      }
+
+      // Country filter
+      if (req.query.country) {
+        const queryCountry = String(req.query.country).trim();
+        const expandCountry = (c) => {
+          const normalized = c.toLowerCase();
+          if (["ksa", "saudi arabia", "saudi"].includes(normalized))
+            return [
+              "KSA",
+              "Saudi Arabia",
+              "ksa",
+              "saudi arabia",
+              "Saudi",
+              "saudi",
+            ];
+          if (["uae", "united arab emirates"].includes(normalized))
+            return [
+              "UAE",
+              "United Arab Emirates",
+              "uae",
+              "united arab emirates",
+            ];
+          if (["oman", "om"].includes(normalized))
+            return ["Oman", "OMAN", "oman", "OM", "Om"];
+          if (["bahrain", "bh"].includes(normalized))
+            return ["Bahrain", "BAHRAIN", "bahrain", "BH", "Bh"];
+          if (["kuwait", "kw"].includes(normalized))
+            return ["Kuwait", "KUWAIT", "kuwait", "KW", "Kw"];
+          if (["qatar", "qa"].includes(normalized))
+            return ["Qatar", "QATAR", "qatar", "QA", "Qa"];
+          if (["india", "in"].includes(normalized))
+            return ["India", "INDIA", "india", "IN", "In"];
+          return [
+            c,
+            c.toUpperCase(),
+            c.toLowerCase(),
+            c.charAt(0).toUpperCase() + c.slice(1).toLowerCase(),
+          ];
+        };
+        match.country = { $in: expandCountry(queryCountry) };
+      }
+
+      // Date filtering
+      if (req.query.from || req.query.to) {
+        match.createdAt = {};
+        if (req.query.from) match.createdAt.$gte = new Date(req.query.from);
+        if (req.query.to) match.createdAt.$lte = new Date(req.query.to);
+      } else if (req.query.month && req.query.year) {
+        const monthNum = parseInt(req.query.month);
+        const yearNum = parseInt(req.query.year);
+        if (monthNum >= 1 && monthNum <= 12 && yearNum > 2000) {
+          const startDate = new Date(yearNum, monthNum - 1, 1);
+          const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+          match.createdAt = { $gte: startDate, $lte: endDate };
+        }
+      }
+
+      // Only count accepted/manager_accepted remittances for "Total Collected"
+      match.status = { $in: ["accepted", "manager_accepted"] };
+
+      const result = await Remittance.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: "$amount" },
+            count: { $sum: 1 },
+          },
+        },
+      ]);
+
+      const total = result.length > 0 ? result[0].totalAmount : 0;
+      const count = result.length > 0 ? result[0].count : 0;
+
+      res.json({
+        totalAmount: total,
+        count: count,
+        currency: req.query.country
+          ? currencyFromCountry(req.query.country)
+          : "",
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch remittance summary" });
+    }
+  }
+);
+
 // List remittances in scope (Driver -> Manager)
 router.get(
   "/remittances",
