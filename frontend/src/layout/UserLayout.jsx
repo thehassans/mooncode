@@ -889,6 +889,288 @@ export default function UserLayout() {
     </div>
   )
 
+  // Branding (header logo)
+  const [branding, setBranding] = useState({ headerLogo: null })
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const j = await apiGet('/api/settings/branding')
+        if (!cancelled) setBranding({ headerLogo: j.headerLogo || null })
+      } catch {}
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    function onResize() {
+      const mobile = window.innerWidth <= 768
+      setIsMobile(mobile)
+      if (mobile) setClosed(true)
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  // Initialize theme from localStorage or system preference
+  useEffect(() => {
+    const saved = localStorage.getItem('theme')
+    let t =
+      saved ||
+      (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+        ? 'light'
+        : 'dark')
+    setTheme(t)
+    document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark')
+  }, [])
+
+  // Mobile swipe gestures to open/close sidebar
+  useEffect(() => {
+    let startX = 0,
+      startY = 0,
+      startTime = 0,
+      tracking = false
+    function onTouchStart(e) {
+      if (!e.touches || e.touches.length !== 1) return
+      const t = e.touches[0]
+      const tag = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : ''
+      if (['input', 'textarea', 'button', 'select'].includes(tag)) return
+      startX = t.clientX
+      startY = t.clientY
+      startTime = Date.now()
+      tracking = true
+    }
+    function onTouchEnd(e) {
+      if (!tracking) return
+      tracking = false
+      const t = (e.changedTouches && e.changedTouches[0]) || null
+      if (!t) return
+      const dx = t.clientX - startX
+      const dy = t.clientY - startY
+      const dt = Date.now() - startTime
+      const isHorizontal = Math.abs(dx) > 40 && Math.abs(dy) < 50
+      const isQuick = dt < 500
+      const fromEdge = startX <= 40
+      const isMobile = window.innerWidth <= 768
+      if (!isMobile || !isHorizontal || !isQuick) return
+      if (dx > 40 && fromEdge) {
+        setClosed(false)
+      } else if (dx < -40) {
+        setClosed(true)
+      }
+    }
+    window.addEventListener('touchstart', onTouchStart, { passive: true })
+    window.addEventListener('touchend', onTouchEnd, { passive: true })
+    return () => {
+      window.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [])
+
+  // Swatch helpers: apply sidebar/header colors and persist
+  function applyNavColors(cfg) {
+    if (!cfg) return
+    const RESET_KEYS = ['sidebar-bg', 'sidebar-border', 'nav-active-bg', 'nav-active-fg']
+    const { __theme, __reset, ...vars } = cfg
+    if (__reset || Object.keys(vars).length === 0) {
+      RESET_KEYS.forEach((k) => document.documentElement.style.removeProperty(`--${k}`))
+      try {
+        localStorage.removeItem('navColors')
+      } catch {}
+    } else {
+      Object.entries(vars).forEach(([k, v]) => {
+        document.documentElement.style.setProperty(`--${k}`, v)
+      })
+      localStorage.setItem('navColors', JSON.stringify(vars))
+    }
+    if (__theme) {
+      localStorage.setItem('theme', __theme)
+      document.documentElement.setAttribute('data-theme', __theme === 'light' ? 'light' : 'dark')
+      setTheme(__theme)
+    }
+  }
+
+  const navPresets = [
+    {
+      title: 'Default',
+      cfg: { __reset: true },
+      sample: 'linear-gradient(135deg,var(--panel-2),var(--panel))',
+    },
+    {
+      title: 'Purple',
+      cfg: {
+        'sidebar-bg': '#1a1036',
+        'sidebar-border': '#2b1856',
+        'nav-active-bg': '#3f1d67',
+        'nav-active-fg': '#f5f3ff',
+      },
+      sample: '#7c3aed',
+    },
+    {
+      title: 'Green',
+      cfg: {
+        'sidebar-bg': '#06251f',
+        'sidebar-border': '#0b3b31',
+        'nav-active-bg': '#0f3f33',
+        'nav-active-fg': '#c7f9ec',
+      },
+      sample: '#10b981',
+    },
+    {
+      title: 'Blue',
+      cfg: {
+        'sidebar-bg': '#0b1220',
+        'sidebar-border': '#223',
+        'nav-active-bg': '#1e293b',
+        'nav-active-fg': '#e2e8f0',
+      },
+      sample: '#2563eb',
+    },
+    {
+      title: 'Slate',
+      cfg: {
+        'sidebar-bg': '#0f172a',
+        'sidebar-border': '#1e293b',
+        'nav-active-bg': '#1f2937',
+        'nav-active-fg': '#e5e7eb',
+      },
+      sample: '#334155',
+    },
+    {
+      title: 'Orange',
+      cfg: {
+        'sidebar-bg': '#2a1304',
+        'sidebar-border': '#3b1d08',
+        'nav-active-bg': '#4a1f0a',
+        'nav-active-fg': '#ffedd5',
+      },
+      sample: '#f97316',
+    },
+    {
+      title: 'Pink',
+      cfg: {
+        'sidebar-bg': '#2a0b17',
+        'sidebar-border': '#3a0f20',
+        'nav-active-bg': '#4b1026',
+        'nav-active-fg': '#ffe4e6',
+      },
+      sample: '#ec4899',
+    },
+    {
+      title: 'Light Pink',
+      cfg: {
+        'sidebar-bg': '#2b1020',
+        'sidebar-border': '#3a152b',
+        'nav-active-bg': '#4b1a36',
+        'nav-active-fg': '#ffd7ef',
+      },
+      sample: '#f9a8d4',
+    },
+    {
+      title: 'Blush',
+      cfg: {
+        __theme: 'light',
+        'sidebar-bg': '#FFB5C0',
+        'sidebar-border': '#f39bab',
+        'nav-active-bg': '#ffdfe6',
+        'nav-active-fg': '#111827',
+      },
+      sample: '#FFB5C0',
+    },
+    {
+      title: 'White',
+      cfg: {
+        __theme: 'light',
+        'sidebar-bg': '#ffffff',
+        'sidebar-border': '#e5e7eb',
+        'nav-active-bg': '#f1f5f9',
+        'nav-active-fg': '#111827',
+      },
+      sample: '#ffffff',
+    },
+  ]
+
+  // Settings modal state
+  const [showSettings, setShowSettings] = useState(false)
+  const [testMsg, setTestMsg] = useState('')
+  const [errorLogs, setErrorLogs] = useState([])
+
+  // Settings dropdown state
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!showSettingsDropdown) return
+    function handleClick(e) {
+      const dropdown = document.getElementById('settings-dropdown')
+      const button = document.getElementById('settings-button')
+      if (dropdown && !dropdown.contains(e.target) && button && !button.contains(e.target)) {
+        setShowSettingsDropdown(false)
+      }
+    }
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [showSettingsDropdown])
+
+  function loadErrorLogs() {
+    try {
+      setErrorLogs(JSON.parse(localStorage.getItem('error_logs') || '[]'))
+    } catch {
+      setErrorLogs([])
+    }
+  }
+  function clearErrorLogs() {
+    try {
+      localStorage.setItem('error_logs', '[]')
+    } catch {}
+    setErrorLogs([])
+  }
+  function downloadErrorLogs() {
+    try {
+      const blob = new Blob([JSON.stringify(errorLogs, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `error-logs-${new Date().toISOString().slice(0, 19)}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {}
+  }
+  function fmtTime(ts) {
+    try {
+      return new Date(Number(ts || 0)).toLocaleString()
+    } catch {
+      return ''
+    }
+  }
+
+  function toggleTheme() {
+    const next = theme === 'light' ? 'dark' : 'light'
+    setTheme(next)
+    localStorage.setItem('theme', next)
+    document.documentElement.setAttribute('data-theme', next === 'light' ? 'light' : 'dark')
+  }
+
+  function doLogout() {
+    try {
+      localStorage.removeItem('token')
+      localStorage.removeItem('me')
+      localStorage.removeItem('navColors')
+    } catch {}
+    try {
+      navigate('/login', { replace: true })
+    } catch {}
+    setTimeout(() => {
+      try {
+        window.location.assign('/login')
+      } catch {}
+    }, 30)
+  }
+
   // Settings view state
   const [settingsView, setSettingsView] = useState('main') // 'main' | 'nav'
 
