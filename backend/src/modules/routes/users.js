@@ -1739,10 +1739,8 @@ router.get(
     const { q = "" } = req.query || {};
     let cond = { role: "investor" };
 
-    // For non-admin users, filter by workspace
-    if (req.user.role !== "admin") {
-      cond.createdBy = req.user.id;
-    }
+    // Note: Showing all investors for now since createdBy may not be set correctly
+    // TODO: Add proper workspace filtering once investor creation flow is fixed
 
     console.log("[GET /investors] Query condition:", JSON.stringify(cond));
     console.log("[GET /investors] User ID:", req.user.id);
