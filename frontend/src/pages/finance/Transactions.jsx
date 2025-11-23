@@ -24,6 +24,25 @@ export default function Transactions() {
   const [drivers, setDrivers] = useState([])
   const [selectedMonth, setSelectedMonth] = useState(0) // 0 = All time
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [sortBy, setSortBy] = useState('variance')
+  const [sortDir, setSortDir] = useState('desc')
+  const [remitModalFor, setRemitModalFor] = useState('')
+  const [detailModalFor, setDetailModalFor] = useState('')
+  const [isMobile, setIsMobile] = useState(false)
+  const [acceptModal, setAcceptModal] = useState(null)
+  const [managerSummary, setManagerSummary] = useState({
+    totalSent: 0,
+    totalAccepted: 0,
+    totalPending: 0,
+    currency: '',
+  })
+  const [payModal, setPayModal] = useState(false)
+  const [payForm, setPayForm] = useState({ amount: '', method: 'hand', note: '', file: null })
+  const [submitting, setSubmitting] = useState(false)
+  const [remitPage, setRemitPage] = useState(1)
+  const remitPerPage = 6
+  const [driverRemitsHistory, setDriverRemitsHistory] = useState([])
+  const [openGroups, setOpenGroups] = useState({})
 
   // Helper to get date range for selected month (UAE timezone UTC+4)
   const getMonthDateRange = () => {
@@ -118,6 +137,46 @@ export default function Transactions() {
       alive = false
     }
   }, [country, role, selectedMonth, selectedYear])
+
+  // Reset remit page when modal opens and load driver remittances from API
+  useEffect(() => {
+    if (remitModalFor) {
+      setRemitPage(1)
+      // Load all remittances for this driver directly from API with pagination
+      let alive = true
+      ;(async () => {
+        try {
+          const allRemits = []
+          let page = 1
+          let hasMore = true
+          // Fetch all pages to get complete history
+          while (hasMore && page <= 50) {
+            const remitsUrl =
+              role === 'manager'
+                ? `/api/finance/remittances?workspace=1&page=${page}&limit=100`
+                : `/api/finance/remittances?page=${page}&limit=100`
+            const res = await apiGet(remitsUrl)
+            const items = Array.isArray(res?.remittances) ? res.remittances : []
+            allRemits.push(...items)
+            hasMore = res?.hasMore || false
+            page++
+          }
+          // Filter by driver ID only, don't filter by country to get complete history
+          const driverRemits = allRemits.filter(
+            (r) => String(r?.driver?._id || r?.driver || '') === String(remitModalFor)
+          )
+          if (alive) setDriverRemitsHistory(driverRemits)
+        } catch {
+          if (alive) setDriverRemitsHistory([])
+        }
+      })()
+      return () => {
+        alive = false
+      }
+    } else {
+      setDriverRemitsHistory([])
+    }
+  }, [remitModalFor, role])
 
   // Live updates: refresh remittances on create/accept/reject/manager_accepted
   useEffect(() => {
@@ -1664,8 +1723,9 @@ export default function Transactions() {
           if (!r) return null
           const actionsStyle = { display: 'flex', gap: 8, flexWrap: 'wrap' }
           const btnStyle = { padding: '6px 10px' }
-          const hist = driverRemits
-            .filter((x) => String(x?.driver?._id || x?.driver || '') === String(r.id))
+          const hist = driverRemits.filter(
+            (x) => String(x?.driver?._id || x?.driver || '') === String(r.id)
+          )
           return (
             <div className="modal-backdrop">
               <div className="modal">
