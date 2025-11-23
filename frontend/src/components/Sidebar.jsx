@@ -379,6 +379,55 @@ export default function Sidebar({ links = [], closed, onToggle }) {
     const icon = null
     if (!hasChildren) {
       const badge = item.badge && Number(item.badge) > 0 ? Number(item.badge) : null
+
+      // Premium Floating Label for Flat Links in Closed State
+      if (closed) {
+        return (
+          <div key={item.to} className="nav-group closed-group" style={{ position: 'relative' }}>
+            <NavLink
+              to={item.to}
+              className={({ isActive }) => (isActive ? 'active' : '')}
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              <span className="nav-icon" aria-hidden>
+                <Icon name={item.label} />
+              </span>
+              {badge && (
+                <span
+                  className="nav-badge"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    background: '#ef4444',
+                    color: '#fff',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    padding: '2px 4px',
+                    borderRadius: 10,
+                    minWidth: 14,
+                    textAlign: 'center',
+                    transform: 'translate(25%, -25%)',
+                  }}
+                >
+                  {badge > 99 ? '99+' : badge}
+                </span>
+              )}
+            </NavLink>
+
+            {/* Floating Label */}
+            <div className="floating-submenu flat-label">
+              <div
+                className="floating-header"
+                style={{ borderBottom: 'none', padding: '8px 12px' }}
+              >
+                {item.label}
+              </div>
+            </div>
+          </div>
+        )
+      }
+
       return (
         <NavLink
           key={item.to}

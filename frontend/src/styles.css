@@ -454,6 +454,20 @@ a {
   transform-origin: left top;
 }
 
+/* Flat label variant (smaller, no content) */
+.floating-submenu.flat-label {
+  min-width: auto;
+  white-space: nowrap;
+  pointer-events: none; /* Just a label, click goes to link */
+}
+
+.sidebar.closed .nav-group.closed-group:hover .floating-submenu {
+  display: block;
+}
+.sidebar.closed .nav-group.closed-group .floating-submenu {
+  display: none;
+}
+
 .floating-header {
   padding: 12px 16px;
   font-weight: 700;
