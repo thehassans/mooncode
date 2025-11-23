@@ -1744,6 +1744,10 @@ router.get(
       cond.createdBy = req.user.id;
     }
 
+    console.log("[GET /investors] Query condition:", JSON.stringify(cond));
+    console.log("[GET /investors] User ID:", req.user.id);
+    console.log("[GET /investors] User role:", req.user.role);
+
     // Add text search if query provided
     const text = q.trim();
     if (text) {
@@ -1770,6 +1774,8 @@ router.get(
       )
       .populate("referredBy", "firstName lastName email")
       .sort({ createdAt: -1 });
+
+    console.log("[GET /investors] Found users:", users.length);
     res.json({ users });
   }
 );
