@@ -11,6 +11,11 @@ export default function Sidebar({ links = [], closed, onToggle }) {
 
   // Simple icon library mapped by label keywords
   function Icon({ name, className }) {
+    if (React.isValidElement(name)) {
+      return React.cloneElement(name, {
+        className: `${name.props.className || ''} ${className || ''}`.trim(),
+      })
+    }
     const n = String(name || '').toLowerCase()
     // helpers
     const stroke = 'currentColor'
@@ -390,7 +395,7 @@ export default function Sidebar({ links = [], closed, onToggle }) {
               style={{ width: '100%', justifyContent: 'center' }}
             >
               <span className="nav-icon" aria-hidden>
-                <Icon name={item.label} />
+                <Icon name={item.icon || item.label} />
               </span>
               {badge && (
                 <span
@@ -436,7 +441,7 @@ export default function Sidebar({ links = [], closed, onToggle }) {
           className={({ isActive }) => (isActive ? 'active' : '')}
         >
           <span className="nav-icon" aria-hidden>
-            <Icon name={item.label} />
+            <Icon name={item.icon || item.label} />
           </span>
           <span className="nav-label">{item.label}</span>
           {badge && (
@@ -484,7 +489,7 @@ export default function Sidebar({ links = [], closed, onToggle }) {
             style={{ cursor: 'pointer' }}
           >
             <span className="nav-icon" aria-hidden>
-              <Icon name={item.label} />
+              <Icon name={item.icon || item.label} />
             </span>
           </div>
 
@@ -506,7 +511,7 @@ export default function Sidebar({ links = [], closed, onToggle }) {
                         aria-hidden
                         style={{ width: 16, opacity: 0.7, marginRight: 8 }}
                       >
-                        <Icon name={ch.label} />
+                        <Icon name={ch.icon || ch.label} />
                       </span>
                       <span className="nav-label">{ch.label}</span>
                       {badge && <span className="nav-badge">{badge > 99 ? '99+' : badge}</span>}
@@ -531,7 +536,7 @@ export default function Sidebar({ links = [], closed, onToggle }) {
           aria-controls={`submenu-${key}`}
         >
           <span className="nav-icon" aria-hidden>
-            <Icon name={item.label} />
+            <Icon name={item.icon || item.label} />
           </span>
           <span className="nav-label">{item.label}</span>
           <span className="chev" aria-hidden>
@@ -549,7 +554,7 @@ export default function Sidebar({ links = [], closed, onToggle }) {
                 title={ch.label}
               >
                 <span className="nav-icon child" aria-hidden>
-                  <Icon name={ch.label} />
+                  <Icon name={ch.icon || ch.label} />
                 </span>
                 <span className="nav-label">{ch.label}</span>
                 {badge && (
