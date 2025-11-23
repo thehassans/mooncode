@@ -80,283 +80,527 @@ export default function MyInvestments() {
   return (
     <div
       className="section"
-      style={{ display: 'grid', gap: 24, maxWidth: 1400, margin: '0 auto', padding: '24px' }}
+      style={{
+        display: 'grid',
+        gap: 32,
+        maxWidth: 1400,
+        margin: '0 auto',
+        padding: '32px 24px',
+        background: 'linear-gradient(180deg, rgba(102, 126, 234, 0.03) 0%, transparent 100%)',
+      }}
     >
-      {/* Header */}
+      {/* Premium Header */}
       <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 16,
+          position: 'relative',
+          padding: '48px 40px',
+          borderRadius: 28,
+          background:
+            'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.18)',
+          boxShadow:
+            '0 8px 32px rgba(102, 126, 234, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.25)',
+          overflow: 'hidden',
         }}
       >
-        <div>
-          <h1
-            style={{
-              fontSize: 32,
-              fontWeight: 800,
-              margin: 0,
-              background: 'linear-gradient(135deg, #10b981 0%, #22c55e 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            My Daily Profit
-          </h1>
-          <p style={{ fontSize: 15, opacity: 0.7, margin: '8px 0 0 0' }}>
-            See how much you earn every day from your invested amount based on your profit
-            percentage target divided by 30 days.
+        {/* Animated background orbs */}
+        <div
+          style={{
+            position: 'absolute',
+            top: -100,
+            right: -100,
+            width: 300,
+            height: 300,
+            background: 'radial-gradient(circle, rgba(102, 126, 234, 0.15) 0%, transparent 70%)',
+            borderRadius: '50%',
+            animation: 'float 6s ease-in-out infinite',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            bottom: -80,
+            left: -80,
+            width: 250,
+            height: 250,
+            background: 'radial-gradient(circle, rgba(118, 75, 162, 0.12) 0%, transparent 70%)',
+            borderRadius: '50%',
+            animation: 'float 8s ease-in-out infinite reverse',
+          }}
+        />
+
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+            <div
+              style={{
+                fontSize: 48,
+                filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))',
+                animation: 'pulse 3s ease-in-out infinite',
+              }}
+            >
+              💎
+            </div>
+            <h1
+              style={{
+                fontSize: 42,
+                fontWeight: 900,
+                margin: 0,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              My Investment Portfolio
+            </h1>
+          </div>
+          <p style={{ fontSize: 16, opacity: 0.75, margin: '0 0 8px 0', fontWeight: 500 }}>
+            Track your daily earnings and watch your wealth grow with variable profit distribution
           </p>
-          <p style={{ fontSize: 13, opacity: 0.8, margin: '4px 0 0 0' }}>
-            Today's estimated earnings:{' '}
-            <strong>
-              {currency} {formatCurrency(dailyProfit)}
-            </strong>
-          </p>
+          {dailyProfit > 0 && (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 16px',
+                borderRadius: 16,
+                background:
+                  'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.15) 100%)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                backdropFilter: 'blur(10px)',
+              }}
+            >
+              <span style={{ fontSize: 20 }}>🎯</span>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>
+                Today's Earnings:{' '}
+                <span style={{ color: '#10b981' }}>
+                  {currency} {formatCurrency(dailyProfit)}
+                </span>
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 80 }}>
+        <div style={{ textAlign: 'center', padding: 120 }}>
           <div
             style={{
               display: 'inline-block',
-              width: 50,
-              height: 50,
-              border: '5px solid var(--border)',
+              width: 60,
+              height: 60,
+              border: '6px solid rgba(102, 126, 234, 0.1)',
               borderTopColor: '#667eea',
               borderRadius: '50%',
               animation: 'spin 1s linear infinite',
             }}
           ></div>
-          <div style={{ marginTop: 20, fontSize: 16, opacity: 0.7 }}>
-            Loading investment data...
+          <div style={{ marginTop: 24, fontSize: 18, fontWeight: 600, opacity: 0.7 }}>
+            Loading your portfolio...
           </div>
         </div>
       ) : (
         <>
-          {/* Daily & Investment Overview */}
+          {/* Premium Stats Grid */}
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: 16,
+              gap: 20,
             }}
           >
-            {/* Daily Profit (10% / 30) */}
+            {/* Daily Profit Card */}
             <div
               style={{
-                background: 'linear-gradient(135deg, #10b981 0%, #22c55e 100%)',
-                borderRadius: 16,
-                padding: 24,
-                color: '#fff',
-                boxShadow: '0 10px 40px rgba(34, 197, 94, 0.35)',
                 position: 'relative',
+                background:
+                  'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: 24,
+                padding: 28,
+                border: '1px solid rgba(16, 185, 129, 0.2)',
+                boxShadow:
+                  '0 8px 32px rgba(16, 185, 129, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                 overflow: 'hidden',
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)'
+                e.currentTarget.style.boxShadow =
+                  '0 20px 60px rgba(16, 185, 129, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                e.currentTarget.style.boxShadow =
+                  '0 8px 32px rgba(16, 185, 129, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
               }}
             >
               <div
                 style={{
                   position: 'absolute',
-                  top: -20,
-                  right: -20,
-                  width: 120,
-                  height: 120,
-                  background: 'rgba(255,255,255,0.1)',
+                  top: -60,
+                  right: -60,
+                  width: 180,
+                  height: 180,
+                  background:
+                    'radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, transparent 70%)',
                   borderRadius: '50%',
                 }}
-              ></div>
+              />
               <div style={{ position: 'relative', zIndex: 1 }}>
                 <div
                   style={{
-                    fontSize: 13,
-                    opacity: 0.9,
-                    marginBottom: 12,
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 16,
                   }}
                 >
-                  Daily Profit
+                  <div
+                    style={{
+                      fontSize: 13,
+                      opacity: 0.85,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: 1.5,
+                      color: '#10b981',
+                    }}
+                  >
+                    Daily Profit
+                  </div>
+                  <div style={{ fontSize: 28, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}>
+                    💰
+                  </div>
                 </div>
-                <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>
+                <div
+                  style={{
+                    fontSize: 40,
+                    fontWeight: 900,
+                    color: '#10b981',
+                    marginBottom: 4,
+                    letterSpacing: '-0.02em',
+                  }}
+                >
                   {currency} {formatCurrency(dailyProfit)}
                 </div>
               </div>
             </div>
 
-            {/* Investment Amount */}
+            {/* Investment Amount Card */}
             <div
               style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                borderRadius: 16,
-                padding: 24,
-                color: '#fff',
-                boxShadow: '0 10px 40px rgba(102, 126, 234, 0.3)',
                 position: 'relative',
+                background:
+                  'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: 24,
+                padding: 28,
+                border: '1px solid rgba(102, 126, 234, 0.2)',
+                boxShadow:
+                  '0 8px 32px rgba(102, 126, 234, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                 overflow: 'hidden',
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)'
+                e.currentTarget.style.boxShadow =
+                  '0 20px 60px rgba(102, 126, 234, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                e.currentTarget.style.boxShadow =
+                  '0 8px 32px rgba(102, 126, 234, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
               }}
             >
               <div
                 style={{
                   position: 'absolute',
-                  top: -20,
-                  right: -20,
-                  width: 120,
-                  height: 120,
-                  background: 'rgba(255,255,255,0.1)',
+                  top: -60,
+                  right: -60,
+                  width: 180,
+                  height: 180,
+                  background:
+                    'radial-gradient(circle, rgba(102, 126, 234, 0.3) 0%, transparent 70%)',
                   borderRadius: '50%',
                 }}
-              ></div>
+              />
               <div style={{ position: 'relative', zIndex: 1 }}>
                 <div
                   style={{
-                    fontSize: 13,
-                    opacity: 0.9,
-                    marginBottom: 12,
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 16,
                   }}
                 >
-                  Investment Amount
+                  <div
+                    style={{
+                      fontSize: 13,
+                      opacity: 0.85,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: 1.5,
+                      color: '#667eea',
+                    }}
+                  >
+                    Investment
+                  </div>
+                  <div style={{ fontSize: 28, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}>
+                    🏦
+                  </div>
                 </div>
-                <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>
+                <div
+                  style={{
+                    fontSize: 40,
+                    fontWeight: 900,
+                    color: '#667eea',
+                    marginBottom: 4,
+                    letterSpacing: '-0.02em',
+                  }}
+                >
                   {currency} {formatCurrency(investmentAmount)}
                 </div>
-                <div style={{ fontSize: 13, opacity: 0.85 }}>Initial capital invested</div>
               </div>
             </div>
 
-            {/* Profit Amount */}
+            {/* Monthly Target Card */}
             <div
               style={{
-                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                borderRadius: 16,
-                padding: 24,
-                color: '#fff',
-                boxShadow: '0 10px 40px rgba(245, 87, 108, 0.3)',
                 position: 'relative',
+                background:
+                  'linear-gradient(135deg, rgba(245, 87, 108, 0.1) 0%, rgba(240, 147, 251, 0.1) 100%)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: 24,
+                padding: 28,
+                border: '1px solid rgba(245, 87, 108, 0.2)',
+                boxShadow:
+                  '0 8px 32px rgba(245, 87, 108, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                 overflow: 'hidden',
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)'
+                e.currentTarget.style.boxShadow =
+                  '0 20px 60px rgba(245, 87, 108, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                e.currentTarget.style.boxShadow =
+                  '0 8px 32px rgba(245, 87, 108, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
               }}
             >
               <div
                 style={{
                   position: 'absolute',
-                  top: -20,
-                  right: -20,
-                  width: 120,
-                  height: 120,
-                  background: 'rgba(255,255,255,0.1)',
+                  top: -60,
+                  right: -60,
+                  width: 180,
+                  height: 180,
+                  background:
+                    'radial-gradient(circle, rgba(245, 87, 108, 0.3) 0%, transparent 70%)',
                   borderRadius: '50%',
                 }}
-              ></div>
+              />
               <div style={{ position: 'relative', zIndex: 1 }}>
                 <div
                   style={{
-                    fontSize: 13,
-                    opacity: 0.9,
-                    marginBottom: 12,
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 16,
                   }}
                 >
-                  Profit Amount Target
+                  <div
+                    style={{
+                      fontSize: 13,
+                      opacity: 0.85,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: 1.5,
+                      color: '#f5576c',
+                    }}
+                  >
+                    Monthly Target
+                  </div>
+                  <div style={{ fontSize: 28, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}>
+                    🎯
+                  </div>
                 </div>
-                <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>
+                <div
+                  style={{
+                    fontSize: 40,
+                    fontWeight: 900,
+                    color: '#f5576c',
+                    marginBottom: 4,
+                    letterSpacing: '-0.02em',
+                  }}
+                >
                   {currency} {formatCurrency(profitAmount)}
                 </div>
               </div>
             </div>
 
-            {/* Earned Profit */}
+            {/* Earned Profit Card */}
             <div
               style={{
-                background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                borderRadius: 16,
-                padding: 24,
-                color: '#fff',
-                boxShadow: '0 10px 40px rgba(79, 172, 254, 0.3)',
                 position: 'relative',
+                background:
+                  'linear-gradient(135deg, rgba(79, 172, 254, 0.1) 0%, rgba(0, 242, 254, 0.1) 100%)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: 24,
+                padding: 28,
+                border: '1px solid rgba(79, 172, 254, 0.2)',
+                boxShadow:
+                  '0 8px 32px rgba(79, 172, 254, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                 overflow: 'hidden',
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)'
+                e.currentTarget.style.boxShadow =
+                  '0 20px 60px rgba(79, 172, 254, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                e.currentTarget.style.boxShadow =
+                  '0 8px 32px rgba(79, 172, 254, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
               }}
             >
               <div
                 style={{
                   position: 'absolute',
-                  top: -20,
-                  right: -20,
-                  width: 120,
-                  height: 120,
-                  background: 'rgba(255,255,255,0.1)',
+                  top: -60,
+                  right: -60,
+                  width: 180,
+                  height: 180,
+                  background:
+                    'radial-gradient(circle, rgba(79, 172, 254, 0.3) 0%, transparent 70%)',
                   borderRadius: '50%',
                 }}
-              ></div>
+              />
               <div style={{ position: 'relative', zIndex: 1 }}>
                 <div
                   style={{
-                    fontSize: 13,
-                    opacity: 0.9,
-                    marginBottom: 12,
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 16,
                   }}
                 >
-                  Earned Profit
+                  <div
+                    style={{
+                      fontSize: 13,
+                      opacity: 0.85,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: 1.5,
+                      color: '#4facfe',
+                    }}
+                  >
+                    Earned
+                  </div>
+                  <div style={{ fontSize: 28, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}>
+                    ✨
+                  </div>
                 </div>
-                <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>
+                <div
+                  style={{
+                    fontSize: 40,
+                    fontWeight: 900,
+                    color: '#4facfe',
+                    marginBottom: 4,
+                    letterSpacing: '-0.02em',
+                  }}
+                >
                   {currency} {formatCurrency(earnedProfit)}
                 </div>
-                <div style={{ fontSize: 13, opacity: 0.85 }}>
+                <div style={{ fontSize: 13, opacity: 0.75, fontWeight: 600 }}>
                   From {orders.length} order{orders.length !== 1 ? 's' : ''}
                 </div>
               </div>
             </div>
 
-            {/* Total Return */}
+            {/* Total Return Card */}
             <div
               style={{
-                background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-                borderRadius: 16,
-                padding: 24,
-                color: '#fff',
-                boxShadow: '0 10px 40px rgba(250, 112, 154, 0.3)',
                 position: 'relative',
+                background:
+                  'linear-gradient(135deg, rgba(250, 112, 154, 0.1) 0%, rgba(254, 225, 64, 0.1) 100%)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: 24,
+                padding: 28,
+                border: '1px solid rgba(250, 112, 154, 0.2)',
+                boxShadow:
+                  '0 8px 32px rgba(250, 112, 154, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                 overflow: 'hidden',
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)'
+                e.currentTarget.style.boxShadow =
+                  '0 20px 60px rgba(250, 112, 154, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                e.currentTarget.style.boxShadow =
+                  '0 8px 32px rgba(250, 112, 154, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
               }}
             >
               <div
                 style={{
                   position: 'absolute',
-                  top: -20,
-                  right: -20,
-                  width: 120,
-                  height: 120,
-                  background: 'rgba(255,255,255,0.1)',
+                  top: -60,
+                  right: -60,
+                  width: 180,
+                  height: 180,
+                  background:
+                    'radial-gradient(circle, rgba(250, 112, 154, 0.3) 0%, transparent 70%)',
                   borderRadius: '50%',
                 }}
-              ></div>
+              />
               <div style={{ position: 'relative', zIndex: 1 }}>
                 <div
                   style={{
-                    fontSize: 13,
-                    opacity: 0.9,
-                    marginBottom: 12,
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 16,
                   }}
                 >
-                  Total Return
+                  <div
+                    style={{
+                      fontSize: 13,
+                      opacity: 0.85,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: 1.5,
+                      color: '#fa709a',
+                    }}
+                  >
+                    Total Return
+                  </div>
+                  <div style={{ fontSize: 28, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}>
+                    🚀
+                  </div>
                 </div>
-                <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>
+                <div
+                  style={{
+                    fontSize: 40,
+                    fontWeight: 900,
+                    color: '#fa709a',
+                    marginBottom: 4,
+                    letterSpacing: '-0.02em',
+                  }}
+                >
                   {currency} {formatCurrency(totalReturn)}
                 </div>
-                <div style={{ fontSize: 13, opacity: 0.85 }}>Investment + Profit</div>
               </div>
             </div>
           </div>
@@ -752,10 +996,22 @@ export default function MyInvestments() {
         </>
       )}
 
-      {/* Inline CSS */}
+      {/* Premium CSS Animations */}
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        @keyframes shimmer {
+          0% { background-position: -1000px 0; }
+          100% { background-position: 1000px 0; }
         }
       `}</style>
     </div>
