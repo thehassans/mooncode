@@ -926,6 +926,19 @@ export default function UserLayout() {
     document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark')
   }, [])
 
+  // Restore saved nav colors from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('navColors')
+      if (saved) {
+        const colors = JSON.parse(saved)
+        Object.entries(colors).forEach(([k, v]) => {
+          document.documentElement.style.setProperty(`--${k}`, v)
+        })
+      }
+    } catch {}
+  }, [])
+
   // Mobile swipe gestures to open/close sidebar
   useEffect(() => {
     let startX = 0,
