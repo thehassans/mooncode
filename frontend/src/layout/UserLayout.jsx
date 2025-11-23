@@ -471,9 +471,32 @@ export default function UserLayout() {
       } catch {}
     }, 30)
   }
+  // Navigation visibility state
+  const [hiddenNavItems, setHiddenNavItems] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('hiddenNavItems') || '[]')
+    } catch {
+      return []
+    }
+  })
+
+  const toggleNavItem = (label) => {
+    setHiddenNavItems((prev) => {
+      const next = prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
+      localStorage.setItem('hiddenNavItems', JSON.stringify(next))
+      return next
+    })
+  }
+
+  // Filter links based on hidden state
+  const visibleLinks = links.filter((link) => !hiddenNavItems.includes(link.label))
+
+  // Settings view state
+  const [settingsView, setSettingsView] = useState('main') // 'main' | 'nav'
+
   return (
     <div>
-      <Sidebar closed={closed} links={links} onToggle={() => setClosed((c) => !c)} />
+      <Sidebar closed={closed} links={visibleLinks} onToggle={() => setClosed((c) => !c)} />
       <div className={`main ${closed ? 'full' : ''}`}>
         <div
           className="topbar"
@@ -575,7 +598,7 @@ export default function UserLayout() {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2" style={{ flexShrink: 0 }}>
+          <div className="flex items-center gap-3" style={{ flexShrink: 0 }}>
             {/* Premium Theme Toggle Switch */}
             <button
               onClick={toggleTheme}
@@ -723,370 +746,610 @@ export default function UserLayout() {
             <div style={{ position: 'relative' }}>
               <button
                 id="settings-button"
-                className="btn grid h-9 w-9 place-items-center p-0"
+                className="btn grid place-items-center p-0"
                 title="Settings"
                 aria-label="Settings"
-                onClick={() => setShowSettingsDropdown((prev) => !prev)}
+                onClick={() => {
+                  setShowSettingsDropdown((prev) => !prev)
+                  setSettingsView('main')
+                }}
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '12px',
+                  background:
+                    'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  backdropFilter: 'blur(10px)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  transition: 'all 0.2s ease',
+                  color: 'var(--fg)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.2)'
+                  e.currentTarget.style.borderColor = 'var(--primary)'
+                  e.currentTarget.style.color = 'var(--primary)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'
+                  e.currentTarget.style.color = 'var(--fg)'
+                }}
               >
-                ⚙️
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
               </button>
               {showSettingsDropdown && (
                 <div
                   id="settings-dropdown"
                   style={{
                     position: 'absolute',
-                    top: 'calc(100% + 8px)',
+                    top: 'calc(100% + 12px)',
                     right: 0,
                     width: '320px',
                     background: 'var(--panel)',
                     border: '1px solid var(--border)',
-                    borderRadius: '16px',
+                    borderRadius: '24px',
                     boxShadow: '0 20px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)',
                     zIndex: 1000,
                     overflow: 'hidden',
                     backdropFilter: 'blur(20px)',
+                    animation: 'slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                    maxHeight: '80vh',
+                    overflowY: 'auto',
                   }}
                 >
-                  {/* User info header */}
-                  <div
-                    style={{
-                      padding: '20px',
-                      borderBottom: '1px solid var(--border)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '14px',
-                      background:
-                        'linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05))',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '52px',
-                        height: '52px',
-                        borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '20px',
-                        fontWeight: 600,
-                        color: '#fff',
-                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-                      }}
-                    >
-                      {((me.firstName || '')[0] || (me.lastName || '')[0] || 'U').toUpperCase()}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: '16px', marginBottom: '2px' }}>
-                        {`${me.firstName || ''} ${me.lastName || ''}`.trim() || 'User'}
-                      </div>
-                      <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
-                        {me.email || ''}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Menu items */}
-                  <div style={{ padding: '8px' }}>
-                    <button
-                      onClick={() => {
-                        setShowSettingsDropdown(false)
-                        navigate('/user/profile-settings')
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '14px 16px',
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text)',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        borderRadius: '10px',
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--panel-2)'
-                        e.currentTarget.style.transform = 'translateX(4px)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent'
-                        e.currentTarget.style.transform = 'translateX(0)'
-                      }}
-                    >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                      My Profile
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setShowSettingsDropdown(false)
-                        navigate('/user/change-password')
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '14px 16px',
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text)',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        borderRadius: '10px',
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--panel-2)'
-                        e.currentTarget.style.transform = 'translateX(4px)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent'
-                        e.currentTarget.style.transform = 'translateX(0)'
-                      }}
-                    >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                      </svg>
-                      Change Password
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setShowSettingsDropdown(false)
-                        navigate('/user/api-setup')
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '14px 16px',
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text)',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        borderRadius: '10px',
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--panel-2)'
-                        e.currentTarget.style.transform = 'translateX(4px)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent'
-                        e.currentTarget.style.transform = 'translateX(0)'
-                      }}
-                    >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="2" x2="12" y2="6" />
-                        <line x1="12" y1="18" x2="12" y2="22" />
-                        <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
-                        <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
-                        <line x1="2" y1="12" x2="6" y2="12" />
-                        <line x1="18" y1="12" x2="22" y2="12" />
-                        <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" />
-                        <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
-                      </svg>
-                      API Setup
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setShowSettingsDropdown(false)
-                        navigate('/user/shopify')
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '14px 16px',
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text)',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        borderRadius: '10px',
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--panel-2)'
-                        e.currentTarget.style.transform = 'translateX(4px)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent'
-                        e.currentTarget.style.transform = 'translateX(0)'
-                      }}
-                    >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                        <line x1="12" y1="22.08" x2="12" y2="12" />
-                      </svg>
-                      Shopify Integration
-                    </button>
-
-                    <div
-                      style={{
-                        padding: '16px',
-                        margin: '8px 0',
-                        borderTop: '1px solid var(--border)',
-                        borderBottom: '1px solid var(--border)',
-                        background: 'rgba(99, 102, 241, 0.02)',
-                      }}
-                    >
+                  {settingsView === 'main' ? (
+                    <>
+                      {/* User info header */}
                       <div
                         style={{
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          marginBottom: '14px',
-                          color: 'var(--muted)',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
+                          padding: '24px',
+                          borderBottom: '1px solid var(--border)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '16px',
+                          background:
+                            'linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.08))',
                         }}
                       >
-                        Theme Preferences
+                        <div
+                          style={{
+                            width: '56px',
+                            height: '56px',
+                            borderRadius: '16px',
+                            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '24px',
+                            fontWeight: 600,
+                            color: '#fff',
+                            boxShadow: '0 8px 20px rgba(99, 102, 241, 0.3)',
+                          }}
+                        >
+                          {((me.firstName || '')[0] || (me.lastName || '')[0] || 'U').toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: '18px', marginBottom: '4px' }}>
+                            {`${me.firstName || ''} ${me.lastName || ''}`.trim() || 'User'}
+                          </div>
+                          <div style={{ fontSize: '13px', color: 'var(--muted)', opacity: 0.8 }}>
+                            {me.email || ''}
+                          </div>
+                        </div>
                       </div>
-                      {/* Color grid - 6 columns */}
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(6, 1fr)',
-                          gap: '10px',
-                        }}
-                      >
-                        {navPresets.map((p) => (
-                          <button
-                            key={p.title}
-                            type="button"
-                            title={p.title}
-                            aria-label={p.title}
-                            onClick={() => applyNavColors(p.cfg)}
+
+                      {/* Menu items */}
+                      <div style={{ padding: '12px', display: 'grid', gap: '4px' }}>
+                        <button
+                          onClick={() => setSettingsView('nav')}
+                          className="menu-item-btn"
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            cursor: 'pointer',
+                            color: 'var(--fg)',
+                            borderRadius: '16px',
+                            transition: 'all 0.2s ease',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            textAlign: 'left',
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.background = 'var(--panel-2)')
+                          }
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <span
                             style={{
-                              width: '38px',
-                              height: '38px',
-                              borderRadius: '8px',
-                              border: '2px solid rgba(255,255,255,0.15)',
-                              cursor: 'pointer',
-                              background: p.sample,
-                              padding: 0,
+                              width: 32,
+                              height: 32,
+                              borderRadius: 10,
+                              background: 'rgba(59, 130, 246, 0.1)',
+                              color: '#3b82f6',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <line x1="3" y1="12" x2="21" y2="12"></line>
+                              <line x1="3" y1="6" x2="21" y2="6"></line>
+                              <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                          </span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600 }}>Navigation</div>
+                            <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                              Customize menu
+                            </div>
+                          </div>
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            style={{ opacity: 0.5 }}
+                          >
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                          </svg>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setShowSettingsDropdown(false)
+                            navigate('/user/profile-settings')
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            cursor: 'pointer',
+                            color: 'var(--fg)',
+                            borderRadius: '16px',
+                            transition: 'all 0.2s ease',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            textAlign: 'left',
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.background = 'var(--panel-2)')
+                          }
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <span
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 10,
+                              background: 'rgba(168, 85, 247, 0.1)',
+                              color: '#a855f7',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                              <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                          </span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600 }}>Profile</div>
+                            <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                              Account settings
+                            </div>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setShowSettingsDropdown(false)
+                            navigate('/user/change-password')
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            cursor: 'pointer',
+                            color: 'var(--fg)',
+                            borderRadius: '16px',
+                            transition: 'all 0.2s ease',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            textAlign: 'left',
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.background = 'var(--panel-2)')
+                          }
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <span
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 10,
+                              background: 'rgba(16, 185, 129, 0.1)',
+                              color: '#10b981',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                          </span>
+                          <span>Change Password</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setShowSettingsDropdown(false)
+                            navigate('/user/api-setup')
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            cursor: 'pointer',
+                            color: 'var(--fg)',
+                            borderRadius: '16px',
+                            transition: 'all 0.2s ease',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            textAlign: 'left',
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.background = 'var(--panel-2)')
+                          }
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <span
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 10,
+                              background: 'rgba(245, 158, 11, 0.1)',
+                              color: '#f59e0b',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <circle cx="12" cy="12" r="10" />
+                              <line x1="12" y1="2" x2="12" y2="6" />
+                              <line x1="12" y1="18" x2="12" y2="22" />
+                              <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
+                              <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
+                            </svg>
+                          </span>
+                          <span>API Setup</span>
+                        </button>
+
+                        <div
+                          style={{
+                            padding: '16px',
+                            margin: '8px 0',
+                            borderTop: '1px solid var(--border)',
+                            borderBottom: '1px solid var(--border)',
+                            background: 'rgba(99, 102, 241, 0.02)',
+                            borderRadius: '12px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              marginBottom: '12px',
+                              color: 'var(--muted)',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px',
+                            }}
+                          >
+                            Theme
+                          </div>
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(6, 1fr)',
+                              gap: '8px',
+                            }}
+                          >
+                            {navPresets.map((p) => (
+                              <button
+                                key={p.title}
+                                type="button"
+                                title={p.title}
+                                aria-label={p.title}
+                                onClick={() => applyNavColors(p.cfg)}
+                                style={{
+                                  width: '100%',
+                                  aspectRatio: '1',
+                                  borderRadius: '8px',
+                                  border: '2px solid rgba(255,255,255,0.1)',
+                                  cursor: 'pointer',
+                                  background: p.sample,
+                                  padding: 0,
+                                  transition: 'all 0.2s ease',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1.1)'
+                                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1)'
+                                  e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setShowSettingsDropdown(false)
+                            doLogout()
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#ef4444',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            borderRadius: '16px',
+                            transition: 'all 0.2s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent'
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 10,
+                              background: 'rgba(239, 68, 68, 0.1)',
+                              color: '#ef4444',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                              <polyline points="16 17 21 12 16 7" />
+                              <line x1="21" y1="12" x2="9" y2="12" />
+                            </svg>
+                          </span>
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Navigation Settings Header */}
+                      <div
+                        style={{
+                          padding: '20px',
+                          borderBottom: '1px solid var(--border)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          background: 'var(--panel-2)',
+                        }}
+                      >
+                        <button
+                          onClick={() => setSettingsView('main')}
+                          title="Back to Settings"
+                          aria-label="Back to Settings"
+                          style={{
+                            background: 'var(--panel)',
+                            border: '1px solid var(--border)',
+                            cursor: 'pointer',
+                            padding: '8px',
+                            borderRadius: '10px',
+                            color: 'var(--fg)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s ease',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
+                          onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                        >
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                          </svg>
+                        </button>
+                        <div style={{ fontWeight: 600, fontSize: '16px' }}>
+                          Navigation Visibility
+                        </div>
+                      </div>
+
+                      {/* Navigation Items List */}
+                      <div style={{ padding: '12px', maxHeight: '400px', overflowY: 'auto' }}>
+                        {links.map((link) => (
+                          <div
+                            key={link.label}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '12px 16px',
+                              borderRadius: '12px',
+                              marginBottom: '4px',
+                              background: 'var(--panel-2)',
+                              border: '1px solid transparent',
                               transition: 'all 0.2s ease',
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                             }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'scale(1.1)'
-                              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3)'
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'scale(1)'
-                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'
-                            }}
-                          />
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.borderColor = 'var(--primary)')
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.borderColor = 'transparent')
+                            }
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <span style={{ fontSize: '18px' }}>
+                                {typeof link.icon === 'string' ? link.icon : '•'}
+                              </span>
+                              <span style={{ fontWeight: 500, fontSize: '14px' }}>
+                                {link.label}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => toggleNavItem(link.label)}
+                              title={
+                                hiddenNavItems.includes(link.label)
+                                  ? 'Show in navigation'
+                                  : 'Hide from navigation'
+                              }
+                              aria-label={`Toggle visibility for ${link.label}`}
+                              aria-pressed={!hiddenNavItems.includes(link.label)}
+                              style={{
+                                width: '44px',
+                                height: '24px',
+                                borderRadius: '12px',
+                                background: hiddenNavItems.includes(link.label)
+                                  ? 'var(--border)'
+                                  : '#10b981',
+                                position: 'relative',
+                                border: 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: '20px',
+                                  height: '20px',
+                                  borderRadius: '50%',
+                                  background: '#fff',
+                                  position: 'absolute',
+                                  top: '2px',
+                                  left: hiddenNavItems.includes(link.label) ? '2px' : '22px',
+                                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                }}
+                              />
+                            </button>
+                          </div>
                         ))}
                       </div>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        setShowSettingsDropdown(false)
-                        doLogout()
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '14px 16px',
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#ef4444',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        borderRadius: '10px',
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
-                        e.currentTarget.style.transform = 'translateX(4px)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent'
-                        e.currentTarget.style.transform = 'translateX(0)'
-                      }}
-                    >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                        <polyline points="16 17 21 12 16 7" />
-                        <line x1="21" y1="12" x2="9" y2="12" />
-                      </svg>
-                      Sign Out
-                    </button>
-                  </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
