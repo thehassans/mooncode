@@ -859,6 +859,46 @@ router.get(
       } else if (req.user.role === "driver") {
         match.driver = req.user.id;
       }
+
+      if (req.query.country) {
+        const queryCountry = String(req.query.country).trim();
+        const expandCountry = (c) => {
+          const normalized = c.toLowerCase();
+          if (["ksa", "saudi arabia", "saudi"].includes(normalized))
+            return [
+              "KSA",
+              "Saudi Arabia",
+              "ksa",
+              "saudi arabia",
+              "Saudi",
+              "saudi",
+            ];
+          if (["uae", "united arab emirates"].includes(normalized))
+            return [
+              "UAE",
+              "United Arab Emirates",
+              "uae",
+              "united arab emirates",
+            ];
+          if (["oman", "om"].includes(normalized))
+            return ["Oman", "OMAN", "oman", "OM", "Om"];
+          if (["bahrain", "bh"].includes(normalized))
+            return ["Bahrain", "BAHRAIN", "bahrain", "BH", "Bh"];
+          if (["kuwait", "kw"].includes(normalized))
+            return ["Kuwait", "KUWAIT", "kuwait", "KW", "Kw"];
+          if (["qatar", "qa"].includes(normalized))
+            return ["Qatar", "QATAR", "qatar", "QA", "Qa"];
+          if (["india", "in"].includes(normalized))
+            return ["India", "INDIA", "india", "IN", "In"];
+          return [
+            c,
+            c.toUpperCase(),
+            c.toLowerCase(),
+            c.charAt(0).toUpperCase() + c.slice(1).toLowerCase(),
+          ];
+        };
+        match.country = { $in: expandCountry(queryCountry) };
+      }
       const page = Math.max(1, Number(req.query.page || 1));
       const limit = Math.min(100, Math.max(1, Number(req.query.limit || 20)));
       const skip = (page - 1) * limit;
@@ -3488,6 +3528,46 @@ router.get(
         match.owner = req.user.id;
       } else if (req.user.role === "manager") {
         match.manager = req.user.id;
+      }
+
+      if (req.query.country) {
+        const queryCountry = String(req.query.country).trim();
+        const expandCountry = (c) => {
+          const normalized = c.toLowerCase();
+          if (["ksa", "saudi arabia", "saudi"].includes(normalized))
+            return [
+              "KSA",
+              "Saudi Arabia",
+              "ksa",
+              "saudi arabia",
+              "Saudi",
+              "saudi",
+            ];
+          if (["uae", "united arab emirates"].includes(normalized))
+            return [
+              "UAE",
+              "United Arab Emirates",
+              "uae",
+              "united arab emirates",
+            ];
+          if (["oman", "om"].includes(normalized))
+            return ["Oman", "OMAN", "oman", "OM", "Om"];
+          if (["bahrain", "bh"].includes(normalized))
+            return ["Bahrain", "BAHRAIN", "bahrain", "BH", "Bh"];
+          if (["kuwait", "kw"].includes(normalized))
+            return ["Kuwait", "KUWAIT", "kuwait", "KW", "Kw"];
+          if (["qatar", "qa"].includes(normalized))
+            return ["Qatar", "QATAR", "qatar", "QA", "Qa"];
+          if (["india", "in"].includes(normalized))
+            return ["India", "INDIA", "india", "IN", "In"];
+          return [
+            c,
+            c.toUpperCase(),
+            c.toLowerCase(),
+            c.charAt(0).toUpperCase() + c.slice(1).toLowerCase(),
+          ];
+        };
+        match.country = { $in: expandCountry(queryCountry) };
       }
       const page = Math.max(1, Number(req.query.page || 1));
       const limit = Math.min(100, Math.max(1, Number(req.query.limit || 50)));

@@ -57,7 +57,12 @@ export default function ManagerFinances() {
           const key = raw.toLowerCase()
           if (!map.has(key)) map.set(key, raw.toUpperCase() === 'UAE' ? 'UAE' : raw)
         }
-        setCountryOptions(Array.from(map.values()))
+        const options = Array.from(map.values())
+        setCountryOptions(options)
+        // Default to first country if not set
+        if (!country && options.length > 0) {
+          setCountry(options[0])
+        }
       } catch {
         setCountryOptions([])
       }
@@ -66,13 +71,15 @@ export default function ManagerFinances() {
 
   // Load remittances (both driver→manager and manager→company)
   useEffect(() => {
+    if (!country) return // Don't fetch if no country selected (unless no options available)
+
     let alive = true
     ;(async () => {
       try {
         setLoading(true)
         const [driverRemitsRes, managerRemitsRes, managersRes] = await Promise.all([
-          apiGet('/api/finance/remittances?limit=500'),
-          apiGet('/api/finance/manager-remittances'),
+          apiGet(`/api/finance/remittances?limit=500&country=${encodeURIComponent(country)}`),
+          apiGet(`/api/finance/manager-remittances?country=${encodeURIComponent(country)}`),
           apiGet('/api/users?role=manager'),
         ])
         if (alive) {
@@ -94,7 +101,7 @@ export default function ManagerFinances() {
     return () => {
       alive = false
     }
-  }, [])
+  }, [country]) // Re-fetch when country changes
 
   // Live updates
   useEffect(() => {
@@ -136,16 +143,20 @@ export default function ManagerFinances() {
         socket && socket.off('manager-remittance.rejected')
       } catch {}
       try {
+        socket && socket.off('manager-remittance.rejected')
+      } catch {}
+      try {
         socket && socket.disconnect()
       } catch {}
     }
-  }, [])
+  }, [country]) // Add country dependency to socket effect if refreshRemittances uses it
 
   async function refreshRemittances() {
+    if (!country) return
     try {
       const [driverRemitsRes, managerRemitsRes] = await Promise.all([
-        apiGet('/api/finance/remittances?limit=500'),
-        apiGet('/api/finance/manager-remittances'),
+        apiGet(`/api/finance/remittances?limit=500&country=${encodeURIComponent(country)}`),
+        apiGet(`/api/finance/manager-remittances?country=${encodeURIComponent(country)}`),
       ])
       setDriverRemittances(
         Array.isArray(driverRemitsRes?.remittances) ? driverRemitsRes.remittances : []
@@ -345,7 +356,6 @@ export default function ManagerFinances() {
           }}
         >
           <select className="input" value={country} onChange={(e) => setCountry(e.target.value)}>
-            <option value="">All Countries</option>
             {countryOptions.map((c) => (
               <option key={c} value={c}>
                 {c}
