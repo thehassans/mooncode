@@ -500,9 +500,6 @@ export default function Sidebar({ links = [], closed, onToggle }) {
                       key={ch.to}
                       to={ch.to}
                       className={({ isActive }) => (isActive ? 'active' : '')}
-                      onClick={() => {
-                        if (onToggle && closed) onToggle()
-                      }}
                     >
                       <span
                         className="nav-icon child"
