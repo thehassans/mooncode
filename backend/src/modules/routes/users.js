@@ -1737,27 +1737,32 @@ router.get(
   allowRoles("admin", "user"),
   async (req, res) => {
     const { q = "" } = req.query || {};
-    const base = { role: "investor" };
-    // For users, show investors created by them OR referred to their workspace
+    let cond = { role: "investor" };
+
+    // For non-admin users, filter by workspace
     if (req.user.role !== "admin") {
-      base.$or = [
-        { createdBy: req.user.id },
-        { "investorProfile.ownerId": req.user.id },
-      ];
+      cond.createdBy = req.user.id;
     }
+
+    // Add text search if query provided
     const text = q.trim();
-    const cond = text
-      ? {
-          ...base,
+    if (text) {
+      cond.$and = [
+        { role: "investor" },
+        req.user.role !== "admin" ? { createdBy: req.user.id } : {},
+        {
           $or: [
-            ...(base.$or || []),
             { firstName: { $regex: text, $options: "i" } },
             { lastName: { $regex: text, $options: "i" } },
             { email: { $regex: text, $options: "i" } },
             { phone: { $regex: text, $options: "i" } },
           ],
-        }
-      : base;
+        },
+      ];
+      delete cond.role;
+      delete cond.createdBy;
+    }
+
     const users = await User.find(cond, "-password")
       .populate(
         "investorProfile.assignedProducts.product",
