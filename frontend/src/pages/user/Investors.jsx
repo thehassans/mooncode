@@ -226,125 +226,6 @@ export default function Investors() {
         </div>
       </div>
 
-      {/* Create Investor Form */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">Create New Investor</div>
-        </div>
-        <form onSubmit={handleCreate} style={{ display: 'grid', gap: 20, padding: 24 }}>
-          {msg && (
-            <div
-              style={{
-                padding: 12,
-                borderRadius: 8,
-                background: msg.includes('success')
-                  ? 'rgba(16, 185, 129, 0.1)'
-                  : 'rgba(239, 68, 68, 0.1)',
-                color: msg.includes('success') ? '#10b981' : '#ef4444',
-              }}
-            >
-              {msg}
-            </div>
-          )}
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <div className="label">First Name *</div>
-              <input
-                className="input"
-                type="text"
-                name="firstName"
-                value={form.firstName}
-                onChange={onChange}
-                required
-              />
-            </div>
-            <div>
-              <div className="label">Last Name *</div>
-              <input
-                className="input"
-                type="text"
-                name="lastName"
-                value={form.lastName}
-                onChange={onChange}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="label">Email *</div>
-            <input
-              className="input"
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={onChange}
-              required
-              autoComplete="off"
-            />
-          </div>
-
-          <div>
-            <div className="label">Password *</div>
-            <input
-              className="input"
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={onChange}
-              required
-              minLength={6}
-              autoComplete="new-password"
-            />
-          </div>
-
-          <div>
-            <div className="label">Phone</div>
-            <PhoneInput
-              international
-              defaultCountry="SA"
-              value={form.phone}
-              onChange={(val) => setForm((f) => ({ ...f, phone: val || '' }))}
-            />
-            {phoneError && (
-              <div style={{ color: '#ef4444', fontSize: 13, marginTop: 4 }}>{phoneError}</div>
-            )}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <div className="label">Investment Amount *</div>
-              <input
-                className="input"
-                type="number"
-                min="0"
-                step="0.01"
-                name="investmentAmount"
-                value={form.investmentAmount}
-                onChange={onChange}
-                placeholder="1000"
-                required
-              />
-            </div>
-            <div>
-              <div className="label">Currency</div>
-              <select className="input" name="currency" value={form.currency} onChange={onChange}>
-                {CURRENCIES.map((c) => (
-                  <option key={c.key} value={c.key}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <button type="submit" className="btn" disabled={loading}>
-            {loading ? 'Creating...' : 'Create Investor'}
-          </button>
-        </form>
-      </div>
-
       {/* Investors List */}
       <div className="card">
         <div className="card-header">
@@ -366,7 +247,6 @@ export default function Investors() {
                 <th style={{ padding: 12, textAlign: 'left' }}>Name</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Email</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Referred By</th>
-                <th style={{ padding: 12, textAlign: 'left' }}>Investment</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Earned</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Status</th>
                 <th style={{ padding: 12, textAlign: 'left' }}>Actions</th>
@@ -375,13 +255,13 @@ export default function Investors() {
             <tbody>
               {loadingList ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: 20, textAlign: 'center', opacity: 0.7 }}>
+                  <td colSpan={6} style={{ padding: 20, textAlign: 'center', opacity: 0.7 }}>
                     Loading...
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: 20, textAlign: 'center', opacity: 0.7 }}>
+                  <td colSpan={6} style={{ padding: 20, textAlign: 'center', opacity: 0.7 }}>
                     No investors found
                   </td>
                 </tr>
@@ -420,13 +300,6 @@ export default function Investors() {
                           refLabel
                         ) : (
                           <span style={{ opacity: 0.5, fontStyle: 'italic' }}>—</span>
-                        )}
-                      </td>
-                      <td style={{ padding: 12 }}>
-                        {investmentAmount ? (
-                          `${currency} ${Number(investmentAmount).toFixed(2)}`
-                        ) : (
-                          <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>
                         )}
                       </td>
                       <td
