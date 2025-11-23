@@ -709,12 +709,30 @@ export default function ManagerFinances() {
                 <th
                   style={{
                     padding: '10px 12px',
+                    textAlign: 'left',
+                    borderRight: '1px solid var(--border)',
+                  }}
+                >
+                  Country
+                </th>
+                <th
+                  style={{
+                    padding: '10px 12px',
                     textAlign: 'right',
                     borderRight: '1px solid var(--border)',
                     color: '#22c55e',
                   }}
                 >
                   Amount
+                </th>
+                <th
+                  style={{
+                    padding: '10px 12px',
+                    textAlign: 'left',
+                    borderRight: '1px solid var(--border)',
+                  }}
+                >
+                  Method
                 </th>
                 <th
                   style={{
@@ -742,7 +760,7 @@ export default function ManagerFinances() {
               {loading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <tr key={`drsk${i}`}>
-                    <td colSpan={6} style={{ padding: '10px 12px' }}>
+                    <td colSpan={8} style={{ padding: '10px 12px' }}>
                       <div
                         style={{
                           height: 14,
@@ -757,7 +775,7 @@ export default function ManagerFinances() {
               ) : filteredDriverRemittances.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={8}
                     style={{ padding: '10px 12px', opacity: 0.7, textAlign: 'center' }}
                   >
                     No driver remittances found
@@ -779,6 +797,11 @@ export default function ManagerFinances() {
                     <td style={{ padding: '10px 12px', borderRight: '1px solid var(--border)' }}>
                       <div style={{ fontWeight: 700, color: '#8b5cf6' }}>{userName(r.manager)}</div>
                     </td>
+                    <td style={{ padding: '10px 12px', borderRight: '1px solid var(--border)' }}>
+                      <div style={{ fontWeight: 700, color: '#ec4899' }}>
+                        {r.country || r.driver?.country || '-'}
+                      </div>
+                    </td>
                     <td
                       style={{
                         padding: '10px 12px',
@@ -788,6 +811,11 @@ export default function ManagerFinances() {
                     >
                       <span style={{ color: '#22c55e', fontWeight: 800 }}>
                         {r.currency} {num(r.amount)}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 12px', borderRight: '1px solid var(--border)' }}>
+                      <span style={{ color: '#3b82f6', fontWeight: 700 }}>
+                        {String(r.method || 'hand').toUpperCase()}
                       </span>
                     </td>
                     <td style={{ padding: '10px 12px', borderRight: '1px solid var(--border)' }}>
