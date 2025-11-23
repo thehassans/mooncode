@@ -68,6 +68,23 @@ export default function UserLayout() {
     }
   }, [])
 
+  // Navigation visibility state
+  const [hiddenNavItems, setHiddenNavItems] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('hiddenNavItems') || '[]')
+    } catch {
+      return []
+    }
+  })
+
+  const toggleNavItem = (label) => {
+    setHiddenNavItems((prev) => {
+      const next = prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
+      localStorage.setItem('hiddenNavItems', JSON.stringify(next))
+      return next
+    })
+  }
+
   const links = [
     {
       to: '/user',
