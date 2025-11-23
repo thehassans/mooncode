@@ -425,7 +425,7 @@ export default function Sidebar({ links = [], closed, onToggle }) {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          <div className="group-header" title={item.label}>
+          <div className="group-header">
             <span className="nav-icon" aria-hidden>
               <Icon name={item.label} />
             </span>

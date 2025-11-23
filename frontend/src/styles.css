@@ -354,6 +354,7 @@ a {
   border-right: 1px solid var(--sidebar-border, var(--border));
   transform: none;
   transition: width 0.2s ease;
+  z-index: 100;
 }
 .sidebar.closed {
   transform: none;
