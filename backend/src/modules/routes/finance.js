@@ -899,6 +899,14 @@ router.get(
         };
         match.country = { $in: expandCountry(queryCountry) };
       }
+
+      // Date filtering
+      if (req.query.from || req.query.to) {
+        match.createdAt = {};
+        if (req.query.from) match.createdAt.$gte = new Date(req.query.from);
+        if (req.query.to) match.createdAt.$lte = new Date(req.query.to);
+      }
+
       const page = Math.max(1, Number(req.query.page || 1));
       const limit = Math.min(100, Math.max(1, Number(req.query.limit || 20)));
       const skip = (page - 1) * limit;
@@ -3569,6 +3577,14 @@ router.get(
         };
         match.country = { $in: expandCountry(queryCountry) };
       }
+
+      // Date filtering
+      if (req.query.from || req.query.to) {
+        match.createdAt = {};
+        if (req.query.from) match.createdAt.$gte = new Date(req.query.from);
+        if (req.query.to) match.createdAt.$lte = new Date(req.query.to);
+      }
+
       const page = Math.max(1, Number(req.query.page || 1));
       const limit = Math.min(100, Math.max(1, Number(req.query.limit || 50)));
       const skip = (page - 1) * limit;

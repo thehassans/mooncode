@@ -22,12 +22,24 @@ export default function ManagerFinances() {
   const [err, setErr] = useState('')
   const [country, setCountry] = useState('')
   const [countryOptions, setCountryOptions] = useState([])
-  const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [acceptModal, setAcceptModal] = useState(null)
-  const [curCfg, setCurCfg] = useState(null)
-  const [managers, setManagers] = useState([])
+  const [selectedMonth, setSelectedMonth] = useState(0) // 0 = All time
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+
+  // Helper to get date range for selected month (UAE timezone UTC+4)
+  const getMonthDateRange = () => {
+    if (selectedMonth === 0) return null // All time
+    const UAE_OFFSET_HOURS = 4
+    const startDate = new Date(
+      Date.UTC(selectedYear, selectedMonth - 1, 1, -UAE_OFFSET_HOURS, 0, 0, 0)
+    )
+    const endDate = new Date(
+      Date.UTC(selectedYear, selectedMonth, 0, 23 - UAE_OFFSET_HOURS, 59, 59, 999)
+    )
+    return {
+      from: startDate.toISOString(),
+      to: endDate.toISOString(),
+    }
+  }
 
   useEffect(() => {
     let alive = true
@@ -77,9 +89,16 @@ export default function ManagerFinances() {
     ;(async () => {
       try {
         setLoading(true)
+        const dateRange = getMonthDateRange()
+        const dateQuery = dateRange ? `&from=${dateRange.from}&to=${dateRange.to}` : ''
+
         const [driverRemitsRes, managerRemitsRes, managersRes] = await Promise.all([
-          apiGet(`/api/finance/remittances?limit=500&country=${encodeURIComponent(country)}`),
-          apiGet(`/api/finance/manager-remittances?country=${encodeURIComponent(country)}`),
+          apiGet(
+            `/api/finance/remittances?limit=500&country=${encodeURIComponent(country)}${dateQuery}`
+          ),
+          apiGet(
+            `/api/finance/manager-remittances?country=${encodeURIComponent(country)}${dateQuery}`
+          ),
           apiGet('/api/users?role=manager'),
         ])
         if (alive) {
@@ -101,7 +120,7 @@ export default function ManagerFinances() {
     return () => {
       alive = false
     }
-  }, [country]) // Re-fetch when country changes
+  }, [country, selectedMonth, selectedYear]) // Re-fetch when filters change
 
   // Live updates
   useEffect(() => {
@@ -149,14 +168,21 @@ export default function ManagerFinances() {
         socket && socket.disconnect()
       } catch {}
     }
-  }, [country]) // Add country dependency to socket effect if refreshRemittances uses it
+  }, [country, selectedMonth, selectedYear])
 
   async function refreshRemittances() {
     if (!country) return
     try {
+      const dateRange = getMonthDateRange()
+      const dateQuery = dateRange ? `&from=${dateRange.from}&to=${dateRange.to}` : ''
+
       const [driverRemitsRes, managerRemitsRes] = await Promise.all([
-        apiGet(`/api/finance/remittances?limit=500&country=${encodeURIComponent(country)}`),
-        apiGet(`/api/finance/manager-remittances?country=${encodeURIComponent(country)}`),
+        apiGet(
+          `/api/finance/remittances?limit=500&country=${encodeURIComponent(country)}${dateQuery}`
+        ),
+        apiGet(
+          `/api/finance/manager-remittances?country=${encodeURIComponent(country)}${dateQuery}`
+        ),
       ])
       setDriverRemittances(
         Array.isArray(driverRemitsRes?.remittances) ? driverRemitsRes.remittances : []
@@ -194,62 +220,32 @@ export default function ManagerFinances() {
     if (!u) return '-'
     return `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || '-'
   }
-  function dateInRange(d, from, to) {
-    try {
-      if (!d) return false
-      const t = new Date(d).getTime()
-      if (from) {
-        const f = new Date(from).setHours(0, 0, 0, 0)
-        if (t < f) return false
-      }
-      if (to) {
-        const tt = new Date(to).setHours(23, 59, 59, 999)
-        if (t > tt) return false
-      }
-      return true
-    } catch {
-      return true
-    }
+  // No client-side date filtering needed as backend handles it
+  function dateInRange(d) {
+    return true
   }
 
   const filteredManagerRemittances = useMemo(() => {
     return managerRemittances.filter((r) => {
       if (
-        country &&
-        String(r?.country || '')
-          .trim()
-          .toLowerCase() !== String(country).trim().toLowerCase()
-      )
-        return false
-      if (
         statusFilter &&
         String(r?.status || '').toLowerCase() !== String(statusFilter).toLowerCase()
       )
         return false
-      if ((fromDate || toDate) && !dateInRange(r?.createdAt, fromDate, toDate)) return false
       return true
     })
-  }, [managerRemittances, country, statusFilter, fromDate, toDate])
+  }, [managerRemittances, statusFilter])
 
   const filteredDriverRemittances = useMemo(() => {
     return driverRemittances.filter((r) => {
-      const rCountry = r?.country || r?.driver?.country || ''
-      if (
-        country &&
-        String(rCountry || '')
-          .trim()
-          .toLowerCase() !== String(country).trim().toLowerCase()
-      )
-        return false
       if (
         statusFilter &&
         String(r?.status || '').toLowerCase() !== String(statusFilter).toLowerCase()
       )
         return false
-      if ((fromDate || toDate) && !dateInRange(r?.createdAt, fromDate, toDate)) return false
       return true
     })
-  }, [driverRemittances, country, statusFilter, fromDate, toDate])
+  }, [driverRemittances, statusFilter])
 
   const summaryCurrency = useMemo(() => {
     if (!country) return 'AED'
@@ -364,6 +360,37 @@ export default function ManagerFinances() {
           </select>
           <select
             className="input"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(Number(e.target.value))}
+          >
+            <option value={0}>All Time</option>
+            <option value={1}>January</option>
+            <option value={2}>February</option>
+            <option value={3}>March</option>
+            <option value={4}>April</option>
+            <option value={5}>May</option>
+            <option value={6}>June</option>
+            <option value={7}>July</option>
+            <option value={8}>August</option>
+            <option value={9}>September</option>
+            <option value={10}>October</option>
+            <option value={11}>November</option>
+            <option value={12}>December</option>
+          </select>
+          <select
+            className="input"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            disabled={selectedMonth === 0}
+          >
+            {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+          <select
+            className="input"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
@@ -373,18 +400,6 @@ export default function ManagerFinances() {
             <option value="accepted">Accepted</option>
             <option value="rejected">Rejected</option>
           </select>
-          <input
-            className="input"
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-          />
-          <input
-            className="input"
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-          />
         </div>
       </div>
 
@@ -707,14 +722,23 @@ export default function ManagerFinances() {
                 >
                   Status
                 </th>
-                <th style={{ padding: '10px 12px', textAlign: 'left' }}>Date</th>
+                <th
+                  style={{
+                    padding: '10px 12px',
+                    textAlign: 'left',
+                    borderRight: '1px solid var(--border)',
+                  }}
+                >
+                  Date
+                </th>
+                <th style={{ padding: '10px 12px', textAlign: 'left' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <tr key={`drsk${i}`}>
-                    <td colSpan={5} style={{ padding: '10px 12px' }}>
+                    <td colSpan={6} style={{ padding: '10px 12px' }}>
                       <div
                         style={{
                           height: 14,
@@ -729,7 +753,7 @@ export default function ManagerFinances() {
               ) : filteredDriverRemittances.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     style={{ padding: '10px 12px', opacity: 0.7, textAlign: 'center' }}
                   >
                     No driver remittances found
@@ -779,10 +803,15 @@ export default function ManagerFinances() {
                         statusBadge(r.status)
                       )}
                     </td>
-                    <td style={{ padding: '10px 12px' }}>
+                    <td style={{ padding: '10px 12px', borderRight: '1px solid var(--border)' }}>
                       <div style={{ color: '#6366f1', fontSize: 13 }}>
                         {r.createdAt ? new Date(r.createdAt).toLocaleString() : '-'}
                       </div>
+                    </td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <button className="btn secondary small" onClick={() => setAcceptModal(r)}>
+                        Details
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -796,9 +825,11 @@ export default function ManagerFinances() {
       {acceptModal && (
         <Modal
           title={
-            acceptModal.status === 'pending'
-              ? 'Accept Manager Remittance'
-              : 'Manager Remittance Details'
+            acceptModal.driver
+              ? 'Driver Remittance Details'
+              : acceptModal.status === 'pending'
+                ? 'Accept Manager Remittance'
+                : 'Manager Remittance Details'
           }
           open={!!acceptModal}
           onClose={() => setAcceptModal(null)}
@@ -807,7 +838,7 @@ export default function ManagerFinances() {
               <button className="btn secondary" onClick={() => setAcceptModal(null)}>
                 Close
               </button>
-              {acceptModal.status === 'pending' && (
+              {!acceptModal.driver && acceptModal.status === 'pending' && (
                 <>
                   <button
                     className="btn danger"
@@ -834,56 +865,86 @@ export default function ManagerFinances() {
             </>
           }
         >
-          <div style={{ display: 'grid', gap: 8 }}>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))',
-                gap: 8,
-              }}
-            >
-              <Info label="Manager" value={userName(acceptModal?.manager)} />
-              <Info
-                label="Country"
-                value={
-                  acceptModal?.country ||
-                  acceptModal?.manager?.country ||
-                  acceptModal?.manager?.assignedCountry ||
-                  (Array.isArray(acceptModal?.manager?.assignedCountries) &&
-                  acceptModal?.manager?.assignedCountries.length > 0
-                    ? acceptModal?.manager?.assignedCountries[0]
-                    : null) ||
-                  acceptModal?.currency ||
-                  'SAR'
-                }
-              />
-              <Info
-                label="Amount"
-                value={`${acceptModal?.currency || ''} ${Number(acceptModal?.amount || 0).toFixed(2)}`}
-              />
-              <Info label="Method" value={String(acceptModal?.method || 'hand').toUpperCase()} />
-              <Info label="Status" value={String(acceptModal?.status || '').toUpperCase()} />
-              {acceptModal?.note ? <Info label="Note" value={acceptModal?.note} /> : null}
-              <Info
-                label="Created"
-                value={
-                  acceptModal?.createdAt ? new Date(acceptModal.createdAt).toLocaleString() : '-'
-                }
-              />
-              {acceptModal?.acceptedAt ? (
-                <Info label="Processed" value={new Date(acceptModal.acceptedAt).toLocaleString()} />
-              ) : null}
-            </div>
-            {acceptModal?.receiptPath ? (
-              <div>
-                <div className="helper">Proof</div>
-                <img
-                  src={`${API_BASE}${acceptModal.receiptPath}`}
-                  alt="Proof"
-                  style={{ maxWidth: '100%', borderRadius: 8, border: '1px solid var(--border)' }}
-                />
+          <div style={{ display: 'grid', gap: 16, padding: '10px 0' }}>
+            <div className="panel" style={{ padding: 16, display: 'grid', gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="helper">Amount</span>
+                <span style={{ fontWeight: 800, fontSize: 18, color: '#10b981' }}>
+                  {acceptModal.currency} {num(acceptModal.amount)}
+                </span>
               </div>
-            ) : null}
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="helper">Status</span>
+                <span>{statusBadge(acceptModal.status)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="helper">Method</span>
+                <span style={{ textTransform: 'uppercase', fontWeight: 600 }}>
+                  {acceptModal.method || 'HAND'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="helper">Date</span>
+                <span>{new Date(acceptModal.createdAt).toLocaleString()}</span>
+              </div>
+              {acceptModal.driver ? (
+                // Driver Remittance Specifics
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span className="helper">Driver</span>
+                    <span style={{ fontWeight: 600 }}>{userName(acceptModal.driver)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span className="helper">Manager</span>
+                    <span style={{ fontWeight: 600 }}>{userName(acceptModal.manager)}</span>
+                  </div>
+                </>
+              ) : (
+                // Manager Remittance Specifics
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span className="helper">Manager</span>
+                    <span style={{ fontWeight: 600 }}>{userName(acceptModal.manager)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span className="helper">Country</span>
+                    <span style={{ fontWeight: 600 }}>
+                      {acceptModal.country || acceptModal.manager?.country || '-'}
+                    </span>
+                  </div>
+                </>
+              )}
+              {acceptModal.note && (
+                <div style={{ display: 'grid', gap: 4 }}>
+                  <span className="helper">Note</span>
+                  <div
+                    style={{
+                      background: 'var(--bg)',
+                      padding: 10,
+                      borderRadius: 6,
+                      fontSize: 13,
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    {acceptModal.note}
+                  </div>
+                </div>
+              )}
+              {acceptModal.receiptPath && (
+                <div style={{ display: 'grid', gap: 4 }}>
+                  <span className="helper">Receipt</span>
+                  <a
+                    href={`${API_BASE}${acceptModal.receiptPath}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn secondary small"
+                    style={{ justifySelf: 'start' }}
+                  >
+                    View Receipt
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
         </Modal>
       )}
