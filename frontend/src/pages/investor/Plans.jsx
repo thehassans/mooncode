@@ -236,7 +236,7 @@ export default function InvestorPlans() {
                   <img
                     src={`${API_BASE}${p.image}`}
                     alt={p.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 </div>
               ) : null}
