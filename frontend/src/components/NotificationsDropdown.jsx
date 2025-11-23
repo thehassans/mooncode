@@ -219,30 +219,34 @@ export default function NotificationsDropdown() {
         title="Notifications"
         aria-label="Notifications"
         style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '12px',
+          width: '44px',
+          height: '44px',
+          borderRadius: '14px',
           background:
-            'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          backdropFilter: 'blur(10px)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-          transition: 'all 0.2s ease',
+            'linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+          border: '1px solid rgba(255,255,255,0.15)',
+          backdropFilter: 'blur(20px)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           color: 'var(--fg)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          position: 'relative',
+          overflow: 'hidden',
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.transform = 'translateY(-2px)'
-          e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.2)'
-          e.currentTarget.style.borderColor = 'var(--primary)'
-          e.currentTarget.style.color = 'var(--primary)'
+          e.currentTarget.style.boxShadow =
+            '0 12px 40px rgba(99, 102, 241, 0.25), inset 0 1px 0 rgba(255,255,255,0.2)'
+          e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.5)'
+          e.currentTarget.style.color = '#818cf8'
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.transform = 'translateY(0)'
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
-          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'
+          e.currentTarget.style.boxShadow =
+            '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)'
+          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
           e.currentTarget.style.color = 'var(--fg)'
         }}
       >
