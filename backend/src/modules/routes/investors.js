@@ -136,6 +136,24 @@ router.get("/my-orders", auth, allowRoles("investor"), async (req, res) => {
   }
 });
 
+// Get investor's daily profit history
+router.get("/daily-profits", auth, allowRoles("investor"), async (req, res) => {
+  try {
+    const { monthYear } = req.query || {};
+    const { getInvestorDailyProfits, getMonthlyProfitSummary } = await import(
+      "../services/dailyProfitService.js"
+    );
+
+    const dailyProfits = await getInvestorDailyProfits(req.user.id, monthYear);
+    const summary = await getMonthlyProfitSummary(req.user.id, monthYear);
+
+    res.json({ dailyProfits, summary });
+  } catch (err) {
+    console.error("Error fetching daily profits:", err);
+    res.status(500).json({ message: "Failed to load daily profits" });
+  }
+});
+
 export default router;
 
 // Create an investment request for a package

@@ -1084,25 +1084,44 @@ router.post(
   async (req, res) => {
     try {
       const { id } = req.params;
+      const { monthlyProfitPercentage } = req.body || {}; // User input
+
       const cond = { _id: id };
       if (req.user.role !== "admin") cond.owner = req.user.id;
       const rq = await InvestorRequest.findOne(cond);
       if (!rq) return res.status(404).json({ message: "Request not found" });
       if (rq.status !== "pending")
         return res.status(400).json({ message: "Already processed" });
+
+      // Validate profit percentage
+      const profitPct = Number(monthlyProfitPercentage || 0);
+      if (profitPct < 0 || profitPct > 100) {
+        return res
+          .status(400)
+          .json({ message: "Profit percentage must be between 0 and 100" });
+      }
+
+      // Calculate monthly profit amount
+      const investmentAmount = Number(rq.amount || 0);
+      const approvedProfitAmount =
+        Math.round(((investmentAmount * profitPct) / 100) * 100) / 100;
+
+      // Update request
       rq.status = "accepted";
       rq.acceptedAt = new Date();
+      rq.monthlyProfitPercentage = profitPct;
+      rq.approvedProfitAmount = approvedProfitAmount;
+      rq.approvedBy = req.user.id;
+      rq.profitDistributionStartDate = new Date();
       await rq.save();
+
       const inv = await User.findById(rq.investor);
       if (inv) {
         const p = inv.investorProfile || {};
-        const pct = Number(
-          rq.packageProfitPercentage || p.profitPercentage || 15
-        );
-        p.investmentAmount = Number(rq.amount || 0);
+        p.investmentAmount = investmentAmount;
         p.currency = rq.currency || p.currency || "AED";
-        p.profitPercentage = pct;
-        p.profitAmount = Math.round((Number(rq.amount || 0) * pct) / 100);
+        p.profitPercentage = profitPct;
+        p.profitAmount = approvedProfitAmount;
         p.totalReturn = Number(p.investmentAmount || 0);
         p.status = "active";
         inv.investorProfile = p;
@@ -1121,7 +1140,11 @@ router.post(
           { id: String(rq._id) }
         );
       } catch {}
-      return res.json({ ok: true });
+      return res.json({
+        ok: true,
+        monthlyProfitAmount: approvedProfitAmount,
+        monthlyProfitPercentage: profitPct,
+      });
     } catch (err) {
       return res
         .status(500)
