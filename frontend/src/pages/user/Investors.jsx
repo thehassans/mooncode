@@ -86,11 +86,15 @@ export default function Investors() {
   async function loadInvestors() {
     try {
       setLoadingList(true)
+      console.log('Loading investors from API...')
       const data = await apiGet(`/api/users/investors?q=${encodeURIComponent(q)}`)
+      console.log('Investors API response:', data)
       console.log('Investors loaded:', data.users?.length || 0)
       setRows(data.users || [])
     } catch (err) {
       console.error('Failed to load investors:', err)
+      console.error('Error details:', err.message, err.response)
+      alert(`Failed to load investors: ${err.message || 'Unknown error'}`)
       setRows([])
     } finally {
       setLoadingList(false)
