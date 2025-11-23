@@ -1738,12 +1738,19 @@ router.get(
   async (req, res) => {
     const { q = "" } = req.query || {};
     const base = { role: "investor" };
-    if (req.user.role !== "admin") base.createdBy = req.user.id;
+    // For users, show investors created by them OR referred to their workspace
+    if (req.user.role !== "admin") {
+      base.$or = [
+        { createdBy: req.user.id },
+        { "investorProfile.ownerId": req.user.id },
+      ];
+    }
     const text = q.trim();
     const cond = text
       ? {
           ...base,
           $or: [
+            ...(base.$or || []),
             { firstName: { $regex: text, $options: "i" } },
             { lastName: { $regex: text, $options: "i" } },
             { email: { $regex: text, $options: "i" } },
