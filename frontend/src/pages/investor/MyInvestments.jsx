@@ -6,6 +6,8 @@ export default function MyInvestments() {
   const [investorData, setInvestorData] = useState(null)
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [dailyProfits, setDailyProfits] = useState([])
+  const [profitSummary, setProfitSummary] = useState(null)
 
   useEffect(() => {
     loadData()
@@ -39,13 +41,16 @@ export default function MyInvestments() {
   async function loadData() {
     try {
       setLoading(true)
-      const [userData, ordersData] = await Promise.all([
+      const [userData, ordersData, profitsData] = await Promise.all([
         apiGet('/api/users/me'),
         apiGet('/api/investor/my-orders'),
+        apiGet('/api/investor/daily-profits'),
       ])
 
       setInvestorData(userData.user)
       setOrders(ordersData.orders || [])
+      setDailyProfits(profitsData.dailyProfits || [])
+      setProfitSummary(profitsData.summary || null)
     } catch (e) {
       console.error('Failed to load data:', e)
     } finally {
@@ -505,6 +510,129 @@ export default function MyInvestments() {
               </div>
             </div>
           </div>
+
+          {/* Daily Profit History */}
+          {dailyProfits.length > 0 && (
+            <div
+              style={{
+                background: 'var(--card-bg)',
+                borderRadius: 20,
+                padding: 28,
+                boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 20,
+                }}
+              >
+                <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
+                  Daily Profit Distribution
+                </h2>
+                {profitSummary && (
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 13, opacity: 0.7 }}>This Month's Progress</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: '#10b981' }}>
+                      {currency} {formatCurrency(profitSummary.totalEarned)} /{' '}
+                      {formatCurrency(profitSummary.totalTarget)}
+                    </div>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>
+                      {profitSummary.percentComplete.toFixed(1)}% complete
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div
+                style={{
+                  fontSize: 13,
+                  opacity: 0.8,
+                  marginBottom: 16,
+                  padding: 12,
+                  background: 'var(--panel)',
+                  borderRadius: 8,
+                }}
+              >
+                💡 Your daily profit varies (±30%) but sums to your monthly target. This creates a
+                realistic earnings experience!
+              </div>
+
+              <div style={{ display: 'grid', gap: 8 }}>
+                {dailyProfits
+                  .slice()
+                  .reverse()
+                  .slice(0, 15)
+                  .map((profit, idx) => {
+                    const date = new Date(profit.date)
+                    const amount = Number(profit.amount || 0)
+                    const avgDaily = profitSummary ? profitSummary.totalTarget / 30 : 0
+                    const variation = avgDaily > 0 ? ((amount - avgDaily) / avgDaily) * 100 : 0
+                    const isAboveAvg = variation > 0
+
+                    return (
+                      <div
+                        key={profit._id}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '12px 16px',
+                          background:
+                            idx === 0
+                              ? 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.1))'
+                              : 'var(--panel)',
+                          borderRadius: 12,
+                          border:
+                            idx === 0
+                              ? '1px solid rgba(16,185,129,0.3)'
+                              : '1px solid var(--border)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{ fontSize: 24 }}>{idx === 0 ? '🎯' : '📅'}</div>
+                          <div>
+                            <div style={{ fontWeight: 700 }}>
+                              {date.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </div>
+                            <div style={{ fontSize: 12, opacity: 0.7 }}>
+                              {idx === 0 ? 'Today' : `${idx + 1} day${idx > 0 ? 's' : ''} ago`}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 20, fontWeight: 900, color: '#10b981' }}>
+                            +{currency} {formatCurrency(amount)}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: isAboveAvg ? '#10b981' : '#f59e0b',
+                            }}
+                          >
+                            {isAboveAvg ? '↑' : '↓'} {Math.abs(variation).toFixed(1)}%{' '}
+                            {isAboveAvg ? 'above' : 'below'} avg
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+
+              {dailyProfits.length > 15 && (
+                <div style={{ marginTop: 12, textAlign: 'center', fontSize: 13, opacity: 0.7 }}>
+                  Showing last 15 days • {dailyProfits.length} total distributions
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Orders with Profit */}
           <div
