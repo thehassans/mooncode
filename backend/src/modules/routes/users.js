@@ -1759,10 +1759,6 @@ router.get(
       }
 
       const users = await User.find(cond, "-password")
-        .populate(
-          "investorProfile.assignedProducts.product",
-          "name baseCurrency price"
-        )
         .populate("referredBy", "firstName lastName email")
         .sort({ createdAt: -1 });
 
