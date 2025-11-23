@@ -493,6 +493,13 @@ export default function Sidebar({ links = [], closed, onToggle }) {
                       to={ch.to}
                       className={({ isActive }) => (isActive ? 'active' : '')}
                     >
+                      <span
+                        className="nav-icon child"
+                        aria-hidden
+                        style={{ width: 16, opacity: 0.7, marginRight: 8 }}
+                      >
+                        <Icon name={ch.label} />
+                      </span>
                       <span className="nav-label">{ch.label}</span>
                       {badge && <span className="nav-badge">{badge > 99 ? '99+' : badge}</span>}
                     </NavLink>

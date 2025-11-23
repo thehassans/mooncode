@@ -477,6 +477,11 @@ a {
   color: var(--fg);
 }
 
+/* Fix: Ensure labels are visible in floating menu even when sidebar is closed */
+.sidebar.closed .floating-submenu .nav-label {
+  display: block;
+}
+
 .floating-content {
   padding: 6px;
   display: grid;
