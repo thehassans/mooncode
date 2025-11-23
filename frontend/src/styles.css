@@ -449,9 +449,20 @@ a {
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   min-width: 200px;
   z-index: 50;
-  overflow: hidden;
+  overflow: visible; /* Allow ::before to extend outside */
   animation: slideInFade 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: left top;
+}
+
+/* Bridge the gap between sidebar and floating menu to prevent closing on hover */
+.floating-submenu::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -12px; /* Matches the margin-left */
+  width: 12px;
+  background: transparent;
 }
 
 /* Flat label variant (smaller, no content) */
