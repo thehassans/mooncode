@@ -478,8 +478,10 @@ a {
 }
 
 /* Fix: Ensure labels are visible in floating menu even when sidebar is closed */
-.sidebar.closed .floating-submenu .nav-label {
-  display: block;
+.sidebar.closed .menu .floating-submenu a .nav-label {
+  display: block !important;
+  opacity: 1 !important;
+  width: auto !important;
 }
 
 .floating-content {

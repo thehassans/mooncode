@@ -474,7 +474,15 @@ export default function Sidebar({ links = [], closed, onToggle }) {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          <div className="group-header">
+          <div
+            className="group-header"
+            onClick={() => {
+              if (onToggle) onToggle()
+              // Ensure this group is open when sidebar expands
+              if (!isOpen) toggleGroup(key)
+            }}
+            style={{ cursor: 'pointer' }}
+          >
             <span className="nav-icon" aria-hidden>
               <Icon name={item.label} />
             </span>
