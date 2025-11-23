@@ -432,6 +432,82 @@ a {
   display: none;
 }
 
+/* Premium Floating Submenu */
+.sidebar.closed .nav-group.closed-group {
+  position: relative;
+}
+
+.floating-submenu {
+  position: absolute;
+  left: 100%; /* Position to the right of the sidebar */
+  top: 0;
+  margin-left: 12px; /* Spacing from sidebar */
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  min-width: 200px;
+  z-index: 50;
+  overflow: hidden;
+  animation: slideInFade 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: left top;
+}
+
+.floating-header {
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--fg);
+}
+
+.floating-content {
+  padding: 6px;
+  display: grid;
+  gap: 2px;
+}
+
+.floating-content a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.floating-content a:hover,
+.floating-content a.active {
+  background: var(--nav-active-bg, var(--bg));
+  color: var(--nav-active-fg, var(--fg));
+}
+
+.floating-content .nav-badge {
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+@keyframes slideInFade {
+  from {
+    opacity: 0;
+    transform: translateX(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
 /* Edge-mounted sidebar toggle */
 .sidebar-toggle {
   position: absolute;
