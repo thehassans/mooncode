@@ -2778,6 +2778,9 @@ router.get(
                 $match: {
                   $expr: { $eq: ["$driver", "$$driverId"] },
                   status: { $in: ["accepted", "manager_accepted"] },
+                  ...(req.user.role === "manager"
+                    ? { manager: new M.Types.ObjectId(req.user.id) }
+                    : {}),
                 },
               },
             ],
