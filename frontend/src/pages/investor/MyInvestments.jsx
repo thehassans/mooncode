@@ -184,9 +184,6 @@ export default function MyInvestments() {
                 <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>
                   {currency} {formatCurrency(dailyProfit)}
                 </div>
-                <div style={{ fontSize: 13, opacity: 0.85 }}>
-                  Based on {currency} {formatCurrency(investmentAmount)} × {profitPercentage}% ÷ 30
-                </div>
               </div>
             </div>
 
@@ -272,7 +269,6 @@ export default function MyInvestments() {
                 <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 8 }}>
                   {currency} {formatCurrency(profitAmount)}
                 </div>
-                <div style={{ fontSize: 13, opacity: 0.85 }}>Goal to achieve from orders</div>
               </div>
             </div>
 
