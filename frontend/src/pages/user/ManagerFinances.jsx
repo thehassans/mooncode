@@ -24,6 +24,10 @@ export default function ManagerFinances() {
   const [countryOptions, setCountryOptions] = useState([])
   const [selectedMonth, setSelectedMonth] = useState(0) // 0 = All time
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [statusFilter, setStatusFilter] = useState('')
+  const [acceptModal, setAcceptModal] = useState(null)
+  const [curCfg, setCurCfg] = useState(null)
+  const [managers, setManagers] = useState([])
 
   // Helper to get date range for selected month (UAE timezone UTC+4)
   const getMonthDateRange = () => {
