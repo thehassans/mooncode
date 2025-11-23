@@ -827,40 +827,75 @@ router.get(
   allowRoles("admin", "user", "manager", "driver"),
   async (req, res) => {
     try {
-      let match = {};
-      if (req.user.role === "admin") {
-        // no extra scoping
-      } else if (req.user.role === "user") {
-        match.owner = req.user.id;
+      // 1. First find the drivers that match the scope and country filter
+      // This matches the logic in /drivers/summary
+      let driverCond = { role: "driver" };
+
+      // Scope by user role
+      if (req.user.role === "user") {
+        driverCond.createdBy = req.user.id;
       } else if (req.user.role === "manager") {
-        // Option: when workspace=1, include all remittances in the manager's workspace (owner scope)
-        const wantWorkspace = String(req.query.workspace || "").toLowerCase();
-        if (
-          wantWorkspace === "1" ||
-          wantWorkspace === "true" ||
-          wantWorkspace === "yes"
-        ) {
-          try {
-            const me = await User.findById(req.user.id)
-              .select("createdBy")
-              .lean();
-            const ownerId = String(me?.createdBy || "");
-            if (ownerId) {
-              match.owner = ownerId;
-            } else {
-              match.manager = req.user.id;
-            }
-          } catch {
-            match.manager = req.user.id;
+        const me = await User.findById(req.user.id)
+          .select("createdBy assignedCountry assignedCountries")
+          .lean();
+        driverCond.createdBy = me?.createdBy || req.user.id;
+
+        // Manager country scope
+        const assigned =
+          Array.isArray(me?.assignedCountries) && me.assignedCountries.length
+            ? me.assignedCountries
+            : me?.assignedCountry
+            ? [me.assignedCountry]
+            : [];
+
+        if (assigned.length) {
+          const expandCountryVariations = (c) => {
+            const normalized = c.toLowerCase();
+            if (["ksa", "saudi arabia", "saudi"].includes(normalized))
+              return [
+                "KSA",
+                "Saudi Arabia",
+                "ksa",
+                "saudi arabia",
+                "Saudi",
+                "saudi",
+              ];
+            if (["uae", "united arab emirates"].includes(normalized))
+              return [
+                "UAE",
+                "United Arab Emirates",
+                "uae",
+                "united arab emirates",
+              ];
+            if (["oman", "om"].includes(normalized))
+              return ["Oman", "OMAN", "oman", "OM", "Om"];
+            if (["bahrain", "bh"].includes(normalized))
+              return ["Bahrain", "BAHRAIN", "bahrain", "BH", "Bh"];
+            if (["kuwait", "kw"].includes(normalized))
+              return ["Kuwait", "KUWAIT", "kuwait", "KW", "Kw"];
+            if (["qatar", "qa"].includes(normalized))
+              return ["Qatar", "QATAR", "qatar", "QA", "Qa"];
+            if (["india", "in"].includes(normalized))
+              return ["India", "INDIA", "india", "IN", "In"];
+            return [
+              c,
+              c.toUpperCase(),
+              c.toLowerCase(),
+              c.charAt(0).toUpperCase() + c.slice(1).toLowerCase(),
+            ];
+          };
+          const set = new Set();
+          for (const c of assigned) {
+            for (const x of expandCountryVariations(c)) set.add(x);
           }
-        } else {
-          match.manager = req.user.id;
+          driverCond.country = { $in: Array.from(set) };
         }
       } else if (req.user.role === "driver") {
-        match.driver = req.user.id;
+        driverCond._id = req.user.id;
       }
 
-      // Country filter
+      // Apply country filter from query parameter if provided
+      // This filters WHICH DRIVERS are included, not which remittances
       if (req.query.country) {
         const queryCountry = String(req.query.country).trim();
         const expandCountry = (c) => {
@@ -898,10 +933,40 @@ router.get(
             c.charAt(0).toUpperCase() + c.slice(1).toLowerCase(),
           ];
         };
-        match.country = { $in: expandCountry(queryCountry) };
+        // Merge with existing country condition if any
+        const countryFilter = { $in: expandCountry(queryCountry) };
+        if (driverCond.country) {
+          driverCond.country = {
+            $in: driverCond.country.$in.filter((c) =>
+              expandCountry(queryCountry).includes(c)
+            ),
+          };
+        } else {
+          driverCond.country = countryFilter;
+        }
       }
 
-      // Date filtering
+      // Get matching drivers
+      const drivers = await User.find(driverCond, "_id").lean();
+      const driverIds = drivers.map((d) => d._id);
+
+      if (driverIds.length === 0) {
+        return res.json({
+          totalAmount: 0,
+          count: 0,
+          currency: req.query.country
+            ? currencyFromCountry(req.query.country)
+            : "",
+        });
+      }
+
+      // 2. Now aggregate remittances for these drivers
+      let match = {
+        driver: { $in: driverIds },
+        status: { $in: ["accepted", "manager_accepted"] },
+      };
+
+      // Date filtering applies to remittances
       if (req.query.from || req.query.to) {
         match.createdAt = {};
         if (req.query.from) match.createdAt.$gte = new Date(req.query.from);
@@ -915,9 +980,6 @@ router.get(
           match.createdAt = { $gte: startDate, $lte: endDate };
         }
       }
-
-      // Only count accepted/manager_accepted remittances for "Total Collected"
-      match.status = { $in: ["accepted", "manager_accepted"] };
 
       const result = await Remittance.aggregate([
         { $match: match },
