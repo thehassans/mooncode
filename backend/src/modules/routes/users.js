@@ -1736,45 +1736,44 @@ router.get(
   auth,
   allowRoles("admin", "user"),
   async (req, res) => {
-    const { q = "" } = req.query || {};
-    let cond = { role: "investor" };
+    try {
+      const { q = "" } = req.query || {};
+      let cond = { role: "investor" };
 
-    // Note: Showing all investors for now since createdBy may not be set correctly
-    // TODO: Add proper workspace filtering once investor creation flow is fixed
+      // Note: Showing all investors for now since createdBy may not be set correctly
+      // TODO: Add proper workspace filtering once investor creation flow is fixed
 
-    console.log("[GET /investors] Query condition:", JSON.stringify(cond));
-    console.log("[GET /investors] User ID:", req.user.id);
-    console.log("[GET /investors] User role:", req.user.role);
+      console.log("[GET /investors] Query condition:", JSON.stringify(cond));
+      console.log("[GET /investors] User ID:", req.user.id);
+      console.log("[GET /investors] User role:", req.user.role);
 
-    // Add text search if query provided
-    const text = q.trim();
-    if (text) {
-      cond.$and = [
-        { role: "investor" },
-        req.user.role !== "admin" ? { createdBy: req.user.id } : {},
-        {
-          $or: [
-            { firstName: { $regex: text, $options: "i" } },
-            { lastName: { $regex: text, $options: "i" } },
-            { email: { $regex: text, $options: "i" } },
-            { phone: { $regex: text, $options: "i" } },
-          ],
-        },
-      ];
-      delete cond.role;
-      delete cond.createdBy;
+      // Add text search if query provided
+      const text = q.trim();
+      if (text) {
+        cond.$or = [
+          { firstName: { $regex: text, $options: "i" } },
+          { lastName: { $regex: text, $options: "i" } },
+          { email: { $regex: text, $options: "i" } },
+          { phone: { $regex: text, $options: "i" } },
+        ];
+      }
+
+      const users = await User.find(cond, "-password")
+        .populate(
+          "investorProfile.assignedProducts.product",
+          "name baseCurrency price"
+        )
+        .populate("referredBy", "firstName lastName email")
+        .sort({ createdAt: -1 });
+
+      console.log("[GET /investors] Found users:", users.length);
+      res.json({ users });
+    } catch (error) {
+      console.error("[GET /investors] Error:", error);
+      res
+        .status(500)
+        .json({ message: error.message || "Failed to load investors" });
     }
-
-    const users = await User.find(cond, "-password")
-      .populate(
-        "investorProfile.assignedProducts.product",
-        "name baseCurrency price"
-      )
-      .populate("referredBy", "firstName lastName email")
-      .sort({ createdAt: -1 });
-
-    console.log("[GET /investors] Found users:", users.length);
-    res.json({ users });
   }
 );
 
