@@ -376,7 +376,9 @@ export default function PrintLabel() {
       <div className="label-4x6">
         {/* Header */}
         <div className="sec header-sec" style={{ borderBottom: '1px solid #000' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}
+          >
             <img
               alt="BuySial"
               src={`${import.meta.env.BASE_URL}BuySial2.png`}
