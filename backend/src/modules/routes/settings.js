@@ -28,6 +28,60 @@ const storage = multer.diskStorage({
   },
 });
 
+// GET /api/settings/crm - Get CRM branding settings
+router.get("/crm", auth, allowRoles("admin", "user"), async (_req, res) => {
+  try {
+    const doc = await Setting.findOne({ key: "crm" }).lean();
+    const val = (doc && doc.value) || {};
+    res.json({
+      navigationLogo: val.navigationLogo || null,
+      loginLogo: val.loginLogo || null,
+      favicon: val.favicon || null,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e?.message || "failed" });
+  }
+});
+
+// POST /api/settings/crm - Save CRM branding settings
+router.post(
+  "/crm",
+  auth,
+  allowRoles("admin", "user"),
+  upload.fields([
+    { name: "navigationLogo", maxCount: 1 },
+    { name: "loginLogo", maxCount: 1 },
+    { name: "favicon", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const navigationFile = req.files?.navigationLogo?.[0];
+      const loginFile = req.files?.loginLogo?.[0];
+      const faviconFile = req.files?.favicon?.[0];
+
+      let doc = await Setting.findOne({ key: "crm" });
+      if (!doc) doc = new Setting({ key: "crm", value: {} });
+
+      const value = doc.value && typeof doc.value === "object" ? doc.value : {};
+      if (navigationFile)
+        value.navigationLogo = toPublicPath(navigationFile.path);
+      if (loginFile) value.loginLogo = toPublicPath(loginFile.path);
+      if (faviconFile) value.favicon = toPublicPath(faviconFile.path);
+
+      doc.value = value;
+      await doc.save();
+
+      res.json({
+        navigationLogo: value.navigationLogo || null,
+        loginLogo: value.loginLogo || null,
+        favicon: value.favicon || null,
+      });
+    } catch (e) {
+      res.status(500).json({ error: e?.message || "failed" });
+    }
+  }
+);
+
 // Currency conversion settings
 function defaultCurrencyConfig() {
   // Store SAR-per-unit for UI conversions, and PKR-per-unit for finance

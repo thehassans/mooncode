@@ -68,6 +68,7 @@ import UserAPISetup from './pages/user/APISetup.jsx'
 import ProfileSettings from './pages/user/ProfileSettings.jsx'
 import ShopifyIntegration from './pages/user/ShopifyIntegration.jsx'
 import WebsiteModification from './pages/user/WebsiteModification.jsx'
+import CRMSettings from './pages/user/CRMSettings.jsx'
 import ErrorLogs from './pages/user/ErrorLogs.jsx'
 import InhouseProducts from './pages/products/InhouseProducts.jsx'
 import Warehouse from './pages/warehouse/Warehouse.jsx'
@@ -500,6 +501,7 @@ export default function App() {
               <Route path="profile-settings" element={<ProfileSettings />} />
               <Route path="shopify" element={<ShopifyIntegration />} />
               <Route path="website-modification" element={<WebsiteModification />} />
+              <Route path="crm-settings" element={<CRMSettings />} />
               <Route path="error-logs" element={<ErrorLogs />} />
               <Route path="support" element={<Support />} />
             </Route>
