@@ -134,71 +134,735 @@ export default function LabelSettings() {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(5, 1fr)',
-                  gap: '12px',
-                  marginTop: '12px',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                  gap: '20px',
+                  marginTop: '16px',
                 }}
               >
-                {[1, 2, 3, 4, 5].map((id) => (
+                {/* Design 1: Minimalist */}
+                <div
+                  onClick={() => setLabelDesign(1)}
+                  style={{
+                    border: labelDesign === 1 ? '3px solid #f97316' : '2px solid var(--border)',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    background: labelDesign === 1 ? 'rgba(251, 146, 60, 0.05)' : 'var(--panel)',
+                    transition: 'all 0.2s',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {labelDesign === 1 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        background: '#f97316',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        zIndex: 10,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                      }}
+                    >
+                      ✓
+                    </div>
+                  )}
+
+                  {/* Mini Label Preview */}
                   <div
-                    key={id}
-                    onClick={() => setLabelDesign(id)}
                     style={{
-                      padding: '20px',
-                      border: labelDesign === id ? '2px solid #f97316' : '2px solid var(--border)',
-                      borderRadius: '12px',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      background: labelDesign === id ? 'rgba(251, 146, 60, 0.1)' : 'var(--panel)',
-                      transition: 'all 0.2s',
-                      position: 'relative',
+                      padding: '16px',
+                      background: '#fff',
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '7px',
+                      lineHeight: 1.2,
+                      color: '#000',
                     }}
                   >
                     <div
                       style={{
-                        fontSize: '24px',
-                        fontWeight: 700,
-                        marginBottom: '8px',
-                        color: labelDesign === id ? '#f97316' : 'var(--text)',
+                        borderBottom: '1.5px solid #000',
+                        paddingBottom: '6px',
+                        marginBottom: '6px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
                       }}
                     >
-                      {id}
+                      <div style={{ fontWeight: 700, fontSize: '9px' }}>LOGO</div>
+                      <div
+                        style={{
+                          background: '#000',
+                          color: '#fff',
+                          padding: '2px 6px',
+                          fontSize: '7px',
+                          fontWeight: 800,
+                        }}
+                      >
+                        COD
+                      </div>
+                    </div>
+                    <div style={{ border: '1px solid #000', padding: '6px', marginBottom: '4px' }}>
+                      <div
+                        style={{
+                          fontSize: '6px',
+                          textTransform: 'uppercase',
+                          color: '#555',
+                          marginBottom: '2px',
+                        }}
+                      >
+                        Customer
+                      </div>
+                      <div style={{ fontWeight: 700 }}>John Doe</div>
+                    </div>
+                    <div style={{ border: '1px solid #000', padding: '6px', marginBottom: '4px' }}>
+                      <table style={{ width: '100%', fontSize: '6px', borderCollapse: 'collapse' }}>
+                        <tr style={{ borderBottom: '1px solid #000' }}>
+                          <th style={{ textAlign: 'left', fontWeight: 800, padding: '2px 0' }}>
+                            ITEM
+                          </th>
+                          <th style={{ textAlign: 'right', fontWeight: 800, padding: '2px 0' }}>
+                            PRICE
+                          </th>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '2px 0' }}>Product Name</td>
+                          <td style={{ textAlign: 'right', padding: '2px 0' }}>$99.99</td>
+                        </tr>
+                      </table>
                     </div>
                     <div
                       style={{
-                        fontSize: '11px',
-                        color: 'var(--muted)',
-                        fontWeight: 500,
+                        background: '#000',
+                        color: '#fff',
+                        padding: '6px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: '7px',
+                        fontWeight: 800,
                       }}
                     >
-                      {id === 1 && 'Minimalist'}
-                      {id === 2 && 'Geometric'}
-                      {id === 3 && 'Elegant'}
-                      {id === 4 && 'Industrial'}
-                      {id === 5 && 'Rounded'}
+                      <span>TOTAL</span>
+                      <span>$99.99</span>
                     </div>
-                    {labelDesign === id && (
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      borderTop: '1px solid var(--border)',
+                      background: 'var(--panel)',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
+                      1. Minimalist
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                      Clean, bold, high contrast
+                    </div>
+                  </div>
+                </div>
+
+                {/* Design 2: Geometric */}
+                <div
+                  onClick={() => setLabelDesign(2)}
+                  style={{
+                    border: labelDesign === 2 ? '3px solid #f97316' : '2px solid var(--border)',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    background: labelDesign === 2 ? 'rgba(251, 146, 60, 0.05)' : 'var(--panel)',
+                    transition: 'all 0.2s',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {labelDesign === 2 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        background: '#f97316',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        zIndex: 10,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                      }}
+                    >
+                      ✓
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      padding: '16px',
+                      background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '7px',
+                      lineHeight: 1.2,
+                      color: '#000',
+                    }}
+                  >
+                    <div
+                      style={{
+                        background: '#6366f1',
+                        color: '#fff',
+                        padding: '6px',
+                        marginBottom: '6px',
+                        clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, fontSize: '9px' }}>LOGO</div>
                       <div
                         style={{
-                          position: 'absolute',
-                          top: '8px',
-                          right: '8px',
-                          width: '20px',
-                          height: '20px',
-                          borderRadius: '50%',
-                          background: '#f97316',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          fontSize: '12px',
+                          background: '#fff',
+                          color: '#6366f1',
+                          padding: '2px 6px',
+                          fontSize: '7px',
+                          fontWeight: 800,
+                          clipPath:
+                            'polygon(3px 0, 100% 0, 100% calc(100% - 3px), calc(100% - 3px) 100%, 0 100%, 0 3px)',
                         }}
                       >
-                        ✓
+                        COD
                       </div>
-                    )}
+                    </div>
+                    <div
+                      style={{
+                        border: '1.5px solid #6366f1',
+                        padding: '6px',
+                        marginBottom: '4px',
+                        clipPath: 'polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 0 100%)',
+                        background: '#fff',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: '6px',
+                          textTransform: 'uppercase',
+                          color: '#6366f1',
+                          marginBottom: '2px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        Customer
+                      </div>
+                      <div style={{ fontWeight: 700 }}>John Doe</div>
+                    </div>
+                    <div
+                      style={{
+                        border: '1.5px solid #6366f1',
+                        padding: '6px',
+                        background: '#fff',
+                        clipPath: 'polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 0 100%)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          borderBottom: '1.5px solid #6366f1',
+                          paddingBottom: '2px',
+                          marginBottom: '3px',
+                          fontSize: '6px',
+                          fontWeight: 800,
+                          color: '#6366f1',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        ORDER DETAILS
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '6px',
+                        }}
+                      >
+                        <span>Product</span>
+                        <span style={{ fontWeight: 700 }}>$99.99</span>
+                      </div>
+                    </div>
                   </div>
-                ))}
+
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      borderTop: '1px solid var(--border)',
+                      background: 'var(--panel)',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
+                      2. Geometric
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                      Sharp lines, distinct sections
+                    </div>
+                  </div>
+                </div>
+
+                {/* Design 3: Elegant */}
+                <div
+                  onClick={() => setLabelDesign(3)}
+                  style={{
+                    border: labelDesign === 3 ? '3px solid #f97316' : '2px solid var(--border)',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    background: labelDesign === 3 ? 'rgba(251, 146, 60, 0.05)' : 'var(--panel)',
+                    transition: 'all 0.2s',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {labelDesign === 3 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        background: '#f97316',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        zIndex: 10,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                      }}
+                    >
+                      ✓
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      padding: '16px',
+                      background: '#fefefe',
+                      border: '2px double #1a1a1a',
+                      fontFamily: 'Georgia, serif',
+                      fontSize: '7px',
+                      lineHeight: 1.3,
+                      color: '#1a1a1a',
+                    }}
+                  >
+                    <div
+                      style={{
+                        border: '1.5px double #1a1a1a',
+                        padding: '6px',
+                        marginBottom: '6px',
+                        background: 'linear-gradient(to bottom, #fefefe, #f9f9f9)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: '9px',
+                          fontFamily: 'Inter, sans-serif',
+                        }}
+                      >
+                        LOGO
+                      </div>
+                      <div
+                        style={{
+                          background: '#1a1a1a',
+                          color: '#fefefe',
+                          padding: '2px 7px',
+                          fontSize: '7px',
+                          fontWeight: 700,
+                          fontFamily: 'Inter, sans-serif',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        COD
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        border: '1.5px double #1a1a1a',
+                        padding: '6px',
+                        marginBottom: '4px',
+                        background: '#fcfcfc',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: '6px',
+                          textTransform: 'uppercase',
+                          color: '#666',
+                          marginBottom: '2px',
+                          fontWeight: 600,
+                          fontFamily: 'Inter, sans-serif',
+                          letterSpacing: '0.8px',
+                        }}
+                      >
+                        Customer
+                      </div>
+                      <div style={{ fontWeight: 600 }}>John Doe</div>
+                    </div>
+                    <div
+                      style={{
+                        border: '1.5px double #1a1a1a',
+                        padding: '6px',
+                        background: '#fcfcfc',
+                      }}
+                    >
+                      <div
+                        style={{
+                          borderBottom: '1.5px solid #1a1a1a',
+                          paddingBottom: '3px',
+                          marginBottom: '3px',
+                          fontSize: '7px',
+                          fontWeight: 700,
+                          fontFamily: 'Inter, sans-serif',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                        }}
+                      >
+                        Order Details
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '7px',
+                        }}
+                      >
+                        <span>Product Name</span>
+                        <span style={{ fontWeight: 600 }}>$99.99</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      borderTop: '1px solid var(--border)',
+                      background: 'var(--panel)',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
+                      3. Elegant
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                      Serif fonts, double borders
+                    </div>
+                  </div>
+                </div>
+
+                {/* Design 4: Industrial */}
+                <div
+                  onClick={() => setLabelDesign(4)}
+                  style={{
+                    border: labelDesign === 4 ? '3px solid #f97316' : '2px solid var(--border)',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    background: labelDesign === 4 ? 'rgba(251, 146, 60, 0.05)' : 'var(--panel)',
+                    transition: 'all 0.2s',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {labelDesign === 4 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        background: '#f97316',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        zIndex: 10,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                      }}
+                    >
+                      ✓
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      padding: '14px',
+                      background: '#f5f5f5',
+                      border: '3px solid #000',
+                      fontFamily: 'Arial Black, Arial, sans-serif',
+                      fontSize: '7px',
+                      lineHeight: 1.1,
+                      color: '#000',
+                    }}
+                  >
+                    <div
+                      style={{
+                        background: '#000',
+                        color: '#ffd700',
+                        padding: '6px',
+                        marginBottom: '5px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div style={{ fontWeight: 900, fontSize: '9px' }}>LOGO</div>
+                      <div
+                        style={{
+                          background: '#ffd700',
+                          color: '#000',
+                          padding: '3px 7px',
+                          fontSize: '8px',
+                          fontWeight: 900,
+                          border: '2px solid #000',
+                        }}
+                      >
+                        COD
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        border: '2.5px solid #000',
+                        padding: '5px',
+                        marginBottom: '4px',
+                        background: '#fff',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: '7px',
+                          textTransform: 'uppercase',
+                          color: '#000',
+                          marginBottom: '2px',
+                          fontWeight: 900,
+                          background: '#ffd700',
+                          padding: '1px 3px',
+                          display: 'inline-block',
+                        }}
+                      >
+                        Customer
+                      </div>
+                      <div style={{ fontWeight: 900, fontSize: '8px' }}>John Doe</div>
+                    </div>
+                    <div style={{ border: '2.5px solid #000', padding: '5px', background: '#fff' }}>
+                      <div
+                        style={{
+                          background: '#000',
+                          color: '#ffd700',
+                          padding: '3px 5px',
+                          marginBottom: '3px',
+                          fontSize: '7px',
+                          fontWeight: 900,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.3px',
+                        }}
+                      >
+                        Order Details
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '7px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        <span>Product</span>
+                        <span>$99.99</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      borderTop: '1px solid var(--border)',
+                      background: 'var(--panel)',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
+                      4. Industrial
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                      Thick borders, large data
+                    </div>
+                  </div>
+                </div>
+
+                {/* Design 5: Rounded */}
+                <div
+                  onClick={() => setLabelDesign(5)}
+                  style={{
+                    border: labelDesign === 5 ? '3px solid #f97316' : '2px solid var(--border)',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    background: labelDesign === 5 ? 'rgba(251, 146, 60, 0.05)' : 'var(--panel)',
+                    transition: 'all 0.2s',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {labelDesign === 5 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        background: '#f97316',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        zIndex: 10,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                      }}
+                    >
+                      ✓
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      padding: '16px',
+                      background: 'linear-gradient(135deg, #fef5e7 0%, #fff 100%)',
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '7px',
+                      lineHeight: 1.3,
+                      color: '#2c3e50',
+                    }}
+                  >
+                    <div
+                      style={{
+                        background: 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)',
+                        color: '#fff',
+                        padding: '7px',
+                        marginBottom: '6px',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, fontSize: '9px' }}>LOGO</div>
+                      <div
+                        style={{
+                          background: '#fff',
+                          color: '#3498db',
+                          padding: '2px 7px',
+                          fontSize: '7px',
+                          fontWeight: 700,
+                          borderRadius: '12px',
+                        }}
+                      >
+                        COD
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        border: '1.5px solid #ecf0f1',
+                        padding: '6px',
+                        marginBottom: '5px',
+                        borderRadius: '10px',
+                        background: '#fff',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: '6px',
+                          textTransform: 'uppercase',
+                          color: '#95a5a6',
+                          marginBottom: '2px',
+                          fontWeight: 600,
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        Customer
+                      </div>
+                      <div style={{ fontWeight: 600 }}>John Doe</div>
+                    </div>
+                    <div
+                      style={{
+                        border: '1.5px solid #ecf0f1',
+                        padding: '6px',
+                        borderRadius: '10px',
+                        background: '#fff',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          background: 'linear-gradient(135deg, #e67e22 0%, #d35400 100%)',
+                          color: '#fff',
+                          padding: '3px 6px',
+                          borderRadius: '12px',
+                          marginBottom: '3px',
+                          fontSize: '6px',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          display: 'inline-block',
+                        }}
+                      >
+                        Order Details
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '6px',
+                        }}
+                      >
+                        <span>Product Name</span>
+                        <span style={{ fontWeight: 600 }}>$99.99</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      borderTop: '1px solid var(--border)',
+                      background: 'var(--panel)',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
+                      5. Rounded
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                      Soft corners, spacious layout
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
