@@ -827,6 +827,94 @@ router.get(
   allowRoles("admin", "user", "manager", "driver"),
   async (req, res) => {
     try {
+      // Special handling for Driver role to provide detailed COD stats
+      if (req.user.role === "driver") {
+        const driverId = req.user.id;
+        const driver = await User.findById(driverId).select("country");
+
+        // 1. Delivered Orders & Collected Amount
+        // Get ALL delivered orders to calculate total collected
+        const deliveredOrders = await Order.find({
+          deliveryBoy: driverId,
+          shipmentStatus: "delivered",
+        })
+          .select(
+            "total collectedAmount productId quantity items grandTotal subTotal"
+          )
+          .populate("productId", "name price")
+          .populate("items.productId", "name price");
+
+        // Calculate total collected amount
+        const totalCollectedAmount = deliveredOrders.reduce((sum, o) => {
+          let val = 0;
+          if (o.collectedAmount != null && Number(o.collectedAmount) > 0) {
+            val = Number(o.collectedAmount);
+          } else if (o.total != null) {
+            val = Number(o.total);
+          } else if (Array.isArray(o.items) && o.items.length) {
+            val = o.items.reduce(
+              (s, it) =>
+                s +
+                Number(it?.productId?.price || 0) *
+                  Math.max(1, Number(it?.quantity || 1)),
+              0
+            );
+          } else {
+            val =
+              Number(o?.productId?.price || 0) *
+              Math.max(1, Number(o?.quantity || 1));
+          }
+          return sum + val;
+        }, 0);
+
+        const totalDeliveredOrders = deliveredOrders.length;
+
+        // 2. Cancelled/Returned Orders
+        const totalCancelledOrders = await Order.countDocuments({
+          deliveryBoy: driverId,
+          shipmentStatus: { $in: ["cancelled", "returned"] },
+        });
+
+        // 3. Remitted (Delivered to Company)
+        // Only 'accepted' status counts as delivered to company
+        const M = (await import("mongoose")).default;
+        const acceptedRemittances = await Remittance.aggregate([
+          {
+            $match: {
+              driver: new M.Types.ObjectId(driverId),
+              status: "accepted",
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: "$amount" },
+              count: { $sum: 1 },
+            },
+          },
+        ]);
+        const deliveredToCompany = acceptedRemittances[0]?.total || 0;
+        const acceptedCount = acceptedRemittances[0]?.count || 0;
+
+        // 4. Pending
+        const pendingToCompany = Math.max(
+          0,
+          totalCollectedAmount - deliveredToCompany
+        );
+
+        return res.json({
+          totalDeliveredOrders,
+          totalCancelledOrders,
+          totalCollectedAmount,
+          deliveredToCompany,
+          pendingToCompany,
+          currency: currencyFromCountry(driver?.country || req.query.country),
+          // Legacy fields
+          totalAmount: deliveredToCompany,
+          count: acceptedCount,
+        });
+      }
+
       // 1. First find the drivers that match the scope and country filter
       // This matches the logic in /drivers/summary
       let driverCond = { role: "driver" };
@@ -890,8 +978,6 @@ router.get(
           }
           driverCond.country = { $in: Array.from(set) };
         }
-      } else if (req.user.role === "driver") {
-        driverCond._id = req.user.id;
       }
 
       // Apply country filter from query parameter if provided
