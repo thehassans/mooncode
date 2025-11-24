@@ -22,6 +22,8 @@ async function getWA() {
 }
 import ChatAssignment from "../models/ChatAssignment.js";
 import Order from "../models/Order.js";
+import InvestorRemittance from "../models/InvestorRemittance.js";
+import DailyProfit from "../models/DailyProfit.js";
 import mongoose from "mongoose";
 import { createNotification } from "../routes/notifications.js";
 
@@ -2077,13 +2079,6 @@ router.delete(
     }
 
     try {
-      // Import required models
-      const InvestorRemittance =
-        require("../models/InvestorRemittance").default;
-      const InvestorRequest = require("../models/InvestorRequest").default;
-      const DailyProfit = require("../models/DailyProfit").default;
-      const Order = require("../models/Order").default;
-
       // Delete all related investor data
       await Promise.all([
         // Delete investor remittances
