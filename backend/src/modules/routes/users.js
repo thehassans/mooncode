@@ -2075,16 +2075,55 @@ router.delete(
     ) {
       return res.status(403).json({ message: "Not allowed" });
     }
-    await User.deleteOne({ _id: id });
+
     try {
-      const io = getIO();
-      const ownerId = String(inv.createdBy || req.user.id);
-      if (ownerId)
-        io.to(`workspace:${ownerId}`).emit("investor.deleted", {
-          id: String(id),
-        });
-    } catch {}
-    res.json({ message: "Investor deleted" });
+      // Import required models
+      const InvestorRemittance =
+        require("../models/InvestorRemittance").default;
+      const InvestorRequest = require("../models/InvestorRequest").default;
+      const DailyProfit = require("../models/DailyProfit").default;
+      const Order = require("../models/Order").default;
+
+      // Delete all related investor data
+      await Promise.all([
+        // Delete investor remittances
+        InvestorRemittance.deleteMany({ investor: id }),
+
+        // Delete investor requests
+        InvestorRequest.deleteMany({ "investor.investor": id }),
+
+        // Delete daily profit records
+        DailyProfit.deleteMany({ investor: id }),
+
+        // Clear investor profit references from orders
+        Order.updateMany(
+          { "investorProfit.investor": id },
+          { $unset: { investorProfit: "" } }
+        ),
+      ]);
+
+      // Finally, delete the investor user
+      await User.deleteOne({ _id: id });
+
+      // Broadcast deletion event
+      try {
+        const io = getIO();
+        const ownerId = String(inv.createdBy || req.user.id);
+        if (ownerId)
+          io.to(`workspace:${ownerId}`).emit("investor.deleted", {
+            id: String(id),
+          });
+      } catch {}
+
+      res.json({
+        message: "Investor and all related data deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting investor:", error);
+      return res.status(500).json({
+        message: error?.message || "Failed to delete investor",
+      });
+    }
   }
 );
 
