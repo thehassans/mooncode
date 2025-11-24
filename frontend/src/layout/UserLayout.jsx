@@ -1758,6 +1758,63 @@ export default function UserLayout() {
                         <button
                           onClick={() => {
                             setShowSettingsDropdown(false)
+                            navigate('/user/label-settings')
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'transparent',
+                            border: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            cursor: 'pointer',
+                            color: 'var(--fg)',
+                            borderRadius: '16px',
+                            transition: 'all 0.2s ease',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            textAlign: 'left',
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.background = 'var(--panel-2)')
+                          }
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <span
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 10,
+                              background: 'rgba(251, 146, 60, 0.1)',
+                              color: '#f97316',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                              <line x1="9" y1="9" x2="15" y2="9" />
+                              <line x1="9" y1="15" x2="15" y2="15" />
+                            </svg>
+                          </span>
+                          <span>Label</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setShowSettingsDropdown(false)
                             navigate('/user/api-setup')
                           }}
                           style={{

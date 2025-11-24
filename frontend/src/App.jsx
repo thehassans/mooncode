@@ -66,6 +66,7 @@ import DriverHistory from './pages/driver/History.jsx'
 import UserOrders from './pages/user/Orders.jsx'
 import UserAPISetup from './pages/user/APISetup.jsx'
 import ProfileSettings from './pages/user/ProfileSettings.jsx'
+import LabelSettings from './pages/user/LabelSettings.jsx'
 import ShopifyIntegration from './pages/user/ShopifyIntegration.jsx'
 import WebsiteModification from './pages/user/WebsiteModification.jsx'
 import ErrorLogs from './pages/user/ErrorLogs.jsx'
@@ -498,6 +499,7 @@ export default function App() {
               <Route path="currency" element={<CurrencySettings />} />
               <Route path="api-setup" element={<UserAPISetup />} />
               <Route path="profile-settings" element={<ProfileSettings />} />
+              <Route path="label-settings" element={<LabelSettings />} />
               <Route path="shopify" element={<ShopifyIntegration />} />
               <Route path="website-modification" element={<WebsiteModification />} />
               <Route path="error-logs" element={<ErrorLogs />} />

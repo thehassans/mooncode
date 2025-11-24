@@ -22,9 +22,6 @@ export default function ProfileSettings() {
   // Custom Domain
   const [customDomain, setCustomDomain] = useState('')
 
-  // Label Design
-  const [labelDesign, setLabelDesign] = useState(1)
-
   // Load current user data
   useEffect(() => {
     const me = JSON.parse(localStorage.getItem('me') || '{}')
@@ -36,7 +33,6 @@ export default function ProfileSettings() {
     // Load API keys and custom domain
     loadAPIKeys()
     loadCustomDomain()
-    loadLabelDesign()
   }, [])
 
   async function loadAPIKeys() {
@@ -56,15 +52,6 @@ export default function ProfileSettings() {
       setCustomDomain(data.customDomain || '')
     } catch (err) {
       console.error('Failed to load custom domain:', err)
-    }
-  }
-
-  async function loadLabelDesign() {
-    try {
-      const data = await apiGet('/api/settings/label-design')
-      setLabelDesign(data.designId || 1)
-    } catch (err) {
-      console.error('Failed to load label design:', err)
     }
   }
 
@@ -134,26 +121,6 @@ export default function ProfileSettings() {
       setTimeout(() => setMessage(''), 3000)
     } catch (err) {
       setError(err.message || 'Failed to update custom domain')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleSaveLabelDesign(e) {
-    e.preventDefault()
-    setLoading(true)
-    setMessage('')
-    setError('')
-
-    try {
-      await apiPost('/api/settings/label-design', {
-        designId: labelDesign,
-      })
-
-      setMessage('Label design updated successfully!')
-      setTimeout(() => setMessage(''), 3000)
-    } catch (err) {
-      setError(err.message || 'Failed to update label design')
     } finally {
       setLoading(false)
     }
