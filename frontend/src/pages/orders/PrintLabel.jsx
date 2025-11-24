@@ -484,27 +484,23 @@ export default function PrintLabel() {
 
       <div className="label-4x6">
         {/* Header */}
-        <div className="sec header-sec" style={{ borderBottom: '1px solid #000' }}>
+        <div className="sec header-sec">
+          <img
+            alt="BuySial"
+            src={`${import.meta.env.BASE_URL}BuySial2.png`}
+            style={{ height: 50, objectFit: 'contain' }}
+          />
           <div
-            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}
+            style={{
+              textAlign: 'right',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+            }}
           >
-            <img
-              alt="BuySial"
-              src={`${import.meta.env.BASE_URL}BuySial2.png`}
-              style={{ height: 50, objectFit: 'contain' }}
-            />
-            <div
-              style={{
-                textAlign: 'right',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-end',
-              }}
-            >
-              <div className="badge">{paymentMode}</div>
-              <div style={{ fontSize: 10, marginTop: 4, fontWeight: 500 }}>
-                {new Date().toLocaleDateString()}
-              </div>
+            <div className="badge">{paymentMode}</div>
+            <div style={{ fontSize: 10, marginTop: 4, fontWeight: 500 }}>
+              {new Date().toLocaleDateString()}
             </div>
           </div>
         </div>
