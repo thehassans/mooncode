@@ -81,16 +81,22 @@ export default function PrintLabel() {
           )
         }
         const code = String(
-          order.invoiceNumber || String(order._id || '').slice(-5) || ''
+          order.invoiceNumber || String(order._id || '').slice(-5) || 'ORDER'
         ).toUpperCase()
         try {
-          window.JsBarcode(barcodeRef.current, code, {
-            format: 'CODE128',
-            displayValue: false,
-            margin: 0,
-            height: 40,
-          })
-        } catch {}
+          if (barcodeRef.current && code) {
+            window.JsBarcode(barcodeRef.current, code, {
+              format: 'CODE128',
+              displayValue: true,
+              margin: 0,
+              height: 40,
+              fontSize: 12,
+              textMargin: 2,
+            })
+          }
+        } catch (err) {
+          console.error('Barcode generation error:', err)
+        }
         // Auto open print dialog after a brief delay
         setTimeout(() => {
           try {
@@ -581,6 +587,15 @@ export default function PrintLabel() {
                 </div>
               </div>
             )}
+            <div
+              className="row"
+              style={{ marginTop: 6, paddingTop: 6, borderTop: '2px solid #000' }}
+            >
+              <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase' }}>Total</div>
+              <div style={{ fontSize: 13, fontWeight: 800 }}>
+                {targetCode} {fmt(labelTotalLocal)}
+              </div>
+            </div>
           </div>
         </div>
 
