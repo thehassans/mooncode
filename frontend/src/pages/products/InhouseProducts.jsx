@@ -41,6 +41,23 @@ async function aiGenerateImages(productId, count, prompt) {
   }
 }
 
+const CATEGORIES = [
+  'Electronics',
+  'Fashion',
+  'Home',
+  'Toys',
+  'Jewelry',
+  'Health',
+  'Office',
+  'Tools',
+  'Skincare',
+  'Other',
+]
+
+function generateSKU() {
+  return 'SKU-' + Math.random().toString(36).substring(2, 8).toUpperCase()
+}
+
 export default function InhouseProducts() {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
@@ -67,6 +84,7 @@ export default function InhouseProducts() {
     purchasePrice: '',
     baseCurrency: 'AED',
     category: 'Other',
+    sku: generateSKU(),
     madeInCountry: '',
     description: '',
     availableCountries: [],
@@ -600,6 +618,8 @@ export default function InhouseProducts() {
       fd.append('name', form.name.trim())
       fd.append('price', form.price)
       if (form.purchasePrice) fd.append('purchasePrice', form.purchasePrice)
+      // fd.append('salePrice', form.onSale ? form.salePrice : '') // This line was in the instruction but not in the original code, keeping original logic.
+      fd.append('sku', form.sku)
       fd.append('availableCountries', form.availableCountries.join(','))
       fd.append('baseCurrency', form.baseCurrency)
       fd.append('category', form.category)
@@ -628,6 +648,7 @@ export default function InhouseProducts() {
           purchasePrice: '',
           baseCurrency: 'AED',
           category: 'Other',
+          sku: generateSKU(),
           madeInCountry: '',
           description: '',
           availableCountries: [],
@@ -694,6 +715,7 @@ export default function InhouseProducts() {
       purchasePrice: p.purchasePrice || '',
       baseCurrency: p.baseCurrency || 'SAR',
       category: p.category || 'Other',
+      sku: p.sku || '',
       madeInCountry: p.madeInCountry || '',
       description: p.description || '',
       availableCountries: p.availableCountries || [],
@@ -732,6 +754,7 @@ export default function InhouseProducts() {
       fd.append('name', editForm.name)
       fd.append('price', editForm.price)
       fd.append('purchasePrice', editForm.purchasePrice)
+      fd.append('sku', editForm.sku)
       fd.append('availableCountries', (editForm.availableCountries || []).join(','))
       fd.append('baseCurrency', editForm.baseCurrency)
       fd.append('category', editForm.category)
@@ -802,7 +825,7 @@ export default function InhouseProducts() {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr',
+                  gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr',
                   gap: 20,
                 }}
               >
@@ -831,21 +854,30 @@ export default function InhouseProducts() {
                     onChange={onChange}
                     style={{ padding: 12 }}
                   >
-                    {categories.length > 0 ? (
-                      categories.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))
-                    ) : (
-                      <>
-                        <option value="Skincare">Skincare</option>
-                        <option value="Haircare">Haircare</option>
-                        <option value="Bodycare">Bodycare</option>
-                        <option value="Other">Other</option>
-                      </>
-                    )}
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
                   </select>
+                </div>
+                <div>
+                  <div className="label" style={{ marginBottom: 8, fontWeight: 600 }}>
+                    SKU (Auto-generated)
+                  </div>
+                  <input
+                    className="input"
+                    name="sku"
+                    value={form.sku}
+                    readOnly
+                    style={{
+                      padding: 12,
+                      fontSize: 15,
+                      background: '#f9fafb',
+                      color: '#6b7280',
+                      cursor: 'not-allowed',
+                    }}
+                  />
                 </div>
               </div>
 
@@ -2270,11 +2302,22 @@ export default function InhouseProducts() {
                     value={editForm.category}
                     onChange={onEditChange}
                   >
-                    <option value="Skincare">Skincare</option>
-                    <option value="Haircare">Haircare</option>
-                    <option value="Bodycare">Bodycare</option>
-                    <option value="Other">Other</option>
+                    {CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
                   </select>
+                </div>
+                <div>
+                  <div className="label">SKU</div>
+                  <input
+                    className="input"
+                    name="sku"
+                    value={editForm.sku}
+                    readOnly
+                    style={{ background: '#f9fafb', color: '#6b7280', cursor: 'not-allowed' }}
+                  />
                 </div>
               </div>
               <div
