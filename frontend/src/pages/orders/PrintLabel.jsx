@@ -9,6 +9,7 @@ export default function PrintLabel() {
   const [loading, setLoading] = useState(true)
   const barcodeRef = useRef(null)
   const [curCfg, setCurCfg] = useState(null)
+  const [designId, setDesignId] = useState(1)
 
   useEffect(() => {
     let alive = true
@@ -36,6 +37,22 @@ export default function PrintLabel() {
         if (alive) setCurCfg(cfg)
       } catch {
         if (alive) setCurCfg(null)
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  // Fetch label design preference
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const data = await apiGet('/api/settings/label-design')
+        if (alive) setDesignId(data.designId || 1)
+      } catch {
+        if (alive) setDesignId(1)
       }
     })()
     return () => {
@@ -277,101 +294,193 @@ export default function PrintLabel() {
     return '-'
   })()
 
-  return (
-    <div className="print-outer" style={{ display: 'grid', placeItems: 'center', padding: 0 }}>
-      <style>{`
-        @page { size: 4in 6in; margin: 0; }
-        @media print {
-          html, body, #root { width: 4in; height: 6in; margin: 0; background: #fff; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .no-print { display: none !important; }
-          .print-outer { display: block !important; place-items: initial !important; }
-          .label-4x6 { width: 4in; height: 6in; }
-        }
-        body, html, #root { background: #fff; }
-        * { box-sizing: border-box; }
+  // Generate CSS based on selected design
+  function getDesignCSS() {
+    const baseCSS = `
+      @page { size: 4in 6in; margin: 0; }
+      @media print {
+        html, body, #root { width: 4in; height: 6in; margin: 0; background: #fff; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .no-print { display: none !important; }
+        .print-outer { display: block !important; place-items: initial !important; }
+        .label-4x6 { width: 4in; height: 6in; }
+      }
+      body, html, #root { background: #fff; }
+      * { box-sizing: border-box; }
+    `
+
+    // Design 1: Minimalist (Default)
+    if (designId === 1) {
+      return (
+        baseCSS +
+        `
         .label-4x6 { 
-          width: 4in; 
-          height: 6in; 
-          box-sizing: border-box; 
-          padding: 16px; 
-          color: #000; 
+          width: 4in; height: 6in; box-sizing: border-box; padding: 16px; color: #000; 
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-          overflow: hidden; 
-          page-break-before: avoid; 
-          page-break-after: avoid; 
-          -webkit-font-smoothing: antialiased; 
-          text-rendering: geometricPrecision;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
+          overflow: hidden; page-break-before: avoid; page-break-after: avoid; 
+          -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision;
+          display: flex; flex-direction: column; gap: 12px;
         }
-        
-        /* Typography */
         .label-4x6 * { font-weight: 600; }
         .h-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #555; margin-bottom: 2px; }
         .h-value { font-size: 12px; font-weight: 700; color: #000; line-height: 1.3; }
-        .section-title { 
-          font-size: 10px; 
-          font-weight: 800; 
-          text-transform: uppercase; 
-          letter-spacing: 1px; 
-          border-bottom: 2px solid #000; 
-          padding-bottom: 4px; 
-          margin-bottom: 8px;
-        }
-
-        /* Layout Components */
+        .section-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 8px; }
         .sec { border: 1px solid #000; padding: 10px; position: relative; }
         .row { display: flex; justify-content: space-between; align-items: center; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .grid-3 { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 8px; }
-        
-        /* Header */
         .header-sec { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 2px solid #000; }
-        .badge { 
-          background: #000; 
-          color: #fff; 
-          padding: 4px 12px; 
-          font-size: 14px; 
-          font-weight: 800; 
-          text-transform: uppercase; 
-          display: inline-block;
-        }
-
-        /* Table */
+        .badge { background: #000; color: #fff; padding: 4px 12px; font-size: 14px; font-weight: 800; text-transform: uppercase; display: inline-block; }
         .tbl { width: 100%; border-collapse: collapse; margin-top: 4px; }
-        .tbl th { 
-          text-align: left; 
-          font-size: 9px; 
-          text-transform: uppercase; 
-          border-bottom: 1px solid #000; 
-          padding: 4px 0;
-          font-weight: 800;
-        }
-        .tbl td { 
-          padding: 6px 0; 
-          font-size: 11px; 
-          border-bottom: 1px solid #eee; 
-          vertical-align: top;
-        }
+        .tbl th { text-align: left; font-size: 9px; text-transform: uppercase; border-bottom: 1px solid #000; padding: 4px 0; font-weight: 800; }
+        .tbl td { padding: 6px 0; font-size: 11px; border-bottom: 1px solid #eee; vertical-align: top; }
         .tbl tr:last-child td { border-bottom: none; }
-        
-        /* Footer */
-        .footer-total { 
-          background: #000; 
-          color: #fff; 
-          padding: 8px 12px; 
-          display: flex; 
-          justify-content: space-between; 
-          align-items: center;
-          margin-top: auto;
-        }
+        .footer-total { background: #000; color: #fff; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
         .total-label { font-size: 12px; font-weight: 600; text-transform: uppercase; }
         .total-amount { font-size: 18px; font-weight: 800; }
-        
         .barcode-box { margin-top: 8px; text-align: center; }
-      `}</style>
+      `
+      )
+    }
+
+    // Design 2: Modern Geometric
+    if (designId === 2) {
+      return (
+        baseCSS +
+        `
+        .label-4x6 { 
+          width: 4in; height: 6in; box-sizing: border-box; padding: 20px; color: #000; 
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          overflow: hidden; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+          display: flex; flex-direction: column; gap: 14px;
+        }
+        .label-4x6 * { font-weight: 600; }
+        .h-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: #6366f1; margin-bottom: 3px; font-weight: 700; }
+        .h-value { font-size: 12px; font-weight: 700; color: #000; line-height: 1.4; }
+        .section-title { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.2px; color: #6366f1; border-left: 4px solid #6366f1; padding-left: 8px; margin-bottom: 10px; }
+        .sec { border: 2px solid #6366f1; padding: 12px; position: relative; background: white; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); }
+        .row { display: flex; justify-content: space-between; align-items: center; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .grid-3 { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 10px; }
+        .header-sec { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px; background: #6366f1; color: white; clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 0 100%); }
+        .badge { background: white; color: #6366f1; padding: 5px 14px; font-size: 14px; font-weight: 900; text-transform: uppercase; display: inline-block; clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px); }
+        .tbl { width: 100%; border-collapse: collapse; margin-top: 4px; }
+        .tbl th { text-align: left; font-size: 9px; text-transform: uppercase; border-bottom: 2px solid #6366f1; padding: 6px 0; font-weight: 800; color: #6366f1; }
+        .tbl td { padding: 8px 0; font-size: 11px; border-bottom: 1px solid #e0e7ff; vertical-align: top; }
+        .tbl tr:last-child td { border-bottom: none; }
+        .footer-total { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: #fff; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; margin-top: auto; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); }
+        .total-label { font-size: 12px; font-weight: 700; text-transform: uppercase; }
+        .total-amount { font-size: 20px; font-weight: 900; }
+        .barcode-box { margin-top: 8px; text-align: center; }
+      `
+      )
+    }
+
+    // Design 3: Classic Elegant
+    if (designId === 3) {
+      return (
+        baseCSS +
+        `
+        .label-4x6 { 
+          width: 4in; height: 6in; box-sizing: border-box; padding: 18px; color: #1a1a1a; 
+          font-family: 'Georgia', 'Times New Roman', serif;
+          overflow: hidden; background: #fefefe;
+          display: flex; flex-direction: column; gap: 14px; border: 3px double #1a1a1a;
+        }
+        .label-4x6 * { font-weight: 500; }
+        .h-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: #666; margin-bottom: 3px; font-weight: 600; font-family: 'Inter', sans-serif; }
+        .h-value { font-size: 13px; font-weight: 600; color: #1a1a1a; line-height: 1.5; }
+        .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; border-bottom: 3px double #1a1a1a; padding-bottom: 6px; margin-bottom: 10px; font-family: 'Inter', sans-serif; }
+        .sec { border: 2px double #1a1a1a; padding: 12px; position: relative; background: #fcfcfc; }
+        .row { display: flex; justify-content: space-between; align-items: center; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .grid-3 { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 10px; }
+        .header-sec { display: flex; justify-content: space-between; align-items: flex-start; padding: 14px; border: 2px double #1a1a1a; background: linear-gradient(to bottom, #fefefe, #f9f9f9); }
+        .badge { background: #1a1a1a; color: #fefefe; padding: 6px 16px; font-size: 13px; font-weight: 700; text-transform: uppercase; display: inline-block; font-family: 'Inter', sans-serif; letter-spacing: 1px; }
+        .tbl { width: 100%; border-collapse: collapse; margin-top: 4px; }
+        .tbl th { text-align: left; font-size: 10px; text-transform: uppercase; border-bottom: 2px solid #1a1a1a; padding: 6px 0; font-weight: 700; font-family: 'Inter', sans-serif; letter-spacing: 1px; }
+        .tbl td { padding: 8px 0; font-size: 12px; border-bottom: 1px solid #ddd; vertical-align: top; }
+        .tbl tr:last-child td { border-bottom: none; }
+        .footer-total { background: #1a1a1a; color: #fefefe; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-top: auto; border: 2px solid #1a1a1a; }
+        .total-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; font-family: 'Inter', sans-serif; }
+        .total-amount { font-size: 22px; font-weight: 700; }
+        .barcode-box { margin-top: 8px; text-align: center; }
+      `
+      )
+    }
+
+    // Design 4: Bold Industrial
+    if (designId === 4) {
+      return (
+        baseCSS +
+        `
+        .label-4x6 { 
+          width: 4in; height: 6in; box-sizing: border-box; padding: 14px; color: #000; 
+          font-family: 'Arial Black', 'Arial', sans-serif;
+          overflow: hidden; background: #f5f5f5;
+          display: flex; flex-direction: column; gap: 10px; border: 4px solid #000;
+        }
+        .label-4x6 * { font-weight: 900; }
+        .h-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; color: #000; margin-bottom: 2px; background: #ffd700; padding: 2px 6px; display: inline-block; }
+        .h-value { font-size: 14px; font-weight: 900; color: #000; line-height: 1.2; }
+        .section-title { font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; background: #000; color: #ffd700; padding: 6px 10px; margin-bottom: 8px; }
+        .sec { border: 3px solid #000; padding: 10px; position: relative; background: white; }
+        .row { display: flex; justify-content: space-between; align-items: center; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid-3 { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 8px; }
+        .header-sec { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px; background: #000; color: #ffd700; border: none; }
+        .badge { background: #ffd700; color: #000; padding: 8px 16px; font-size: 16px; font-weight: 900; text-transform: uppercase; display: inline-block; border: 3px solid #000; }
+        .tbl { width: 100%; border-collapse: collapse; margin-top: 4px; }
+        .tbl th { text-align: left; font-size: 10px; text-transform: uppercase; border-bottom: 3px solid #000; padding: 6px 0; font-weight: 900; }
+        .tbl td { padding: 8px 0; font-size: 12px; border-bottom: 2px solid #ccc; vertical-align: top; font-weight: 700; }
+        .tbl tr:last-child td { border-bottom: none; }
+        .footer-total { background: #000; color: #ffd700; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; margin-top: auto; border: 3px solid #000; }
+        .total-label { font-size: 14px; font-weight: 900; text-transform: uppercase; }
+        .total-amount { font-size: 24px; font-weight: 900; }
+        .barcode-box { margin-top: 8px; text-align: center; background: white; padding: 8px; border: 3px solid #000; }
+      `
+      )
+    }
+
+    // Design 5: Soft & Rounded
+    if (designId === 5) {
+      return (
+        baseCSS +
+        `
+        .label-4x6 { 
+          width: 4in; height: 6in; box-sizing: border-box; padding: 20px; color: #2c3e50; 
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          overflow: hidden; background: linear-gradient(135deg, #fef5e7 0%, #fff 100%);
+          display: flex; flex-direction: column; gap: 16px;
+        }
+        .label-4x6 * { font-weight: 500; }
+        .h-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: #95a5a6; margin-bottom: 4px; font-weight: 600; }
+        .h-value { font-size: 12px; font-weight: 600; color: #2c3e50; line-height: 1.5; }
+        .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #e67e22; border-bottom: none; background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); color: white; padding: 6px 12px; border-radius: 20px; margin-bottom: 10px; display: inline-block; }
+        .sec { border: 2px solid #ecf0f1; padding: 14px; position: relative; background: white; border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .row { display: flex; justify-content: space-between; align-items: center; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .grid-3 { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 10px; }
+        .header-sec { display: flex; justify-content: space-between; align-items: flex-start; padding: 16px; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; border-radius: 16px; border: none; }
+        .badge { background: white; color: #3498db; padding: 6px 16px; font-size: 13px; font-weight: 700; text-transform: uppercase; display: inline-block; border-radius: 20px; }
+        .tbl { width: 100%; border-collapse: collapse; margin-top: 4px; }
+        .tbl th { text-align: left; font-size: 9px; text-transform: uppercase; border-bottom: 2px solid #ecf0f1; padding: 6px 0; font-weight: 700; color: #7f8c8d; }
+        .tbl td { padding: 8px 0; font-size: 11px; border-bottom: 1px solid #f8f9fa; vertical-align: top; }
+        .tbl tr:last-child td { border-bottom: none; }
+        .footer-total { background: linear-gradient(135deg, #27ae60 0%, #229954 100%); color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-top: auto; border-radius: 16px; }
+        .total-label { font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .total-amount { font-size: 20px; font-weight: 700; }
+        .barcode-box { margin-top: 8px; text-align: center; background: white; padding: 10px; border-radius: 12px; }
+      `
+      )
+    }
+
+    return baseCSS
+  }
+
+  return (
+    <div className="print-outer" style={{ display: 'grid', placeItems: 'center', padding: 0 }}>
+      <style>{getDesignCSS()}</style>
 
       <div className="label-4x6">
         {/* Header */}
@@ -384,7 +493,14 @@ export default function PrintLabel() {
               src={`${import.meta.env.BASE_URL}BuySial2.png`}
               style={{ height: 50, objectFit: 'contain' }}
             />
-            <div style={{ textAlign: 'right' }}>
+            <div
+              style={{
+                textAlign: 'right',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-end',
+              }}
+            >
               <div className="badge">{paymentMode}</div>
               <div style={{ fontSize: 10, marginTop: 4, fontWeight: 500 }}>
                 {new Date().toLocaleDateString()}

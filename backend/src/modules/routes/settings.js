@@ -636,3 +636,41 @@ router.post("/theme", auth, allowRoles("admin", "user"), async (req, res) => {
     res.status(500).json({ error: e?.message || "failed" });
   }
 });
+
+// GET /api/settings/label-design
+router.get("/label-design", async (_req, res) => {
+  try {
+    const doc = await Setting.findOne({ key: "label_design" }).lean();
+    // Default to design 1
+    const designId = (doc && doc.value && doc.value.designId) || 1;
+    res.json({ designId });
+  } catch (e) {
+    res.status(500).json({ error: e?.message || "failed" });
+  }
+});
+
+// POST /api/settings/label-design
+router.post(
+  "/label-design",
+  auth,
+  allowRoles("admin", "user"),
+  async (req, res) => {
+    try {
+      const { designId } = req.body;
+      const id = Number(designId);
+      if (!id || id < 1 || id > 5) {
+        return res.status(400).json({ error: "Invalid design ID" });
+      }
+
+      let doc = await Setting.findOne({ key: "label_design" });
+      if (!doc) doc = new Setting({ key: "label_design", value: {} });
+
+      doc.value = { designId: id, updatedAt: new Date() };
+      await doc.save();
+
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ error: e?.message || "failed" });
+    }
+  }
+);
