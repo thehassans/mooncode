@@ -375,16 +375,18 @@ export default function PrintLabel() {
 
       <div className="label-4x6">
         {/* Header */}
-        <div className="header-sec">
-          <img
-            alt="BuySial"
-            src={`${import.meta.env.BASE_URL}BuySial2.png`}
-            style={{ height: 50, objectFit: 'contain' }}
-          />
-          <div style={{ textAlign: 'right' }}>
-            <div className="badge">{paymentMode}</div>
-            <div style={{ fontSize: 10, marginTop: 4, fontWeight: 500 }}>
-              {new Date().toLocaleDateString()}
+        <div className="sec header-sec" style={{ borderBottom: '1px solid #000' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <img
+              alt="BuySial"
+              src={`${import.meta.env.BASE_URL}BuySial2.png`}
+              style={{ height: 50, objectFit: 'contain' }}
+            />
+            <div style={{ textAlign: 'right' }}>
+              <div className="badge">{paymentMode}</div>
+              <div style={{ fontSize: 10, marginTop: 4, fontWeight: 500 }}>
+                {new Date().toLocaleDateString()}
+              </div>
             </div>
           </div>
         </div>
@@ -511,10 +513,13 @@ export default function PrintLabel() {
             </div>
           </div>
 
-          <div className="barcode-box">
+          <div
+            className="barcode-box"
+            style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}
+          >
             <svg
               ref={barcodeRef}
-              style={{ width: '100%', height: 40 }}
+              style={{ width: '100%', maxWidth: 300, height: 40 }}
               shapeRendering="crispEdges"
             />
           </div>
