@@ -1189,7 +1189,12 @@ export default function UserLayout() {
 
   return (
     <div>
-      <Sidebar closed={closed} links={visibleLinks} onToggle={() => setClosed((c) => !c)} />
+      <Sidebar
+        closed={closed}
+        links={links}
+        hiddenItems={hiddenNavItems}
+        onToggle={() => setClosed((c) => !c)}
+      />
       <div className={`main ${closed ? 'full' : ''}`}>
         <div
           className="topbar"

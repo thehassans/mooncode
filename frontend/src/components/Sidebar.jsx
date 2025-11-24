@@ -4,7 +4,7 @@ import { API_BASE, apiGet } from '../api.js'
 
 // Sidebar supports flat links: { to, label, icon? }
 // and grouped links: { label, icon?, children: [{ to, label, icon? }, ...] }
-export default function Sidebar({ links = [], closed, onToggle }) {
+export default function Sidebar({ links = [], closed, onToggle, hiddenItems = [] }) {
   const location = useLocation()
   const [openGroups, setOpenGroups] = useState(() => new Set())
   const [theme, setTheme] = useState('dark')
@@ -382,13 +382,22 @@ export default function Sidebar({ links = [], closed, onToggle }) {
   function renderItem(item) {
     const hasChildren = Array.isArray(item.children) && item.children.length > 0
     const icon = null
+    const isHidden = hiddenItems && hiddenItems.includes(item.label)
+
     if (!hasChildren) {
       const badge = item.badge && Number(item.badge) > 0 ? Number(item.badge) : null
 
       // Premium Floating Label for Flat Links in Closed State
       if (closed) {
         return (
-          <div key={item.to} className="nav-group closed-group" style={{ position: 'relative' }}>
+          <div
+            key={item.to}
+            className="nav-group closed-group"
+            style={{
+              position: 'relative',
+              display: isHidden ? 'none' : undefined,
+            }}
+          >
             <NavLink
               to={item.to}
               className={({ isActive }) => (isActive ? 'active' : '')}
@@ -439,6 +448,7 @@ export default function Sidebar({ links = [], closed, onToggle }) {
           to={item.to}
           title={item.label}
           className={({ isActive }) => (isActive ? 'active' : '')}
+          style={{ display: isHidden ? 'none' : undefined }}
         >
           <span className="nav-icon" aria-hidden>
             <Icon name={item.icon || item.label} />
@@ -478,6 +488,7 @@ export default function Sidebar({ links = [], closed, onToggle }) {
           className="nav-group closed-group"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
+          style={{ display: isHidden ? 'none' : undefined }}
         >
           <div
             className="group-header"
@@ -526,7 +537,11 @@ export default function Sidebar({ links = [], closed, onToggle }) {
     }
 
     return (
-      <div key={key} className={`nav-group ${isOpen ? 'open' : ''}`}>
+      <div
+        key={key}
+        className={`nav-group ${isOpen ? 'open' : ''}`}
+        style={{ display: isHidden ? 'none' : undefined }}
+      >
         <button
           type="button"
           className="group-header"
