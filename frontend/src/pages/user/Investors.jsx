@@ -220,40 +220,148 @@ export default function Investors() {
   }
 
   return (
-    <div className="section" style={{ display: 'grid', gap: 24 }}>
-      <div className="page-header">
+    <div className="section" style={{ display: 'grid', gap: 24, padding: '24px 0' }}>
+      <div className="page-header" style={{ marginBottom: 24 }}>
         <div>
-          <div className="page-title">Investors</div>
-          <div className="page-subtitle">
+          <div
+            className="page-title gradient heading-orange"
+            style={{ fontSize: 32, fontWeight: 700 }}
+          >
+            Investors
+          </div>
+          <div className="page-subtitle" style={{ fontSize: 15, opacity: 0.8, marginTop: 8 }}>
             Manage investors and track sequential profit distribution
           </div>
         </div>
       </div>
 
       {/* Investors List */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">Investors List ({rows.length})</div>
+      <div
+        className="card"
+        style={{
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          overflow: 'hidden',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+        }}
+      >
+        <div
+          className="card-header"
+          style={{
+            padding: '20px 24px',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--panel-2)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <div className="card-title" style={{ fontSize: 18, fontWeight: 700 }}>
+            Investors List ({rows.length})
+          </div>
           <input
             className="input"
             type="text"
             placeholder="Search investors..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            style={{ maxWidth: 300 }}
+            style={{
+              maxWidth: 300,
+              padding: '10px 16px',
+              fontSize: 14,
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+            }}
           />
         </div>
 
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                <th style={{ padding: 12, textAlign: 'left' }}>Name</th>
-                <th style={{ padding: 12, textAlign: 'left' }}>Email</th>
-                <th style={{ padding: 12, textAlign: 'left' }}>Referred By</th>
-                <th style={{ padding: 12, textAlign: 'left' }}>Earned</th>
-                <th style={{ padding: 12, textAlign: 'left' }}>Status</th>
-                <th style={{ padding: 12, textAlign: 'left' }}>Actions</th>
+              <tr
+                style={{
+                  borderBottom: '2px solid var(--border)',
+                  background: 'rgba(249, 250, 251, 0.5)',
+                }}
+              >
+                <th
+                  style={{
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    color: '#6b7280',
+                  }}
+                >
+                  Name
+                </th>
+                <th
+                  style={{
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    color: '#6b7280',
+                  }}
+                >
+                  Email
+                </th>
+                <th
+                  style={{
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    color: '#6b7280',
+                  }}
+                >
+                  Referred By
+                </th>
+                <th
+                  style={{
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    color: '#6b7280',
+                  }}
+                >
+                  Earned
+                </th>
+                <th
+                  style={{
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    color: '#6b7280',
+                  }}
+                >
+                  Status
+                </th>
+                <th
+                  style={{
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    color: '#6b7280',
+                  }}
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -286,20 +394,30 @@ export default function Investors() {
                     : inv.referredByCode || ''
 
                   return (
-                    <tr key={inv._id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: 12 }}>
+                    <tr
+                      key={inv._id}
+                      style={{
+                        borderBottom: '1px solid var(--border)',
+                        transition: 'background 0.2s',
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.background = 'rgba(249, 250, 251, 0.5)')
+                      }
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <td style={{ padding: '16px 20px', fontSize: 14, fontWeight: 500 }}>
                         {inv.firstName || inv.lastName ? (
                           `${inv.firstName || ''} ${inv.lastName || ''}`.trim()
                         ) : (
                           <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>
                         )}
                       </td>
-                      <td style={{ padding: 12 }}>
+                      <td style={{ padding: '16px 20px', fontSize: 14 }}>
                         {inv.email || (
                           <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not Set</span>
                         )}
                       </td>
-                      <td style={{ padding: 12, fontSize: 13 }}>
+                      <td style={{ padding: '16px 20px', fontSize: 13, opacity: 0.8 }}>
                         {refLabel ? (
                           refLabel
                         ) : (
@@ -308,22 +426,24 @@ export default function Investors() {
                       </td>
                       <td
                         style={{
-                          padding: 12,
+                          padding: '16px 20px',
                           color: earnedProfit ? '#10b981' : 'inherit',
-                          fontWeight: earnedProfit ? 600 : 400,
+                          fontWeight: earnedProfit ? 700 : 400,
+                          fontSize: 14,
                         }}
                       >
                         {earnedProfit
                           ? `${currency} ${Number(earnedProfit).toFixed(2)}`
                           : `${currency} 0.00`}
                       </td>
-                      <td style={{ padding: 12 }}>
+                      <td style={{ padding: '16px 20px' }}>
                         <span
                           style={{
-                            padding: '4px 8px',
-                            borderRadius: 4,
+                            padding: '6px 12px',
+                            borderRadius: 6,
                             fontSize: 12,
                             fontWeight: 600,
+                            textTransform: 'capitalize',
                             background:
                               status === 'completed'
                                 ? 'rgba(16, 185, 129, 0.1)'
@@ -334,13 +454,36 @@ export default function Investors() {
                           {status}
                         </span>
                       </td>
-                      <td style={{ padding: 12 }}>
+                      <td style={{ padding: '16px 20px' }}>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <button
                             className="btn secondary small"
                             onClick={() => openEditModal(inv)}
+                            style={{
+                              padding: '8px 16px',
+                              fontSize: 13,
+                              fontWeight: 600,
+                              borderRadius: 6,
+                              transition: 'all 0.2s',
+                            }}
                           >
                             Edit
+                          </button>
+                          <button
+                            className="btn danger small"
+                            onClick={() => openDelModal(inv)}
+                            style={{
+                              padding: '8px 16px',
+                              fontSize: 13,
+                              fontWeight: 600,
+                              background: '#ef4444',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 6,
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            Delete
                           </button>
                         </div>
                       </td>
