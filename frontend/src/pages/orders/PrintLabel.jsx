@@ -636,7 +636,7 @@ export default function PrintLabel() {
           className="barcode-box"
           style={{
             marginTop: 'auto',
-            paddingTop: 12,
+            paddingTop: 4,
             textAlign: 'center',
             display: 'flex',
             justifyContent: 'center',
