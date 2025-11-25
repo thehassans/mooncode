@@ -514,16 +514,16 @@ export default function PrintLabel() {
         {/* Shipper Info */}
         <div className="sec">
           <div className="section-title">Shipping Information</div>
-          <div className="grid-3" style={{ marginBottom: 8 }}>
-            <div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: 8 }}>
+            <div style={{ flex: '1 1 40%', minWidth: 0 }}>
               <div className="h-label">Customer</div>
               <div className="h-value">{customerName}</div>
             </div>
-            <div>
+            <div style={{ flex: '1 1 30%', minWidth: 0 }}>
               <div className="h-label">Phone</div>
               <div className="h-value">{phoneFull || '-'}</div>
             </div>
-            <div>
+            <div style={{ flex: '1 1 30%', minWidth: 0 }}>
               <div className="h-label">WhatsApp</div>
               <div className="h-value">{whatsapp || '-'}</div>
             </div>
@@ -542,7 +542,7 @@ export default function PrintLabel() {
           <table className="tbl">
             <thead>
               <tr>
-                <th style={{ width: '50%' }}>Item</th>
+                <th style={{ width: '50%', textAlign: 'left' }}>Item</th>
                 <th style={{ width: '15%', textAlign: 'center' }}>Qty</th>
                 <th style={{ width: '15%', textAlign: 'right' }}>Price</th>
                 <th style={{ width: '20%', textAlign: 'right' }}>Total</th>
@@ -551,12 +551,14 @@ export default function PrintLabel() {
             <tbody>
               {visibleItems.map((it, idx) => (
                 <tr key={idx}>
-                  <td style={{ paddingRight: 8 }}>
+                  <td style={{ width: '50%', paddingRight: 8, textAlign: 'left' }}>
                     {(it.name || '-').split(' ').slice(0, 3).join(' ')}
                   </td>
-                  <td style={{ textAlign: 'center' }}>{it.qty}</td>
-                  <td style={{ textAlign: 'right' }}>{it.unit != null ? fmt(it.unit) : '-'}</td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td style={{ width: '15%', textAlign: 'center' }}>{it.qty}</td>
+                  <td style={{ width: '15%', textAlign: 'right' }}>
+                    {it.unit != null ? fmt(it.unit) : '-'}
+                  </td>
+                  <td style={{ width: '20%', textAlign: 'right' }}>
                     {it.unit != null ? fmt(it.unit * it.qty) : '-'}
                   </td>
                 </tr>
@@ -567,14 +569,14 @@ export default function PrintLabel() {
           <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: '1px solid #000' }}>
             <div className="row" style={{ marginBottom: 2 }}>
               <div className="h-label">Subtotal</div>
-              <div style={{ fontSize: 11 }}>
+              <div style={{ fontSize: 11, textAlign: 'right' }}>
                 {targetCode} {fmt(itemsSubtotalConv)}
               </div>
             </div>
             {shipLocal > 0 && (
               <div className="row" style={{ marginBottom: 2 }}>
                 <div className="h-label">Shipping</div>
-                <div style={{ fontSize: 11 }}>
+                <div style={{ fontSize: 11, textAlign: 'right' }}>
                   {targetCode} {fmt(shipConv)}
                 </div>
               </div>
@@ -582,7 +584,7 @@ export default function PrintLabel() {
             {discountLocal > 0 && (
               <div className="row" style={{ marginBottom: 2 }}>
                 <div className="h-label">Discount</div>
-                <div style={{ fontSize: 11 }}>
+                <div style={{ fontSize: 11, textAlign: 'right' }}>
                   -{targetCode} {fmt(discountConv)}
                 </div>
               </div>
@@ -592,7 +594,7 @@ export default function PrintLabel() {
               style={{ marginTop: 6, paddingTop: 6, borderTop: '2px solid #000' }}
             >
               <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase' }}>Total</div>
-              <div style={{ fontSize: 13, fontWeight: 800 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, textAlign: 'right' }}>
                 {targetCode} {fmt(labelTotalLocal)}
               </div>
             </div>
