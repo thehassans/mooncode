@@ -191,20 +191,41 @@ export default function DriverAmounts() {
 
   return (
     <div className="section" style={{ display: 'grid', gap: 12 }}>
-      <div className="page-header" style={{ animation: 'fadeInUp 0.6s ease-out' }}>
+      <div
+        className="page-header"
+        style={{ animation: 'fadeInUp 0.6s ease-out', marginBottom: '20px' }}
+      >
         <div>
           <div
-            className="page-title gradient heading-blue"
             style={{
-              fontSize: '32px',
+              fontSize: '42px',
               fontWeight: 900,
-              letterSpacing: '-0.5px',
-              marginBottom: '8px',
+              letterSpacing: '-1px',
+              marginBottom: '12px',
+              background:
+                'linear-gradient(135deg, #3b82f6 0%, #6366f1 25%, #8b5cf6 50%, #a855f7 75%, #d946ef 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              filter: 'drop-shadow(0 2px 8px rgba(59, 130, 246, 0.3))',
+              lineHeight: '1.2',
             }}
           >
-            Driver Amounts
+            🚚 Driver Amounts
           </div>
-          <div className="page-subtitle" style={{ fontSize: '15px' }}>
+          <div
+            style={{
+              fontSize: '16px',
+              fontWeight: 500,
+              color: 'var(--text-muted)',
+              letterSpacing: '0.3px',
+              background: 'linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              opacity: 0.9,
+            }}
+          >
             Monitor driver deliveries and commission details
           </div>
         </div>

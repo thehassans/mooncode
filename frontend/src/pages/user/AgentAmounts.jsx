@@ -115,20 +115,41 @@ export default function AgentAmounts() {
 
   return (
     <div className="section" style={{ display: 'grid', gap: 12 }}>
-      <div className="page-header" style={{ animation: 'fadeInUp 0.6s ease-out' }}>
+      <div
+        className="page-header"
+        style={{ animation: 'fadeInUp 0.6s ease-out', marginBottom: '20px' }}
+      >
         <div>
           <div
-            className="page-title gradient heading-green"
             style={{
-              fontSize: '32px',
+              fontSize: '42px',
               fontWeight: 900,
-              letterSpacing: '-0.5px',
-              marginBottom: '8px',
+              letterSpacing: '-1px',
+              marginBottom: '12px',
+              background:
+                'linear-gradient(135deg, #10b981 0%, #22c55e 25%, #14b8a6 50%, #06b6d4 75%, #0ea5e9 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              filter: 'drop-shadow(0 2px 8px rgba(16, 185, 129, 0.3))',
+              lineHeight: '1.2',
             }}
           >
-            Agent Amounts
+            💼 Agent Amounts
           </div>
-          <div className="page-subtitle" style={{ fontSize: '15px' }}>
+          <div
+            style={{
+              fontSize: '16px',
+              fontWeight: 500,
+              color: 'var(--text-muted)',
+              letterSpacing: '0.3px',
+              background: 'linear-gradient(90deg, #10b981 0%, #06b6d4 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              opacity: 0.9,
+            }}
+          >
             Monitor agent earnings from submitted orders
           </div>
         </div>

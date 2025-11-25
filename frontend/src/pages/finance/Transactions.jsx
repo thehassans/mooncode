@@ -608,20 +608,41 @@ export default function Transactions() {
 
   return (
     <div className="section" style={{ display: 'grid', gap: 12 }}>
-      <div className="page-header" style={{ animation: 'fadeInUp 0.6s ease-out' }}>
+      <div
+        className="page-header"
+        style={{ animation: 'fadeInUp 0.6s ease-out', marginBottom: '20px' }}
+      >
         <div>
           <div
-            className="page-title gradient heading-blue"
             style={{
-              fontSize: '32px',
+              fontSize: '42px',
               fontWeight: 900,
-              letterSpacing: '-0.5px',
-              marginBottom: '8px',
+              letterSpacing: '-1px',
+              marginBottom: '12px',
+              background:
+                'linear-gradient(135deg, #60a5fa 0%, #a78bfa 25%, #ec4899 50%, #f59e0b 75%, #10b981 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              filter: 'drop-shadow(0 2px 8px rgba(96, 165, 250, 0.3))',
+              lineHeight: '1.2',
             }}
           >
-            Driver Finances
+            💰 Driver Finances
           </div>
-          <div className="page-subtitle" style={{ fontSize: '15px' }}>
+          <div
+            style={{
+              fontSize: '16px',
+              fontWeight: 500,
+              color: 'var(--text-muted)',
+              letterSpacing: '0.3px',
+              background: 'linear-gradient(90deg, #60a5fa 0%, #8b5cf6 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              opacity: 0.9,
+            }}
+          >
             Monitor drivers' delivered collections and remittances
           </div>
         </div>
