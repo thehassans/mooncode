@@ -400,6 +400,7 @@ export default function Sidebar({ links = [], closed, onToggle, hiddenItems = []
           >
             <NavLink
               to={item.to}
+              end
               className={({ isActive }) => (isActive ? 'active' : '')}
               style={{ width: '100%', justifyContent: 'center' }}
             >
@@ -446,6 +447,7 @@ export default function Sidebar({ links = [], closed, onToggle, hiddenItems = []
         <NavLink
           key={item.to}
           to={item.to}
+          end
           title={item.label}
           className={({ isActive }) => (isActive ? 'active' : '')}
           style={{ display: isHidden ? 'none' : undefined }}
@@ -515,6 +517,7 @@ export default function Sidebar({ links = [], closed, onToggle, hiddenItems = []
                     <NavLink
                       key={ch.to}
                       to={ch.to}
+                      end
                       className={({ isActive }) => (isActive ? 'active' : '')}
                     >
                       <span
@@ -565,6 +568,7 @@ export default function Sidebar({ links = [], closed, onToggle, hiddenItems = []
               <NavLink
                 key={ch.to}
                 to={ch.to}
+                end
                 className={({ isActive }) => (isActive ? 'active' : '')}
                 title={ch.label}
               >
