@@ -63,10 +63,41 @@ export default function InvestorDaily() {
 
   return (
     <div className="section" style={{ display: 'grid', gap: 16 }}>
-      <div className="page-header">
+      <div
+        className="page-header"
+        style={{ animation: 'fadeInUp 0.6s ease-out', marginBottom: '20px' }}
+      >
         <div>
-          <div className="page-title">Investor Daily</div>
-          <div className="page-subtitle">
+          <div
+            style={{
+              fontSize: '42px',
+              fontWeight: 900,
+              letterSpacing: '-1px',
+              marginBottom: '12px',
+              background:
+                'linear-gradient(135deg, #06b6d4 0%, #0ea5e9 25%, #3b82f6 50%, #6366f1 75%, #8b5cf6 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              filter: 'drop-shadow(0 2px 8px rgba(6, 182, 212, 0.3))',
+              lineHeight: '1.2',
+            }}
+          >
+            📅 Investor Daily
+          </div>
+          <div
+            style={{
+              fontSize: '16px',
+              fontWeight: 500,
+              color: 'var(--text-muted)',
+              letterSpacing: '0.3px',
+              background: 'linear-gradient(90deg, #06b6d4 0%, #8b5cf6 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              opacity: 0.9,
+            }}
+          >
             Daily profit overview for active investors based on each investor's profit percentage
             target divided by 30 days
           </div>

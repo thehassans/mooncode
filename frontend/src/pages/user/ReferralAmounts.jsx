@@ -61,10 +61,41 @@ export default function ReferralAmounts() {
 
   return (
     <div className="section" style={{ display: 'grid', gap: 16 }}>
-      <div className="page-header">
+      <div
+        className="page-header"
+        style={{ animation: 'fadeInUp 0.6s ease-out', marginBottom: '20px' }}
+      >
         <div>
-          <div className="page-title">Referral Amount</div>
-          <div className="page-subtitle">
+          <div
+            style={{
+              fontSize: '42px',
+              fontWeight: 900,
+              letterSpacing: '-1px',
+              marginBottom: '12px',
+              background:
+                'linear-gradient(135deg, #ec4899 0%, #f43f5e 25%, #fb7185 50%, #fda4af 75%, #fecdd3 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              filter: 'drop-shadow(0 2px 8px rgba(236, 72, 153, 0.3))',
+              lineHeight: '1.2',
+            }}
+          >
+            🤝 Referral Amount
+          </div>
+          <div
+            style={{
+              fontSize: '16px',
+              fontWeight: 500,
+              color: 'var(--text-muted)',
+              letterSpacing: '0.3px',
+              background: 'linear-gradient(90deg, #ec4899 0%, #fecdd3 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              opacity: 0.9,
+            }}
+          >
             Only investors who joined via a referral code and their investment/profit amounts.
           </div>
         </div>
