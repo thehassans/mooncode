@@ -608,10 +608,20 @@ export default function Transactions() {
 
   return (
     <div className="section" style={{ display: 'grid', gap: 12 }}>
-      <div className="page-header">
+      <div className="page-header" style={{ animation: 'fadeInUp 0.6s ease-out' }}>
         <div>
-          <div className="page-title gradient heading-blue">Driver Finances</div>
-          <div className="page-subtitle">
+          <div
+            className="page-title gradient heading-blue"
+            style={{
+              fontSize: '32px',
+              fontWeight: 900,
+              letterSpacing: '-0.5px',
+              marginBottom: '8px',
+            }}
+          >
+            Driver Finances
+          </div>
+          <div className="page-subtitle" style={{ fontSize: '15px' }}>
             Monitor drivers' delivered collections and remittances
           </div>
         </div>
@@ -731,14 +741,19 @@ export default function Transactions() {
 
       {/* Manager Summary & Pay to Company */}
       {role === 'manager' && (
-        <div className="card" style={{ display: 'grid', gap: 10 }}>
+        <div
+          className="card hover-lift"
+          style={{ display: 'grid', gap: 10, animation: 'scaleIn 0.5s ease-out 0.1s backwards' }}
+        >
           <div className="card-header">
             <div>
-              <div className="card-title">Manager Payable to Company</div>
+              <div className="card-title" style={{ fontSize: '20px', fontWeight: 800 }}>
+                Manager Payable to Company
+              </div>
               <div className="card-subtitle">Total amount collected from drivers</div>
             </div>
             <button
-              className="btn"
+              className="btn action-btn"
               onClick={() => {
                 const toPay = Math.max(0, totals.remitted - managerSummary.totalSent)
                 setPayForm({ amount: toPay.toFixed(2), method: 'hand', note: '', file: null })
@@ -760,58 +775,91 @@ export default function Transactions() {
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))',
-              gap: 12,
+              gap: 16,
             }}
           >
             <div
-              style={{
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                color: '#fff',
-                padding: '16px',
-                borderRadius: 10,
-              }}
+              className="stat-card stagger-item gradient-purple"
+              style={{ animationDelay: '0.2s' }}
             >
-              <div style={{ fontSize: 14, opacity: 0.9 }}>Total Collected from Drivers</div>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>
+              <div
+                style={{
+                  fontSize: 13,
+                  opacity: 0.95,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  marginBottom: '8px',
+                }}
+              >
+                Total Collected from Drivers
+              </div>
+              <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1px' }}>
                 {managerSummary.currency} {num(totals.remitted)}
               </div>
             </div>
             <div
-              style={{
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                color: '#fff',
-                padding: '16px',
-                borderRadius: 10,
-              }}
+              className="stat-card stagger-item gradient-green"
+              style={{ animationDelay: '0.25s' }}
             >
-              <div style={{ fontSize: 14, opacity: 0.9 }}>Sent to Company</div>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>
+              <div
+                style={{
+                  fontSize: 13,
+                  opacity: 0.95,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  marginBottom: '8px',
+                }}
+              >
+                Sent to Company
+              </div>
+              <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1px' }}>
                 {managerSummary.currency} {num(managerSummary.totalAccepted)}
               </div>
             </div>
             <div
+              className="stat-card stagger-item gradient-orange"
               style={{
-                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                color: '#fff',
-                padding: '16px',
-                borderRadius: 10,
+                animationDelay: '0.3s',
+                ...(managerSummary.totalPending > 0
+                  ? { animation: 'pulseGlow 2s ease-in-out infinite' }
+                  : {}),
               }}
             >
-              <div style={{ fontSize: 14, opacity: 0.9 }}>Pending Approval</div>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>
+              <div
+                style={{
+                  fontSize: 13,
+                  opacity: 0.95,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  marginBottom: '8px',
+                }}
+              >
+                Pending Approval
+              </div>
+              <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1px' }}>
                 {managerSummary.currency} {num(managerSummary.totalPending)}
               </div>
             </div>
             <div
-              style={{
-                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                color: '#fff',
-                padding: '16px',
-                borderRadius: 10,
-              }}
+              className="stat-card stagger-item gradient-red"
+              style={{ animationDelay: '0.35s' }}
             >
-              <div style={{ fontSize: 14, opacity: 0.9 }}>To Pay Company</div>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>
+              <div
+                style={{
+                  fontSize: 13,
+                  opacity: 0.95,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  marginBottom: '8px',
+                }}
+              >
+                To Pay Company
+              </div>
+              <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1px' }}>
                 {managerSummary.currency}{' '}
                 {num(Math.max(0, totals.remitted - managerSummary.totalSent))}
               </div>
@@ -820,19 +868,28 @@ export default function Transactions() {
         </div>
       )}
 
-      <div className="card" style={{ display: 'grid', gap: 10 }}>
+      <div
+        className="card hover-lift"
+        style={{ display: 'grid', gap: 10, animation: 'scaleIn 0.5s ease-out 0.15s backwards' }}
+      >
         <div className="card-header">
-          <div className="card-title">Filters</div>
+          <div className="card-title" style={{ fontSize: '18px', fontWeight: 800 }}>
+            Filters
+          </div>
         </div>
         <div
           className="section"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-            gap: 8,
+            gap: 10,
           }}
         >
-          <select className="input" value={country} onChange={(e) => setCountry(e.target.value)}>
+          <select
+            className="input filter-select"
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+          >
             <option value="">Select Country</option>
             {countryOptions.map((c) => (
               <option key={c} value={c}>
@@ -841,7 +898,7 @@ export default function Transactions() {
             ))}
           </select>
           <select
-            className="input"
+            className="input filter-select"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(Number(e.target.value))}
           >
@@ -853,7 +910,7 @@ export default function Transactions() {
             ))}
           </select>
           <select
-            className="input"
+            className="input filter-select"
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
           >
@@ -866,7 +923,11 @@ export default function Transactions() {
               )
             })}
           </select>
-          <select className="input" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <select
+            className="input filter-select"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
             <option value="variance">Sort by Pending</option>
             <option value="collectedSum">Sort by Collected</option>
             <option value="remittedSum">Sort by Remitted</option>
@@ -874,23 +935,35 @@ export default function Transactions() {
             <option value="openAssigned">Sort by Open Assigned</option>
             <option value="totalAssigned">Sort by Total Assigned</option>
           </select>
-          <select className="input" value={sortDir} onChange={(e) => setSortDir(e.target.value)}>
+          <select
+            className="input filter-select"
+            value={sortDir}
+            onChange={(e) => setSortDir(e.target.value)}
+          >
             <option value="desc">Desc</option>
             <option value="asc">Asc</option>
           </select>
-          <button className="btn" onClick={exportCsv}>
-            Export CSV
+          <button
+            className="btn action-btn gradient-blue"
+            onClick={exportCsv}
+            style={{ color: 'white', fontWeight: 700 }}
+          >
+            📊 Export CSV
           </button>
         </div>
       </div>
 
       {/* Drivers table */}
-      <div className="card">
+      <div className="card" style={{ animation: 'scaleIn 0.5s ease-out 0.2s backwards' }}>
         <div className="card-header">
-          <div className="card-title">Drivers {country ? `in ${country}` : ''}</div>
-          <div className="helper">Currency: {country ? countryCurrency(country) : '-'}</div>
+          <div className="card-title" style={{ fontSize: '20px', fontWeight: 800 }}>
+            Drivers {country ? `in ${country}` : ''}
+          </div>
+          <div className="helper" style={{ fontSize: '13px' }}>
+            Currency: {country ? countryCurrency(country) : '-'}
+          </div>
         </div>
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto' }} className="premium-scroll">
           {!isMobile && (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -1007,11 +1080,10 @@ export default function Transactions() {
                     <tr key={`sk${i}`}>
                       <td colSpan={8} style={{ padding: '12px' }}>
                         <div
+                          className="skeleton"
                           style={{
-                            height: 14,
-                            background: 'var(--panel-2)',
-                            borderRadius: 6,
-                            animation: 'pulse 1.2s ease-in-out infinite',
+                            height: 40,
+                            borderRadius: 8,
                           }}
                         />
                       </td>
@@ -1042,7 +1114,11 @@ export default function Transactions() {
                         ? Math.min(100, Math.max(0, (r.remittedSum / r.collectedSum) * 100))
                         : 0
                     return (
-                      <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
+                      <tr
+                        key={r.id}
+                        className="premium-table-row"
+                        style={{ borderTop: '1px solid var(--border)' }}
+                      >
                         <td style={{ padding: '12px' }}>
                           <span
                             onClick={() => goAllOrders(r.id)}
