@@ -515,15 +515,21 @@ export default function PrintLabel() {
         <div className="sec">
           <div className="section-title">Shipping Information</div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: 8 }}>
-            <div style={{ flex: '1 1 40%', minWidth: 0 }}>
+            <div style={{ flex: '1 1 25%', minWidth: 0 }}>
+              <div className="h-label">Order No</div>
+              <div className="h-value" style={{ fontSize: 13, fontWeight: 800 }}>
+                {invoice}
+              </div>
+            </div>
+            <div style={{ flex: '1 1 25%', minWidth: 0 }}>
               <div className="h-label">Customer</div>
               <div className="h-value">{customerName}</div>
             </div>
-            <div style={{ flex: '1 1 30%', minWidth: 0 }}>
+            <div style={{ flex: '1 1 25%', minWidth: 0 }}>
               <div className="h-label">Phone</div>
               <div className="h-value">{phoneFull || '-'}</div>
             </div>
-            <div style={{ flex: '1 1 30%', minWidth: 0 }}>
+            <div style={{ flex: '1 1 25%', minWidth: 0 }}>
               <div className="h-label">WhatsApp</div>
               <div className="h-value">{whatsapp || '-'}</div>
             </div>
@@ -625,35 +631,16 @@ export default function PrintLabel() {
           </div>
         </div>
 
-        {/* Footer Totals */}
-        <div>
-          <div className="footer-total">
-            <div>
-              <div className="total-label" style={{ opacity: 0.8 }}>
-                Order No
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 700 }}>{invoice}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div className="total-label" style={{ opacity: 0.8 }}>
-                Total Amount
-              </div>
-              <div className="total-amount">
-                {targetCode} {fmt2(labelTotalLocal)}
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="barcode-box"
-            style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}
-          >
-            <svg
-              ref={barcodeRef}
-              style={{ width: '100%', maxWidth: 300, height: 40 }}
-              shapeRendering="crispEdges"
-            />
-          </div>
+        {/* Barcode at bottom */}
+        <div
+          className="barcode-box"
+          style={{ marginTop: 'auto', paddingTop: 12, textAlign: 'center' }}
+        >
+          <svg
+            ref={barcodeRef}
+            style={{ width: '100%', maxWidth: 320, height: 50 }}
+            shapeRendering="crispEdges"
+          />
         </div>
 
         <div className="no-print" style={{ position: 'fixed', bottom: 20, right: 20 }}>
