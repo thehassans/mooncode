@@ -87,7 +87,7 @@ export default function PrintLabel() {
           if (barcodeRef.current && code) {
             window.JsBarcode(barcodeRef.current, code, {
               format: 'CODE128',
-              displayValue: true,
+              displayValue: false,
               margin: 0,
               height: 40,
               fontSize: 12,
@@ -325,7 +325,7 @@ export default function PrintLabel() {
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
           overflow: hidden; page-break-before: avoid; page-break-after: avoid; 
           -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision;
-          display: flex; flex-direction: column; gap: 12px;
+          display: flex; flex-direction: column; gap: 6px;
         }
         .label-4x6 * { font-weight: 600; }
         .h-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #555; margin-bottom: 2px; }
