@@ -634,7 +634,14 @@ export default function PrintLabel() {
         {/* Barcode at bottom */}
         <div
           className="barcode-box"
-          style={{ marginTop: 'auto', paddingTop: 12, textAlign: 'center' }}
+          style={{
+            marginTop: 'auto',
+            paddingTop: 12,
+            textAlign: 'center',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
         >
           <svg
             ref={barcodeRef}
