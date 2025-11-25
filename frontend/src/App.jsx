@@ -527,8 +527,6 @@ export default function App() {
               <Route path="payout" element={<AgentPayout />} />
               <Route path="support" element={<Support />} />
             </Route>
-
-            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </CustomDomainRouter>
       </ThemeProvider>
