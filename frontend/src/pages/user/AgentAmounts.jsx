@@ -115,18 +115,35 @@ export default function AgentAmounts() {
 
   return (
     <div className="section" style={{ display: 'grid', gap: 12 }}>
-      <div className="page-header">
+      <div className="page-header" style={{ animation: 'fadeInUp 0.6s ease-out' }}>
         <div>
-          <div className="page-title gradient heading-green">Agent Amounts</div>
-          <div className="page-subtitle">Monitor agent earnings from submitted orders</div>
+          <div
+            className="page-title gradient heading-green"
+            style={{
+              fontSize: '32px',
+              fontWeight: 900,
+              letterSpacing: '-0.5px',
+              marginBottom: '8px',
+            }}
+          >
+            Agent Amounts
+          </div>
+          <div className="page-subtitle" style={{ fontSize: '15px' }}>
+            Monitor agent earnings from submitted orders
+          </div>
         </div>
       </div>
       {err && <div className="error">{err}</div>}
 
       {/* Search Filter */}
-      <div className="card" style={{ display: 'grid', gap: 10 }}>
+      <div
+        className="card hover-lift"
+        style={{ display: 'grid', gap: 10, animation: 'scaleIn 0.5s ease-out 0.1s backwards' }}
+      >
         <div className="card-header">
-          <div className="card-title">Search & Filter</div>
+          <div className="card-title" style={{ fontSize: '18px', fontWeight: 800 }}>
+            Search & Filter
+          </div>
           {loading && (
             <div className="helper" style={{ fontSize: 12 }}>
               Loading agents...
@@ -134,9 +151,9 @@ export default function AgentAmounts() {
           )}
         </div>
         <input
-          className="input"
+          className="input filter-select"
           type="text"
-          placeholder="Search by agent name or phone..."
+          placeholder="🔍 Search by agent name or phone..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           disabled={loading}
@@ -149,69 +166,117 @@ export default function AgentAmounts() {
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))',
-          gap: 12,
+          gap: 16,
         }}
       >
-        <div
-          className="card"
-          style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff' }}
-        >
-          <div style={{ padding: '16px' }}>
-            <div style={{ fontSize: 14, opacity: 0.9 }}>Delivered Commission</div>
-            <div style={{ fontSize: 28, fontWeight: 800 }}>
-              PKR {num(totals.deliveredCommission)}
-            </div>
-            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>From delivered orders</div>
+        <div className="stat-card stagger-item gradient-green" style={{ animationDelay: '0.15s' }}>
+          <div
+            style={{
+              fontSize: 13,
+              opacity: 0.95,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '8px',
+            }}
+          >
+            Delivered Commission
           </div>
+          <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1px' }}>
+            PKR {num(totals.deliveredCommission)}
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 6 }}>From delivered orders</div>
+        </div>
+        <div className="stat-card stagger-item gradient-blue" style={{ animationDelay: '0.2s' }}>
+          <div
+            style={{
+              fontSize: 13,
+              opacity: 0.95,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '8px',
+            }}
+          >
+            Upcoming Commission
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1px' }}>
+            PKR {num(totals.upcomingCommission)}
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 6 }}>From pending orders</div>
+        </div>
+        <div className="stat-card stagger-item gradient-purple" style={{ animationDelay: '0.25s' }}>
+          <div
+            style={{
+              fontSize: 13,
+              opacity: 0.95,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '8px',
+            }}
+          >
+            Total Withdrawn
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1px' }}>
+            PKR {num(totals.withdrawn)}
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 6 }}>Already paid out</div>
         </div>
         <div
-          className="card"
-          style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: '#fff' }}
+          className="stat-card stagger-item gradient-orange"
+          style={{
+            animationDelay: '0.3s',
+            ...(totals.pending > 0 ? { animation: 'pulseGlow 2s ease-in-out infinite' } : {}),
+          }}
         >
-          <div style={{ padding: '16px' }}>
-            <div style={{ fontSize: 14, opacity: 0.9 }}>Upcoming Commission</div>
-            <div style={{ fontSize: 28, fontWeight: 800 }}>
-              PKR {num(totals.upcomingCommission)}
-            </div>
-            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>From pending orders</div>
+          <div
+            style={{
+              fontSize: 13,
+              opacity: 0.95,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '8px',
+            }}
+          >
+            Pending Requests
           </div>
+          <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1px' }}>
+            PKR {num(totals.pending)}
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 6 }}>Awaiting approval</div>
         </div>
         <div
-          className="card"
-          style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', color: '#fff' }}
+          className="stat-card stagger-item"
+          style={{
+            animationDelay: '0.35s',
+            background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+          }}
         >
-          <div style={{ padding: '16px' }}>
-            <div style={{ fontSize: 14, opacity: 0.9 }}>Total Withdrawn</div>
-            <div style={{ fontSize: 28, fontWeight: 800 }}>PKR {num(totals.withdrawn)}</div>
-            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>Already paid out</div>
+          <div
+            style={{
+              fontSize: 13,
+              opacity: 0.95,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '8px',
+            }}
+          >
+            Orders Delivered
           </div>
-        </div>
-        <div
-          className="card"
-          style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#fff' }}
-        >
-          <div style={{ padding: '16px' }}>
-            <div style={{ fontSize: 14, opacity: 0.9 }}>Pending Requests</div>
-            <div style={{ fontSize: 28, fontWeight: 800 }}>PKR {num(totals.pending)}</div>
-            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>Awaiting approval</div>
+          <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1px' }}>
+            {num(totals.ordersDelivered)}
           </div>
-        </div>
-        <div
-          className="card"
-          style={{ background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', color: '#fff' }}
-        >
-          <div style={{ padding: '16px' }}>
-            <div style={{ fontSize: 14, opacity: 0.9 }}>Orders Delivered</div>
-            <div style={{ fontSize: 28, fontWeight: 800 }}>{num(totals.ordersDelivered)}</div>
-            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
-              Out of {num(totals.ordersSubmitted)} submitted orders
-            </div>
+          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 6 }}>
+            Out of {num(totals.ordersSubmitted)} submitted orders
           </div>
         </div>
       </div>
 
       {/* Agents Table */}
-      <div className="card">
+      <div className="card" style={{ animation: 'scaleIn 0.5s ease-out 0.4s backwards' }}>
         <div
           style={{
             display: 'flex',
@@ -220,12 +285,12 @@ export default function AgentAmounts() {
             marginBottom: 8,
           }}
         >
-          <div style={{ fontWeight: 700 }}>Agent Commission Summary</div>
-          <div className="helper">
+          <div style={{ fontWeight: 800, fontSize: '20px' }}>Agent Commission Summary</div>
+          <div className="helper" style={{ fontSize: '14px' }}>
             {filteredAgents.length} agent{filteredAgents.length !== 1 ? 's' : ''}
           </div>
         </div>
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto' }} className="premium-scroll">
           <table
             style={{
               width: '100%',
@@ -460,6 +525,7 @@ export default function AgentAmounts() {
                   return (
                     <tr
                       key={String(a.id)}
+                      className="premium-table-row"
                       style={{
                         borderTop: '1px solid var(--border)',
                         background: idx % 2 ? 'transparent' : 'var(--panel)',
