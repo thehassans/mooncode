@@ -22,6 +22,8 @@ export default function DriverFinances() {
   const [paying, setPaying] = useState(false)
   const [accepting, setAccepting] = useState(null)
   const [confirmAcceptModal, setConfirmAcceptModal] = useState(null)
+  const [historyModal, setHistoryModal] = useState(null) // { driverId, driverName, history: [] }
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   // Load manager's assigned countries
   useEffect(() => {
@@ -169,7 +171,7 @@ export default function DriverFinances() {
       deliveredOrders,
       totalCollected,
       deliveredToCompany,
-      pending
+      pending,
     }
   }, [drivers])
 
@@ -219,6 +221,43 @@ export default function DriverFinances() {
     } finally {
       setAccepting(null)
     }
+  }
+
+  async function loadHistory(driverId, driverName) {
+    setLoadingHistory(true)
+    try {
+      const response = await apiGet(`/api/finance/driver-remittances?driver=${driverId}`)
+      const history = Array.isArray(response?.remittances) ? response.remittances : []
+      setHistoryModal({ driverId, driverName, history })
+    } catch (e) {
+      toast.error(e?.message || 'Failed to load history')
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  function StatusBadge({ status }) {
+    const config = {
+      pending: { bg: '#fef3c7', color: '#92400e', label: 'Pending' },
+      manager_accepted: { bg: '#dbeafe', color: '#1e40af', label: 'Manager Accepted' },
+      accepted: { bg: '#d1fae5', color: '#065f46', label: 'Accepted' },
+      rejected: { bg: '#fee2e2', color: '#991b1b', label: 'Rejected' },
+    }
+    const c = config[status] || { bg: '#f3f4f6', color: '#374151', label: status }
+    return (
+      <span
+        style={{
+          background: c.bg,
+          color: c.color,
+          padding: '4px 10px',
+          borderRadius: 6,
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        {c.label}
+      </span>
+    )
   }
 
   return (
@@ -611,11 +650,23 @@ export default function DriverFinances() {
                                   </a>
                                 )}
                               </>
-                            ) : (
-                              <span style={{ color: 'var(--muted)', fontSize: 13 }}>
-                                No pending payments
-                              </span>
-                            )}
+                            ) : null}
+                            {/* View History Button - always show */}
+                            <button
+                              className="btn"
+                              onClick={() => loadHistory(d.id, d.name)}
+                              disabled={loadingHistory}
+                              style={{
+                                padding: '6px 12px',
+                                fontSize: 13,
+                                whiteSpace: 'nowrap',
+                                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                color: 'white',
+                              }}
+                              title="View payment history"
+                            >
+                              {loadingHistory ? '⏳ Loading...' : '📜 History'}
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -824,6 +875,120 @@ export default function DriverFinances() {
               <strong>✓ Action:</strong> This will mark the driver's payment as received and update
               the balance.
             </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Payment History Modal */}
+      <Modal
+        title={`Payment History - ${historyModal?.driverName || ''}`}
+        open={!!historyModal}
+        onClose={() => setHistoryModal(null)}
+        footer={
+          <button className="btn" onClick={() => setHistoryModal(null)}>
+            Close
+          </button>
+        }
+      >
+        {historyModal && (
+          <div style={{ padding: '16px 0' }}>
+            {loadingHistory ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <div className="spinner" />
+                <div style={{ marginTop: 12, opacity: 0.6 }}>Loading history...</div>
+              </div>
+            ) : historyModal.history.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '40px 0',
+                  opacity: 0.6,
+                  fontSize: 14,
+                }}
+              >
+                📜 No payment history found
+              </div>
+            ) : (
+              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <table
+                  style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    fontSize: 14,
+                  }}
+                >
+                  <thead>
+                    <tr
+                      style={{
+                        background: 'var(--panel)',
+                        borderBottom: '2px solid var(--border)',
+                      }}
+                    >
+                      <th style={{ padding: '10px', textAlign: 'left', fontWeight: 700 }}>Date</th>
+                      <th style={{ padding: '10px', textAlign: 'right', fontWeight: 700 }}>
+                        Amount
+                      </th>
+                      <th style={{ padding: '10px', textAlign: 'center', fontWeight: 700 }}>
+                        Status
+                      </th>
+                      <th style={{ padding: '10px', textAlign: 'center', fontWeight: 700 }}>
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historyModal.history.map((item, idx) => (
+                      <tr
+                        key={item._id}
+                        style={{
+                          borderBottom: '1px solid var(--border)',
+                          background: idx % 2 ? 'transparent' : 'var(--panel)',
+                        }}
+                      >
+                        <td style={{ padding: '10px' }}>
+                          <div style={{ fontWeight: 600 }}>
+                            {new Date(item.createdAt).toLocaleDateString()}
+                          </div>
+                          <div style={{ fontSize: 12, opacity: 0.7 }}>
+                            {new Date(item.createdAt).toLocaleTimeString()}
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'right' }}>
+                          <span style={{ fontWeight: 800, color: '#10b981' }}>
+                            {currency} {num(item.amount)}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                          <StatusBadge status={item.status} />
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                          {item.pdfPath ? (
+                            <a
+                              href={item.pdfPath}
+                              download
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn"
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: 12,
+                                background: '#dc2626',
+                                color: 'white',
+                              }}
+                              title="Download PDF"
+                            >
+                              📄 PDF
+                            </a>
+                          ) : (
+                            <span style={{ opacity: 0.5, fontSize: 12 }}>-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </Modal>
