@@ -2071,11 +2071,10 @@ router.get(
         },
       ]);
 
-      // 2. Aggregate Remittances (Withdrawn/Pending)
+      // Aggregate AgentRemit data (payments)
       const remitStats = await AgentRemit.aggregate([
         {
           $match: {
-            agent: { $in: agentIds },
             status: { $in: ["sent", "pending"] },
             agent: { $in: agents.map((a) => a._id) },
           },
@@ -2085,6 +2084,8 @@ router.get(
             _id: { agent: "$agent", status: "$status" },
             totalPKR: { $sum: "$amount" }, // Total amount paid (for display/records)
             basePKR: { $sum: "$baseCommissionAmount" }, // Base amount (for balance calculation)
+            avgRate: { $avg: "$commissionRate" }, // Average commission rate
+            count: { $sum: 1 }, // Number of payments
           },
         },
       ]);
@@ -2102,10 +2103,12 @@ router.get(
             pending: 0,
             sentBase: 0,
             pendingBase: 0,
+            sentAvgRate: 0,
           };
         if (r._id.status === "sent") {
           remitMap[agentId].sent += r.totalPKR; // Full amount for display
           remitMap[agentId].sentBase += r.basePKR || r.totalPKR; // Base for balance calc (fallback to total for old records)
+          remitMap[agentId].sentAvgRate = r.avgRate || 12; // Average rate for sent payments
         }
         if (r._id.status === "pending") {
           remitMap[agentId].pending += r.totalPKR;
@@ -2121,6 +2124,7 @@ router.get(
           pending: 0,
           sentBase: 0,
           pendingBase: 0,
+          sentAvgRate: 0,
         };
 
         const totalOrderValueAED = Math.round(oStats.totalOrderValueAED || 0);
@@ -2152,6 +2156,7 @@ router.get(
           deliveredCommissionPKR,
           upcomingCommissionPKR,
           sentPKR: rStats.sent,
+          sentAvgRate: rStats.sentAvgRate, // Average commission rate for sent payments
           pendingPKR: rStats.pending,
         };
       });

@@ -676,9 +676,16 @@ export default function AgentAmounts() {
                           borderRight: '1px solid var(--border)',
                         }}
                       >
-                        <span style={{ color: '#8b5cf6', fontWeight: 800 }}>
-                          PKR {num(a.sentPKR)}
-                        </span>
+                        <div>
+                          <span style={{ color: '#8b5cf6', fontWeight: 800 }}>
+                            PKR {num(a.sentPKR)}
+                          </span>
+                          {a.sentAvgRate > 0 && (
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                              @ {a.sentAvgRate.toFixed(1)}% avg
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td
                         style={{
