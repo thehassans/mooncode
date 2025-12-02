@@ -416,16 +416,6 @@ export default function AgentAmounts() {
                     padding: '10px 12px',
                     textAlign: 'right',
                     borderRight: '1px solid var(--border)',
-                    color: '#f59e0b',
-                  }}
-                >
-                  Pending
-                </th>
-                <th
-                  style={{
-                    padding: '10px 12px',
-                    textAlign: 'right',
-                    borderRight: '1px solid var(--border)',
                     color: '#ef4444',
                   }}
                 >
@@ -639,17 +629,6 @@ export default function AgentAmounts() {
                       >
                         <span style={{ color: '#8b5cf6', fontWeight: 800 }}>
                           PKR {num(a.sentPKR)}
-                        </span>
-                      </td>
-                      <td
-                        style={{
-                          padding: '10px 12px',
-                          textAlign: 'right',
-                          borderRight: '1px solid var(--border)',
-                        }}
-                      >
-                        <span style={{ color: '#f59e0b', fontWeight: 800 }}>
-                          PKR {num(a.pendingPKR)}
                         </span>
                       </td>
                       <td
