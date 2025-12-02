@@ -2101,16 +2101,15 @@ router.get(
       const remitMap = {};
       remitStats.forEach((r) => {
         const agentId = String(r._id.agent);
-        if (!remitMap[agentId])
-          remitMap[agentId] = { withdrawn: 0, pending: 0 };
-        if (r._id.status === "sent") remitMap[agentId].withdrawn += r.totalPKR;
+        if (!remitMap[agentId]) remitMap[agentId] = { sent: 0, pending: 0 };
+        if (r._id.status === "sent") remitMap[agentId].sent += r.totalPKR;
         if (r._id.status === "pending") remitMap[agentId].pending += r.totalPKR;
       });
 
       const out = agents.map((a) => {
         const aid = String(a._id);
         const oStats = orderMap[aid] || {};
-        const rStats = remitMap[aid] || { withdrawn: 0, pending: 0 };
+        const rStats = remitMap[aid] || { sent: 0, pending: 0 };
 
         const totalOrderValueAED = Math.round(oStats.totalOrderValueAED || 0);
         const deliveredOrderValueAED = Math.round(
@@ -2140,7 +2139,7 @@ router.get(
           upcomingOrderValueAED,
           deliveredCommissionPKR,
           upcomingCommissionPKR,
-          withdrawnPKR: rStats.withdrawn,
+          sentPKR: rStats.sent,
           pendingPKR: rStats.pending,
         };
       });

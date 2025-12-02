@@ -97,7 +97,7 @@ export default function AgentAmounts() {
   const totals = useMemo(() => {
     let deliveredCommission = 0,
       upcomingCommission = 0,
-      withdrawn = 0,
+      sent = 0,
       pending = 0,
       ordersSubmitted = 0,
       ordersDelivered = 0,
@@ -105,7 +105,7 @@ export default function AgentAmounts() {
     for (const a of filteredAgents) {
       deliveredCommission += Number(a.deliveredCommissionPKR || 0)
       upcomingCommission += Number(a.upcomingCommissionPKR || 0)
-      withdrawn += Number(a.withdrawnPKR || 0)
+      sent += Number(a.sentPKR || 0)
       pending += Number(a.pendingPKR || 0)
       ordersSubmitted += Number(a.ordersSubmitted || 0)
       ordersDelivered += Number(a.ordersDelivered || 0)
@@ -114,7 +114,7 @@ export default function AgentAmounts() {
     return {
       deliveredCommission,
       upcomingCommission,
-      withdrawn,
+      sent,
       pending,
       ordersSubmitted,
       ordersDelivered,
@@ -246,10 +246,10 @@ export default function AgentAmounts() {
               marginBottom: '8px',
             }}
           >
-            Total Withdrawn
+            Total Sent
           </div>
           <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1px' }}>
-            PKR {num(totals.withdrawn)}
+            PKR {num(totals.sent)}
           </div>
           <div style={{ fontSize: 12, opacity: 0.9, marginTop: 6 }}>Already paid out</div>
         </div>
@@ -401,7 +401,7 @@ export default function AgentAmounts() {
                     color: '#8b5cf6',
                   }}
                 >
-                  Withdrawn
+                  Sent
                 </th>
                 <th
                   style={{
@@ -549,7 +549,7 @@ export default function AgentAmounts() {
                 filteredAgents.map((a, idx) => {
                   const rawBalance =
                     Number(a.deliveredCommissionPKR || 0) -
-                    Number(a.withdrawnPKR || 0) -
+                    Number(a.sentPKR || 0) -
                     Number(a.pendingPKR || 0)
                   const balance = Math.max(0, rawBalance)
                   return (
@@ -630,7 +630,7 @@ export default function AgentAmounts() {
                         }}
                       >
                         <span style={{ color: '#8b5cf6', fontWeight: 800 }}>
-                          PKR {num(a.withdrawnPKR)}
+                          PKR {num(a.sentPKR)}
                         </span>
                       </td>
                       <td
@@ -688,14 +688,15 @@ export default function AgentAmounts() {
                                 letterSpacing: '0.5px',
                               }}
                               onClick={() => {
+                                // Use balance (remaining unpaid commission) for payment calculation
                                 setPayModal({
                                   agent: a,
-                                  totalOrderValueAED: a.deliveredOrderValueAED,
+                                  balance: balance,
+                                  deliveredCommissionPKR: a.deliveredCommissionPKR,
                                 })
                                 setCommissionRate(12)
-                                setCalculatedAmount(
-                                  calculateCommissionPKR(a.deliveredOrderValueAED, 12)
-                                )
+                                // Set initial amount to the balance
+                                setCalculatedAmount(Math.round(balance))
                               }}
                             >
                               Pay Commission
@@ -830,8 +831,9 @@ export default function AgentAmounts() {
                     onChange={(e) => {
                       const val = Number(e.target.value) || 0
                       setCommissionRate(val)
-                      // Calculate: AED to PKR, then apply commission rate
-                      setCalculatedAmount(calculateCommissionPKR(payModal.totalOrderValueAED, val))
+                      // Calculate commission on the delivered commission PKR, then take percentage
+                      const maxCommission = Number(payModal.deliveredCommissionPKR || 0)
+                      setCalculatedAmount(Math.round((maxCommission * val) / 100))
                     }}
                     style={{
                       width: 70,
@@ -860,7 +862,8 @@ export default function AgentAmounts() {
                     }}
                     onClick={() => {
                       setCommissionRate(rate)
-                      setCalculatedAmount(calculateCommissionPKR(payModal.totalOrderValueAED, rate))
+                      const maxCommission = Number(payModal.deliveredCommissionPKR || 0)
+                      setCalculatedAmount(Math.round((maxCommission * rate) / 100))
                     }}
                   >
                     {rate}%
@@ -871,7 +874,8 @@ export default function AgentAmounts() {
                   style={{ fontSize: 12, padding: '6px 12px' }}
                   onClick={() => {
                     setCommissionRate(null)
-                    setCalculatedAmount(calculateCommissionPKR(payModal.totalOrderValueAED, 12))
+                    // Reset to balance (full unpaid amount)
+                    setCalculatedAmount(Math.round(payModal.balance))
                   }}
                 >
                   Reset
@@ -879,10 +883,9 @@ export default function AgentAmounts() {
               </div>
 
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-                Total Orders: AED {num(payModal.totalOrderValueAED)} → PKR{' '}
-                {num(payModal.totalOrderValueAED * 76)} | Commission:{' '}
+                Available Balance: PKR {num(payModal.balance)} | Commission Rate:{' '}
                 {commissionRate !== null ? commissionRate : 12}% of PKR{' '}
-                {num(payModal.totalOrderValueAED * 76)} = PKR {num(calculatedAmount)}
+                {num(payModal.deliveredCommissionPKR)} = PKR {num(calculatedAmount)}
               </div>
             </div>
 
@@ -896,8 +899,12 @@ export default function AgentAmounts() {
                 <strong>{payModal.agent.phone}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ opacity: 0.7 }}>Total Order Value:</span>
-                <strong>AED {num(payModal.totalOrderValueAED)}</strong>
+                <span style={{ opacity: 0.7 }}>Delivered Commission:</span>
+                <strong>PKR {num(payModal.deliveredCommissionPKR)}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ opacity: 0.7 }}>Available Balance:</span>
+                <strong>PKR {num(payModal.balance)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ opacity: 0.7 }}>Commission Rate:</span>
