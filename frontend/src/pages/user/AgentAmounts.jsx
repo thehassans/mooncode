@@ -99,6 +99,7 @@ export default function AgentAmounts() {
       upcomingCommission = 0,
       sent = 0,
       pending = 0,
+      balance = 0,
       ordersSubmitted = 0,
       ordersDelivered = 0,
       totalOrderValueAED = 0
@@ -107,6 +108,12 @@ export default function AgentAmounts() {
       upcomingCommission += Number(a.upcomingCommissionPKR || 0)
       sent += Number(a.sentPKR || 0)
       pending += Number(a.pendingPKR || 0)
+      // Calculate balance for each agent
+      const agentBalance = Math.max(
+        0,
+        Number(a.deliveredCommissionPKR || 0) - Number(a.sentPKR || 0) - Number(a.pendingPKR || 0)
+      )
+      balance += agentBalance
       ordersSubmitted += Number(a.ordersSubmitted || 0)
       ordersDelivered += Number(a.ordersDelivered || 0)
       totalOrderValueAED += Number(a.totalOrderValueAED || 0)
@@ -116,6 +123,7 @@ export default function AgentAmounts() {
       upcomingCommission,
       sent,
       pending,
+      balance,
       ordersSubmitted,
       ordersDelivered,
       totalOrderValueAED,
@@ -257,7 +265,7 @@ export default function AgentAmounts() {
           className="stat-card stagger-item gradient-orange"
           style={{
             animationDelay: '0.3s',
-            ...(totals.pending > 0 ? { animation: 'pulseGlow 2s ease-in-out infinite' } : {}),
+            ...(totals.balance > 0 ? { animation: 'pulseGlow 2s ease-in-out infinite' } : {}),
           }}
         >
           <div
@@ -270,12 +278,12 @@ export default function AgentAmounts() {
               marginBottom: '8px',
             }}
           >
-            Pending Requests
+            Total Balance
           </div>
           <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1px' }}>
-            PKR {num(totals.pending)}
+            PKR {num(totals.balance)}
           </div>
-          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 6 }}>Awaiting approval</div>
+          <div style={{ fontSize: 12, opacity: 0.9, marginTop: 6 }}>Remaining to pay</div>
         </div>
         <div
           className="stat-card stagger-item"
