@@ -703,8 +703,8 @@ export default function AgentAmounts() {
                                   deliveredCommissionPKR: a.deliveredCommissionPKR,
                                 })
                                 setCommissionRate(12)
-                                // Set initial amount to 12% of balance (not 100%)
-                                setCalculatedAmount(Math.round((balance * 12) / 100))
+                                // 12% = full balance (since balance is already at 12% commission)
+                                setCalculatedAmount(Math.round(balance))
                               }}
                             >
                               Pay Commission
@@ -839,9 +839,10 @@ export default function AgentAmounts() {
                     onChange={(e) => {
                       const val = Number(e.target.value) || 0
                       setCommissionRate(val)
-                      // Calculate commission on the BALANCE (unpaid amount)
+                      // Balance represents 12% commission. Adjust proportionally.
+                      // e.g., 8% = (8/12)*balance, 15% = (15/12)*balance
                       const availableBalance = Number(payModal.balance || 0)
-                      setCalculatedAmount(Math.round((availableBalance * val) / 100))
+                      setCalculatedAmount(Math.round((availableBalance * val) / 12))
                     }}
                     style={{
                       width: 70,
@@ -870,9 +871,9 @@ export default function AgentAmounts() {
                     }}
                     onClick={() => {
                       setCommissionRate(rate)
-                      // Calculate rate % of BALANCE
+                      // Balance represents 12% commission. rate/12 gives proportion.
                       const availableBalance = Number(payModal.balance || 0)
-                      setCalculatedAmount(Math.round((availableBalance * rate) / 100))
+                      setCalculatedAmount(Math.round((availableBalance * rate) / 12))
                     }}
                   >
                     {rate}%
@@ -883,9 +884,9 @@ export default function AgentAmounts() {
                   style={{ fontSize: 12, padding: '6px 12px' }}
                   onClick={() => {
                     setCommissionRate(12) // Default is 12%
-                    // Reset to 12% of balance
+                    // Reset to 12% = full balance
                     const availableBalance = Number(payModal.balance || 0)
-                    setCalculatedAmount(Math.round((availableBalance * 12) / 100))
+                    setCalculatedAmount(Math.round(availableBalance))
                   }}
                 >
                   Reset
@@ -893,9 +894,9 @@ export default function AgentAmounts() {
               </div>
 
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-                Balance: PKR {num(payModal.balance)} | Paying:{' '}
-                {commissionRate !== null ? commissionRate : 12}% of balance = PKR{' '}
-                {num(calculatedAmount)}
+                Balance at 12%: PKR {num(payModal.balance)} | Paying at{' '}
+                {commissionRate !== null ? commissionRate : 12}%: ({commissionRate || 12}/12 ×
+                balance) = PKR {num(calculatedAmount)}
               </div>
             </div>
 
