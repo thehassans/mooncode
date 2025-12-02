@@ -695,8 +695,8 @@ export default function AgentAmounts() {
                                   deliveredCommissionPKR: a.deliveredCommissionPKR,
                                 })
                                 setCommissionRate(12)
-                                // Set initial amount to the balance
-                                setCalculatedAmount(Math.round(balance))
+                                // Set initial amount to 12% of balance (not 100%)
+                                setCalculatedAmount(Math.round((balance * 12) / 100))
                               }}
                             >
                               Pay Commission
