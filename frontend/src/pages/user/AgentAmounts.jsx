@@ -73,10 +73,59 @@ export default function AgentAmounts() {
       const r = await apiGet(`/api/finance/agents/${agent.id}/commission-history`)
       setHistoryData(Array.isArray(r?.history) ? r.history : [])
     } catch (e) {
-      toast.error('Failed to load history')
+      toast.show(e?.message || 'Failed to load history', 'error')
       setHistoryData([])
     } finally {
       setLoadingHistory(false)
+    }
+  }
+
+  async function fetchAgents() {
+    setLoading(true)
+    try {
+      const r = await apiGet('/api/finance/agents/commission?limit=100')
+      setAgents(Array.isArray(r?.agents) ? r.agents : [])
+      setErr('')
+    } catch (e) {
+      setErr(e?.message || 'Failed to load agent amounts')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handlePayCommission() {
+    if (!payModal || !calculatedAmount || calculatedAmount <= 0) {
+      toast.show('Please enter a valid amount', 'error')
+      return
+    }
+
+    setPayingAgent(payModal.agent.id)
+    try {
+      const finalRate = commissionRate !== null ? commissionRate : 12
+      // Calculate base commission amount (the 12% portion that reduces balance)
+      const balance = Number(payModal.balance || 0)
+
+      // If rate > 12%, the extra is a bonus. Only deduct balance from future.
+      // If rate <= 12%, deduct proportional amount.
+      const baseCommissionAmount =
+        finalRate <= 12
+          ? Math.round(calculatedAmount) // Paying less than 12%, deduct what's paid
+          : Math.round(balance) // Paying bonus, deduct full balance
+
+      await apiPost(`/api/finance/agents/${payModal.agent.id}/pay-commission`, {
+        amount: calculatedAmount,
+        baseCommissionAmount: baseCommissionAmount,
+        commissionRate: finalRate,
+        totalOrderValueAED: 0, // Not using this anymore
+      })
+
+      toast.show('Commission payment sent successfully!', 'success')
+      setPayModal(null)
+      fetchAgents() // Refresh the list
+    } catch (err) {
+      toast.show(err?.message || 'Failed to send commission', 'error')
+    } finally {
+      setPayingAgent(null)
     }
   }
 
@@ -750,36 +799,7 @@ export default function AgentAmounts() {
             >
               Cancel
             </button>
-            <button
-              className="btn success"
-              disabled={!!payingAgent}
-              onClick={async () => {
-                const finalRate = commissionRate || 12
-                if (calculatedAmount <= 0) {
-                  toast.error('Payment amount must be greater than 0')
-                  return
-                }
-                setPayingAgent(payModal.agent.id)
-                try {
-                  await apiPost(`/api/finance/agents/${payModal.agent.id}/pay-commission`, {
-                    amount: calculatedAmount,
-                    commissionRate: finalRate,
-                    totalOrderValueAED: payModal.totalOrderValueAED,
-                  })
-                  toast.success(`Commission payment sent successfully (${finalRate}% rate)`)
-                  setPayModal(null)
-                  setCommissionRate(null)
-                  setCalculatedAmount(0)
-                  // Refresh data
-                  const r = await apiGet('/api/finance/agents/commission?limit=100')
-                  setAgents(Array.isArray(r?.agents) ? r.agents : [])
-                } catch (e) {
-                  toast.error(e?.message || 'Failed to send payment')
-                } finally {
-                  setPayingAgent(null)
-                }
-              }}
-            >
+            <button className="btn success" disabled={!!payingAgent} onClick={handlePayCommission}>
               {payingAgent ? 'Sending...' : 'Confirm Payment'}
             </button>
           </>
@@ -984,8 +1004,10 @@ export default function AgentAmounts() {
                     >
                       {h.currency} {num(h.amount)}
                     </td>
-                    <td style={{ padding: 8, textAlign: 'center' }}>
-                      {/* Try to infer rate if not stored directly, or just show - */}-
+                    <td
+                      style={{ padding: 8, textAlign: 'center', fontWeight: 600, color: '#8b5cf6' }}
+                    >
+                      {h.commissionRate ? `${h.commissionRate}%` : '-'}
                     </td>
                     <td style={{ padding: 8 }}>
                       {h.approver

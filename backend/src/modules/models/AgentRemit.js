@@ -22,6 +22,7 @@ const AgentRemitSchema = new mongoose.Schema(
     },
     approverRole: { type: String, enum: ["user", "manager"], required: true },
     amount: { type: Number, required: true, min: 0 },
+    baseCommissionAmount: { type: Number, min: 0, default: 0 }, // The 12% base portion (deducted from balance)
     currency: { type: String, default: "PKR" },
     commissionRate: { type: Number, min: 0, max: 100, default: 12 },
     totalOrderValueAED: { type: Number, min: 0, default: 0 },

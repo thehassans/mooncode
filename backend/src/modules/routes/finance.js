@@ -2076,20 +2076,15 @@ router.get(
         {
           $match: {
             agent: { $in: agentIds },
+            status: { $in: ["sent", "pending"] },
+            agent: { $in: agents.map((a) => a._id) },
           },
         },
         {
           $group: {
             _id: { agent: "$agent", status: "$status" },
-            totalPKR: {
-              $sum: {
-                $cond: [
-                  { $eq: ["$currency", "PKR"] },
-                  "$amount",
-                  0, // Assuming all agent remits are in PKR as per original code logic
-                ],
-              },
-            },
+            totalPKR: { $sum: "$amount" }, // Total amount paid (for display/records)
+            basePKR: { $sum: "$baseCommissionAmount" }, // Base amount (for balance calculation)
           },
         },
       ]);
@@ -2101,15 +2096,32 @@ router.get(
       const remitMap = {};
       remitStats.forEach((r) => {
         const agentId = String(r._id.agent);
-        if (!remitMap[agentId]) remitMap[agentId] = { sent: 0, pending: 0 };
-        if (r._id.status === "sent") remitMap[agentId].sent += r.totalPKR;
-        if (r._id.status === "pending") remitMap[agentId].pending += r.totalPKR;
+        if (!remitMap[agentId])
+          remitMap[agentId] = {
+            sent: 0,
+            pending: 0,
+            sentBase: 0,
+            pendingBase: 0,
+          };
+        if (r._id.status === "sent") {
+          remitMap[agentId].sent += r.totalPKR; // Full amount for display
+          remitMap[agentId].sentBase += r.basePKR || r.totalPKR; // Base for balance calc (fallback to total for old records)
+        }
+        if (r._id.status === "pending") {
+          remitMap[agentId].pending += r.totalPKR;
+          remitMap[agentId].pendingBase += r.basePKR || r.totalPKR;
+        }
       });
 
       const out = agents.map((a) => {
         const aid = String(a._id);
         const oStats = orderMap[aid] || {};
-        const rStats = remitMap[aid] || { sent: 0, pending: 0 };
+        const rStats = remitMap[aid] || {
+          sent: 0,
+          pending: 0,
+          sentBase: 0,
+          pendingBase: 0,
+        };
 
         const totalOrderValueAED = Math.round(oStats.totalOrderValueAED || 0);
         const deliveredOrderValueAED = Math.round(
@@ -2189,8 +2201,14 @@ router.post(
   async (req, res) => {
     try {
       const { id } = req.params;
-      const { amount, commissionRate, totalOrderValueAED } = req.body || {};
+      const {
+        amount,
+        baseCommissionAmount,
+        commissionRate,
+        totalOrderValueAED,
+      } = req.body || {};
       const amt = Number(amount);
+      const baseAmt = Number(baseCommissionAmount || amt); // Default to full amount if not provided
       const rate = Number(commissionRate || 12);
       const orderValue = Number(totalOrderValueAED || 0);
 
@@ -2337,6 +2355,7 @@ router.post(
         approver: req.user.id,
         approverRole: req.user.role === "user" ? "user" : "manager",
         amount: amt,
+        baseCommissionAmount: baseAmt, // Base 12% portion deducted from balance
         currency: "PKR",
         commissionRate: rate,
         totalOrderValueAED: orderValue,
