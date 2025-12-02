@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { apiGet, apiPost } from '../../api'
+import { apiGet, apiPost, API_BASE } from '../../api'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../ui/Toast.jsx'
 import Modal from '../../components/Modal.jsx'
@@ -55,6 +55,15 @@ export default function AgentAmounts() {
 
   function num(n) {
     return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
+  }
+
+  // Helper function to calculate commission in PKR from AED
+  function calculateCommissionPKR(aedAmount, commissionRate, pkrRate = 76) {
+    const aed = Number(aedAmount) || 0
+    const rate = Number(commissionRate) || 12
+    const pkr = Number(pkrRate) || 76
+    // Convert AED to PKR first, then apply commission percentage
+    return Math.round(aed * pkr * (rate / 100))
   }
 
   async function fetchHistory(agent) {
@@ -685,7 +694,7 @@ export default function AgentAmounts() {
                                 })
                                 setCommissionRate(12)
                                 setCalculatedAmount(
-                                  Math.round(a.deliveredOrderValueAED * 76 * 0.12)
+                                  calculateCommissionPKR(a.deliveredOrderValueAED, 12)
                                 )
                               }}
                             >
@@ -822,9 +831,7 @@ export default function AgentAmounts() {
                       const val = Number(e.target.value) || 0
                       setCommissionRate(val)
                       // Calculate: AED to PKR, then apply commission rate
-                      const pkrRate = 76
-                      const totalInPKR = payModal.totalOrderValueAED * pkrRate
-                      setCalculatedAmount((totalInPKR * val) / 100)
+                      setCalculatedAmount(calculateCommissionPKR(payModal.totalOrderValueAED, val))
                     }}
                     style={{
                       width: 70,
@@ -853,9 +860,7 @@ export default function AgentAmounts() {
                     }}
                     onClick={() => {
                       setCommissionRate(rate)
-                      const pkrRate = 76
-                      const totalInPKR = payModal.totalOrderValueAED * pkrRate
-                      setCalculatedAmount((totalInPKR * rate) / 100)
+                      setCalculatedAmount(calculateCommissionPKR(payModal.totalOrderValueAED, rate))
                     }}
                   >
                     {rate}%
@@ -866,9 +871,7 @@ export default function AgentAmounts() {
                   style={{ fontSize: 12, padding: '6px 12px' }}
                   onClick={() => {
                     setCommissionRate(null)
-                    const pkrRate = 76
-                    const totalInPKR = payModal.totalOrderValueAED * pkrRate
-                    setCalculatedAmount((totalInPKR * 12) / 100)
+                    setCalculatedAmount(calculateCommissionPKR(payModal.totalOrderValueAED, 12))
                   }}
                 >
                   Reset

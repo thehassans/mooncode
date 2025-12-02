@@ -1857,7 +1857,7 @@ router.get(
         "firstName lastName phone _id payoutProfile"
       ).lean();
 
-      if (!agents.length) return res.json([]);
+      if (!agents.length) return res.json({ agents: [] });
 
       const agentIds = agents.map((a) => a._id);
       const cfg = await getCurrencyConfig();
@@ -2120,11 +2120,12 @@ router.get(
           oStats.upcomingOrderValueAED || 0
         );
 
+        // Commission calculation: convert AED to PKR first, then apply commission %
         const deliveredCommissionPKR = Math.round(
-          deliveredOrderValueAED * 0.12 * aedRate
+          deliveredOrderValueAED * aedRate * 0.12
         );
         const upcomingCommissionPKR = Math.round(
-          upcomingOrderValueAED * 0.12 * aedRate
+          upcomingOrderValueAED * aedRate * 0.12
         );
 
         return {
@@ -2194,8 +2195,15 @@ router.post(
       const rate = Number(commissionRate || 12);
       const orderValue = Number(totalOrderValueAED || 0);
 
+      // Validation
       if (Number.isNaN(amt) || amt <= 0)
         return res.status(400).json({ message: "Invalid amount" });
+      if (Number.isNaN(rate) || rate < 0 || rate > 100)
+        return res
+          .status(400)
+          .json({ message: "Commission rate must be between 0 and 100" });
+      if (Number.isNaN(orderValue) || orderValue < 0)
+        return res.status(400).json({ message: "Invalid order value" });
 
       const agent = await User.findOne({ _id: id, role: "agent" });
       if (!agent) return res.status(404).json({ message: "Agent not found" });
