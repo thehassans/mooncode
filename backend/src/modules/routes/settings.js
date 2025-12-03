@@ -61,22 +61,17 @@ function defaultCurrencyConfig() {
 }
 
 // GET /api/settings/currency
-router.get(
-  "/currency",
-  auth,
-  allowRoles("admin", "user", "manager", "investor"),
-  async (_req, res) => {
-    try {
-      const doc = await Setting.findOne({ key: "currency" }).lean();
-      const val = (doc && doc.value) || defaultCurrencyConfig();
-      // Ensure reasonable structure
-      const cfg = { ...defaultCurrencyConfig(), ...(val || {}) };
-      res.json({ success: true, ...cfg });
-    } catch (e) {
-      res.status(500).json({ success: false, error: e?.message || "failed" });
-    }
+router.get("/currency", async (_req, res) => {
+  try {
+    const doc = await Setting.findOne({ key: "currency" }).lean();
+    const val = (doc && doc.value) || defaultCurrencyConfig();
+    // Ensure reasonable structure
+    const cfg = { ...defaultCurrencyConfig(), ...(val || {}) };
+    res.json({ success: true, ...cfg });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e?.message || "failed" });
   }
-);
+});
 
 // POST /api/settings/currency
 router.post(
