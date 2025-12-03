@@ -494,7 +494,7 @@ export default function ProfileSettings() {
                 </div>
                 <ol style={{ color: 'var(--muted)', paddingLeft: '20px', margin: 0 }}>
                   <li>Enter your domain name in the field above (e.g., buysial.com)</li>
-                  <li>Point your domain's DNS to web.buysial.com using a CNAME record</li>
+                  <li>Point your domain's DNS to buysial.com using a CNAME record</li>
                   <li>Wait for DNS propagation (usually 5-10 minutes)</li>
                   <li>Your e-commerce store will be accessible on your custom domain</li>
                 </ol>

@@ -265,11 +265,10 @@ function CustomDomainRouter({ children }) {
       try {
         const hostname = window.location.hostname.toLowerCase()
 
-        // Skip check for web.buysial.com, buysial.com, and localhost
+        // Skip check for buysial.com, web.buysial.com and localhost
         if (
-          hostname === 'web.buysial.com' ||
           hostname === 'buysial.com' ||
-          hostname === 'www.buysial.com' ||
+          hostname === 'web.buysial.com' ||
           hostname === 'localhost' ||
           hostname === '127.0.0.1'
         ) {

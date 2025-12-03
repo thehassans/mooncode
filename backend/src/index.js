@@ -71,11 +71,6 @@ const envOrigins = (process.env.CORS_ORIGIN || "*")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
-// Explicitly allow main domain
-if (!envOrigins.includes("*")) {
-  envOrigins.push("https://buysial.com");
-  envOrigins.push("https://www.buysial.com");
-}
 const corsOptions = {
   origin: (origin, cb) => {
     if (!origin) return cb(null, true); // allow non-browser clients
