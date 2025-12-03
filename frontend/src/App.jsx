@@ -316,9 +316,9 @@ function CustomDomainRouter({ children }) {
     )
   }
 
-  // If custom domain, show catalog by default
+  // If custom domain, show catalog by default but allow routing
   if (isCustomDomain) {
-    return <ProductCatalog />
+    return children
   }
 
   return children
