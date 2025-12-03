@@ -94,6 +94,23 @@ router.post(
       }
       if (!user) {
         console.log(`[Login Failed] User not found: ${e}`);
+        // DEBUG: Check if DB is empty
+        try {
+          const count = await User.countDocuments();
+          console.log(`[Login Debug] Total users in DB: ${count}`);
+          if (count > 0) {
+            const sample = await User.find().select("email").limit(5);
+            console.log(
+              `[Login Debug] Sample emails: ${sample
+                .map((u) => u.email)
+                .join(", ")}`
+            );
+          } else {
+            console.log("[Login Debug] DB appears to be empty!");
+          }
+        } catch (err) {
+          console.error("[Login Debug] Failed to count users:", err);
+        }
         return res
           .status(400)
           .json({ message: "Invalid credentials (User not found)" });
