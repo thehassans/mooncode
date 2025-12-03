@@ -1,282 +1,450 @@
-import express from 'express'
-import WebOrder from '../models/WebOrder.js'
-import Product from '../models/Product.js'
-import User from '../models/User.js'
-import { auth, allowRoles } from '../middleware/auth.js'
+import express from "express";
+import WebOrder from "../models/WebOrder.js";
+import Product from "../models/Product.js";
+import User from "../models/User.js";
+import { auth, allowRoles } from "../middleware/auth.js";
 
-const router = express.Router()
+const router = express.Router();
 
 // POST /api/ecommerce/orders (public)
-router.post('/orders', async (req, res) => {
-  try{
+router.post("/orders", async (req, res) => {
+  try {
     const {
-      customerName = '',
-      customerPhone = '',
-      phoneCountryCode = '',
-      orderCountry = '',
-      city = '',
-      area = '',
-      address = '',
-      details = '',
+      customerName = "",
+      customerPhone = "",
+      phoneCountryCode = "",
+      orderCountry = "",
+      city = "",
+      area = "",
+      address = "",
+      details = "",
       items = [],
-      currency = 'SAR',
-    } = req.body || {}
+      currency = "SAR",
+    } = req.body || {};
 
-    if (!customerName.trim()) return res.status(400).json({ message: 'Name is required' })
-    if (!customerPhone.trim()) return res.status(400).json({ message: 'Phone is required' })
-    if (!orderCountry.trim()) return res.status(400).json({ message: 'Country is required' })
-    if (!city.trim()) return res.status(400).json({ message: 'City is required' })
-    if (!address.trim()) return res.status(400).json({ message: 'Address is required' })
+    if (!customerName.trim())
+      return res.status(400).json({ message: "Name is required" });
+    if (!customerPhone.trim())
+      return res.status(400).json({ message: "Phone is required" });
+    if (!orderCountry.trim())
+      return res.status(400).json({ message: "Country is required" });
+    if (!city.trim())
+      return res.status(400).json({ message: "City is required" });
+    if (!address.trim())
+      return res.status(400).json({ message: "Address is required" });
 
     // Normalize items
-    const norm = Array.isArray(items) ? items : []
-    if (norm.length === 0) return res.status(400).json({ message: 'Cart is empty' })
+    const norm = Array.isArray(items) ? items : [];
+    if (norm.length === 0)
+      return res.status(400).json({ message: "Cart is empty" });
 
-    const ids = norm.map(i => i && i.productId).filter(Boolean)
-    const prods = await Product.find({ _id: { $in: ids }, displayOnWebsite: true })
-    const byId = Object.fromEntries(prods.map(p => [String(p._id), p]))
-    let total = 0
-    const orderItems = []
-    for (const it of norm){
-      const p = byId[String(it.productId)]
-      if (!p) return res.status(400).json({ message: 'One or more products not available' })
-      const qty = Math.max(1, Number(it.quantity||1))
-      const unit = Number(p.price||0)
-      total += unit * qty
-      orderItems.push({ productId: p._id, name: p.name||'', price: unit, quantity: qty })
+    const ids = norm.map((i) => i && i.productId).filter(Boolean);
+    const prods = await Product.find({
+      _id: { $in: ids },
+      displayOnWebsite: true,
+    });
+    const byId = Object.fromEntries(prods.map((p) => [String(p._id), p]));
+    let total = 0;
+    const orderItems = [];
+    for (const it of norm) {
+      const p = byId[String(it.productId)];
+      if (!p)
+        return res
+          .status(400)
+          .json({ message: "One or more products not available" });
+      const qty = Math.max(1, Number(it.quantity || 1));
+      const unit = Number(p.price || 0);
+      total += unit * qty;
+      orderItems.push({
+        productId: p._id,
+        name: p.name || "",
+        price: unit,
+        quantity: qty,
+      });
     }
 
     const doc = new WebOrder({
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
-      phoneCountryCode: String(phoneCountryCode||'').trim(),
+      phoneCountryCode: String(phoneCountryCode || "").trim(),
       orderCountry: orderCountry.trim(),
       city: city.trim(),
-      area: String(area||'').trim(),
+      area: String(area || "").trim(),
       address: address.trim(),
-      details: String(details||'').trim(),
+      details: String(details || "").trim(),
       items: orderItems,
-      total: Math.max(0, Number(total||0)),
-      currency: String(currency||'SAR'),
-      status: 'new',
-    })
-    await doc.save()
-    return res.status(201).json({ message: 'Order received', order: doc })
-  }catch(err){
-    return res.status(500).json({ message: 'Failed to submit order', error: err?.message })
+      total: Math.max(0, Number(total || 0)),
+      currency: String(currency || "SAR"),
+      status: "new",
+    });
+    await doc.save();
+    return res.status(201).json({ message: "Order received", order: doc });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: "Failed to submit order", error: err?.message });
   }
-})
+});
 
 // Distinct options: countries and cities for ecommerce orders
-router.get('/orders/options', auth, allowRoles('admin','user','manager'), async (req, res) => {
-  try{
-    const countryParam = String(req.query.country||'').trim()
-    const countriesRaw = (await WebOrder.distinct('orderCountry', {})).filter(Boolean)
-    const countries = Array.from(new Set(countriesRaw)).sort()
-    const matchCity = {}
-    if (countryParam) matchCity.orderCountry = countryParam
-    const cities = (await WebOrder.distinct('city', matchCity)).filter(Boolean).sort()
-    return res.json({ countries, cities })
-  }catch(err){
-    return res.status(500).json({ message: 'Failed to load options', error: err?.message })
+router.get(
+  "/orders/options",
+  auth,
+  allowRoles("admin", "user", "manager"),
+  async (req, res) => {
+    try {
+      const countryParam = String(req.query.country || "").trim();
+      const countriesRaw = (await WebOrder.distinct("orderCountry", {})).filter(
+        Boolean
+      );
+      const countries = Array.from(new Set(countriesRaw)).sort();
+      const matchCity = {};
+      if (countryParam) matchCity.orderCountry = countryParam;
+      const cities = (await WebOrder.distinct("city", matchCity))
+        .filter(Boolean)
+        .sort();
+      return res.json({ countries, cities });
+    } catch (err) {
+      return res
+        .status(500)
+        .json({ message: "Failed to load options", error: err?.message });
+    }
   }
-})
+);
 // GET /api/ecommerce/orders (admin/user/manager)
-router.get('/orders', auth, allowRoles('admin','user','manager'), async (req, res) => {
-  try{
-    const { q = '', status = '', start = '', end = '', product = '', ship = '', country = '', city = '', onlyUnassigned = '' } = req.query || {}
-    const match = {}
-    if (q){
-      const rx = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-      match.$or = [
-        { customerName: rx },
-        { customerPhone: rx },
-        { address: rx },
-        { city: rx },
-        { area: rx },
-        { details: rx },
-        { 'items.name': rx },
-      ]
-    }
-    if (status) match.status = status
-    if (ship) match.shipmentStatus = ship
-    if (country) match.orderCountry = country
-    if (city) match.city = city
-    if (String(onlyUnassigned).toLowerCase() === 'true') match.deliveryBoy = { $in: [null, undefined] }
-    if (start || end){
-      match.createdAt = {}
-      if (start) match.createdAt.$gte = new Date(start)
-      if (end) match.createdAt.$lte = new Date(end)
-    }
-    if (product){ match['items.productId'] = product }
+router.get(
+  "/orders",
+  auth,
+  allowRoles("admin", "user", "manager"),
+  async (req, res) => {
+    try {
+      const {
+        q = "",
+        status = "",
+        start = "",
+        end = "",
+        product = "",
+        ship = "",
+        country = "",
+        city = "",
+        onlyUnassigned = "",
+      } = req.query || {};
+      const match = {};
+      if (q) {
+        const rx = new RegExp(
+          String(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+          "i"
+        );
+        match.$or = [
+          { customerName: rx },
+          { customerPhone: rx },
+          { address: rx },
+          { city: rx },
+          { area: rx },
+          { details: rx },
+          { "items.name": rx },
+        ];
+      }
+      if (status) match.status = status;
+      if (ship) match.shipmentStatus = ship;
+      if (country) match.orderCountry = country;
+      if (city) match.city = city;
+      if (String(onlyUnassigned).toLowerCase() === "true")
+        match.deliveryBoy = { $in: [null, undefined] };
+      if (start || end) {
+        match.createdAt = {};
+        if (start) match.createdAt.$gte = new Date(start);
+        if (end) match.createdAt.$lte = new Date(end);
+      }
+      if (product) {
+        match["items.productId"] = product;
+      }
 
-    const page = Math.max(1, Number(req.query.page||1))
-    const limit = Math.min(100, Math.max(1, Number(req.query.limit||20)))
-    const skip = (page-1) * limit
-    const total = await WebOrder.countDocuments(match)
-    const rows = await WebOrder.find(match)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate('deliveryBoy', 'firstName lastName email city')
-    const hasMore = skip + rows.length < total
-    return res.json({ orders: rows, page, limit, total, hasMore })
-  }catch(err){
-    return res.status(500).json({ message: 'Failed to load online orders', error: err?.message })
+      const page = Math.max(1, Number(req.query.page || 1));
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit || 20)));
+      const skip = (page - 1) * limit;
+      const total = await WebOrder.countDocuments(match);
+      const rows = await WebOrder.find(match)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("deliveryBoy", "firstName lastName email city");
+      const hasMore = skip + rows.length < total;
+      return res.json({ orders: rows, page, limit, total, hasMore });
+    } catch (err) {
+      return res
+        .status(500)
+        .json({ message: "Failed to load online orders", error: err?.message });
+    }
   }
-})
+);
 
 // GET /api/ecommerce/orders/export — export filtered orders as CSV
-router.get('/orders/export', auth, allowRoles('admin','user','manager'), async (req, res) => {
-  try{
-    const { q = '', status = '', start = '', end = '', product = '', ship = '', country = '', city = '', onlyUnassigned = '' } = req.query || {}
-    const match = {}
-    if (q){
-      const rx = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-      match.$or = [
-        { customerName: rx },
-        { customerPhone: rx },
-        { address: rx },
-        { city: rx },
-        { area: rx },
-        { details: rx },
-        { 'items.name': rx },
-      ]
-    }
-    if (status) match.status = status
-    if (ship) match.shipmentStatus = ship
-    if (country) match.orderCountry = country
-    if (city) match.city = city
-    if (String(onlyUnassigned).toLowerCase() === 'true') match.deliveryBoy = { $in: [null, undefined] }
-    if (start || end){
-      match.createdAt = {}
-      if (start) match.createdAt.$gte = new Date(start)
-      if (end) match.createdAt.$lte = new Date(end)
-    }
-    if (product){ match['items.productId'] = product }
+router.get(
+  "/orders/export",
+  auth,
+  allowRoles("admin", "user", "manager"),
+  async (req, res) => {
+    try {
+      const {
+        q = "",
+        status = "",
+        start = "",
+        end = "",
+        product = "",
+        ship = "",
+        country = "",
+        city = "",
+        onlyUnassigned = "",
+      } = req.query || {};
+      const match = {};
+      if (q) {
+        const rx = new RegExp(
+          String(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+          "i"
+        );
+        match.$or = [
+          { customerName: rx },
+          { customerPhone: rx },
+          { address: rx },
+          { city: rx },
+          { area: rx },
+          { details: rx },
+          { "items.name": rx },
+        ];
+      }
+      if (status) match.status = status;
+      if (ship) match.shipmentStatus = ship;
+      if (country) match.orderCountry = country;
+      if (city) match.city = city;
+      if (String(onlyUnassigned).toLowerCase() === "true")
+        match.deliveryBoy = { $in: [null, undefined] };
+      if (start || end) {
+        match.createdAt = {};
+        if (start) match.createdAt.$gte = new Date(start);
+        if (end) match.createdAt.$lte = new Date(end);
+      }
+      if (product) {
+        match["items.productId"] = product;
+      }
 
-    const cap = Math.min(10000, Math.max(1, Number(req.query.max||10000)))
-    const rows = await WebOrder.find(match)
-      .sort({ createdAt: -1 })
-      .limit(cap)
-      .populate('deliveryBoy', 'firstName lastName email city')
-      .lean()
+      const cap = Math.min(10000, Math.max(1, Number(req.query.max || 10000)));
+      const rows = await WebOrder.find(match)
+        .sort({ createdAt: -1 })
+        .limit(cap)
+        .populate("deliveryBoy", "firstName lastName email city")
+        .lean();
 
-    const esc = (v) => {
-      if (v == null) return ''
-      const s = String(v)
-      if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"'
-      return s
-    }
-    const fmtDate = (d) => { try{ return new Date(d).toISOString() }catch{ return '' } }
-    const itemsToText = (items) => {
-      try{
-        const arr = Array.isArray(items) ? items : []
-        return arr.map(it => `${it?.name||''} x${Math.max(1, Number(it?.quantity||1))}@${Number(it?.price||0).toFixed(2)}`).join('; ')
-      }catch{ return '' }
-    }
+      const esc = (v) => {
+        if (v == null) return "";
+        const s = String(v);
+        if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      };
+      const fmtDate = (d) => {
+        try {
+          return new Date(d).toISOString();
+        } catch {
+          return "";
+        }
+      };
+      const itemsToText = (items) => {
+        try {
+          const arr = Array.isArray(items) ? items : [];
+          return arr
+            .map(
+              (it) =>
+                `${it?.name || ""} x${Math.max(
+                  1,
+                  Number(it?.quantity || 1)
+                )}@${Number(it?.price || 0).toFixed(2)}`
+            )
+            .join("; ");
+        } catch {
+          return "";
+        }
+      };
 
-    const header = [
-      'OrderID','CreatedAt','Status','ShipmentStatus','Country','City','Area','Address','Customer','PhoneCode','Phone','Currency','Total','Items','ItemsCount','DriverName','DriverCity'
-    ]
-    const lines = [header.join(',')]
-    for (const r of rows){
-      const driverName = r?.deliveryBoy ? `${r.deliveryBoy.firstName||''} ${r.deliveryBoy.lastName||''}`.trim() : ''
-      const itemsTxt = itemsToText(r?.items)
-      const itemsCount = Array.isArray(r?.items) ? r.items.reduce((s,it)=> s + Math.max(1, Number(it?.quantity||1)), 0) : 0
-      const line = [
-        esc(r?._id),
-        esc(fmtDate(r?.createdAt)),
-        esc(r?.status||''),
-        esc(r?.shipmentStatus||''),
-        esc(r?.orderCountry||''),
-        esc(r?.city||''),
-        esc(r?.area||''),
-        esc(r?.address||''),
-        esc(r?.customerName||''),
-        esc(r?.phoneCountryCode||''),
-        esc(r?.customerPhone||''),
-        esc(r?.currency||'SAR'),
-        esc(Number(r?.total||0).toFixed(2)),
-        esc(itemsTxt),
-        esc(itemsCount),
-        esc(driverName),
-        esc(r?.deliveryBoy?.city||'')
-      ].join(',')
-      lines.push(line)
-    }
+      const header = [
+        "OrderID",
+        "CreatedAt",
+        "Status",
+        "ShipmentStatus",
+        "Country",
+        "City",
+        "Area",
+        "Address",
+        "Customer",
+        "PhoneCode",
+        "Phone",
+        "Currency",
+        "Total",
+        "Items",
+        "ItemsCount",
+        "DriverName",
+        "DriverCity",
+      ];
+      const lines = [header.join(",")];
+      for (const r of rows) {
+        const driverName = r?.deliveryBoy
+          ? `${r.deliveryBoy.firstName || ""} ${
+              r.deliveryBoy.lastName || ""
+            }`.trim()
+          : "";
+        const itemsTxt = itemsToText(r?.items);
+        const itemsCount = Array.isArray(r?.items)
+          ? r.items.reduce(
+              (s, it) => s + Math.max(1, Number(it?.quantity || 1)),
+              0
+            )
+          : 0;
+        const line = [
+          esc(r?._id),
+          esc(fmtDate(r?.createdAt)),
+          esc(r?.status || ""),
+          esc(r?.shipmentStatus || ""),
+          esc(r?.orderCountry || ""),
+          esc(r?.city || ""),
+          esc(r?.area || ""),
+          esc(r?.address || ""),
+          esc(r?.customerName || ""),
+          esc(r?.phoneCountryCode || ""),
+          esc(r?.customerPhone || ""),
+          esc(r?.currency || "SAR"),
+          esc(Number(r?.total || 0).toFixed(2)),
+          esc(itemsTxt),
+          esc(itemsCount),
+          esc(driverName),
+          esc(r?.deliveryBoy?.city || ""),
+        ].join(",");
+        lines.push(line);
+      }
 
-    const csv = '\ufeff' + lines.join('\n')
-    const ts = new Date().toISOString().slice(0,10)
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
-    res.setHeader('Content-Disposition', `attachment; filename="web-orders-${ts}.csv"`)
-    return res.status(200).send(csv)
-  }catch(err){
-    return res.status(500).json({ message: 'Failed to export orders', error: err?.message })
+      const csv = "\ufeff" + lines.join("\n");
+      const ts = new Date().toISOString().slice(0, 10);
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="web-orders-${ts}.csv"`
+      );
+      return res.status(200).send(csv);
+    } catch (err) {
+      return res
+        .status(500)
+        .json({ message: "Failed to export orders", error: err?.message });
+    }
   }
-})
+);
 
 // PATCH /api/ecommerce/orders/:id (update status)
-router.patch('/orders/:id', auth, allowRoles('admin','user','manager'), async (req, res) => {
-  try{
-    const { id } = req.params
-    const { status, shipmentStatus } = req.body || {}
-    const allowed = ['new','processing','done','cancelled']
-    if (status && !allowed.includes(String(status))) return res.status(400).json({ message: 'Invalid status' })
-    const allowedShip = ['pending','assigned','picked_up','in_transit','delivered','returned','cancelled']
-    if (shipmentStatus && !allowedShip.includes(String(shipmentStatus))) return res.status(400).json({ message: 'Invalid shipment status' })
-    const ord = await WebOrder.findById(id)
-    if (!ord) return res.status(404).json({ message: 'Order not found' })
-    if (status) ord.status = status
-    if (shipmentStatus) ord.shipmentStatus = shipmentStatus
-    await ord.save()
-    return res.json({ message: 'Updated', order: ord })
-  }catch(err){
-    return res.status(500).json({ message: 'Failed to update online order', error: err?.message })
+router.patch(
+  "/orders/:id",
+  auth,
+  allowRoles("admin", "user", "manager"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, shipmentStatus } = req.body || {};
+      const allowed = ["new", "processing", "done", "cancelled"];
+      if (status && !allowed.includes(String(status)))
+        return res.status(400).json({ message: "Invalid status" });
+      const allowedShip = [
+        "pending",
+        "assigned",
+        "picked_up",
+        "in_transit",
+        "delivered",
+        "returned",
+        "cancelled",
+      ];
+      if (shipmentStatus && !allowedShip.includes(String(shipmentStatus)))
+        return res.status(400).json({ message: "Invalid shipment status" });
+      const ord = await WebOrder.findById(id);
+      if (!ord) return res.status(404).json({ message: "Order not found" });
+      if (status) ord.status = status;
+      if (shipmentStatus) ord.shipmentStatus = shipmentStatus;
+      await ord.save();
+      return res.json({ message: "Updated", order: ord });
+    } catch (err) {
+      return res
+        .status(500)
+        .json({
+          message: "Failed to update online order",
+          error: err?.message,
+        });
+    }
   }
-})
+);
 
 // Assign driver to an online (web) order
-router.post('/orders/:id/assign-driver', auth, allowRoles('admin','user','manager'), async (req, res) => {
-  try{
-    const { id } = req.params
-    const { driverId } = req.body || {}
-    if (!driverId) return res.status(400).json({ message: 'driverId required' })
-    const ord = await WebOrder.findById(id)
-    if (!ord) return res.status(404).json({ message: 'Order not found' })
-    const driver = await User.findById(driverId)
-    if (!driver || driver.role !== 'driver') return res.status(400).json({ message: 'Driver not found' })
+router.post(
+  "/orders/:id/assign-driver",
+  auth,
+  allowRoles("admin", "user", "manager"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { driverId } = req.body || {};
+      if (!driverId)
+        return res.status(400).json({ message: "driverId required" });
+      const ord = await WebOrder.findById(id);
+      if (!ord) return res.status(404).json({ message: "Order not found" });
+      const driver = await User.findById(driverId);
+      if (!driver || driver.role !== "driver")
+        return res.status(400).json({ message: "Driver not found" });
 
-    // Workspace scoping similar to /api/orders
-    if (req.user.role === 'user'){
-      if (String(driver.createdBy) !== String(req.user.id)) return res.status(403).json({ message: 'Not allowed' })
-    } else if (req.user.role === 'manager'){
-      const mgr = await User.findById(req.user.id).select('createdBy assignedCountry')
-      const ownerId = String(mgr?.createdBy || '')
-      if (!ownerId || String(driver.createdBy) !== ownerId) return res.status(403).json({ message: 'Not allowed' })
-      if (mgr?.assignedCountry) {
-        if (driver.country && driver.country !== mgr.assignedCountry) {
-          return res.status(403).json({ message: `Manager can only assign drivers from ${mgr.assignedCountry}` })
-        }
-        if (ord.orderCountry && ord.orderCountry !== mgr.assignedCountry) {
-          return res.status(403).json({ message: `Manager can only assign to orders from ${mgr.assignedCountry}` })
+      // Workspace scoping similar to /api/orders
+      if (req.user.role === "user") {
+        if (String(driver.createdBy) !== String(req.user.id))
+          return res.status(403).json({ message: "Not allowed" });
+      } else if (req.user.role === "manager") {
+        const mgr = await User.findById(req.user.id).select(
+          "createdBy assignedCountry"
+        );
+        const ownerId = String(mgr?.createdBy || "");
+        if (!ownerId || String(driver.createdBy) !== ownerId)
+          return res.status(403).json({ message: "Not allowed" });
+        if (mgr?.assignedCountry) {
+          if (driver.country && driver.country !== mgr.assignedCountry) {
+            return res
+              .status(403)
+              .json({
+                message: `Manager can only assign drivers from ${mgr.assignedCountry}`,
+              });
+          }
+          if (ord.orderCountry && ord.orderCountry !== mgr.assignedCountry) {
+            return res
+              .status(403)
+              .json({
+                message: `Manager can only assign to orders from ${mgr.assignedCountry}`,
+              });
+          }
         }
       }
-    }
 
-    // City rule: enforce order city matches driver city if provided
-    if (driver.city && ord.city && String(driver.city).toLowerCase() !== String(ord.city).toLowerCase()){
-      return res.status(400).json({ message: 'Driver city does not match order city' })
-    }
+      // City rule: enforce order city matches driver city if provided
+      if (
+        driver.city &&
+        ord.city &&
+        String(driver.city).toLowerCase() !== String(ord.city).toLowerCase()
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Driver city does not match order city" });
+      }
 
-    ord.deliveryBoy = driver._id
-    if (!ord.shipmentStatus || ord.shipmentStatus === 'pending') ord.shipmentStatus = 'assigned'
-    await ord.save()
-    await ord.populate('deliveryBoy','firstName lastName email city')
-    return res.json({ message: 'Driver assigned', order: ord })
-  }catch(err){
-    return res.status(500).json({ message: 'Failed to assign driver', error: err?.message })
+      ord.deliveryBoy = driver._id;
+      if (!ord.shipmentStatus || ord.shipmentStatus === "pending")
+        ord.shipmentStatus = "assigned";
+      await ord.save();
+      await ord.populate("deliveryBoy", "firstName lastName email city");
+      return res.json({ message: "Driver assigned", order: ord });
+    } catch (err) {
+      return res
+        .status(500)
+        .json({ message: "Failed to assign driver", error: err?.message });
+    }
   }
-})
+);
 
-export default router
+export default router;
