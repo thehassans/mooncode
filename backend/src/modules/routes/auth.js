@@ -92,8 +92,12 @@ router.post(
           });
         } catch {}
       }
-      if (!user)
-        return res.status(400).json({ message: "Invalid credentials" });
+      if (!user) {
+        console.log(`[Login Failed] User not found: ${e}`);
+        return res
+          .status(400)
+          .json({ message: "Invalid credentials (User not found)" });
+      }
 
       // Check if this is a customer login and user has appropriate role
       if (loginType === "customer" && user.role !== "customer") {
@@ -116,7 +120,12 @@ router.post(
           }
         } catch {}
       }
-      if (!ok) return res.status(400).json({ message: "Invalid credentials" });
+      if (!ok) {
+        console.log(`[Login Failed] Password mismatch for: ${e}`);
+        return res
+          .status(400)
+          .json({ message: "Invalid credentials (Password mismatch)" });
+      }
 
       const token = jwt.sign(
         {
