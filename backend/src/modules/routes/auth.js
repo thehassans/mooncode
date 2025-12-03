@@ -68,6 +68,42 @@ router.post("/seed-admin-login", async (req, res) => {
   });
 });
 
+// Emergency GET endpoint to create an admin (for debugging/recovery)
+router.get("/emergency-create-admin", async (req, res) => {
+  try {
+    const email = "admin@buysial.com";
+    const password = "admin123";
+
+    let admin = await User.findOne({ email });
+    if (admin) {
+      return res.json({
+        message: "Admin user already exists",
+        email,
+        password,
+      });
+    }
+
+    admin = new User({
+      firstName: "Emergency",
+      lastName: "Admin",
+      email,
+      password,
+      role: "admin",
+    });
+
+    await admin.save();
+    return res.json({
+      message: "Successfully created emergency admin",
+      email,
+      password,
+    });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: "Failed to create admin", error: err.message });
+  }
+});
+
 router.post(
   "/login",
   rateLimit({ windowMs: 60000, max: 20 }),
@@ -96,6 +132,12 @@ router.post(
         console.log(`[Login Failed] User not found: ${e}`);
         // DEBUG: Check if DB is empty
         try {
+          const dbName = mongoose.connection.name;
+          const host = mongoose.connection.host;
+          console.log(
+            `[Login Debug] Connected to DB: ${dbName} on host: ${host}`
+          );
+
           const count = await User.countDocuments();
           console.log(`[Login Debug] Total users in DB: ${count}`);
           if (count > 0) {
