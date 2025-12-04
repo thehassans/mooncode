@@ -1287,6 +1287,8 @@ router.post(
         }
         return sum + val;
       }, 0);
+      // Sum of accepted remittances (COD collections delivered to company)
+      // NOTE: Remittance.amount represents COD collection amounts, which is correct here
       const M = (await import("mongoose")).default;
       const remitRows = await Remittance.aggregate([
         {
@@ -1434,14 +1436,10 @@ router.post(
           );
         }, 0);
 
-        // Get total paid commission from accepted remittances
-        const paidRemittances = await Remittance.find({
-          driver: req.user.id,
-          status: "accepted",
-        });
-        const paidCommission = paidRemittances.reduce(
-          (sum, r) => sum + (Number(r.amount) || 0),
-          0
+        // Get total paid commission from driver's profile (NOT from remittances)
+        // NOTE: Remittance.amount represents COD collections, not commission payments
+        const paidCommission = Number(
+          driver?.driverProfile?.paidCommission || 0
         );
 
         // Pending commission = total earned - already paid
@@ -1613,13 +1611,10 @@ router.post(
             );
           }, 0);
 
-          const paidRemittances = await Remittance.find({
-            driver: r.driver,
-            status: "accepted",
-          });
-          const paidCommission = paidRemittances.reduce(
-            (sum, rem) => sum + (Number(rem.amount) || 0),
-            0
+          // Use driver's paidCommission from profile (NOT from remittances)
+          // NOTE: Remittance.amount represents COD collections, not commission payments
+          const paidCommission = Number(
+            driver?.driverProfile?.paidCommission || 0
           );
           const pendingCommission = Math.max(
             0,
@@ -1629,7 +1624,26 @@ router.post(
             (sum, o) => sum + (Number(o.grandTotal) || 0),
             0
           );
-          const deliveredToCompany = paidCommission;
+
+          // deliveredToCompany should sum COD collection remittances, not commissions
+          const acceptedRemits = await Remittance.aggregate([
+            {
+              $match: {
+                driver: r.driver,
+                status: "accepted",
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: { $ifNull: ["$amount", 0] } },
+              },
+            },
+          ]);
+          const deliveredToCompany =
+            acceptedRemits && acceptedRemits[0]
+              ? Number(acceptedRemits[0].total || 0)
+              : 0;
           const pendingToCompany = Math.max(
             0,
             totalCollectedAmount - deliveredToCompany
@@ -1807,6 +1821,7 @@ router.get(
         totalCollectedAmount: totalDeliveredValue,
       };
       // Sum of remittances already accepted (delivered to company)
+      // NOTE: amount field represents COD collection amount remitted, NOT commission
       const remitRows = await Remittance.aggregate([
         {
           $match: {
