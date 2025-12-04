@@ -1620,10 +1620,14 @@ router.post(
             0,
             totalCommission - paidCommission
           );
-          const totalCollectedAmount = deliveredOrders.reduce(
-            (sum, o) => sum + (Number(o.grandTotal) || 0),
-            0
-          );
+          const totalCollectedAmount = deliveredOrders.reduce((sum, o) => {
+            // Use collectedAmount if available, otherwise fall back to total
+            const orderAmount =
+              o?.collectedAmount != null && Number(o.collectedAmount) > 0
+                ? Number(o.collectedAmount)
+                : Number(o.total || 0);
+            return sum + orderAmount;
+          }, 0);
 
           // deliveredToCompany should sum COD collection remittances, not commissions
           const acceptedRemits = await Remittance.aggregate([
