@@ -2951,6 +2951,76 @@ router.get(
   }
 );
 
+// MIGRATION ENDPOINT: Delete corrupted remittances (one-time cleanup)
+// This endpoint deletes accepted remittances that were created with buggy code
+// where amounts represented commission instead of COD collections
+router.post(
+  "/migrate/cleanup-corrupted-remittances",
+  auth,
+  allowRoles("user", "admin"),
+  async (req, res) => {
+    try {
+      const { confirmDelete, driverId } = req.body;
+
+      if (!confirmDelete) {
+        return res.status(400).json({
+          message: "Please confirm deletion by setting confirmDelete: true",
+        });
+      }
+
+      // Build query
+      const query = { status: "accepted" };
+      if (driverId) {
+        query.driver = driverId;
+      } else if (req.user.role !== "admin") {
+        // If not admin, only delete remittances for drivers under this owner
+        const drivers = await User.find({
+          createdBy: req.user.id,
+          role: "driver",
+        }).select("_id");
+        const driverIds = drivers.map((d) => d._id);
+        query.driver = { $in: driverIds };
+      }
+
+      // Get count before deletion
+      const count = await Remittance.countDocuments(query);
+
+      if (count === 0) {
+        return res.json({
+          message: "No corrupted remittances found",
+          deletedCount: 0,
+        });
+      }
+
+      // Delete the corrupted remittances
+      const result = await Remittance.deleteMany(query);
+
+      // Also reset driver paidCommission to 0 since remittances are deleted
+      if (driverId) {
+        await User.updateOne(
+          { _id: driverId, role: "driver" },
+          { $set: { "driverProfile.paidCommission": 0 } }
+        );
+      } else {
+        const driverIds = query.driver.$in || [];
+        await User.updateMany(
+          { _id: { $in: driverIds }, role: "driver" },
+          { $set: { "driverProfile.paidCommission": 0 } }
+        );
+      }
+
+      return res.json({
+        message: `Successfully deleted ${result.deletedCount} corrupted remittance(s)`,
+        deletedCount: result.deletedCount,
+        note: "Drivers can now re-submit their COD collections with the fixed code",
+      });
+    } catch (err) {
+      console.error("Migration error:", err);
+      return res.status(500).json({ message: "Migration failed" });
+    }
+  }
+);
+
 export default router;
 
 // --- Compatibility alias endpoints expected by frontend ---
