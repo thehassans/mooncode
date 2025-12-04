@@ -290,8 +290,47 @@ setTimeout(() => {
   } catch {}
 }, 5000);
 connectDB()
-  .then(() => {
+  .then(async () => {
     console.log("Database connected");
+
+    // AUTO-CLEANUP: Delete corrupted remittances (one-time fix for calculation bug)
+    try {
+      const mongoose = (await import("mongoose")).default;
+      const Remittance = mongoose.model("Remittance");
+      const User = mongoose.model("User");
+
+      // Delete remittances created before the bug fix (Dec 4, 2025)
+      const bugFixDate = new Date("2025-12-04T10:00:00Z");
+      const corruptedQuery = {
+        status: "accepted",
+        createdAt: { $lt: bugFixDate },
+      };
+
+      const count = await Remittance.countDocuments(corruptedQuery);
+      if (count > 0) {
+        console.log(
+          `[MIGRATION] Found ${count} corrupted remittance(s), cleaning up...`
+        );
+        await Remittance.deleteMany(corruptedQuery);
+
+        // Reset all drivers' paidCommission to 0
+        await User.updateMany(
+          { role: "driver" },
+          { $set: { "driverProfile.paidCommission": 0 } }
+        );
+
+        console.log(
+          `[MIGRATION] ✅ Deleted ${count} corrupted remittance(s) and reset driver balances`
+        );
+      } else {
+        console.log("[MIGRATION] No corrupted remittances found");
+      }
+    } catch (cleanupErr) {
+      console.error(
+        "[MIGRATION] Cleanup failed (continuing anyway):",
+        cleanupErr?.message
+      );
+    }
   })
   .catch((err) => {
     console.error("Database connection error:", err);
