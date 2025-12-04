@@ -68,42 +68,6 @@ router.post("/seed-admin-login", async (req, res) => {
   });
 });
 
-// Emergency GET endpoint to create an admin (for debugging/recovery)
-router.get("/emergency-create-admin", async (req, res) => {
-  try {
-    const email = "admin@buysial.com";
-    const password = "admin123";
-
-    let admin = await User.findOne({ email });
-    if (admin) {
-      return res.json({
-        message: "Admin user already exists",
-        email,
-        password,
-      });
-    }
-
-    admin = new User({
-      firstName: "Emergency",
-      lastName: "Admin",
-      email,
-      password,
-      role: "admin",
-    });
-
-    await admin.save();
-    return res.json({
-      message: "Successfully created emergency admin",
-      email,
-      password,
-    });
-  } catch (err) {
-    return res
-      .status(500)
-      .json({ message: "Failed to create admin", error: err.message });
-  }
-});
-
 router.post(
   "/login",
   rateLimit({ windowMs: 60000, max: 20 }),
@@ -128,35 +92,8 @@ router.post(
           });
         } catch {}
       }
-      if (!user) {
-        console.log(`[Login Failed] User not found: ${e}`);
-        // DEBUG: Check if DB is empty
-        try {
-          const dbName = mongoose.connection.name;
-          const host = mongoose.connection.host;
-          console.log(
-            `[Login Debug] Connected to DB: ${dbName} on host: ${host}`
-          );
-
-          const count = await User.countDocuments();
-          console.log(`[Login Debug] Total users in DB: ${count}`);
-          if (count > 0) {
-            const sample = await User.find().select("email").limit(5);
-            console.log(
-              `[Login Debug] Sample emails: ${sample
-                .map((u) => u.email)
-                .join(", ")}`
-            );
-          } else {
-            console.log("[Login Debug] DB appears to be empty!");
-          }
-        } catch (err) {
-          console.error("[Login Debug] Failed to count users:", err);
-        }
-        return res
-          .status(400)
-          .json({ message: "Invalid credentials (User not found)" });
-      }
+      if (!user)
+        return res.status(400).json({ message: "Invalid credentials" });
 
       // Check if this is a customer login and user has appropriate role
       if (loginType === "customer" && user.role !== "customer") {
@@ -179,12 +116,7 @@ router.post(
           }
         } catch {}
       }
-      if (!ok) {
-        console.log(`[Login Failed] Password mismatch for: ${e}`);
-        return res
-          .status(400)
-          .json({ message: "Invalid credentials (Password mismatch)" });
-      }
+      if (!ok) return res.status(400).json({ message: "Invalid credentials" });
 
       const token = jwt.sign(
         {

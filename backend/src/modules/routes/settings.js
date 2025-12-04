@@ -61,17 +61,22 @@ function defaultCurrencyConfig() {
 }
 
 // GET /api/settings/currency
-router.get("/currency", async (_req, res) => {
-  try {
-    const doc = await Setting.findOne({ key: "currency" }).lean();
-    const val = (doc && doc.value) || defaultCurrencyConfig();
-    // Ensure reasonable structure
-    const cfg = { ...defaultCurrencyConfig(), ...(val || {}) };
-    res.json({ success: true, ...cfg });
-  } catch (e) {
-    res.status(500).json({ success: false, error: e?.message || "failed" });
+router.get(
+  "/currency",
+  auth,
+  allowRoles("admin", "user", "manager", "investor"),
+  async (_req, res) => {
+    try {
+      const doc = await Setting.findOne({ key: "currency" }).lean();
+      const val = (doc && doc.value) || defaultCurrencyConfig();
+      // Ensure reasonable structure
+      const cfg = { ...defaultCurrencyConfig(), ...(val || {}) };
+      res.json({ success: true, ...cfg });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e?.message || "failed" });
+    }
   }
-});
+);
 
 // POST /api/settings/currency
 router.post(
@@ -357,41 +362,32 @@ router.post(
 export default router;
 
 // AI settings: store/retrieve keys for Gemini and Image Generation
-// GET /api/settings/ai (admin, user, agent, manager)
-router.get(
-  "/ai",
-  auth,
-  allowRoles("admin", "user", "agent", "manager"),
-  async (_req, res) => {
-    try {
-      const doc = await Setting.findOne({ key: "ai" }).lean();
-      const val = (doc && doc.value) || {};
-      // Mask secrets when returning (except Google Maps key which is public/frontend)
-      const mask = (s) =>
-        typeof s === "string" && s
-          ? s.slice(0, 4) + "••••" + s.slice(-2)
-          : null;
-
-      const googleMapsApiKey =
-        val.googleMapsApiKey || process.env.GOOGLE_MAPS_API_KEY || null;
-
-      res.json({
-        geminiApiKey: val.geminiApiKey ? mask(val.geminiApiKey) : null,
-        googleMapsApiKey, // Return unmasked for frontend usage
-        locationIQApiKey: val.locationIQApiKey
-          ? mask(val.locationIQApiKey)
-          : null,
-        geminiDescModel: val.geminiDescModel || "gemini-1.5-pro",
-        geminiImageModel: val.geminiImageModel || "imagen-3.0-generate-001",
-        imageGenApiKey: val.imageGenApiKey ? mask(val.imageGenApiKey) : null,
-        imageGenApiUrl: val.imageGenApiUrl || null,
-        defaultImagePrompt: val.defaultImagePrompt || null,
-      });
-    } catch (e) {
-      res.status(500).json({ error: e?.message || "failed" });
-    }
+// GET /api/settings/ai (admin)
+router.get("/ai", auth, allowRoles("admin", "user"), async (_req, res) => {
+  try {
+    const doc = await Setting.findOne({ key: "ai" }).lean();
+    const val = (doc && doc.value) || {};
+    // Mask secrets when returning
+    const mask = (s) =>
+      typeof s === "string" && s ? s.slice(0, 4) + "••••" + s.slice(-2) : null;
+    res.json({
+      geminiApiKey: val.geminiApiKey ? mask(val.geminiApiKey) : null,
+      googleMapsApiKey: val.googleMapsApiKey
+        ? mask(val.googleMapsApiKey)
+        : null,
+      locationIQApiKey: val.locationIQApiKey
+        ? mask(val.locationIQApiKey)
+        : null,
+      geminiDescModel: val.geminiDescModel || "gemini-1.5-pro",
+      geminiImageModel: val.geminiImageModel || "imagen-3.0-generate-001",
+      imageGenApiKey: val.imageGenApiKey ? mask(val.imageGenApiKey) : null,
+      imageGenApiUrl: val.imageGenApiUrl || null,
+      defaultImagePrompt: val.defaultImagePrompt || null,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e?.message || "failed" });
   }
-);
+});
 
 // POST /api/settings/ai (admin)
 router.post("/ai", auth, allowRoles("admin", "user"), async (req, res) => {

@@ -63,9 +63,6 @@ export default function SubmitOrder() {
     { productId: '', quantity: 1, searchText: '', showDropdown: false },
   ]) // [{ productId, quantity, searchText, showDropdown }]
   const [ccyCfg, setCcyCfg] = useState(null)
-  const [mapsLoaded, setMapsLoaded] = useState(false)
-  const [autocomplete, setAutocomplete] = useState(null)
-  const searchInputRef = React.useRef(null)
 
   const COUNTRY_CITIES = useMemo(
     () => ({
@@ -198,13 +195,6 @@ export default function SubmitOrder() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
   useEffect(() => {
-    function onResize() {
-      setIsMobile(window.innerWidth <= 768)
-    }
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-  useEffect(() => {
     let alive = true
     getCurrencyConfig()
       .then((cfg) => {
@@ -215,170 +205,6 @@ export default function SubmitOrder() {
       alive = false
     }
   }, [])
-
-  // Load Google Maps Script
-  useEffect(() => {
-    let alive = true
-    const loadMaps = async () => {
-      try {
-        if (window.google && window.google.maps && window.google.maps.places) {
-          if (alive) setMapsLoaded(true)
-          return
-        }
-
-        const settingsRes = await apiGet('/api/settings/ai')
-        const apiKey = settingsRes?.googleMapsApiKey
-
-        if (!apiKey || apiKey.includes('••••')) {
-          console.warn('Google Maps API key not found or masked in settings')
-          return
-        }
-
-        if (document.getElementById('google-maps-script')) {
-          // Script already loading/loaded
-          if (window.google && window.google.maps && window.google.maps.places) {
-            if (alive) setMapsLoaded(true)
-          }
-          return
-        }
-
-        const script = document.createElement('script')
-        script.id = 'google-maps-script'
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`
-        script.async = true
-        script.defer = true
-        script.onload = () => {
-          if (alive) setMapsLoaded(true)
-        }
-        document.body.appendChild(script)
-      } catch (e) {
-        console.error('Failed to load Google Maps:', e)
-      }
-    }
-    loadMaps()
-    return () => {
-      alive = false
-    }
-  }, [])
-
-  // Initialize Autocomplete
-  useEffect(() => {
-    if (mapsLoaded && searchInputRef.current && !autocomplete) {
-      try {
-        const ac = new window.google.maps.places.Autocomplete(searchInputRef.current, {
-          fields: ['formatted_address', 'geometry', 'address_components', 'name'],
-          types: ['establishment', 'geocode'], // Allow both businesses and addresses
-        })
-
-        // Bias towards selected country if possible
-        if (form.orderCountry) {
-          const nameToISO = {
-            UAE: 'ae',
-            Oman: 'om',
-            KSA: 'sa',
-            Bahrain: 'bh',
-            Qatar: 'qa',
-            Kuwait: 'kw',
-            India: 'in',
-          }
-          const code = nameToISO[form.orderCountry]
-          if (code) ac.setComponentRestrictions({ country: code })
-        }
-
-        ac.addListener('place_changed', () => {
-          const place = ac.getPlace()
-          if (!place.geometry || !place.geometry.location) {
-            // User entered name of a Place that was not suggested and pressed the Enter key, or the Place Details request failed.
-            return
-          }
-
-          const lat = place.geometry.location.lat()
-          const lng = place.geometry.location.lng()
-          const address = place.formatted_address || ''
-
-          let city = ''
-          let area = ''
-          let countryISO = ''
-
-          for (const component of place.address_components || []) {
-            if (component.types.includes('locality')) {
-              city = component.long_name
-            } else if (
-              component.types.includes('sublocality') ||
-              component.types.includes('sublocality_level_1')
-            ) {
-              area = component.long_name
-            } else if (!area && component.types.includes('neighborhood')) {
-              area = component.long_name
-            } else if (component.types.includes('country')) {
-              countryISO = component.short_name
-            }
-          }
-
-          // Validate country
-          if (form.orderCountry && countryISO) {
-            const nameToISO = {
-              UAE: 'AE',
-              Oman: 'OM',
-              KSA: 'SA',
-              Bahrain: 'BH',
-              Qatar: 'QA',
-              Kuwait: 'KW',
-              India: 'IN',
-            }
-            const expectedISO = nameToISO[form.orderCountry]
-            if (expectedISO && expectedISO !== countryISO) {
-              setMsg(
-                `Warning: Selected location is in ${countryISO}, but order country is ${form.orderCountry}`
-              )
-              // We still allow it, but warn? Or block? Let's just warn for now or let the user decide.
-              // Actually, let's enforce consistency if possible, or just update the form.
-            }
-          }
-
-          const cityCanon = canonicalizeCity(currentCountryKey, city)
-
-          setForm((f) => ({
-            ...f,
-            customerAddress: address,
-            city: cityCanon || city || f.city || 'Nearest Area',
-            customerArea: area || f.customerArea || cityCanon || city || 'Nearby',
-            locationLat: lat,
-            locationLng: lng,
-            customerLocation: `(${lat.toFixed(6)}, ${lng.toFixed(6)})`,
-          }))
-          setAddrLocked(true)
-          setLocationValidation({ isValid: true, message: '' })
-        })
-
-        setAutocomplete(ac)
-      } catch (e) {
-        console.error('Failed to init autocomplete:', e)
-      }
-    }
-  }, [mapsLoaded, autocomplete, form.orderCountry]) // Re-init or update restrictions if country changes?
-  // Actually creating new autocomplete instance every time country changes might be overkill.
-  // Better to just update options.
-
-  useEffect(() => {
-    if (autocomplete && form.orderCountry) {
-      const nameToISO = {
-        UAE: 'ae',
-        Oman: 'om',
-        KSA: 'sa',
-        Bahrain: 'bh',
-        Qatar: 'qa',
-        Kuwait: 'kw',
-        India: 'in',
-      }
-      const code = nameToISO[form.orderCountry]
-      if (code) {
-        autocomplete.setComponentRestrictions({ country: code })
-      } else {
-        autocomplete.setComponentRestrictions({ country: [] }) // Clear restriction?
-      }
-    }
-  }, [form.orderCountry, autocomplete])
 
   function onChange(e) {
     const { name, value } = e.target
@@ -1184,23 +1010,6 @@ export default function SubmitOrder() {
                     Dial code: {form.phoneCountryCode}
                   </div>
                 </div>
-
-                {/* Search Location Input */}
-                <div style={{ gridColumn: isMobile ? 'span 1' : 'span 2' }}>
-                  <div className="label">Search Location (Google Maps)</div>
-                  <input
-                    ref={searchInputRef}
-                    className="input"
-                    placeholder="Search for a place or address..."
-                    disabled={!mapsLoaded}
-                  />
-                  {!mapsLoaded && (
-                    <div className="helper" style={{ fontSize: 12, color: 'orange' }}>
-                      Loading Maps... (Check API Key if stuck)
-                    </div>
-                  )}
-                </div>
-
                 <div>
                   <div className="label">City</div>
                   <input
@@ -1230,18 +1039,6 @@ export default function SubmitOrder() {
                   <div className="helper" style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
                     You can edit if needed
                   </div>
-                </div>
-                <div>
-                  <div className="label">Address</div>
-                  <input
-                    className="input"
-                    name="customerAddress"
-                    value={form.customerAddress}
-                    onChange={onChange}
-                    placeholder="Full Address"
-                    readOnly={addrLocked}
-                    style={{ borderColor: fieldErrors.customerAddress ? '#ef4444' : undefined }}
-                  />
                 </div>
               </div>
 

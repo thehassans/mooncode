@@ -98,12 +98,7 @@ export default function UserLogin() {
       if (status === 429) {
         toast.info('Too many requests. Please wait a few seconds and try again.')
       } else if (status === 400 || /invalid|incorrect|credentials|password|email/i.test(msg)) {
-        // Show specific debug message if available
-        if (msg.includes('User not found') || msg.includes('Password mismatch')) {
-          toast.error(msg)
-        } else {
-          toast.error('Incorrect email or password')
-        }
+        toast.error('Incorrect email or password')
       } else {
         toast.error(msg || 'Login failed')
       }

@@ -181,7 +181,7 @@ router.post(
         const digits = String(phone || "").replace(/\D/g, "");
         if (digits) {
           const jid = `${digits}@s.whatsapp.net`;
-          const text = `🌟 Welcome to VITALBLAZE Commerce!\n\nDear ${firstName} ${lastName},\n\nWe’re excited to have you on board as part of our growing community. Your account has been successfully created. Please find your login details below:\n\n🌐 Login URL: https://buysial.com/login\n\n👤 Email: ${email}\n🔑 Password: ${password}\n\nOnce logged in, you’ll be able to access all features of VITALBLAZE Commerce and benefit from the exclusive opportunities available through our platform.\n\n🚀 Get ready — tutorials and guides will be shared with you soon to help you launch your business and maximize results.\n\nIf you face any issues signing in, please reach out to our support team.\n\nWelcome to the future of smart commerce with VITALBLAZE!`;
+          const text = `🌟 Welcome to VITALBLAZE Commerce!\n\nDear ${firstName} ${lastName},\n\nWe’re excited to have you on board as part of our growing community. Your account has been successfully created. Please find your login details below:\n\n🌐 Login URL: https://web.buysial.com/login\n\n👤 Email: ${email}\n🔑 Password: ${password}\n\nOnce logged in, you’ll be able to access all features of VITALBLAZE Commerce and benefit from the exclusive opportunities available through our platform.\n\n🚀 Get ready — tutorials and guides will be shared with you soon to help you launch your business and maximize results.\n\nIf you face any issues signing in, please reach out to our support team.\n\nWelcome to the future of smart commerce with VITALBLAZE!`;
           const wa = await getWA();
           try {
             await wa.sendText(jid, text);
@@ -381,7 +381,7 @@ router.post(
       fresh.password = tempPassword;
       await fresh.save();
       const jid = `${digits}@s.whatsapp.net`;
-      const text = `🌟 Welcome to VITALBLAZE Commerce!\n\nDear ${fresh.firstName} ${fresh.lastName},\n\nYour account details have been updated. Please find your login details below:\n\n🌐 Login URL: https://buysial.com/login\n\n👤 Email: ${fresh.email}\n🔑 Password: ${tempPassword}\n\nOnce logged in, you’ll be able to access all features of VITALBLAZE Commerce and benefit from the exclusive opportunities available through our platform.\n\nIf you face any issues signing in, please reach out to our support team.`;
+      const text = `🌟 Welcome to VITALBLAZE Commerce!\n\nDear ${fresh.firstName} ${fresh.lastName},\n\nYour account details have been updated. Please find your login details below:\n\n🌐 Login URL: https://web.buysial.com/login\n\n👤 Email: ${fresh.email}\n🔑 Password: ${tempPassword}\n\nOnce logged in, you’ll be able to access all features of VITALBLAZE Commerce and benefit from the exclusive opportunities available through our platform.\n\nIf you face any issues signing in, please reach out to our support team.`;
       const wa = await getWA();
       try {
         await wa.sendText(jid, text);

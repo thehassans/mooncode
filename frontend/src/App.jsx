@@ -265,9 +265,8 @@ function CustomDomainRouter({ children }) {
       try {
         const hostname = window.location.hostname.toLowerCase()
 
-        // Skip check for buysial.com, web.buysial.com and localhost
+        // Skip check for web.buysial.com and localhost
         if (
-          hostname === 'buysial.com' ||
           hostname === 'web.buysial.com' ||
           hostname === 'localhost' ||
           hostname === '127.0.0.1'
@@ -317,9 +316,9 @@ function CustomDomainRouter({ children }) {
     )
   }
 
-  // If custom domain, show catalog by default but allow routing
+  // If custom domain, show catalog by default
   if (isCustomDomain) {
-    return children
+    return <ProductCatalog />
   }
 
   return children

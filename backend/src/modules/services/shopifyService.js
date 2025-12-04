@@ -57,7 +57,7 @@ function convertProductToShopifyFormat(product, imagePath) {
   let imageUrl = null;
   if (product.imagePath) {
     // Assuming images are served at https://yourdomain.com/uploads/...
-    const baseUrl = process.env.BASE_URL || "https://buysial.com";
+    const baseUrl = process.env.BASE_URL || "https://web.buysial.com";
     imageUrl = `${baseUrl}${product.imagePath}`;
   }
 

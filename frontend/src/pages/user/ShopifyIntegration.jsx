@@ -264,7 +264,7 @@ export default function ShopifyIntegration() {
                   </li>
                   <li>Install the app and copy the Admin API access token</li>
                   <li>Create webhooks for: orders/create, orders/fulfilled, orders/cancelled</li>
-                  <li>Webhook URL: https://buysial.com/api/shopify/webhooks/orders/create</li>
+                  <li>Webhook URL: https://web.buysial.com/api/shopify/webhooks/orders/create</li>
                 </ol>
               </div>
 
@@ -443,7 +443,7 @@ export default function ShopifyIntegration() {
               }}
             >
               <div style={{ fontWeight: 600, marginBottom: '4px' }}>Order Created:</div>
-              https://buysial.com/api/shopify/webhooks/orders/create
+              https://web.buysial.com/api/shopify/webhooks/orders/create
             </div>
             <div
               style={{
@@ -456,7 +456,7 @@ export default function ShopifyIntegration() {
               }}
             >
               <div style={{ fontWeight: 600, marginBottom: '4px' }}>Order Fulfilled:</div>
-              https://buysial.com/api/shopify/webhooks/orders/fulfilled
+              https://web.buysial.com/api/shopify/webhooks/orders/fulfilled
             </div>
             <div
               style={{
@@ -469,7 +469,7 @@ export default function ShopifyIntegration() {
               }}
             >
               <div style={{ fontWeight: 600, marginBottom: '4px' }}>Order Cancelled:</div>
-              https://buysial.com/api/shopify/webhooks/orders/cancelled
+              https://web.buysial.com/api/shopify/webhooks/orders/cancelled
             </div>
           </div>
         </div>

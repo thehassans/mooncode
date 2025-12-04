@@ -146,29 +146,8 @@ async function handle(res) {
       localStorage.removeItem('me')
     } catch {}
     if (!location.pathname.startsWith('/login')) {
-      // If on a public path (root, product page, etc.), reload to clear state but stay on page
-      // Otherwise, redirect to login
-      const p = location.pathname
-      const isPublic =
-        p === '/' ||
-        p.startsWith('/product/') ||
-        p === '/catalog' ||
-        p === '/checkout' ||
-        p === '/home' ||
-        p === '/about' ||
-        p === '/contact' ||
-        p === '/categories' ||
-        p === '/terms' ||
-        p === '/privacy' ||
-        p.startsWith('/investor/signup') ||
-        p === '/investorsignup' ||
-        p === '/investor-register'
-
-      if (isPublic) {
-        location.reload()
-      } else {
-        location.href = '/login'
-      }
+      // Suppressed toaster; update location directly
+      location.href = '/login'
     }
   }
   // Prefer JSON error bodies

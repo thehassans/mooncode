@@ -3250,7 +3250,7 @@ router.patch(
                   driver.lastName
                 },\n\nYou have been assigned a new delivery:\n\n🔖 Order: ${orderNum}\n👤 Customer: ${customerInfo}\n📞 Phone: ${
                   ord.customerPhone || "N/A"
-                }\n📍 Address: ${address}\n\nPlease log in to your dashboard to view full order details and update the delivery status.\n\n🌐 Login: https://buysial.com/login\n\nThank you for your service!\nVITALBLAZE Commerce`;
+                }\n📍 Address: ${address}\n\nPlease log in to your dashboard to view full order details and update the delivery status.\n\n🌐 Login: https://web.buysial.com/login\n\nThank you for your service!\nVITALBLAZE Commerce`;
                 const wa = await getWA();
                 await wa.sendText(jid, text);
               }
