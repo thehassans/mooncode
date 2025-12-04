@@ -1824,13 +1824,13 @@ router.get(
         totalDeliveredOrders,
         totalCollectedAmount: totalDeliveredValue,
       };
-      // Sum of remittances already accepted (delivered to company)
+      // Sum of remittances submitted to company (includes pending, manager_accepted, and accepted)
       // NOTE: amount field represents COD collection amount remitted, NOT commission
       const remitRows = await Remittance.aggregate([
         {
           $match: {
             driver: new M.Types.ObjectId(req.user.id),
-            status: "accepted",
+            status: { $in: ["pending", "manager_accepted", "accepted"] },
           },
         },
         { $group: { _id: null, total: { $sum: { $ifNull: ["$amount", 0] } } } },
