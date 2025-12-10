@@ -9,15 +9,15 @@ import { getCurrencyConfig, toAEDByCode, convert } from '../../util/currency'
 
 // --- Premium Tab Component ---
 const TabsComponent = ({ tabs, activeTab, setActiveTab }) => (
-  <div className="flex gap-2 overflow-x-auto rounded-2xl bg-slate-100/50 p-1.5 dark:bg-neutral-900/50">
+  <div className="flex gap-2 overflow-x-auto rounded-2xl bg-slate-100 p-1.5 backdrop-blur-xl dark:bg-neutral-900/80">
     {tabs.map((tab) => (
       <button
         key={tab.id}
         onClick={() => setActiveTab(tab.id)}
-        className={`rounded-xl px-6 py-3 text-sm font-black tracking-wide whitespace-nowrap uppercase transition-all duration-300 ${
+        className={`rounded-xl px-6 py-3 text-sm font-bold tracking-wide whitespace-nowrap transition-all duration-300 ${
           activeTab === tab.id
-            ? 'bg-gradient-to-br from-white to-slate-50 text-slate-900 shadow-lg dark:from-neutral-800 dark:to-neutral-900 dark:text-white'
-            : 'text-slate-500 hover:text-slate-900 dark:text-neutral-400 dark:hover:text-white'
+            ? 'bg-white text-slate-900 shadow-lg shadow-slate-200/50 dark:bg-gradient-to-br dark:from-violet-600 dark:to-purple-700 dark:text-white dark:shadow-violet-500/20'
+            : 'text-slate-500 hover:bg-white/50 hover:text-slate-900 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-white'
         }`}
       >
         {tab.label}
@@ -29,19 +29,17 @@ const TabsComponent = ({ tabs, activeTab, setActiveTab }) => (
 // --- Compact Metric Badge ---
 const MetricBadge = ({ icon, label, value, prefix = '', className = '', loading = false }) => (
   <div
-    className={`group relative overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/20 dark:border-neutral-700/30 dark:bg-neutral-800/20 dark:hover:bg-neutral-700/30 ${className}`}
+    className={`group relative overflow-hidden rounded-2xl border border-white/30 bg-white/20 p-4 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/30 hover:shadow-lg ${className}`}
   >
-    <div className="absolute -top-2 -right-2 text-4xl opacity-5 transition-transform group-hover:scale-110 group-hover:opacity-10">
+    <div className="absolute -top-2 -right-2 text-4xl opacity-10 transition-transform group-hover:scale-110 group-hover:opacity-20">
       {icon}
     </div>
-    <p className="text-[10px] font-black tracking-widest text-slate-600 uppercase dark:text-neutral-400">
-      {label}
-    </p>
+    <p className="text-[10px] font-bold tracking-widest text-white/70 uppercase">{label}</p>
     {loading ? (
-      <div className="mt-2 h-6 w-20 animate-pulse rounded bg-slate-300 dark:bg-neutral-700" />
+      <div className="mt-2 h-6 w-20 animate-pulse rounded bg-white/20" />
     ) : (
-      <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">
-        {prefix && <span className="mr-1 text-sm opacity-60">{prefix}</span>}
+      <p className="mt-1 text-lg font-black text-white">
+        {prefix && <span className="mr-1 text-sm opacity-70">{prefix}</span>}
         {value}
       </p>
     )}
@@ -51,15 +49,17 @@ const MetricBadge = ({ icon, label, value, prefix = '', className = '', loading 
 // --- Premium Stat Card ---
 const PremiumStatCard = ({ icon: Icon, title, value, trend, to, loading }) => {
   const content = (
-    <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-black p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-black dark:bg-black">
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
       <div className="absolute -top-2 -right-2 text-4xl opacity-5 transition-transform group-hover:scale-110 group-hover:opacity-10">
         {Icon && <Icon className="h-10 w-10" />}
       </div>
-      <p className="text-[10px] font-black tracking-widest text-neutral-400 uppercase">{title}</p>
+      <p className="text-[10px] font-bold tracking-widest text-slate-500 uppercase dark:text-neutral-400">
+        {title}
+      </p>
       {loading ? (
-        <div className="mt-2 h-6 w-20 animate-pulse rounded bg-slate-300 dark:bg-neutral-700" />
+        <div className="mt-2 h-6 w-20 animate-pulse rounded bg-slate-200 dark:bg-neutral-700" />
       ) : (
-        <p className="mt-1 text-lg font-black text-white">{value}</p>
+        <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">{value}</p>
       )}
       {trend && (
         <p
@@ -80,12 +80,20 @@ const PremiumStatCard = ({ icon: Icon, title, value, trend, to, loading }) => {
 // --- Glass Card Container ---
 const GlassCard = ({ children, className = '', title, subtitle }) => (
   <div
-    className={`rounded-2xl border border-slate-200 bg-black p-5 shadow-lg dark:border-black dark:bg-black ${className}`}
+    className={`rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition-all duration-300 dark:border-neutral-800/50 dark:bg-neutral-900/80 dark:shadow-black/20 ${className}`}
   >
     {(title || subtitle) && (
-      <div className="mb-4 border-b border-neutral-800 pb-3">
-        {title && <h3 className="text-xl font-black tracking-tight text-white">{title}</h3>}
-        {subtitle && <p className="mt-1 text-sm font-medium text-neutral-400">{subtitle}</p>}
+      <div className="mb-5 border-b border-slate-100 pb-4 dark:border-neutral-800">
+        {title && (
+          <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            {title}
+          </h3>
+        )}
+        {subtitle && (
+          <p className="mt-1 text-sm font-medium text-slate-500 dark:text-neutral-400">
+            {subtitle}
+          </p>
+        )}
       </div>
     )}
     {children}
@@ -102,11 +110,13 @@ const CompactStatCard = ({
 }) => {
   const Content = (
     <div className="flex flex-col gap-1">
-      <p className="text-[10px] font-bold tracking-wider text-neutral-400 uppercase">{title}</p>
+      <p className="text-[10px] font-bold tracking-wider text-slate-500 uppercase dark:text-neutral-400">
+        {title}
+      </p>
       {loading ? (
         <div className="h-8 w-full animate-pulse rounded bg-slate-200 dark:bg-neutral-800" />
       ) : (
-        <p className={`text-2xl font-black text-white`}>{value}</p>
+        <p className="text-2xl font-black text-slate-900 dark:text-white">{value}</p>
       )}
     </div>
   )
@@ -115,7 +125,7 @@ const CompactStatCard = ({
     return (
       <NavLink
         to={to}
-        className="block rounded-xl border border-slate-200 bg-black p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-black dark:bg-black"
+        className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
       >
         {Content}
       </NavLink>
@@ -123,7 +133,7 @@ const CompactStatCard = ({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-black p-4 dark:border-black dark:bg-black">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
       {Content}
     </div>
   )
@@ -495,9 +505,9 @@ export default function Dashboard() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-black p-2 dark:border-black dark:bg-black">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
             <select
-              className="cursor-pointer rounded-xl border-none bg-gradient-to-br from-neutral-800 to-neutral-900 px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:from-neutral-800 dark:to-neutral-900 dark:text-white"
+              className="cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
             >
@@ -509,7 +519,7 @@ export default function Dashboard() {
             </select>
             <div className="h-8 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent dark:via-neutral-700" />
             <select
-              className="cursor-pointer rounded-xl border-none bg-gradient-to-br from-slate-50 to-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:from-neutral-800 dark:to-neutral-900 dark:text-white"
+              className="cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
             >
@@ -527,38 +537,30 @@ export default function Dashboard() {
           <div className="h-32 animate-pulse rounded-3xl bg-slate-200 dark:bg-neutral-800" />
         ) : metrics?.profitLoss ? (
           <div
-            className={`relative overflow-hidden rounded-[2rem] bg-neutral-900 p-8 shadow-2xl transition-all duration-500 ${
-              metrics.profitLoss.isProfit ? 'shadow-emerald-500/10' : 'shadow-rose-500/10'
+            className={`relative overflow-hidden rounded-[2rem] p-8 shadow-2xl transition-all duration-500 ${
+              metrics.profitLoss.isProfit
+                ? 'bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-emerald-500/30 dark:from-emerald-600 dark:to-emerald-900'
+                : 'bg-gradient-to-br from-rose-500 to-rose-700 shadow-rose-500/30 dark:from-rose-600 dark:to-rose-900'
             }`}
           >
-            <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
-            <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-black/20 blur-3xl" />
+            <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-black/10 blur-3xl" />
 
             <div className="relative flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-center">
               <div className="flex-1">
-                <div className="mb-2 inline-block rounded-full bg-white/10 px-3 py-1 text-xs font-black tracking-widest text-white/60 uppercase backdrop-blur-md">
+                <div className="mb-2 inline-block rounded-full bg-white/20 px-4 py-1.5 text-xs font-bold tracking-widest text-white uppercase backdrop-blur-md">
                   {metrics.profitLoss.isProfit ? 'Net Profit' : 'Net Loss'}
                 </div>
-                <div className="mb-1 flex items-baseline gap-2">
-                  <span
-                    className={`text-xl font-black ${
-                      metrics.profitLoss.isProfit ? 'text-emerald-500' : 'text-rose-500'
-                    }`}
-                  >
-                    AED
-                  </span>
-                  <span
-                    className={`text-5xl font-black tracking-tighter drop-shadow-2xl md:text-6xl ${
-                      metrics.profitLoss.isProfit ? 'text-emerald-500' : 'text-rose-500'
-                    }`}
-                  >
+                <div className="mb-1 flex items-baseline gap-3">
+                  <span className="text-xl font-bold text-white/80">AED</span>
+                  <span className="text-5xl font-black tracking-tighter text-white drop-shadow-lg md:text-6xl">
                     <LiveNumber
                       value={Math.abs(metrics.profitLoss.profit || 0)}
                       maximumFractionDigits={2}
                     />
                   </span>
                 </div>
-                <p className="text-sm font-bold text-white/80">
+                <p className="text-sm font-semibold text-white/70">
                   {monthNames[selectedMonth - 1]} {selectedYear}
                 </p>
               </div>
