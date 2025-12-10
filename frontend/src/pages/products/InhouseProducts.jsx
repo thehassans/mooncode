@@ -1563,6 +1563,9 @@ export default function InhouseProducts() {
                     stockOman: 0,
                     stockKSA: 0,
                     stockBahrain: 0,
+                    stockIndia: 0,
+                    stockKuwait: 0,
+                    stockQatar: 0,
                     inStock: true,
                   })
                 }
@@ -1617,6 +1620,39 @@ export default function InhouseProducts() {
                   }
                 />
               </label>
+              <label className="field">
+                <div>India</div>
+                <input
+                  type="number"
+                  value={stockPopup.stockIndia}
+                  min={0}
+                  onChange={(e) =>
+                    setStockPopup((s) => ({ ...s, stockIndia: Number(e.target.value || 0) }))
+                  }
+                />
+              </label>
+              <label className="field">
+                <div>Kuwait</div>
+                <input
+                  type="number"
+                  value={stockPopup.stockKuwait}
+                  min={0}
+                  onChange={(e) =>
+                    setStockPopup((s) => ({ ...s, stockKuwait: Number(e.target.value || 0) }))
+                  }
+                />
+              </label>
+              <label className="field">
+                <div>Qatar</div>
+                <input
+                  type="number"
+                  value={stockPopup.stockQatar}
+                  min={0}
+                  onChange={(e) =>
+                    setStockPopup((s) => ({ ...s, stockQatar: Number(e.target.value || 0) }))
+                  }
+                />
+              </label>
               <label
                 style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8 }}
               >
@@ -1639,6 +1675,9 @@ export default function InhouseProducts() {
                     stockOman: 0,
                     stockKSA: 0,
                     stockBahrain: 0,
+                    stockIndia: 0,
+                    stockKuwait: 0,
+                    stockQatar: 0,
                     inStock: true,
                   })
                 }
@@ -2130,6 +2169,9 @@ export default function InhouseProducts() {
                               { k: 'Oman', v: p.stockByCountry?.Oman ?? 0 },
                               { k: 'KSA', v: p.stockByCountry?.KSA ?? 0 },
                               { k: 'Bahrain', v: p.stockByCountry?.Bahrain ?? 0 },
+                              { k: 'India', v: p.stockByCountry?.India ?? 0 },
+                              { k: 'Kuwait', v: p.stockByCountry?.Kuwait ?? 0 },
+                              { k: 'Qatar', v: p.stockByCountry?.Qatar ?? 0 },
                             ]
                               .filter((x) => Number(x.v) > 0)
                               .map((x) => (
