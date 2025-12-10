@@ -7,150 +7,157 @@ import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
 import { getCurrencyConfig, toAEDByCode, convert } from '../../util/currency'
 
+// ============================================
+// EXTREME PREMIUM DASHBOARD COMPONENTS
+// ============================================
+
 // --- Premium Tab Component ---
 const TabsComponent = ({ tabs, activeTab, setActiveTab }) => (
-  <div className="flex gap-2 overflow-x-auto rounded-2xl bg-slate-100 p-1.5 backdrop-blur-xl dark:bg-neutral-900/80">
+  <div className="flex gap-2 overflow-x-auto rounded-2xl bg-gradient-to-r from-slate-100 to-slate-50 p-1.5 shadow-inner dark:from-neutral-800/50 dark:to-neutral-900/50">
     {tabs.map((tab) => (
       <button
         key={tab.id}
         onClick={() => setActiveTab(tab.id)}
-        className={`rounded-xl px-6 py-3 text-sm font-bold tracking-wide whitespace-nowrap transition-all duration-300 ${
+        className={`relative rounded-xl px-6 py-3 text-sm font-semibold tracking-wide whitespace-nowrap transition-all duration-300 ${
           activeTab === tab.id
-            ? 'bg-white text-slate-900 shadow-lg shadow-slate-200/50 dark:bg-gradient-to-br dark:from-violet-600 dark:to-purple-700 dark:text-white dark:shadow-violet-500/20'
-            : 'text-slate-500 hover:bg-white/50 hover:text-slate-900 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-white'
+            ? 'bg-white text-violet-600 shadow-lg shadow-violet-100 dark:bg-gradient-to-br dark:from-violet-600 dark:to-purple-700 dark:text-white dark:shadow-violet-500/30'
+            : 'text-slate-500 hover:bg-white/60 hover:text-slate-800 dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-white'
         }`}
       >
         {tab.label}
+        {activeTab === tab.id && (
+          <span className="absolute bottom-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-gradient-to-r from-violet-500 to-purple-500 dark:from-violet-400 dark:to-purple-400" />
+        )}
       </button>
     ))}
   </div>
 )
 
-// --- Compact Metric Badge ---
+// --- Compact Metric Badge (for hero section - always on gradient) ---
 const MetricBadge = ({ icon, label, value, prefix = '', className = '', loading = false }) => (
   <div
-    className={`group relative overflow-hidden rounded-2xl border border-white/30 bg-white/20 p-4 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/30 hover:shadow-lg ${className}`}
+    className={`group relative overflow-hidden rounded-2xl border border-white/20 bg-white/15 p-4 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/25 hover:shadow-xl ${className}`}
   >
-    <div className="absolute -top-2 -right-2 text-4xl opacity-10 transition-transform group-hover:scale-110 group-hover:opacity-20">
+    <div className="absolute -top-1 -right-1 text-3xl opacity-10 transition-transform group-hover:scale-110 group-hover:opacity-20">
       {icon}
     </div>
-    <p className="text-[10px] font-bold tracking-widest text-white/70 uppercase">{label}</p>
+    <p className="text-[10px] font-semibold tracking-widest text-white/80 uppercase">{label}</p>
     {loading ? (
-      <div className="mt-2 h-6 w-20 animate-pulse rounded bg-white/20" />
+      <div className="mt-2 h-6 w-20 animate-pulse rounded-lg bg-white/20" />
     ) : (
-      <p className="mt-1 text-lg font-black text-white">
-        {prefix && <span className="mr-1 text-sm opacity-70">{prefix}</span>}
+      <p className="mt-1 text-lg font-bold text-white">
+        {prefix && <span className="mr-1 text-sm opacity-80">{prefix}</span>}
         {value}
       </p>
     )}
   </div>
 )
 
-// --- Premium Stat Card ---
-const PremiumStatCard = ({ icon: Icon, title, value, trend, to, loading }) => {
-  const content = (
-    <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="absolute -top-2 -right-2 text-4xl opacity-5 transition-transform group-hover:scale-110 group-hover:opacity-10">
-        {Icon && <Icon className="h-10 w-10" />}
-      </div>
-      <p className="text-[10px] font-bold tracking-widest text-slate-500 uppercase dark:text-neutral-400">
-        {title}
-      </p>
-      {loading ? (
-        <div className="mt-2 h-6 w-20 animate-pulse rounded bg-slate-200 dark:bg-neutral-700" />
-      ) : (
-        <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">{value}</p>
-      )}
-      {trend && (
-        <p
-          className={`mt-1 text-xs font-bold ${trend.isPositive ? 'text-emerald-500' : 'text-rose-500'}`}
-        >
-          {trend.isPositive ? '▲' : '▼'} {trend.value}%
-        </p>
-      )}
-    </div>
-  )
-
-  if (to && !loading) {
-    return <NavLink to={to}>{content}</NavLink>
-  }
-  return content
-}
-
-// --- Glass Card Container ---
-const GlassCard = ({ children, className = '', title, subtitle }) => (
+// --- Extreme Premium Glass Card ---
+const GlassCard = ({ children, className = '', title, subtitle, gradient = false }) => (
   <div
-    className={`rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-xl shadow-slate-200/50 backdrop-blur-xl transition-all duration-300 dark:border-neutral-800/50 dark:bg-neutral-900/80 dark:shadow-black/20 ${className}`}
+    className={`group relative overflow-hidden rounded-3xl transition-all duration-500 ${
+      gradient
+        ? 'bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 p-[1px] shadow-2xl shadow-violet-500/20'
+        : 'border border-slate-200/60 bg-white shadow-xl shadow-slate-200/40 dark:border-neutral-700/40 dark:bg-neutral-900 dark:shadow-neutral-950/50'
+    } ${className}`}
   >
-    {(title || subtitle) && (
-      <div className="mb-5 border-b border-slate-100 pb-4 dark:border-neutral-800">
-        {title && (
-          <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-            {title}
-          </h3>
-        )}
-        {subtitle && (
-          <p className="mt-1 text-sm font-medium text-slate-500 dark:text-neutral-400">
-            {subtitle}
-          </p>
-        )}
-      </div>
-    )}
-    {children}
+    <div className={gradient ? 'rounded-3xl bg-white p-6 dark:bg-neutral-900' : 'p-6'}>
+      {(title || subtitle) && (
+        <div className="mb-5 flex items-center justify-between border-b border-slate-100 pb-4 dark:border-neutral-800">
+          <div>
+            {title && (
+              <h3 className="text-lg font-bold tracking-tight text-slate-800 dark:text-white">
+                {title}
+              </h3>
+            )}
+            {subtitle && (
+              <p className="mt-0.5 text-sm text-slate-500 dark:text-neutral-400">{subtitle}</p>
+            )}
+          </div>
+          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 opacity-0 transition-opacity group-hover:opacity-100" />
+        </div>
+      )}
+      {children}
+    </div>
   </div>
 )
 
-// --- Compact Stat Card ---
-const CompactStatCard = ({
-  title,
-  value,
-  to,
-  color = 'text-slate-900 dark:text-white',
-  loading,
-}) => {
+// --- Extreme Premium Stat Card ---
+const CompactStatCard = ({ title, value, to, icon, loading, accent = 'violet' }) => {
+  const accentColors = {
+    violet: 'from-violet-500 to-purple-600',
+    emerald: 'from-emerald-500 to-teal-600',
+    amber: 'from-amber-500 to-orange-600',
+    rose: 'from-rose-500 to-pink-600',
+    sky: 'from-sky-500 to-blue-600',
+    slate: 'from-slate-500 to-slate-700',
+  }
+
   const Content = (
-    <div className="flex flex-col gap-1">
-      <p className="text-[10px] font-bold tracking-wider text-slate-500 uppercase dark:text-neutral-400">
-        {title}
-      </p>
-      {loading ? (
-        <div className="h-8 w-full animate-pulse rounded bg-slate-200 dark:bg-neutral-800" />
-      ) : (
-        <p className="text-2xl font-black text-slate-900 dark:text-white">{value}</p>
-      )}
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white p-5 shadow-lg shadow-slate-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-violet-100/50 dark:border-neutral-700/40 dark:bg-neutral-800/80 dark:shadow-none dark:hover:bg-neutral-800">
+      <div
+        className={`absolute -top-6 -right-6 h-20 w-20 rounded-full bg-gradient-to-br ${accentColors[accent]} opacity-10 blur-2xl transition-all group-hover:opacity-20`}
+      />
+      <div className="relative">
+        <div className="mb-3 flex items-center gap-2">
+          <div
+            className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${accentColors[accent]} text-white shadow-sm`}
+          >
+            {icon || (
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+            )}
+          </div>
+          <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
+            {title}
+          </p>
+        </div>
+        {loading ? (
+          <div className="h-9 w-24 animate-pulse rounded-lg bg-slate-100 dark:bg-neutral-700" />
+        ) : (
+          <p className="text-2xl font-bold text-slate-800 dark:text-white">{value}</p>
+        )}
+      </div>
     </div>
   )
 
   if (to && !loading) {
     return (
-      <NavLink
-        to={to}
-        className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
-      >
+      <NavLink to={to} className="block">
         {Content}
       </NavLink>
     )
   }
 
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-      {Content}
-    </div>
-  )
+  return Content
 }
 
-// --- Pie Chart Component ---
+// --- Premium Pie Chart ---
 const PremiumPieChart = ({ statusTotals, loading }) => {
   if (loading || !statusTotals) {
     return (
-      <div className="h-64 w-full animate-pulse rounded-2xl bg-slate-200 dark:bg-neutral-800" />
+      <div className="flex flex-col items-center gap-6">
+        <div className="h-48 w-48 animate-pulse rounded-full bg-slate-100 dark:bg-neutral-800" />
+        <div className="grid w-full grid-cols-2 gap-2">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-5 animate-pulse rounded bg-slate-100 dark:bg-neutral-800" />
+          ))}
+        </div>
+      </div>
     )
   }
 
   const statuses = [
     { key: 'pending', label: 'Open', color: '#f59e0b' },
     { key: 'assigned', label: 'Assigned', color: '#3b82f6' },
-    { key: 'picked_up', label: 'Picked Up', color: '#6366f1' },
+    { key: 'picked_up', label: 'Picked Up', color: '#8b5cf6' },
     { key: 'in_transit', label: 'In Transit', color: '#06b6d4' },
     { key: 'out_for_delivery', label: 'Out Delivery', color: '#f97316' },
     { key: 'delivered', label: 'Delivered', color: '#10b981' },
@@ -163,9 +170,9 @@ const PremiumPieChart = ({ statusTotals, loading }) => {
   let cumulativePercent = 0
 
   return (
-    <div className="space-y-4">
-      <div className="relative mx-auto aspect-square w-full max-w-[200px]">
-        <svg viewBox="0 0 100 100" className="rotate-[-90deg]">
+    <div className="flex flex-col items-center gap-6">
+      <div className="relative aspect-square w-full max-w-[200px]">
+        <svg viewBox="0 0 100 100" className="rotate-[-90deg] drop-shadow-lg">
           {statuses.map((status, i) => {
             const value = statusTotals[status.key] || 0
             const percent = total > 0 ? (value / total) * 100 : 0
@@ -174,7 +181,7 @@ const PremiumPieChart = ({ statusTotals, loading }) => {
 
             if (percent === 0) return null
 
-            const circumference = 2 * Math.PI * 40
+            const circumference = 2 * Math.PI * 38
             const strokeDasharray = `${(percent / 100) * circumference} ${circumference}`
             const strokeDashoffset = -(offset / 100) * circumference
 
@@ -183,34 +190,44 @@ const PremiumPieChart = ({ statusTotals, loading }) => {
                 key={i}
                 cx="50"
                 cy="50"
-                r="40"
+                r="38"
                 fill="none"
                 stroke={status.color}
-                strokeWidth="20"
+                strokeWidth="24"
                 strokeDasharray={strokeDasharray}
                 strokeDashoffset={strokeDashoffset}
-                className="transition-all duration-500"
+                className="transition-all duration-700 ease-out"
+                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
               />
             )
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-xs font-bold text-slate-500 uppercase dark:text-neutral-400">Total</p>
-          <p className="text-2xl font-black text-slate-900 dark:text-white">
+          <p className="text-[10px] font-semibold tracking-widest text-slate-400 uppercase dark:text-neutral-500">
+            Total
+          </p>
+          <p className="text-3xl font-bold text-slate-800 dark:text-white">
             {total.toLocaleString()}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2">
         {statuses.map((status) => {
           const value = statusTotals[status.key] || 0
           if (value === 0) return null
           return (
-            <div key={status.key} className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full" style={{ backgroundColor: status.color }} />
-              <span className="text-xs font-bold text-slate-700 dark:text-neutral-300">
-                {status.label}: {value}
+            <div
+              key={status.key}
+              className="flex items-center gap-2 rounded-lg p-1.5 transition-colors hover:bg-slate-50 dark:hover:bg-neutral-800/50"
+            >
+              <div
+                className="h-3 w-3 rounded-full shadow-sm"
+                style={{ backgroundColor: status.color }}
+              />
+              <span className="text-xs font-medium text-slate-600 dark:text-neutral-300">
+                {status.label}:
+                <span className="ml-1 font-bold text-slate-800 dark:text-white">{value}</span>
               </span>
             </div>
           )
@@ -219,6 +236,10 @@ const PremiumPieChart = ({ statusTotals, loading }) => {
     </div>
   )
 }
+
+// ============================================
+// MAIN DASHBOARD COMPONENT
+// ============================================
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState(null)
@@ -464,50 +485,50 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="min-h-screen px-4 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/30 px-4 py-6 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
       <style>{`
         @keyframes fadeInUp {
           from {
             opacity: 0;
-            transform: translateY(30px) scale(0.95);
-            filter: blur(10px);
+            transform: translateY(20px);
           }
           to {
             opacity: 1;
-            transform: translateY(0) scale(1);
-            filter: blur(0);
+            transform: translateY(0);
           }
         }
-        @keyframes fadeIn {
-          from { 
-            opacity: 0;
-            filter: blur(5px);
-          }
-          to { 
-            opacity: 1;
-            filter: blur(0);
-          }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
         }
         .animate-fadeInUp {
-          animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-        .animate-fadeIn {
-          animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .animate-shimmer {
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+          background-size: 200% 100%;
+          animation: shimmer 2s infinite;
         }
       `}</style>
-      <div className="mx-auto max-w-[1800px] space-y-6">
+
+      <div className="mx-auto max-w-[1800px] space-y-8">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-black text-black dark:text-white">Dashboard</h1>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <div className="animate-fadeInUp">
+            <h1 className="bg-gradient-to-r from-slate-800 via-violet-700 to-purple-700 bg-clip-text text-3xl font-bold tracking-tight text-transparent dark:from-white dark:via-violet-400 dark:to-purple-400">
+              Dashboard
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-neutral-400">
               Your Business Command Center
             </p>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
+          <div
+            className="animate-fadeInUp flex items-center gap-3 rounded-2xl border border-slate-200/60 bg-white p-2 shadow-lg shadow-slate-100 dark:border-neutral-700/40 dark:bg-neutral-800/80 dark:shadow-none"
+            style={{ animationDelay: '100ms' }}
+          >
             <select
-              className="cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+              className="cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-all hover:border-violet-300 hover:bg-white focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white dark:hover:border-violet-500"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
             >
@@ -517,9 +538,9 @@ export default function Dashboard() {
                 </option>
               ))}
             </select>
-            <div className="h-8 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent dark:via-neutral-700" />
+            <div className="h-8 w-px bg-slate-200 dark:bg-neutral-600" />
             <select
-              className="cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all hover:shadow-md focus:ring-2 focus:ring-violet-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+              className="cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-all hover:border-violet-300 hover:bg-white focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white dark:hover:border-violet-500"
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
             >
@@ -532,35 +553,42 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Compact Hero - Profit/Loss */}
+        {/* Hero - Profit/Loss */}
         {loading ? (
-          <div className="h-32 animate-pulse rounded-3xl bg-slate-200 dark:bg-neutral-800" />
+          <div className="h-40 animate-pulse rounded-3xl bg-gradient-to-r from-slate-200 to-slate-100 dark:from-neutral-800 dark:to-neutral-700" />
         ) : metrics?.profitLoss ? (
           <div
-            className={`relative overflow-hidden rounded-[2rem] p-8 shadow-2xl transition-all duration-500 ${
+            className={`animate-fadeInUp relative overflow-hidden rounded-3xl p-8 shadow-2xl ${
               metrics.profitLoss.isProfit
-                ? 'bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-emerald-500/30 dark:from-emerald-600 dark:to-emerald-900'
-                : 'bg-gradient-to-br from-rose-500 to-rose-700 shadow-rose-500/30 dark:from-rose-600 dark:to-rose-900'
+                ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 shadow-emerald-500/25'
+                : 'bg-gradient-to-br from-rose-500 via-rose-600 to-pink-600 shadow-rose-500/25'
             }`}
+            style={{ animationDelay: '150ms' }}
           >
+            {/* Decorative elements */}
             <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-black/10 blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+            <div className="absolute top-8 right-8 h-32 w-32 rounded-full border border-white/10" />
+            <div className="absolute top-12 right-12 h-24 w-24 rounded-full border border-white/10" />
 
-            <div className="relative flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-center">
+            <div className="relative flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-center">
               <div className="flex-1">
-                <div className="mb-2 inline-block rounded-full bg-white/20 px-4 py-1.5 text-xs font-bold tracking-widest text-white uppercase backdrop-blur-md">
-                  {metrics.profitLoss.isProfit ? 'Net Profit' : 'Net Loss'}
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-1.5 backdrop-blur-sm">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+                  <span className="text-xs font-semibold tracking-widest text-white uppercase">
+                    {metrics.profitLoss.isProfit ? 'Net Profit' : 'Net Loss'}
+                  </span>
                 </div>
-                <div className="mb-1 flex items-baseline gap-3">
-                  <span className="text-xl font-bold text-white/80">AED</span>
-                  <span className="text-5xl font-black tracking-tighter text-white drop-shadow-lg md:text-6xl">
+                <div className="flex items-baseline gap-3">
+                  <span className="text-xl font-medium text-white/80">AED</span>
+                  <span className="text-5xl font-bold tracking-tight text-white drop-shadow-lg md:text-6xl">
                     <LiveNumber
                       value={Math.abs(metrics.profitLoss.profit || 0)}
                       maximumFractionDigits={2}
                     />
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-white/70">
+                <p className="mt-2 text-sm font-medium text-white/70">
                   {monthNames[selectedMonth - 1]} {selectedYear}
                 </p>
               </div>
@@ -590,13 +618,18 @@ export default function Dashboard() {
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
-          {/* Left Column - Charts */}
+          {/* Left Column */}
           <div className="space-y-6 lg:col-span-2">
             {/* Sales Trend */}
-            <GlassCard title="Sales Trend" subtitle="Last 7 days performance">
-              <div className="h-[400px] w-full">
+            <GlassCard
+              title="Sales Trend"
+              subtitle="Last 7 days performance"
+              className="animate-fadeInUp"
+              style={{ animationDelay: '200ms' }}
+            >
+              <div className="h-[400px] w-full rounded-2xl bg-slate-50/50 p-4 dark:bg-neutral-800/50">
                 {!hydrated || loading ? (
-                  <div className="h-full w-full animate-pulse rounded-2xl bg-slate-200 dark:bg-neutral-800" />
+                  <div className="h-full w-full animate-pulse rounded-xl bg-slate-100 dark:bg-neutral-700" />
                 ) : (
                   <Chart analytics={analytics} />
                 )}
@@ -604,13 +637,18 @@ export default function Dashboard() {
             </GlassCard>
 
             {/* Geographic Performance */}
-            <GlassCard title="Geographic Performance" subtitle="Country-wise breakdown">
+            <GlassCard
+              title="Geographic Performance"
+              subtitle="Country-wise breakdown"
+              className="animate-fadeInUp"
+              style={{ animationDelay: '250ms' }}
+            >
               {loading ? (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {[1, 2, 3, 4].map((i) => (
                     <div
                       key={i}
-                      className="h-32 animate-pulse rounded-xl bg-slate-200 dark:bg-neutral-800"
+                      className="h-36 animate-pulse rounded-2xl bg-slate-100 dark:bg-neutral-800"
                     />
                   ))}
                 </div>
@@ -625,19 +663,19 @@ export default function Dashboard() {
                     return (
                       <div
                         key={c}
-                        className={`rounded-2xl border p-5 transition-all hover:-translate-y-1 hover:shadow-lg ${
+                        className={`group relative overflow-hidden rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
                           isProfit
-                            ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white dark:border-emerald-900/30 dark:from-emerald-950/50 dark:to-neutral-900'
-                            : 'border-rose-200 bg-gradient-to-br from-rose-50 to-white dark:border-rose-900/30 dark:from-rose-950/50 dark:to-neutral-900'
+                            ? 'border-emerald-200/60 bg-gradient-to-br from-emerald-50 to-white shadow-emerald-100 dark:border-emerald-800/40 dark:from-emerald-950/30 dark:to-neutral-900'
+                            : 'border-rose-200/60 bg-gradient-to-br from-rose-50 to-white shadow-rose-100 dark:border-rose-800/40 dark:from-rose-950/30 dark:to-neutral-900'
                         }`}
                       >
                         <div className="mb-4 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-2xl">{flag}</span>
-                            <span className="font-black text-slate-900 dark:text-white">{c}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-3xl drop-shadow-sm">{flag}</span>
+                            <span className="font-bold text-slate-800 dark:text-white">{c}</span>
                           </div>
                           <span
-                            className={`text-xl font-black ${
+                            className={`text-xl font-bold ${
                               isProfit
                                 ? 'text-emerald-600 dark:text-emerald-400'
                                 : 'text-rose-600 dark:text-rose-400'
@@ -647,18 +685,20 @@ export default function Dashboard() {
                             {fmtAmt(Math.abs(profitData.profit || 0))}
                           </span>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <p className="font-bold text-slate-500 dark:text-neutral-400">
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div className="rounded-lg bg-white/60 p-2 dark:bg-neutral-800/60">
+                            <p className="text-xs font-medium text-slate-500 dark:text-neutral-400">
                               Revenue
                             </p>
-                            <p className="font-black text-slate-900 dark:text-white">
+                            <p className="font-bold text-slate-800 dark:text-white">
                               {fmtAmt(profitData.revenue)}
                             </p>
                           </div>
-                          <div>
-                            <p className="font-bold text-slate-500 dark:text-neutral-400">Cost</p>
-                            <p className="font-black text-slate-900 dark:text-white">
+                          <div className="rounded-lg bg-white/60 p-2 dark:bg-neutral-800/60">
+                            <p className="text-xs font-medium text-slate-500 dark:text-neutral-400">
+                              Cost
+                            </p>
+                            <p className="font-bold text-slate-800 dark:text-white">
                               {fmtAmt(profitData.purchaseCost)}
                             </p>
                           </div>
@@ -671,21 +711,31 @@ export default function Dashboard() {
             </GlassCard>
           </div>
 
-          {/* Right Column - Status & Quick Stats */}
+          {/* Right Column */}
           <div className="space-y-6">
-            {/* Order Status Distribution */}
-            <GlassCard title="Order Status" subtitle="Distribution overview">
+            {/* Order Status */}
+            <GlassCard
+              title="Order Status"
+              subtitle="Distribution overview"
+              className="animate-fadeInUp"
+              style={{ animationDelay: '300ms' }}
+            >
               <PremiumPieChart statusTotals={statusTotals} loading={loading} />
             </GlassCard>
 
             {/* Quick Stats */}
-            <GlassCard title="Quick Stats" subtitle="Key metrics">
+            <GlassCard
+              title="Quick Stats"
+              subtitle="Key metrics"
+              className="animate-fadeInUp"
+              style={{ animationDelay: '350ms' }}
+            >
               <div className="space-y-3">
                 <CompactStatCard
                   title="Total Orders"
                   value={<LiveNumber value={statusTotals?.total || 0} maximumFractionDigits={0} />}
                   to="/user/orders"
-                  color="text-sky-600 dark:text-sky-400"
+                  accent="violet"
                   loading={loading}
                 />
                 <CompactStatCard
@@ -694,7 +744,7 @@ export default function Dashboard() {
                     <LiveNumber value={statusTotals?.delivered || 0} maximumFractionDigits={0} />
                   }
                   to="/user/orders?ship=delivered"
-                  color="text-emerald-600 dark:text-emerald-400"
+                  accent="emerald"
                   loading={loading}
                 />
                 <CompactStatCard
@@ -703,7 +753,7 @@ export default function Dashboard() {
                     <LiveNumber value={statusTotals?.pending || 0} maximumFractionDigits={0} />
                   }
                   to="/user/orders?ship=open"
-                  color="text-amber-500 dark:text-amber-400"
+                  accent="amber"
                   loading={loading}
                 />
               </div>
@@ -712,7 +762,7 @@ export default function Dashboard() {
         </div>
 
         {/* Tabbed Metrics Section */}
-        <GlassCard>
+        <GlassCard className="animate-fadeInUp" style={{ animationDelay: '400ms' }}>
           <TabsComponent tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
 
           <div key={activeTab} className="mt-6">
@@ -723,20 +773,19 @@ export default function Dashboard() {
                     title: 'Total Amount',
                     value: <LiveNumber value={sumAmountAED('amountTotalOrders')} prefix="AED " />,
                     to: '/user/orders',
-                    color: 'text-emerald-600 dark:text-emerald-400',
-                    delay: 0,
+                    accent: 'violet',
                   },
                   {
                     title: 'Delivered Amt',
                     value: <LiveNumber value={sumAmountAED('amountDelivered')} prefix="AED " />,
                     to: '/user/orders?ship=delivered',
-                    color: 'text-emerald-600 dark:text-emerald-400',
+                    accent: 'emerald',
                   },
                   {
                     title: 'Open Amount',
                     value: <LiveNumber value={sumAmountAED('amountPending')} prefix="AED " />,
                     to: '/user/orders?ship=open',
-                    color: 'text-orange-500 dark:text-orange-400',
+                    accent: 'amber',
                   },
                   {
                     title: 'Assigned',
@@ -744,7 +793,7 @@ export default function Dashboard() {
                       <LiveNumber value={statusTotals?.assigned || 0} maximumFractionDigits={0} />
                     ),
                     to: '/user/orders?ship=assigned',
-                    color: 'text-blue-600 dark:text-blue-400',
+                    accent: 'sky',
                   },
                   {
                     title: 'In Transit',
@@ -752,7 +801,7 @@ export default function Dashboard() {
                       <LiveNumber value={statusTotals?.in_transit || 0} maximumFractionDigits={0} />
                     ),
                     to: '/user/orders?ship=in_transit',
-                    color: 'text-cyan-600 dark:text-cyan-400',
+                    accent: 'sky',
                   },
                   {
                     title: 'Cancelled',
@@ -760,7 +809,7 @@ export default function Dashboard() {
                       <LiveNumber value={statusTotals?.cancelled || 0} maximumFractionDigits={0} />
                     ),
                     to: '/user/orders?ship=cancelled',
-                    color: 'text-rose-600 dark:text-rose-400',
+                    accent: 'rose',
                   },
                 ].map((stat, i) => (
                   <div
@@ -788,8 +837,7 @@ export default function Dashboard() {
                       />
                     ),
                     to: '/user/inhouse-products',
-                    color: 'text-violet-600 dark:text-violet-400',
-                    delay: 0,
+                    accent: 'violet',
                   },
                   {
                     title: 'Inventory',
@@ -801,54 +849,54 @@ export default function Dashboard() {
                         prefix="AED "
                       />
                     ),
-                    to: '/user/warehouses',
-                    color: 'text-sky-600 dark:text-sky-400',
+                    to: '/user/inhouse-products',
+                    accent: 'sky',
                   },
                   {
-                    title: 'Delivered',
+                    title: 'Sold Value',
                     value: (
                       <LiveNumber
                         value={sumCurrencyMapAED(
-                          metrics?.productMetrics?.global?.deliveredValueByCurrency
+                          metrics?.productMetrics?.global?.soldValueByCurrency
                         )}
                         prefix="AED "
                       />
                     ),
-                    to: '/user/orders?ship=delivered',
-                    color: 'text-emerald-600 dark:text-emerald-400',
+                    to: '/user/products',
+                    accent: 'emerald',
                   },
                   {
-                    title: 'Purchased Qty',
+                    title: 'All SKUs',
                     value: (
                       <LiveNumber
-                        value={metrics?.productMetrics?.global?.stockPurchasedQty || 0}
+                        value={metrics?.productMetrics?.global?.count || 0}
                         maximumFractionDigits={0}
                       />
                     ),
                     to: '/user/inhouse-products',
-                    color: 'text-sky-600 dark:text-sky-400',
+                    accent: 'slate',
                   },
                   {
-                    title: 'Delivered Qty',
+                    title: 'In Stock',
                     value: (
                       <LiveNumber
-                        value={metrics?.productMetrics?.global?.stockDeliveredQty || 0}
+                        value={metrics?.productMetrics?.global?.inStock || 0}
                         maximumFractionDigits={0}
                       />
                     ),
-                    to: '/user/orders?ship=delivered',
-                    color: 'text-emerald-600 dark:text-emerald-400',
+                    to: '/user/inhouse-products',
+                    accent: 'emerald',
                   },
                   {
-                    title: 'Stock Left',
+                    title: 'Out of Stock',
                     value: (
                       <LiveNumber
-                        value={metrics?.productMetrics?.global?.stockLeftQty || 0}
+                        value={metrics?.productMetrics?.global?.outOfStock || 0}
                         maximumFractionDigits={0}
                       />
                     ),
-                    to: '/user/warehouses',
-                    color: 'text-amber-500 dark:text-amber-400',
+                    to: '/user/inhouse-products',
+                    accent: 'rose',
                   },
                 ].map((stat, i) => (
                   <div
@@ -873,36 +921,26 @@ export default function Dashboard() {
                   return (
                     <div
                       key={c}
-                      className="animate-fadeInUp relative overflow-hidden rounded-2xl border border-slate-200/50 bg-gradient-to-br from-white to-slate-50 p-5 transition-all hover:-translate-y-1 hover:shadow-lg dark:border-neutral-800/50 dark:from-neutral-900 dark:to-black"
+                      className="animate-fadeInUp group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-gradient-to-br from-white to-slate-50 p-5 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-neutral-700/40 dark:from-neutral-800 dark:to-neutral-900"
                       style={{ animationDelay: `${index * 80}ms` }}
                     >
-                      {/* Full Background Flag with Glow */}
+                      {/* Background Flag */}
                       <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
-                        <span
-                          className="text-[280px] opacity-[0.12] dark:opacity-[0.08]"
-                          style={{
-                            filter:
-                              'drop-shadow(0 0 40px rgba(255, 255, 255, 0.3)) drop-shadow(0 0 80px rgba(255, 255, 255, 0.2))',
-                            textShadow:
-                              '0 0 60px rgba(255, 255, 255, 0.5), 0 0 120px rgba(255, 255, 255, 0.3)',
-                          }}
-                        >
+                        <span className="text-[200px] opacity-[0.04] dark:opacity-[0.06]">
                           {flag}
                         </span>
                       </div>
 
-                      <div className="relative z-10 mb-4 flex items-center justify-between border-b border-slate-100 pb-3 dark:border-neutral-800">
+                      <div className="relative z-10 mb-4 flex items-center justify-between border-b border-slate-100 pb-3 dark:border-neutral-700">
                         <div className="flex items-center gap-2">
-                          <span className="text-2xl">{flag}</span>
-                          <span className="font-black text-slate-900 dark:text-white">
+                          <span className="text-2xl drop-shadow-sm">{flag}</span>
+                          <span className="font-bold text-slate-800 dark:text-white">
                             {c === 'KSA' ? 'Saudi Arabia' : c}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-black dark:bg-neutral-800">
-                            {cur}
-                          </span>
-                        </div>
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-neutral-700 dark:text-neutral-300">
+                          {cur}
+                        </span>
                       </div>
 
                       <div className="relative z-10 grid grid-cols-2 gap-3">
@@ -939,24 +977,24 @@ export default function Dashboard() {
                             <NavLink
                               key={i}
                               to={stat.to}
-                              className="rounded-lg border border-slate-200/30 bg-white/50 p-2 text-center hover:bg-white dark:border-neutral-800/30 dark:bg-neutral-900/50 dark:hover:bg-neutral-800/50"
+                              className="rounded-xl border border-slate-100 bg-white/80 p-3 text-center transition-all hover:border-violet-200 hover:bg-violet-50 dark:border-neutral-700 dark:bg-neutral-800/80 dark:hover:border-violet-500/30 dark:hover:bg-neutral-700"
                             >
-                              <p className="text-[10px] font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
+                              <p className="text-[10px] font-semibold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
                                 {stat.label}
                               </p>
-                              <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">
+                              <p className="mt-1 text-sm font-bold text-slate-800 dark:text-white">
                                 {stat.value}
                               </p>
                             </NavLink>
                           ) : (
                             <div
                               key={i}
-                              className="rounded-lg border border-slate-200/30 bg-white/50 p-2 text-center dark:border-neutral-800/30 dark:bg-neutral-900/50"
+                              className="rounded-xl border border-slate-100 bg-white/80 p-3 text-center dark:border-neutral-700 dark:bg-neutral-800/80"
                             >
-                              <p className="text-[10px] font-bold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
+                              <p className="text-[10px] font-semibold tracking-wide text-slate-500 uppercase dark:text-neutral-400">
                                 {stat.label}
                               </p>
-                              <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">
+                              <p className="mt-1 text-sm font-bold text-slate-800 dark:text-white">
                                 {stat.value}
                               </p>
                             </div>
