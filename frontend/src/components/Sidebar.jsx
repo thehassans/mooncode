@@ -4,7 +4,13 @@ import { API_BASE, apiGet } from '../api.js'
 
 // Sidebar supports flat links: { to, label, icon? }
 // and grouped links: { label, icon?, children: [{ to, label, icon? }, ...] }
-export default function Sidebar({ links = [], closed, onToggle, hiddenItems = [] }) {
+export default function Sidebar({
+  links = [],
+  closed,
+  onToggle,
+  hiddenItems = [],
+  premium = false,
+}) {
   const location = useLocation()
   const [openGroups, setOpenGroups] = useState(() => new Set())
   const [theme, setTheme] = useState('dark')
@@ -603,7 +609,7 @@ export default function Sidebar({ links = [], closed, onToggle, hiddenItems = []
   }
 
   return (
-    <aside className={`sidebar ${closed ? 'closed' : ''} text-sm`}>
+    <aside className={`sidebar ${closed ? 'closed' : ''} ${premium ? 'premium' : ''} text-sm`}>
       <div
         className="header flex items-center justify-center px-2"
         style={{ background: 'var(--sidebar-bg)', borderBottom: '1px solid var(--sidebar-border)' }}

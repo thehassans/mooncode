@@ -1194,10 +1194,11 @@ export default function UserLayout() {
         links={links}
         hiddenItems={hiddenNavItems}
         onToggle={() => setClosed((c) => !c)}
+        premium
       />
       <div className={`main ${closed ? 'full' : ''}`}>
         <div
-          className="topbar"
+          className="topbar premium"
           style={{
             background: 'var(--sidebar-bg)',
             borderBottom: '1px solid var(--sidebar-border)',
