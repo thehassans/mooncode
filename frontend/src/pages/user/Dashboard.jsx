@@ -485,7 +485,7 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/30 px-4 py-6 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
+    <div className="min-h-screen bg-white px-4 py-6 dark:bg-neutral-950">
       <style>{`
         @keyframes fadeInUp {
           from {
@@ -627,7 +627,7 @@ export default function Dashboard() {
               className="animate-fadeInUp"
               style={{ animationDelay: '200ms' }}
             >
-              <div className="h-[400px] w-full rounded-2xl bg-slate-50/50 p-4 dark:bg-neutral-800/50">
+              <div className="h-[400px] w-full rounded-2xl bg-white p-4 dark:bg-neutral-800/50">
                 {!hydrated || loading ? (
                   <div className="h-full w-full animate-pulse rounded-xl bg-slate-100 dark:bg-neutral-700" />
                 ) : (

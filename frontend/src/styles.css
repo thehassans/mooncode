@@ -1162,12 +1162,12 @@
 /* Premium Main Area - Light Mode */
 :root .main,
 :root[data-theme='light'] .main {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #f5f3ff 100%);
+  background: #ffffff;
 }
 
 /* Premium Main Area - Dark Mode */
 :root[data-theme='dark'] .main {
-  background: linear-gradient(135deg, #0a0a0f 0%, #18181b 50%, #1e1b4b 100%);
+  background: #0f0f14;
 }
 
 /* ============================================
