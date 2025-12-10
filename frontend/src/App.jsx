@@ -37,10 +37,21 @@ import InvestorReferrals from './pages/investor/Referrals.jsx'
 import MyInvestments from './pages/investor/MyInvestments.jsx'
 import InvestorWithdraw from './pages/investor/Withdraw.jsx'
 import InvestorLayout from './layout/InvestorLayout.jsx'
+import DriverLayout from './layout/DriverLayout.jsx'
 import InvestorRegister from './pages/investor/Register.jsx'
 import AgentOrdersHistory from './pages/agent/OrdersHistory.jsx'
 import AgentProfile from './pages/agent/Profile.jsx'
 import AgentPayout from './pages/agent/Payout.jsx'
+import DriverProfile from './pages/driver/Profile.jsx'
+import DriverDashboard from './pages/driver/Dashboard.jsx'
+import DriverPanel from './pages/driver/DriverPanel.jsx'
+import DriverMe from './pages/driver/Me.jsx'
+import DriverPayout from './pages/driver/Payout.jsx'
+import DriverAssigned from './pages/driver/Assigned.jsx'
+import DriverPicked from './pages/driver/Picked.jsx'
+import DriverDelivered from './pages/driver/Delivered.jsx'
+import DriverCancelled from './pages/driver/Cancelled.jsx'
+import DriverHistory from './pages/driver/History.jsx'
 
 import WhatsAppConnect from './pages/inbox/WhatsAppConnect.jsx'
 import WhatsAppInbox from './pages/inbox/WhatsAppInbox.jsx'
@@ -378,6 +389,28 @@ export default function App() {
               <Route path="pages" element={<PageManager />} />
               <Route path="navigation" element={<NavigationMenu />} />
               {/** AI Settings moved to User panel */}
+            </Route>
+
+            <Route
+              path="/driver"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={['driver']}>
+                    <DriverLayout />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            >
+              <Route index element={<DriverDashboard />} />
+              <Route path="panel" element={<DriverPanel />} />
+              <Route path="orders/assigned" element={<DriverAssigned />} />
+              <Route path="orders/picked" element={<DriverPicked />} />
+              <Route path="orders/delivered" element={<DriverDelivered />} />
+              <Route path="orders/cancelled" element={<DriverCancelled />} />
+              <Route path="orders/history" element={<DriverHistory />} />
+              <Route path="me" element={<DriverMe />} />
+              <Route path="profile" element={<DriverProfile />} />
+              <Route path="payout" element={<DriverPayout />} />
             </Route>
 
             <Route
